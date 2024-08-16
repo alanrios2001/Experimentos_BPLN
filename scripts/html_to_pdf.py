@@ -10,7 +10,7 @@ class BookExtractor:
         self.cap_links = []
         self.book = {}
 
-        self.output_path = Path(__file__).parents[1] / 'assets'
+        self.output_path = Path(__file__).parents[1] / 'assets' / 'crawler'
         self.output_path.mkdir(parents=True, exist_ok=True)
 
     def run(self):
