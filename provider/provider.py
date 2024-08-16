@@ -29,7 +29,7 @@ class Provider:
             else ("gpt-4o" if USE_OPENAI else "meta-llama/Meta-Llama-3.1-8B-Instruct")
         ),
     ):
-        self.model_name = "llama3-8b-8192"
+        self.model_name = model_name
         self.api_key = HF_API_KEY
         self.client = AsyncOpenAI(
             api_key=(
