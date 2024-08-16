@@ -24,7 +24,7 @@ class Provider:
         self,
         semaphore: Semaphore,
         model_name: str = (
-            "llama3-8b-8192"
+            "llama-3.1-70b-versatile"
             if USE_GROQ
             else ("gpt-4o" if USE_OPENAI else "meta-llama/Meta-Llama-3.1-8B-Instruct")
         ),
