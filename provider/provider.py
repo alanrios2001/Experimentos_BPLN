@@ -47,18 +47,26 @@ class Provider:
         self.semaphore = semaphore
 
     async def generate_response(
-        self, system_prompt, user_message, temperature=0.2, top_p=0.9
+        self,
+        system_message: str,
+        user_message: str,
+        temperature: float = 0.2,
+        top_p: float = 0.9,
     ):
         retry_attempts = 10  # Número de tentativas de retentativa
         while retry_attempts > 0:
             try:
                 async with self.semaphore:
                     messages = [
-                        {"role": "system", "content": system_prompt},
+                        {"role": "system", "content": system_message},
                         {"role": "user", "content": user_message},
                     ]
                     response = await self.client.chat.completions.create(
-                        model=self.model_name, messages=messages, max_tokens=2048, temperature=temperature, top_p=top_p
+                        model=self.model_name,
+                        messages=messages,
+                        max_tokens=2048,
+                        temperature=temperature,
+                        top_p=top_p,
                     )
                     return response.choices[0].message.content
             except Exception as e:
@@ -75,6 +83,8 @@ class Provider:
 if __name__ == "__main__":
     semaphore = Semaphore(MAX_CONCURRENT_TASKS)
     provider = Provider(semaphore)
+    system_message = "Olá! Como posso te ajudar hoje?"
+
     response = asyncio.run(
         provider.generate_response(
             "Olá! Como posso te ajudar hoje?",
