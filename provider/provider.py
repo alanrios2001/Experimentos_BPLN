@@ -47,7 +47,7 @@ class Provider:
         self.semaphore = semaphore
 
     async def generate_response(
-        self, system_prompt, user_message, temperature=0.5, top_p=0.9
+        self, system_prompt, user_message, temperature=0.2, top_p=0.9
     ):
         retry_attempts = 10  # Número de tentativas de retentativa
         while retry_attempts > 0:
