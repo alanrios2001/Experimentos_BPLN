@@ -12,7 +12,9 @@ class GenerateDataset:
         self.provider = provider
 
         self.data_path = Path(__file__).parents[1] / "assets"
+
         self.dataset_path = self.data_path / 'generated_dataset'
+        self.dataset_path.mkdir(parents=True, exist_ok=True)
 
         with open(self.data_path / 'prompt.json', encoding='utf-8') as f:
             prompts = json.load(f)
