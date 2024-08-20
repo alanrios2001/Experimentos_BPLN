@@ -1,5 +1,4 @@
 from asyncio import Semaphore
-
 from provider.openai_provider import Provider
 import json
 from pathlib import Path
@@ -24,29 +23,52 @@ class GenerateDataset:
         with open(self.data_path / 'crawler' / 'book.json', encoding='utf-8') as f:
             self.book = json.load(f)
 
-        try:
-            with open(self.dataset_path / 'book_dataset.json', 'r', encoding='utf-8') as f:
-                self.dataset = f
-        except FileNotFoundError:
-            self.dataset = {}
+        self.dataset = {}
+        self.load_dataset()
+        self.update_book_state()
 
     async def generate_qa_dataset(self):
         for chapter in tqdm(self.book, desc='Gerando perguntas e respostas do capitulo'):
             self.dataset[chapter] = []
             for i, section in tqdm(enumerate(self.book[chapter]), total=len(self.book[chapter]), desc='Etapas das seções do capitulo'):
                 text = self.book[chapter][section]
+                user_message = self.user_message.replace('<TEXTO AQUI>', text)
 
-                user_prompt = self.user_message.replace('<TEXTO AQUI>', text)
-                answer = await self.provider.generate_response(system_message=self.system_message,
-                                                               user_message=user_prompt,
-                                                               temperature=0.4,
-                                                               response_format={"type": "json_object"}
-                                                               )
-                json_response = json.loads(answer)
-                self.dataset[chapter].extend(json_response['perguntas'])
+                try:
+                    await self.get_and_process_answer(user_message, chapter)
+                except Exception as e:
+                    if 'Failed to generate JSON' in str(e):
+                        await self.get_and_process_answer(user_message, chapter)
 
-                with open(self.dataset_path / 'book_dataset.json', 'w', encoding='utf-8') as f:
-                    json.dump(self.dataset, f, ensure_ascii=False, indent=4)
+    async def get_and_process_answer(self, user_message: str, chapter: str):
+        answer = await self.provider.generate_response(system_message=self.system_message,
+                                                       user_message=user_message,
+                                                       temperature=0.4,
+                                                       response_format={"type": "json_object"}
+                                                       )
+        json_response = json.loads(answer)
+
+        self.dataset[chapter].extend(json_response['perguntas'])
+
+        with open(self.dataset_path / 'book_dataset.json', 'w', encoding='utf-8') as f:
+            json.dump(self.dataset, f, ensure_ascii=False, indent=4)
+
+    def load_dataset(self):
+        try:
+            with open(self.dataset_path / 'book_dataset.json', 'r', encoding='utf-8') as f:
+                self.dataset = f
+        except FileNotFoundError:
+            return
+
+    def update_book_state(self):
+        if not self.dataset:
+            return
+
+        chapters = self.dataset.keys()
+
+        for chapter in chapters[:-1]:
+            del self.book[chapter]
+            del self.dataset[chapter]
 
 
 if __name__ == "__main__":
