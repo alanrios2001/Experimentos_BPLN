@@ -19,7 +19,7 @@ TOPICS_TO_IGNORE = [
     "Recursos e ferramentas para o português",
     "Visualização, anotação e edição de treebanks",
     "Por onde começar?",
-    "Uso Responsável e Boas Práticas"
+    "Uso Responsável e Boas Práticas",
 ]
 
 CAPS_TO_IGNORE = [
@@ -58,16 +58,25 @@ class BookExtractor:
             if not any([cap.lower() in capitle_name.lower() for cap in CAPS_TO_IGNORE]):
                 response = requests.get(link)
                 response.raise_for_status()
-                soup = BeautifulSoup(response.content, "html.parser", from_encoding="utf-8")
+                soup = BeautifulSoup(
+                    response.content, "html.parser", from_encoding="utf-8"
+                )
                 content = soup.find("main", {"class": "content"})
                 chapter_titles = content.find_all("h2")
                 chapter_content = {}
                 for title in chapter_titles:
                     cleaned_title = title.text.strip()
 
-                    if not any([topic.lower() in cleaned_title.lower() for topic in TOPICS_TO_IGNORE]):
+                    if not any(
+                        [
+                            topic.lower() in cleaned_title.lower()
+                            for topic in TOPICS_TO_IGNORE
+                        ]
+                    ):
                         if title.find("span", class_="header-section-number"):
-                            title.find("span", class_="header-section-number").decompose()
+                            title.find(
+                                "span", class_="header-section-number"
+                            ).decompose()
 
                         section_content = []
                         current = title.find_next_sibling()
@@ -80,7 +89,9 @@ class BookExtractor:
                         section_content_str = " ".join(section_content)
 
                         if len(section_content_str) > 800:
-                            chapter_content[' '.join(cleaned_title.split(' ')[1:])] = " ".join(section_content)
+                            chapter_content[" ".join(cleaned_title.split(" ")[1:])] = (
+                                " ".join(section_content)
+                            )
 
                         if chapter_content:
                             self.book[capitle_name] = chapter_content

@@ -68,7 +68,7 @@ class Provider:
                         max_tokens=2048,
                         temperature=temperature,
                         top_p=top_p,
-                        response_format=response_format
+                        response_format=response_format,
                     )
                     return response.choices[0].message.content
             except Exception as e:
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         provider.generate_response(
             "Você é um chatbot que entende muito de todas as áreas e responde a perguntas de forma precisa.",
             "json Qual é o melhor modelo de linguagem?",
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
         )
     )
     print(response)
