@@ -52,6 +52,7 @@ class Provider:
         user_message: str,
         temperature: float = 0.2,
         top_p: float = 0.9,
+        response_format: dict | None = None,
     ):
         retry_attempts = 10  # Número de tentativas de retentativa
         while retry_attempts > 0:
@@ -67,6 +68,7 @@ class Provider:
                         max_tokens=2048,
                         temperature=temperature,
                         top_p=top_p,
+                        response_format=response_format
                     )
                     return response.choices[0].message.content
             except Exception as e:
