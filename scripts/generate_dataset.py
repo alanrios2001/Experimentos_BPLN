@@ -30,7 +30,7 @@ class GenerateDataset:
         except FileNotFoundError:
             self.dataset = {}
 
-    async def generate_dataset(self):
+    async def generate_qa_dataset(self):
         for chapter in tqdm(self.book, desc='Gerando perguntas e respostas do capitulo'):
             self.dataset[chapter] = []
             for i, section in tqdm(enumerate(self.book[chapter]), total=len(self.book[chapter]), desc='Etapas das seções do capitulo'):
@@ -49,7 +49,6 @@ class GenerateDataset:
                     json.dump(self.dataset, f, ensure_ascii=False, indent=4)
 
 
-
 if __name__ == "__main__":
     import asyncio
 
@@ -57,6 +56,6 @@ if __name__ == "__main__":
         semaphore = Semaphore(1)
         provider = Provider(semaphore)
         generator = GenerateDataset(provider)
-        await generator.generate_dataset()
+        await generator.generate_qa_dataset()
 
     asyncio.run(teste())
