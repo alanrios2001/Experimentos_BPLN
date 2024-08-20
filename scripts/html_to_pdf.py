@@ -3,6 +3,24 @@ import json
 from bs4 import BeautifulSoup
 from pathlib import Path
 
+TOPICS_TO_IGNORE = [
+    "Vale a pena relembrar",
+    "Considerações finais",
+    "Agradecimentos",
+    "Ao infinito e além",
+    "Em resumo…",
+    "Exercícios",
+    "Para Concluir",
+    "Tendências",
+    "Conclusões provisórias",
+    "Aplicações de PLN na Saúde",
+    "Conclusão"
+]
+
+CAPS_TO_IGNORE = [
+    "apendice"
+]
+
 
 class BookExtractor:
     def __init__(self):
@@ -29,24 +47,31 @@ class BookExtractor:
 
     def extract_cap_content(self):
         for link in self.cap_links:
-            response = requests.get(link)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.content, "html.parser", from_encoding="utf-8")
-            content = soup.find("main", {"class": "content"})
-            chapter_titles = content.find_all("h2")
-            chapter_content = {}
-            for title in chapter_titles:
-                if title.find("span", class_="header-section-number"):
-                    title.find("span", class_="header-section-number").decompose()
-                cleaned_title = title.text.strip()
-                section_content = []
-                current = title.find_next_sibling()
-                while current and current.name != "h2":
-                    if current.name == "p":
-                        section_content.append(current.text.strip())
-                    current = current.find_next_sibling()
-                chapter_content[cleaned_title] = " ".join(section_content)
-            self.book[link.split("/")[-1].replace(".html", "")] = chapter_content
+            capitle_name = link.split("/")[-1].replace(".html", "")
+
+            if not any([cap.lower() in capitle_name.lower() for cap in CAPS_TO_IGNORE]):
+                response = requests.get(link)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.content, "html.parser", from_encoding="utf-8")
+                content = soup.find("main", {"class": "content"})
+                chapter_titles = content.find_all("h2")
+                chapter_content = {}
+                for title in chapter_titles:
+                    cleaned_title = title.text.strip()
+
+                    if not any([topic.lower() in cleaned_title.lower() for topic in TOPICS_TO_IGNORE]):
+                        if title.find("span", class_="header-section-number"):
+                            title.find("span", class_="header-section-number").decompose()
+
+                        section_content = []
+                        current = title.find_next_sibling()
+
+                        while current and current.name != "h2":
+                            if current.name == "p":
+                                section_content.append(current.text.strip())
+                            current = current.find_next_sibling()
+                        chapter_content[' '.join(cleaned_title.split(' ')[1:])] = " ".join(section_content)
+                        self.book[capitle_name] = chapter_content
 
     def save_json(self):
         file_path = self.output_path / "book.json"
