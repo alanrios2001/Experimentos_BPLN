@@ -90,7 +90,8 @@ if __name__ == "__main__":
     response = asyncio.run(
         provider.generate_response(
             "Você é um chatbot que entende muito de todas as áreas e responde a perguntas de forma precisa.",
-            "Qual é o melhor modelo de linguagem?",
+            "json Qual é o melhor modelo de linguagem?",
+            response_format={"type": "json_object"}
         )
     )
     print(response)

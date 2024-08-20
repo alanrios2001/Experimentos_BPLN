@@ -26,7 +26,9 @@ class GenerateDataset:
 
                 user_prompt = self.user_message.replace('<TEXTO AQUI>', text)
                 answer = await self.provider.generate_response(system_message=self.system_message,
-                                                               user_message=user_prompt)
+                                                               user_message=user_prompt,
+                                                               response_format={"type": "json_object"}
+                                                               )
                 print(answer)
                 input('')
 
