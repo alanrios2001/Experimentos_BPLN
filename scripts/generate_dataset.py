@@ -37,14 +37,15 @@ class GenerateDataset:
                 user_prompt = self.user_message.replace('<TEXTO AQUI>', text)
                 answer = await self.provider.generate_response(system_message=self.system_message,
                                                                user_message=user_prompt,
+                                                               temperature=0.4,
                                                                response_format={"type": "json_object"}
                                                                )
                 json_response = json.loads(answer)
                 self.dataset[chapter].extend(json_response['perguntas'])
 
-                if i+1 % 3 == 0:
-                    with open(self.dataset_path / 'book_dataset.json', 'w', encoding='utf-8') as f:
-                        json.dump(self.dataset, f, ensure_ascii=False, indent=4)
+                with open(self.dataset_path / 'book_dataset.json', 'w', encoding='utf-8') as f:
+                    json.dump(self.dataset, f, ensure_ascii=False, indent=4)
+
 
 
 if __name__ == "__main__":
