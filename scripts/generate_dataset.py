@@ -51,6 +51,7 @@ class GenerateDataset:
                 try:
                     await self.get_and_process_answer(user_message, chapter)
                 except Exception as e:
+                    print(e)
                     if "Failed to generate JSON" in str(e):
                         await self.get_and_process_answer(user_message, chapter)
 
@@ -75,6 +76,7 @@ class GenerateDataset:
             ) as f:
                 self.dataset = json.load(f)
         except FileNotFoundError:
+            print("Checkpoint do dataset não encontrado")
             return
 
     def update_book_state(self):
@@ -85,7 +87,8 @@ class GenerateDataset:
 
         for chapter in chapters[:-1]:
             del self.book[chapter]
-            del self.dataset[chapter]
+
+        del self.book[chapters[-1]]
 
 
 if __name__ == "__main__":
