@@ -14,11 +14,17 @@ TOPICS_TO_IGNORE = [
     "Tendências",
     "Conclusões provisórias",
     "Aplicações de PLN na Saúde",
-    "Conclusão"
+    "Conclusão",
+    "Qual é melhor: constituência ou dependência?",
+    "Recursos e ferramentas para o português",
+    "Visualização, anotação e edição de treebanks",
+    "Por onde começar?",
+    "Uso Responsável e Boas Práticas"
 ]
 
 CAPS_TO_IGNORE = [
-    "apendice"
+    "apendice",
+    "cap-caracteres-palavras",
 ]
 
 
@@ -70,8 +76,14 @@ class BookExtractor:
                             if current.name == "p":
                                 section_content.append(current.text.strip())
                             current = current.find_next_sibling()
-                        chapter_content[' '.join(cleaned_title.split(' ')[1:])] = " ".join(section_content)
-                        self.book[capitle_name] = chapter_content
+
+                        section_content_str = " ".join(section_content)
+
+                        if len(section_content_str) > 800:
+                            chapter_content[' '.join(cleaned_title.split(' ')[1:])] = " ".join(section_content)
+
+                        if chapter_content:
+                            self.book[capitle_name] = chapter_content
 
     def save_json(self):
         file_path = self.output_path / "book.json"
