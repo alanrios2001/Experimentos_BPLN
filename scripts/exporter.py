@@ -28,15 +28,14 @@ class Exporter:
                         json.dumps(
                             {
                                 "conversations": [
-                                    {"from": "system", "value": system_message},
-                                    {"from": "human", "value": section["pergunta"]},
-                                    {"from": "gpt", "value": section["resposta"]},
+                                    {'from': 'system', 'value': system_message},
+                                    {'from': 'human', 'value': section["pergunta"]},
+                                    {'from': 'gpt', 'value': section["resposta"]},
                                 ]
                             },
                             ensure_ascii=False,
-                        )
+                        ) + "\n"
                     )
-                    f.write("\n")
 
 
 if __name__ == "__main__":
