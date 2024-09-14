@@ -10,7 +10,7 @@ class GenerateDataset:
     def __init__(self, provider: Provider):
         self.provider = provider
 
-        self.data_path = Path(__file__).parents[1] / "assets"
+        self.data_path = Path(__file__).parents[1] / "assets" / "dataset"
 
         self.dataset_path = self.data_path / "generated_dataset"
         self.dataset_path.mkdir(parents=True, exist_ok=True)
@@ -51,7 +51,6 @@ class GenerateDataset:
                 try:
                     await self.get_and_process_answer(user_message, chapter)
                 except Exception as e:
-                    print(e)
                     if "Failed to generate JSON" in str(e):
                         await self.get_and_process_answer(user_message, chapter)
 
