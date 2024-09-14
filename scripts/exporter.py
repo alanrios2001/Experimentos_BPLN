@@ -17,8 +17,8 @@ class Exporter:
         ) as f:
             book_dataset = json.load(f)
 
-            # insert data on sharegpt jsonl.
-            # {"conversations": [{"from": "...", "value": "..."}]}
+        # insert data on sharegpt jsonl.
+        # {"conversations": [{"from": "...", "value": "..."}]}
         with open(
             self.exporter_data_path / "dataset.jsonl", "w", encoding="utf-8"
         ) as f:
