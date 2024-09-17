@@ -36,7 +36,32 @@ class Exporter:
                             ensure_ascii=False,
                         ) + "\n"
                     )
+    def export_Digger_dataset(self):
+        system_message = "Considere dois grupos de consumidores: aqueles que fazem compras online e aqueles que compram presencialmente no varejo. Esses consumidores podem ter diferentes níveis de conhecimento sobre o Código de Defesa do Consumidor (CDC), variando desde nenhum conhecimento até um conhecimento básico ou intermediário, levando em consideração suas experiências de compra e possíveis dúvidas. As perguntas devem simular situações reais em que eles possam precisar de orientação jurídica ou mais detalhes sobre como garantir seus direitos. Foque em questões práticas e cotidianas relacionadas ao CDC e às situações que esses consumidores poderiam enfrentar. NUNCA mencione explicitamente o TRECHO nas perguntas ou respostas. As perguntas devem ser autocontidas, ou seja, não devem exigir acesso ao trecho para serem respondidas; Formule perguntas de forma técnica; As perguntas devem ser desafiadoras, exigindo um alto nível de compreensão do assunto; Embase as respostas com LEIS, ARTIGOS, RESOLUÇÕES, Acordão, integrando isso na RESPOSTA de forma explícita. Por exemplo: O Código Penal (art. X), prevê a pena...; SEMPRE que existir menção a Lei ou Artigo, integre na RESPOSTA; Não inclua opiniões pessoais ou especulações nas respostas; NÃO COLOQUE (Fonte:), (Referências:), (Baseado no trecho:), (Base legal:) ou similares. NÃO CITE AUTORES. NÃO CITE O TRECHO;"
+        with open(
+            self.dataset_path / "generated_dataset" / "Digger_llama_dataset.json",
+            encoding="utf-8",
+        ) as f:
+            Digger_llama_dataset = json.load(f)
 
+        with open(
+            self.exporter_data_path / "Digger_llama_sharegpt_dataset", "w", encoding="utf-8"
+        ) as f:
+            for division in Digger_llama_dataset:
+                for section in Digger_llama_dataset[division]:
+                    for qa in section:
+                        f.write(
+                            json.dumps(
+                                {
+                                    "conversations": [
+                                        {'from': 'system', 'value': system_message},
+                                        {'from': 'human', 'value': qa["Pergunta"]},
+                                        {'from': 'gpt', 'value': qa["Resposta"]},
+                                    ]  
+                                },
+                                ensure_ascii=False,
+                            ) + "\n"
+                        )          
 
 if __name__ == "__main__":
     exporter = Exporter()
