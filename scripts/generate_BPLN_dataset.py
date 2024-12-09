@@ -6,13 +6,13 @@ from pathlib import Path
 from tqdm import tqdm
 
 
-class GenerateDataset:
+class BPLNDataset:
     def __init__(self, provider: Provider):
         self.provider = provider
 
-        self.data_path = Path(__file__).parents[1] / "assets" / "dataset"
+        self.data_path = Path(__file__).parents[1] / "assets"
 
-        self.dataset_path = self.data_path / "generated_dataset"
+        self.dataset_path = self.data_path / "dataset" / "generated_dataset"
         self.dataset_path.mkdir(parents=True, exist_ok=True)
 
         with open(self.data_path / "prompt.json", encoding="utf-8") as f:
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     async def teste():
         semaphore = Semaphore(1)
         provider = Provider(semaphore)
-        generator = GenerateDataset(provider)
+        generator = BPLNDataset(provider)
         await generator.generate_qa_dataset()
 
     asyncio.run(teste())

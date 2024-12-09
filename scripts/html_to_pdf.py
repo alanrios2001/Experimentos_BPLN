@@ -30,7 +30,7 @@ CAPS_TO_IGNORE = [
 
 class BookExtractor:
     def __init__(self):
-        self.base_url = "https://brasileiraspln.com/livro-pln/2a-edicao/"
+        self.base_url = "https://brasileiraspln.com/livro-pln/3a-edicao/"
         self.cap_links = []
         self.book = {}
 
