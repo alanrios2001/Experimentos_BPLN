@@ -58,7 +58,7 @@ class BPLNDataset:
         answer = await self.provider.generate_response(
             system_message=self.system_message,
             user_message=user_message,
-            temperature=0.4,
+            temperature=0.2,
             response_format={"type": "json_object"},
         )
         json_response = json.loads(answer)
