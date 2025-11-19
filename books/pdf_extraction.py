@@ -7,13 +7,8 @@ from pathlib import Path
 dir = Path("./")
 saida = Path("../assets")
 saida.mkdir(exist_ok=True)
-
-# Observar os sumarios de cada livro e extrair os intervalos entre os capitulos 
-
-book_1 = {
-     
-}
 class book_extractor_pdf:
+        
         def __init__(self,first_pg,last_pg,dados):
             self.first_pg = first_pg
             self.last_pg = last_pg
