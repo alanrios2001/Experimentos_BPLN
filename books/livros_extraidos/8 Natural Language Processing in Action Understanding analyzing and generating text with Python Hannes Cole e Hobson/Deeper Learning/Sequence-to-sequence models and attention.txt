@@ -1,0 +1,1076 @@
+311Sequence-to-sequence
+models and attention
+You now know how to create natural lang uage models and use them for everything
+from sentiment classification to ge nerating novel text (see chapter 9).
+ Could a neural network translate from  English to German? Or even better,
+would it be possible to predict disease by  translating genotype to phenotype (genes
+to body type)?1 And what about the chatbot we’ve been talking about since theThis chapter covers
+Mapping one text sequence to another with a 
+neural network
+Understanding sequence-to-sequence tasks and how they’re different from the others you’ve learned about
+Using encoder-decoder model architectures for translation and chat
+Training a model to pay attention to what is important in a sequence
+1geno2pheno: https:/ /academic.oup.com/na r/article/31/13/3850/2904197 .
+ 
+
+312 CHAPTER  10 Sequence-to-sequence models and attention
+beginning of the book? Can a neural net carry on an entertaining conversation?
+These are all sequence-to-sequence problems. They map one sequence of indetermi-nate length to another sequence  whose length is also unknown.
+ In this chapter, you’ll learn how to build sequence-to-sequence models using an
+encoder-decoder architecture.
+10.1 Encoder-decoder architecture
+Which of our previous architectures do you think might be useful for sequence-to-sequence problems? The word  vector embedding model of chapter 6? The convolu-
+tional net of chapter 7 or th e recurrent nets of chapter 8 and chapter 9? You guessed
+it; we’re going to build on the LSTM architecture from the last chapter.
+ LSTMs are great at handling sequences,  but it turns out we need two of them
+rather than only one. We’re going to buil d a modular architecture  called an encoder-
+decoder architecture.
+ The first half of an encoder-decoder model is the sequence encoder , a network
+which turns a sequence, such as natural language text, into a lower-dimensional repre-
+sentation, such as the though t vector from the end of chapter 9. So you’ve already
+built this first half of ou r sequence-to-sequence model.
+ The other half of an encoder-deco der architecture is the sequence decoder . A
+sequence decoder can be designed to turn  a vector back into human readable text
+again. But didn’t we already do that too? You generated some pretty crazy Shakespear-
+ean playscript at the end of chapter 9. That  was close, but there are a few more pieces
+you need to add to get that Shakespearean playwright bot to focus on our new task as
+a translating scribe.
+ For example, you might like your model to output the German  translation of an
+English input text. Actually, isn’t that just  like having our Shakespeare bot translate
+modern English into Shakespearean? Yes,  but in the Shakespeare example we were
+OK with rolling the dice to let the machin e learning algorithm choose any words that
+matched the probabilities it ha d learned. That’s not going to cut it for a translation
+service, or for that matter, even a decent playwright bot.
+ So you already know how to build encode rs and decoders; you now need to learn
+how to make them better, more focused. In  fact, the LSTMs from chapter 9 work great
+as encoders of variable-length text. You bu ilt them to capture the meaning and senti-
+ment of natural language text. LSTMs captur e that meaning in an internal representa-
+tion, a thought vector. You just need to extract the thought ve ctor from the state
+(memory cell) within your LSTM model. You learned how to set 
+return_state=True
+on a Keras LSTM model so that the output includes the hidden layer state. That state
+vector becomes the output of your en coder and the input to your decoder.
+TIP Whenever you train any neural networ k model, each of the internal lay-
+ers contains all the information you ne ed to solve the problem you trained it
+on. That information is usually represented by a fixed-dimensional tensor
+ 
+
+313 Encoder-decoder architecture
+containing the weights or the activation s of that layer. And if your network
+generalizes well, you can be sure that an information bottleneck exists—alayer where the number of dimensions is at a minimum. In Word2vec (see
+chapter 6), the weights  of an internal layer were used to compute your vector
+representation. You can also use the activations  of an internal network layer
+directly. That’s what the examples in this chapter do. Examine the successful
+networks you’ve build in the past to see if you can find this information bottle-neck that you can use as an encoded representation of your data.
+So all that remains is to improve upon the decoder design. You need to decode a
+thought vector back into a natural language sequence.
+10.1.1 Decoding thought
+Imagine you’d like to develop a translatio n model to translate texts from English to
+German. You’d like to map sequences of ch aracters or words to another sequence of
+characters or words. You previously disc overed how you can predict a sequence ele-
+ment at time step t based on the previous element at time step t-1. But directly using
+an LSTM to map from one language to anot her runs into problems quickly. For a sin-
+gle LSTM to work, you would need input and output sequences to have the same
+sequence lengths, and for translation they rarely do.
+ Figure 10.1 demonstrates the problem. The English and the German sentence have
+different lengths, which complicates the mapping between the English input and the
+expected output. The English phrase “is play ing” (present progressi ve) is translated to
+the German present tense “spielt.” But “spiel t” here would need to be predicted solely
+on the input of “is;” you haven’t gotten to  “playing” yet at that time step. Further,
+Hidden
+layerHidden
+layerHidden
+layerHidden
+layer
+y1 y2 y3 y4Today was a good
+Hidden
+layer
+y0<start>
+Hidden
+layer
+y5day
+Hidden
+layer
+y6.
+Today was a good <stop> day .
+Expected output is the next token in the sample. Shown here on word level.Actual
+Output
+Expected
+Output
+Figure 10.1 Limitations of language modeling 
+ 
+
+314 CHAPTER  10 Sequence-to-sequence models and attention
+“playing” would then need to map to “Fußba ll.” Certainly a netw ork could learn these
+mappings, but the learned representations woul d have to be hyper-specific to the input,
+and your dream of a more general language model would go out the window.
+ Sequence-to-sequence networks , sometimes abbreviated with seq2seq , solve this lim-
+itation by creating an input representation in the form of a thought vector. Sequence-
+to-sequence models then use that thought vector, sometimes called a context vector,
+as a starting point to a second network that receives a different set of inputs to gener-ate the output sequence.
+THOUGHT VECTOR Remember when you discovered word vectors? Word vec-
+tors are a compression of the meaning of  a word into a fixed length vector.
+Words with similar meaning are close to each other in this vector space of
+word meanings. A thought vector is ve ry similar. A neural network can com-
+press information from any natural language statement, not just a singleword, into a fixed length vector that re presents the content of the input text.
+Thought vectors are this vector. They are used as a numerical representation
+of the thought within a document to drive some decoder model, usually a
+translation decoder. The term was coined by Geoffrey Hinton in a talk to theRoyal Society in London in 2015.
+2
+A sequence-to-sequence network consists of  two modular recurrent networks with a
+thought vector between them (see figure 10.2). The encoder outputs a thought vector
+at the end of its input sequence. The decoder picks up that thought and outputs a
+sequence of tokens.
+ The first network, called the encoder, turns the input text (such as a user message
+to a chatbot) into the thought vector. The th ought vector has two parts, each a vector:
+the output (activation) of the hidden layer of the encoder and the memory state ofthe LSTM cell for that input example.
+Figure 10.2 Encoder-decoder sandwich with thought vector meat
+2See the web page titled “Deep Learning,” ( https:/ /www.evl.uic.edu/creativ ecoding/courses/cs523/slides/
+week3/DeepLearning_LeCun.pdf ).Input: English Mariat=0 t=1 t=2 t=3
+is playing soccer
+Target: German Maria Spielt ? ? Fußball ?LSTM LSTM LSTM LSTM
+ 
+
+315 Encoder-decoder architecture
+TIP As shown in listing 10.1 later in this chapter, the thought vector is captured
+in the variable names state_h  (output of the hidden layer) and state_c  (the
+memory state).
+The thought vector then becomes the input to a second network: the decoder net-
+work. As you’ll see later in the implementa tion section, the generated state (thought
+vector) will serve as the initial state  of the decoder network.  The second network then
+uses that initial state and a special kind of input, a start token . Primed with that infor-
+mation, the second network has to learn to  generate the first element of the target
+sequence (such as a character or word).
+ The training and inference stages are trea ted differently in this particular setup.
+During training, you pass the starti ng text to the encoder and the expected  text as the
+input to the decoder. You’re getting th e decoder network to learn that, given a
+primed state and a key to “get  started,” it should produce a series of tokens. The first
+direct input to the decoder will be the start token; the second input should be the first
+expected or predicted token,  which should in turn prompt the network to produce
+the second expected token.
+ At inference time, however, you don’t have  the expected text, so what do you use
+to pass into the decoder other than the state? You use the generic start token and then
+take the first generated element, which will then become the input to the decoder at
+the next time step, to generate the next element, and so on. This process repeats untilthe maximum number of sequence elements is reached or a stop  token is generated.
+ Trained end-to-end this way, the decoder will turn a thought vector into a fully
+decoded response to the initial input sequen ce (such as the user question). Splitting
+the solution into two networks with the thought vector as the binding piece in-
+between allows you to map input sequences to output sequences of different lengths
+(see figure 10.3). 
+10.1.2 Look familiar?
+It may seem like you’ve seen an encode r-decoder approach before. You may have.
+Autoencoders are a common encoder-deco der architecture for students learning
+about neural networks. They are a repeat-g ame-playing neural net that’s trained to
+Input
+sequenceEncoder DecoderOutput
+sequence
+Thought vector0.2
+– 0.4
+0.10.7
+– 0.4
+0.1
+...
+0.0
+Figure 10.3 Unrolled encoder-decoder
+ 
+
+316 CHAPTER  10 Sequence-to-sequence models and attention
+regurgitate its input, which makes finding tr aining data easy. Nearly any large set of
+high-dimensional tensors, ve ctors, or sequences will do.
+ Like any encoder-decoder architecture, autoencoders have a bottleneck of infor-
+mation between the encoder and decoder that you can use as a lower-dimensionalrepresentation of the input data. Any network with an information bottleneck can beused as an encoder within an encoder-deco der architecture, even if the network was
+only trained to paraphrase or restate the input.
+3
+ Although autoencoders have the same st ructure as our encode r-decoders in this
+chapter, they’re trained for a different task . Autoencoders are trained to find a vector
+representation of input data such that the input can be reconstructed by the net-work’s decoder with minimal error. The encoder and decoder are pseudo-inverses of
+each other. The network’s purpose is to fi nd a dense vector representation of the
+input data (such as an image or text) that allows the decoder to reconstruct it with thesmallest error. During the training phase, the input data and the expected output are
+the same. Therefore, if your goal is find ing a dense vector representation of your
+data—not generating thought vectors for la nguage translation or finding responses
+for a given question—an autoen coder can be a good option.
+ What about PCA and t-SNE from chapter 6? Did you use 
+sklearn.decomposi-
+tion.PCA  or sklearn.manifold.TSNE  for visualizing vectors in the other chapters?
+The t-SNE model produces an embedding as its output, so you can think of it as anencoder, in some sense. Th e same goes for PCA. However, these models are unsuper-
+vised so they can’t be targeted at a part icular output or task . And these algorithms
+were developed mainly for feature extraction and visualization. They create very tight
+bottlenecks to output very low-dimensional vectors, typically two or three. And they
+aren’t designed to take in sequences of arbi trary length. That’s what an encoder is all
+about. And you’ve learned that LSTMs are th e state-of-the-art for extracting features
+and embeddings from sequences.
+NOTE A variational autoencoder  is a modified version of an autoencoder that
+is trained to be a good generator as well as encoder-decoder. A variational
+autoencoder produces a compact vector th at not only is a faithful representa-
+tion of the input but is also Gaussian di stributed. This makes it easier to gen-
+erate a new output by randomly selectin g a seed vector and feeding that into
+the decoder half of the autoencoder.4
+10.1.3 Sequence-to-sequence conversation
+It may not be clear how the dialog engi ne (conversation) problem is related to
+machine translation, but they’re quite similar.  Generating replies in a conversation for
+3An Autoencoder Approach to Learning Bilingual Wo rd Representations by Chandar and Lauly et al.: https:/ /
+papers.nips.cc/paper/5270-an-autoencoder-approach -to-learning-bilingual-word-representations.pdf .
+4See the web page title d “Variational Autoencoders Explained” (h ttp:/ /kvfrans.com/variational-autoencoders-
+explained ).
+ 
+
+317 Encoder-decoder architecture
+a chatbot isn’t that different from genera ting a German translation of an English
+statement in a machine translation system.
+ Both translation and conversation task s require your model to map one sequence
+to another. Mapping sequences of English to kens to German sequen ces is very similar
+to mapping natural language statements in  a conversation to the expected response
+by the dialog engine. You can think of th e machine translation engine as a schizo-
+phrenic, bilingual dialog engine that  is playing the childish “echo game,”5 listening in
+English and responding in German.
+ But you want your bot to be responsive, ra ther than just an echo chamber. So your
+model needs to bring in any additional information about the world that you want
+your chatbot to talk about. Your NLP model will have to learn a much more complexmapping from statement to response than ec hoing or translation. This requires more
+training data and a higher-dimensional thou ght vector, because it must contain all the
+information your dialog engine needs to kn ow about the world. You learned in chap-
+ter 9 how to increase the dimensionality, and thus the information capacity, of thethought vector in an LSTM model. You also  need to get enough of the right kind of
+data if you want to turn a translation machine into a conversation machine.
+ Given a set of tokens, you can train your  machine learning pipeline to mimic a
+conversational response sequence. You need  enough of those pairs and enough infor-
+mation capacity in the thought vector to  understand all those mappings. Once you
+have a dataset with enough of these pairs of  “translations” from statement to response,
+you can train a conversation engine using the same network you used for machinetranslation.
+ Keras provides modules for building netw orks for sequence-to-sequence networks
+with a modular architecture called an enco der-decoder model. And it provides an API
+to access all the internals of an LSTM network that you need  to solve translation, con-
+versation, and even genotype-to-phenotype problems. 
+10.1.4 LSTM review
+In the last chapter, you learned how an LSTM  gives recurrent nets a way to selectively
+remember and forget patterns of tokens th ey have “seen” within  a sample document.
+The input token for each time step passes through the forget and update gates, is mul-tiplied by weights and masks, and then is stored in a me mory cell. The network output
+at that time step (token) is dictated not so lely by the input token, but also by a combi-
+nation of the input and the memory unit’s current state.
+ Importantly, an LSTM shares that toke n pattern recognizer between documents,
+because the forget and update gates have weights that are trained as they read manydocuments. So an LSTM doesn’t have to relearn English spelling and grammar with
+each new document. And you learned how to  activate these token patterns stored in
+5Also called the “repeat game,” http:/ /uncyclopedia.wikia.com/wiki/Childish_Repeating_Game .
+ 
+
+318 CHAPTER  10 Sequence-to-sequence models and attention
+the weights of an LSTM memory cell to predict the tokens that follow based on some
+seed tokens to trigger the sequence generation (see figure 10.4).
+ With a token-by-token prediction, you were able to generate some text by selecting
+the next token based on the probability distribution of likely next tokens suggested by
+the network. Not perfect by any stretch, bu t entertaining nonetheless. But you aren’t
+here for mere entertainment; you’d like to have some control over what comes out of
+a generative model.
+ Sutskever, Vinyals, and Le came up with a way to bring in a second LSTM model to
+decode  the patterns in the memory cell in a less random and more controlled way.6
+They proposed using the classification aspe ct of the LSTM to create a thought vector
+and then use that generated vector as the input to a second, different  LSTM that only
+tries to predict token by token, which give s you a way to map an input sequence to a
+distinct output sequen ce. Let’s take a look at how it works. 
+10.2 Assembling a sequence-to-sequence pipeline
+With your knowledge from the previous chap ters, you have all the pieces you need to
+assemble a sequence-to-sequence machine learning pipeline.
+10.2.1 Preparing your dataset for the sequence-to-sequence training
+As you’ve seen in previous implementation s of convolutional or recurrent neural net-
+works, you need to pad the input data to a fixed length. Usually, you’d extend the
+6Sutskever, Vinyals, and Le; arXiv:1409.3215, http:/ /papers.nips.cc/paper/5346-sequence-to-sequence-learn-
+ing-with-neural-networks.pdf .Maria
+Maria
+MariaDecoder
+LSTMEncoder
+LSTMEncoder
+LSTMEncoder
+LSTMEncoder
+LSTM
+Thought vectorThought vector
+Decoder
+LSTMDecoder
+LSTMDecoder
+LSTMis playing
+<START>
+<END>Spielt
+SpieltFußball
+Fußballsoccer
+Figure 10.4 Next word prediction
+ 
+
+319 Assembling a sequence-to-sequence pipeline
+input sequences to match the longest input sequence with pad tokens. In the case of
+the sequence-to-sequence network, you also need to prepare your target data and pad
+it to match the longest target sequence. Re member, the sequence lengths of the input
+and target data don’t need to be the same (see figure 10.5).
+Figure 10.5 Input and target sequence before preprocessing
+In addition to the required padding, the output sequence should be annotated with
+the start and stop tokens, to tell the decoder when the job starts and when it’s done
+(see figure 10.6).
+Figure 10.6 Input and target sequence after preprocessing
+You’ll learn how to annotate the target se quences later in the chapter when you build
+the Keras pipeline. Just keep  i n  m i n d  t h a t  y o u ’ l l  n e e d  t w o  v e r s i o n s  o f  t h e  t a r g e t
+sequence for training: one that starts with  the start token (which you’ll use for the
+decoder input), and one that starts without the start token (the target sequence theloss function will sc ore for accuracy).
+ In earlier chapters, your training sets co nsisted of pairs: an input and an expected
+output. Each training example for the sequence-to-sequence model will be a triplet:
+initial input, expected outp ut (prepended by a start token), and expected output
+(without the start token).
+ Before you get into the implementation details, let’s recap for a moment. Your
+sequence-to-sequence network consists of tw o networks: the encoder, which will gener-
+ate your thought vector; and a decoder, that you’ll pass the thought vector into, as its ini-
+tial state. With the initialized state and a start token as input to the decoder network,
+you’ll then generate the first sequence elem ent (such as a character or word vector) of
+the output. Each following element will then be predicted based on the updated stateS
+Wh y now?occer i s r g ea t FTarget sequence German Input sequence English
+Waru m j etzt?ußba l l i s t k l ass e
+S
+Wh y now?occer i s rg ea t FTarget sequence German Input sequence English
+Sequence element Padding Sequence element Padding Start token Stop tokenWaru m jetzt?ußba l l i s t k l ass e
+ 
+
+320 CHAPTER  10 Sequence-to-sequence models and attention
+and the next element in the expected sequence . This process will go on until you either
+generate a stop token or you reach the maximum number of elements. All sequence
+elements generated by the decoder will form your predicted output (such as your reply
+to a user question). With this in mi nd, let’s take a look at the details. 
+10.2.2 Sequence-to-sequence model in Keras
+In the following sections, we guide yo u through a Keras implementation of a
+sequence-to-sequence network published by Francois Chollet.7 Mr. Chollet is also the
+author of the book Deep Learning with Python  (Manning, 2017 ), an invaluable resource
+for learning neural networ k architectures and Keras.
+ During the training phase, you’ll trai n the encoder and decoder network together,
+end to end, which requires three data po ints for each sample: a training encoder
+input sequence, a decoder input sequence, and a deco der output sequence. The
+training encoder input sequence could be a user question for which you’d like a bot
+to respond. The decoder input sequence then  is the expected reply by the future bot.
+ You might wonder why you need an input and output sequence for the decoder.
+The reason is that you’re training  the decoder with a method called teacher forcing ,
+where you’ll use the initial state provided by the encoder network and train the
+decoder to produce the expected sequences by showing the input to the decoder and
+letting it predict the same sequence. Th erefore, the decoder’s input and output
+sequences will be identical, except that the sequences have an offset of one time step.
+ During the execution phase, you’ll use the encoder to generate the thought vector
+of your user input, and the decoder will th en generate a reply based on that thought
+vector. The output of the decoder will then serve as the reply to the user.
+KERAS FUNCTIONAL API In the following example, you’ll notice a different
+implementation style of the Keras layers  you’ve seen in previous chapters.
+Keras introduced an additional way of  assembling models by calling each
+layer and passing the value from the previous layer to it. The functional APIcan be powerful when you want to build models and reuse portions of thetrained models (as you’ll demonstrat e in the coming sections). For more
+information about Keras’ functional API, we highly recommend the blog postby the Keras core developer team.
+8
+10.2.3 Sequence encoder
+The encoder’s sole purpose is the creation of your thought vector, which then serves
+as the initial state of the decoder network (s ee figure 10.7). You can’t train an encoder
+fully in isolation. You have no “target” thought vector for the network to learn to
+predict. The backpropagation that will train the encoder to create an appropriate
+7See the web page titled “A ten-minute introduction  to sequence-to-sequence  learning in Keras” ( https:/ /
+blog.keras.io/a-ten-minute-introduction-to-se quence-to-sequence-learning-in-keras.html ).
+8See the web page titled “Getting started with the Keras functional API” ( https:/ /keras.io/getting-started/
+functional-api-guide/ ).
+ 
+
+321 Assembling a sequence-to-sequence pipeline
+thought vector will come from the error that’s generated later downstream in the
+decoder.
+ Nonetheless the encoder and decoder are independent modules that are often
+interchangeable with each other. For exampl e, once your encoder is trained on the
+English-to-German translation problem, it ca n be reused with a different encoder for
+translation from English to Spanish.9 Listing 10.1 shows what the encoder looks like in
+isolation.
+ Conveniently, the RNN layers , provided by Keras, return their internal state when
+you instantiate the LSTM layer (or layers) with the keyword argument return_
+state=True . In the following snippet, you preserve the final state of the encoder and
+disregard the actual output of the encoder. The list of the LSTM states is then passed
+to the decoder.
+>>> encoder_inputs = Input(shape=(None, input_vocab_size))
+>>> encoder = LSTM(num_neurons, return_state=True)
+>>> encoder_outputs, state_h, state_c = encoder(encoder_inputs)>>> encoder_states = (state_h, state_c)
+Because return_sequences  defaults to False , the first return value is the output
+from the last time step. state_h  will be specifically the ou tput of the last time step
+for this layer. So in this case, encoder_outputs  and state_h  will be identical.
+Either way you can ignore the official output stored in encoder_outputs . state_c
+is the current state of the memory unit. state_h  and state_c  will make up your
+thought vector.
+9Training a multi-task model like this is called “joi nt training” or “transfer learning” and was described by
+Luong, Le, Sutskever, Vinyals, and Kaier (Google Brain) at ICLR 2016: https:/ /arxiv.org/pdf/
+1511.06114.pdf .Listing 10.1 Thought encoder in KerasMaria
+Encoder
+LSTMEncoder
+LSTMEncoder
+LSTMEncoder
+LSTMis playing soccer
+Thought vector
+Figure 10.7 Thought encoder 
+The return_state argument of the
+LSTM layer needs to be set to
+True to return the internal states.
+The first return value of the LSTM
+layer is the output of the layer.
+ 
+
+322 CHAPTER  10 Sequence-to-sequence models and attention
+Figure 10.8 LSTM states used in the sequence-to-sequence encoder
+Figure 10.8 shows how the internal LSTM states are generated. The encoder will
+update the hidden and memory states with every time step, and pass the final states to
+the decoder as the initial state. 
+10.2.4 Thought decoder
+Similar to the encoder network setup, the se tup of the decoder is pretty straightfor-
+ward. The major difference is that this time you do want to capture the output of the
+network at each time step. You want to ju dge the “correctness” of  the output, token by
+token (see figure 10.9).
+ This is where you use the second and th ird pieces of the sample 3-tuple. The
+decoder has a standard token-by-token inpu t and a token-by-token output. They are
+almost identical, but off by one time step. You want the decoder to learn to reproduce
+the tokens of a given input sequence given  the state generated by the first piece of the
+3-tuple fed into the encoder.Forget gate
+351 weights
+(1 for bias) per neuron
+17,550 totalOutput from
+time step t -1
+50-element vector
+from previous time step
+Concatenated
+input
+350-element vector
+Input at time step t
+1 token (word or 
+character) represented
+by a 300-element vector
+MemoryCandidate
+gate
+(2 elements)Output
+gateHidden
+state
+Memory
+state
+Maria
+MariaDecoder
+LSTMThought vectorDecoder
+LSTMDecoder
+LSTMDecoder
+LSTM<START>
+<END>spielt
+spieltFußball
+Fußball
+Figure 10.9 Thought decoder
+ 
+
+323 Assembling a sequence-to-sequence pipeline
+NOTE This is the key concept for the de coder, and for sequence-to-sequence
+models in general; you’re training a network to output in the secondary prob-
+lem space (another language or anothe r being’s response to a given ques-
+tion). You form a “thought” about both what was said (the input) and the
+reply (the output) simultaneously. An d this thought defines the response
+token by token. Eventually, you’ll only need the thought (generated by theencoder) and a generic start token to get things going. That’s enough to trig-
+ger the correct output sequence.
+To calculate the error of the training step, you’ll pass the output of your LSTM layer
+into a dense layer. The dense layer will ha ve a number of neurons equal to the num-
+ber of all possible output tokens. The dense layer will have a softmax activation func-
+tion across those tokens. So at each time step, the network will provide a probability
+distribution over all possible to kens for what it thinks is most likely the next sequence
+element. Take the token whose related neuron  has the highest value. You used an out-
+put layer with softmax activation function s in earlier chapters, where you wanted to
+determine a token with the highest likelihood (see chapter 6 for more details). Alsonote that the 
+num_encoder_tokens  and the output_vocab_size  don’t need to
+match, which is one of the great benefits of sequence-to-sequence networks. See the
+following listing.
+>>> decoder_inputs = Input(shape=(None, output_vocab_size))
+>>> decoder_lstm = LSTM(... num_neurons,return_sequences=True, return_state=True)
+>>> decoder_outputs, _ , _ = decoder_lstm(
+... decoder_inputs, initial_state=encoder_states)>>> decoder_dense = Dense(
+... output_vocab_size, activation='softmax')
+>>> decoder_outputs = decoder_dense(decoder_outputs)
+10.2.5 Assembling the sequence-to-sequence network
+The functional API of Keras allows you to assemble a model as objec t calls. The Model
+object lets you define its input and output parts of the network. For this sequence-to-
+sequence network, you’ll pass a list of your inputs to th e model. In li sting 10.2, you
+defined one input layer in the encoder and one in the decoder. These two inputs cor-
+respond with the first two elements of each tr aining triplet. As an output layer, you’re
+passing the decoder_outputs  to the model, which includes the entire model setup
+you previously defined. The output in decoder_outputs  corresponds with the final
+element of each of your training triplets.Listing 10.2 Thought decoder in Keras
+Set up the LSTM layer, similar to the
+encoder but with an additional
+argument of return_sequences.The functional API allows you to pass the 
+initial state to the LS TM layer by assigning 
+the last encoder state to initial_state.
+Softmax layer with all 
+possible characters mapped 
+to the softmax output
+Passing the output of the
+LSTM layer to the softmax layer
+ 
+
+324 CHAPTER  10 Sequence-to-sequence models and attention
+NOTE Using the functional API like  this, definitions such as decoder
+_outputs  are tensor  representations. This is where you’ll notice differences
+from the sequential model described in  earlier chapters. Again refer to the
+documentation for the nitty-gritty of th e Keras API. See the following listing.
+>>> model = Model(
+... inputs=[encoder_inputs, decoder_inputs],
+... outputs=decoder_outputs)
+10.3 Training the sequence-to-sequence network
+The last remaining steps for creating a sequence-to-sequence model in the Keras
+model are to compile and fit. The only differ ence compared to earlier chapters is that
+earlier you were predicting a binary classifi cation: yes or no. But here you have a cate-
+gorical classification or multiclass classifi cation problem. At each time step you must
+determine which of many “categories” is co rrect. And we have many categories here.
+The model must choose betwee n all possible tokens to “say .” Because you’re predict-
+ing characters or words rather than binary  states, you’ll optimize your loss based
+on the categorical_crossentropy  loss function, rather than the binary_
+crossentropy used earlier. So that’s the only change you need to make to the Keras
+model.compile  step, as shown in the following listing.
+>>> model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
+>>> model.fit([encoder_input_data, decoder_input_data],
+decoder_target_data,
+batch_size=batch_size, epochs=epochs)
+Congratulations! With the call to model.fit , you’re training your sequence-to-
+sequence network, end to end. In the fo llowing sections, you’ll demonstrate how you
+can infer an output sequence for a given input sequence.
+NOTE The training of sequence-to-sequen ce networks can be computation-
+ally intensive and therefore time-consu ming. If your training sequences are
+long or if you want to train with a large corpus, we highly recommend train-
+ing these networks on a GPU, which ca n increase the training speed by 30
+times. If you’ve never tr ained a neural network on a GPU, don’t worry. Check
+out chapter 13 on how to rent and se t up your own GPU on commercial com-
+putational cloud services.Listing 10.3 Keras functional API ( Model() )
+Listing 10.4 Train a sequence-to-sequence model in KerasThe inputs and outputs arguments 
+can be defined as li sts if you expect 
+multiple inputs or outputs. 
+Setting the loss
+function to
+categorical_
+crossentropy. The model expects the trai ning inputs as a list,
+where the first list element is passed to the
+encoder network and the second element is passed
+to the decoder network during the training.
+ 
+
+325 Training the sequence-to-sequence network
+LSTMs aren’t inherently parallelizable like convolutional neural nets, so to
+get the full benefit of a GPU you sh ould replace the LSTM layers with
+CuDNNLSTM , which is optimized for training  on a GPU enabled with CUDA.
+10.3.1 Generate output sequences
+Before generating sequences, you need to take the structure of your training layers
+and reassemble them for generation purposes . At first, you define a model specific to
+the encoder. This model will then be used to generate the thought vector. See the fol-
+lowing listing.
+>>> encoder_model = Model(inputs=encoder_inputs, outputs=encoder_states)
+The definition of the decoder can look daunting. But let’s untangle the code snippet
+step by step. First, you’ll define your decoder inputs. You are using the Keras input
+layer, but instead of passing in one-hot vect ors, characters, or wo rd embeddings, you’ll
+pass the thought vector generated by the encoder network. Note that the encoder
+returns a list of two states, which you’ll need to pass to the initial_state  argument
+when calling your previously defined decoder_lstm . The output of the LSTM layer
+is then passed to the dense layer, which you also previously defined. The output of this
+layer will then provide the probabilities of al l decoder output tokens (in this case, all
+seen characters during the training phase).
+ Here is the magic part. The token predic ted with the highest probability at each
+time step will then be returned as the most likely token and passed on to the next
+decoder iteration step, as the ne w input. See the following listing.
+>>> thought_input = [Input(shape=(num_neurons,)),
+... Input(shape=(num_neurons,))]
+>>> decoder_outputs, state_h, state_c = decoder_lstm(... decoder_inputs, initial_state=thought_input)
+>>> decoder_states = [state_h, state_c]
+>>> decoder_outputs = decoder_dense(decoder_outputs)
+>>> decoder_model = Model(
+... inputs=[decoder_inputs] + thought_input,
+... output=[decoder_outputs] + decoder_states)Listing 10.5 Decoder for generating text using the generic Keras Model
+Listing 10.6 Sequence generator for random thoughtsHere you use the previous ly defined encoder_inputs
+and encoder_states; calling the predict method on
+this model would return the thought vector.
+Define an input layer to 
+take the encoder states.
+Pass the encoder state to the 
+LSTM layer as initial state.
+The updated LSTM state will 
+then become the new cell 
+state for the next iteration.
+Pass the output from the LSTM to the 
+dense layer to predict the next token.The last step is tying the 
+decoder model together.
+The decoder_inputs
+and thought_input
+become the input to
+the decoder model.The output of the dense layer and the
+updated states are defined as output.
+ 
+
+326 CHAPTER  10 Sequence-to-sequence models and attention
+Once the model is set up, you can generate sequences by predicting the thought vector
+based on a one-hot encoded input sequence and the last generate d token. During the
+first iteration, the target_seq  is set to the start token. During all following iterations,
+target_seq  is updated with the last generated token. This loop goes on until either
+you’ve reached the maximum number of sequ ence elements or the decoder generates
+a stop token, at which time the generati on is stopped. See the following listing.
+...
+>>> thought = encoder_model.predict(input_seq)...
+>>> while not stop_condition:
+... output_tokens, h , c = decoder_model.predict(
+... [target_seq] + thought)
+10.4 Building a chatbot using sequence-to-sequence networks
+In the previous sections, you learned how to  train a sequence-to-sequence network and
+how to use the trained network to generate sequence responses. In the following sec-
+tion, we guide you through how to apply the various steps to train a chatbot. For thechatbot training, you’ll use the Cornell movie dialog corpus.
+10  You’ll train a sequence-
+to-sequence network to “adequately” reply to  your questions or statements. Our chatbot
+example is an adopted sequence-to-sequence example from the Keras blog.11
+10.4.1 Preparing the corpus for your training
+First, you need to load the corpus and gene rate the training sets from it. The training
+data will determine the set of characters the encoder and decoder will support during
+the training and during the generation phas e. Please note that this implementation
+doesn’t support characters that haven’t been included during the training phase.
+Using the entire Cornell Movie Dialog dataset can be computationally intensivebecause a few sequences have more than 2, 000 tokens—2,000 time steps will take a
+while to unroll. But the majority of dialog  samples are based on less than 100 charac-
+ters. For this example, you’ve preprocesse d the dialog corpus by limiting samples to
+those with fewer than 100 characters, re moved odd characters, and only allowedListing 10.7 Simple decoder—next word prediction
+10See the web page titled “Cornell Movie-Dialogs Corpus” ( https:/ /www.cs.cornell.edu/~cristian/
+Cornell_Movie-Dialogs_Corpus.html ).
+11See the web page titled “keras/examples/lstm_seq2seq.py at master” ( https:/ /github.com/fchollet/keras/
+blob/master/examples/lstm_seq2seq.py ).Encode the input sequence 
+into a thought vector (the LSTM memory cell state).
+ The stop_condition  is updated
+after each iterat ion and turns True
+if either the maximum number of
+output sequence tokens is hit or the
+decoder generates a stop token.The decoder returns the token with the
+highest probability and the internal states,
+which are reused during the next iteration.
+ 
+
+327 Building a chatbot using sequence-to-sequence networks
+lowercase characters. With th ese changes, you limit the variety of characters. You can
+find the preprocessed corpus in  the GitHub repository of NLP in Action .12
+ You’ll loop over the corpus file and genera te the training pairs (technically 3-tuples:
+input text, target text with start token, and target text). While reading the corpus,
+you’ll also generate a set of input and targ et characters, which you’ll then use to one-
+hot encode the samples. The input and targ et characters don’t have to match. But
+characters that aren’t includ ed in the sets can’t be read or generated during the gen-
+eration phase. The result of the following li sting is two lists of input and target texts
+(strings), as well as two sets of characters that have been seen in the training corpus.
+>>> from nlpia.loaders import get_data
+>>> df = get_data('moviedialog')
+>>> input_texts, target_texts = [], []>>> input_vocabulary = set()
+>>> output_vocabulary = set()
+>>> start_token = '\t'>>> stop_token = '\n'
+>>> max_training_samples = min(25000, len(df) - 1)
+>>> for input_text, target_text in zip(df.statement, df.reply):
+... target_text = start_token + target_text \
+... + stop_token... input_texts.append(input_text)
+... target_texts.append(target_text)
+... for char in input_text:... if char not in input_vocabulary:
+... input_vocabulary.add(char)
+... for char in target_text:... if char not in output_vocabulary:
+... output_vocabulary.add(char)
+10.4.2 Building your character dictionary
+Similar to the examples from your previous chapters, you need to convert each charac-
+ter of the input and target texts into one-hot vectors that represent each character. In
+order to generate the one-hot vectors, you generate token dictionaries (for the input
+and target text), where every character is mapped to an index. You also generate the
+reverse dictionary (index to  character), which you’ll use during the generation phase
+to convert the generated index to a character. See the following listing.
+12See the web page titled “GitHub - totalgood/nlpia” ( https:/ /github.com/totalgood/nlpia ).Listing 10.8 Build character sequence-to-sequence training set
+The arrays hold the input and target
+text read from the corpus file.The sets hold the seen 
+characters in the 
+input and target text.The target sequence is annotated with a 
+start (first) and stop  (last) token; the 
+characters representing the tokens are 
+defined here. These tokens can’t be part of the normal sequence text and should be 
+uniquely used as start and stop tokens.
+max_training_samples defines 
+how many lines are used for the training. It’s the lower number 
+of either a user-defined 
+maximum or the total number 
+of lines loaded from the file.
+The target_text  needs to be wrapped
+with the start and stop tokens.
+Compile the vocabulary—
+set of the unique characters 
+seen in the input_texts. 
+ 
+
+328 CHAPTER  10 Sequence-to-sequence models and attention
+ 
+>>> input_vocabulary = sorted(input_vocabulary)
+>>> output_vocabulary = sorted(output_vocabulary)
+>>> input_vocab_size = len(input_vocabulary)
+>>> output_vocab_size = len(output_vocabulary)>>> max_encoder_seq_length = max(
+... [len(txt) for txt in input_texts])
+>>> max_decoder_seq_length = max(... [len(txt) for txt in target_texts])
+>>> input_token_index = dict([(char, i) for i, char in
+... enumerate(input_vocabulary)])
+>>> target_token_index = dict(... [(char, i) for i, char in enumerate(output_vocabulary)])
+>>> reverse_input_char_index = dict((i, char) for char, i in
+... input_token_index.items())>>> reverse_target_char_index = dict((i, char) for char, i in
+... target_token_index.items())
+10.4.3 Generate one-hot encoded training sets
+In the next step, you’re converting the in put and target text into one-hot encoded
+“tensors.” In order to do that, you loop over each input and target sample, and over
+each character of each sample, and one-hot encode each characte r. Each character is
+encoded by an n x 1  vector (with n being the number of unique input or target charac-
+ters). All vectors are then combined to cr eate a matrix for each sample, and all sam-
+ples are combined to create the trai ning tensor. See the following listing.
+>>> import numpy as np
+>>> encoder_input_data = np.zeros((len(input_texts),
+... max_encoder_seq_length, input_vocab_size),
+... dtype='float32')
+>>> decoder_input_data = np.zeros((len(input_texts),... max_decoder_seq_length, output_vocab_size),
+... dtype='float32')
+>>> decoder_target_data = np.zeros((len(input_texts),... max_decoder_seq_length, output_vocab_size),
+... dtype='float32')
+>>> for i, (input_text, target_text) in enumerate(
+... zip(input_texts, target_texts)):Listing 10.9 Character sequence-to-sequence model parameters 
+Listing 10.10 Construct character sequence encoder-decoder training setYou convert the character sets into
+sorted lists of characters, which you
+then use to generate the dictionary.For the input and target
+data, you determine the
+maximum number of unique
+characters, which you use to
+build the one-hot matrices.For the input and target data, 
+you also determine the maximum 
+number of sequence tokens.
+Loop over the input_characters and
+output_vocabulary  to create the
+lookup dictionaries, which you use
+to generate the one-hot vectors.
+Loop over the newly created dictionaries
+to create the reverse lookups.
+You use numpy for the 
+matrix manipulations.
+The training tensors are 
+initialized as zero tensors 
+with shape (num_samples,  max_len_sequence, 
+num_unique_tokens_in_vocab).
+Loop over the training 
+samples; input and target 
+texts need to correspond.
+ 
+
+329 Building a chatbot using sequence-to-sequence networks
+... for t, char in enumerate(input_text):
+... encoder_input_data[
+... i, t, input_token_index[char]] = 1.... for t, char in enumerate(target_text):
+... decoder_input_data[
+... i, t, target_token_index[char]] = 1.. . . i ft>0 :
+... decoder_target_data[i ,t-1 , target_token_index[char]] = 1
+10.4.4 Train your sequence-to-sequence chatbot
+After all the training set pr eparation—converting the prep rocessed corpus into input
+and target samples, creating  index lookup dictionaries, and converting the samples
+into one-hot tensors—it’s time to train the chatbot. The code is identical to the earlier
+samples. Once the model.fit  completes the training, you have a fully trained chat-
+bot based on a sequence-to-sequence network. See the following listing.
+>>> from keras.models import Model
+>>> from keras.layers import Input, LSTM, Dense
+>>> batch_size = 64
+>>> epochs = 100
+>>> num_neurons = 256
+>>> encoder_inputs = Input(shape=(None, input_vocab_size))
+>>> encoder = LSTM(num_neurons, return_state=True)>>> encoder_outputs, state_h, state_c = encoder(encoder_inputs)
+>>> encoder_states = [state_h, state_c]
+>>> decoder_inputs = Input(shape=(None, output_vocab_size))
+>>> decoder_lstm = LSTM(num_neurons, return_sequences=True,
+... return_state=True)>>> decoder_outputs, _ , _ = decoder_lstm(decoder_inputs,
+... initial_state=encoder_states)
+>>> decoder_dense = Dense(output_vocab_size, activation='softmax')>>> decoder_outputs = decoder_dense(decoder_outputs)
+>>> model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
+>>> model.compile(optimizer='rmsprop', loss='categorical_crossentropy',
+... metrics=['acc'])
+>>> model.fit([encoder_input_data, decoder_input_data],... decoder_target_data, batch_size=batch_size, epochs=epochs,
+... validation_split=0.1)Listing 10.11 Construct and train a character sequence encoder-decoder networkLoop over each character 
+of each sample.
+Set the index for the character at each time step to one; 
+all other indices remain at zero. This creates the one-
+hot encoded representation of the training samples.For the training data for the decoder, you
+create the decoder_input_data and
+decoder_target_data  (which is one time
+step behind the decoder_input_data).
+In this example, you set the batch size to 64
+samples. Increasing the batch size can speed up
+the training; it might also require more memory.
+Training a sequence-to-
+sequence network can be lengthy and easily 
+require 100 epochs.
+In this example, you set 
+the number of neuron 
+dimensions to 256.
+You withhold 10%
+of the samples for
+validation tests
+after each epoch.
+ 
+
+330 CHAPTER  10 Sequence-to-sequence models and attention
+10.4.5 Assemble the model for sequence generation
+Setting up the model for the sequence generati on is very much the same as we discussed
+in the earlier sections. But you have to ma ke some adjustments, because you don’t have
+a specific target text to feed into the deco der along with the state. All you have is the
+input, and a start token. S ee the following listing. 
+>>> encoder_model = Model(encoder_inputs, encoder_states)
+>>> thought_input = [... Input(shape=(num_neurons,)), Input(shape=(num_neurons,))]
+>>> decoder_outputs, state_h, state_c = decoder_lstm(
+... decoder_inputs, initial_state=thought_input)>>> decoder_states = [state_h, state_c]
+>>> decoder_outputs = decoder_dense(decoder_outputs)
+>>> decoder_model = Model(
+... inputs=[decoder_inputs] + thought_input,
+... output=[decoder_outputs] + decoder_states)
+10.4.6 Predicting a sequence
+The decode_sequence  function is the heart of the response generation of your chat-
+bot. It accepts a one-hot encoded input sequence, generates the thought vector, and
+uses the thought vector to generate the appropriate response by using the network
+trained earlier. See the following listing.
+>>> def decode_sequence(input_seq):
+... thought = encoder_model.predict(input_seq)
+... target_seq = np.zeros((1, 1, output_vocab_size))
+... target_seq[0, 0, target_token_index[stop_token]
+... ] = 1.
+... stop_condition = False... generated_sequence = ''
+... while not stop_condition:
+... output_tokens, h, c = decoder_model.predict(
+... [target_seq] + thought)
+... generated_token_idx = np.argmax(output_tokens[0, -1, :])
+... generated_char = reverse_target_char_index[generated_token_idx]
+... generated_sequence += generated_char... if (generated_char == stop_token or
+... len(generated_sequence) > max_decoder_seq_length
+... ):... stop_condition = TrueListing 10.12 Construct response generator model
+Listing 10.13 Build a character-based translator 
+Generate the thought vector 
+as the input to the decoder.
+In contrast to 
+the training, target_seq starts off 
+as a zero tensor.The first input token to the 
+decoder is the start token.
+Passing the already-generated 
+tokens and the latest state to the decoder to predict the 
+next sequence element
+Setting the stop_condition  
+to True will stop the loop.
+ 
+
+331 Building a chatbot using sequence-to-sequence networks
+... target_seq = np.zeros((1, 1, output_vocab_size))
+... target_seq[0, 0, generated_token_idx] = 1.
+... thought = [h, c]
+... return generated_sequence
+10.4.7 Generating a response
+Now you’ll define a helper function, response() , to convert an input string (such as
+a statement from a human user) into a reply fo r the chatbot to use. This function first
+converts the user’s input text into a sequence of one-hot encoded vectors. That tensor
+of one-hot vectors is then passed to the previously defined decode_sequence()
+function. It accomplishes the encoding of the input texts into thought vectors and the
+generation of text from those thought vectors.
+NOTE The key is that instead of providin g an initial state (thought vector)
+and an input sequence to the decoder, you’re supplying only the thought vec-tor and a start token. The token that the decoder produces given the initial
+state and the start token becomes the input to the decoder at time step 2. Andthe output at time step 2 becomes the in put at time step 3,  and so on. All the
+while the LSTM memory state is upda ting the memory and augmenting out-
+put as it goes—just like you saw in chapter 9:
+>>> def response(input_text):
+... input_seq = np.zeros((1, max_encoder_seq_length, input_vocab_size),
+... dtype='float32')
+... for t, char in enumerate(input_text):... input_seq[0, t, input_token_index[char]] = 1.
+... decoded_sentence = decode_sequence(input_seq)
+... print('Bot Reply (Decoded sentence):', decoded_sentence)
+10.4.8 Converse with your chatbot
+Voila! You just completed al l necessary steps to train an d use your own chatbot. Con-
+gratulations! Interested in wh at the chatbot can reply to? After 100 epochs of training,
+which took approximately seve n and a half hours on an NVIDIA GRID K520 GPU, the
+trained sequence-to-sequence chatbot was still a bit stubborn and short-spoken. A
+larger and more general training co rpus could change that behavior:
+>>> response("what is the internet?")
+Bot Reply (Decoded sentence): it's the best thing i can think of anything.
+>>> response("why?")
+Bot Reply (Decoded sentence): i don't know. i think it's too late.Update the target sequence
+and use the last generated
+token as the input to the
+next generation step.Update the thought
+vector state.
+Loop over each character of the input text to
+generate the one-hot tensor for the encoder
+to generate the thought vector from.
+Use the decode_sequence function to call the trained
+model and generate the response sequence.
+ 
+
+332 CHAPTER  10 Sequence-to-sequence models and attention
+>>> response("do you like coffee?")
+Bot Reply (Decoded sentence): yes.
+>>> response("do you like football?")
+Bot Reply (Decoded sentence): yeah.
+NOTE If you don’t want to set up a GPU and train your own chatbot, no wor-
+ries. We made the trained chatbot availabl e for you to test it. Head over to the
+GitHub repository of NLP in Action13 and check out the latest chatbot version.
+Let the authors know if you come ac ross any funny replies by the chatbot. 
+10.5 Enhancements
+There are two enhancements to the way yo u train sequence-to-sequence models that
+can improve their accuracy an d scalability. Like human learning, deep learning can
+benefit from a well-designed curriculum. Yo u need to categorize and order the train-
+ing material to ensure speed y absorption, and you need to ensure that the instructor
+highlights the most import parts of any given document.
+10.5.1 Reduce training complexity with bucketing
+Input sequences can have different length s, which can add a large number of pad
+tokens to short sequences in your training data. Too much padding can make thecomputation expensive, especially when th e majority of the sequences are short and
+only a handful of them use close-to-the -maximum token length. Imagine you train
+your sequence-to-sequence network with data where almost all samples are 100
+tokens long, except for a few outliers th at contain 1,000 tokens. Without bucketing,
+you’d need to pad the majority of your training with 900 pad tokens, and yoursequence-to-sequence network would have to loop over them during the training
+phase. This padding will slow down the training dramatically . Bucketing can reduce
+the computation in these case s. You can sort the sequences by length and use differ-
+ent sequence lengths during different batc h runs. You assign the input sequences to
+buckets of different lengths, such as a ll sequences with a length between 5 and 10
+tokens, and then use the sequence buckets fo r your training batches, such as train
+first with all sequences between 5 and 10 tokens, 10 to 15, and so on. Some deeplearning frameworks provide bucketing tool s to suggest the optimal buckets for your
+input data.
+ As shown in figure 10.10, the sequences we re first sorted by length and then only
+padded to the maximum token length for th e particular bucket. That way, you can
+reduce the number of time steps needed fo r any particular batc h while training the
+sequence-to-sequence network. You only unro ll the network as far as is necessary (to
+the longest sequence) in a given training batch. 
+ 
+13See the web page titled “GitHub - totalgood/nlpia” ( https:/ /github.com/totalgood/nlpia ).
+ 
+
+333 Enhancements
+Figure 10.10 Bucketing applied to target sequences
+10.5.2 Paying attention
+As with latent semantic analysis introduced in chapter 4, longer input sequences (doc-
+uments) tend to produce thou ght vectors that are less precise representations of those
+documents. A thought vector is limited by  the dimensionality of the LSTM layer (the
+number of neurons). A single thought vect or is sufficient for short input/output
+sequences, similar to your chatbot exampl e. But imagine the case when you want to
+train a sequence-to-sequence model to summa rize online articles. In this case, your
+input sequence can be a lengthy article, which should be compressed into a single
+thought vector to generate such as a head line. As you can imagine, training the net-
+work to determine the most relevant informat ion in that longer document is tricky. A
+headline or summary (and the associated thought vector) must focus on a particular
+aspect or portion of that document rather than attempt to represent all of the com-plexity of its meaning.
+ In 2015, Bahdanau et al. presented their solution to this problem at the Interna-
+tional Conference on Le arning Representations.
+14 The concept the authors developed
+became known as the attention mechanism  (see figure 10.11). As the name suggests, the
+idea is to tell the decoder what to pay at tention to in the inpu t sequence. This “sneak
+preview” is achieved by allowing the decoder to also look all the way back into the states
+of the encoder network in addition to the th ought vector. A version of a “heat map” over
+the entire input sequence is learned along wi th the rest of the network. That mapping,
+different at each time step, is  then shared with the decoder. As it decodes any particular
+14See the web page titled “Neural Machine Translation by Jointly Learning to Align and Translate” ( https:/ /
+arxiv.org/abs/1409.0473 ).Start
+tokenSequence
+elementStop
+token Padding
+1st batch
+w/ 5 tokens
+2nd batch
+w/ 7 tokens
+3rd batch
+w/ 10 tokens
+4th batch
+w/ 16 tokens
+ 
+
+334 CHAPTER  10 Sequence-to-sequence models and attention
+part of the sequence, its concept created from the thought vector can be augmented
+with direct information that it produced . In other words, the attention mechanism
+allows a direct connection between the output  and the input by selecting relevant input
+pieces. This doesn’t mean token-to-token alignment; that would defeat the purposeand send you back to autoenco der land. It does allow for richer representations of con-
+cepts wherever they appear in the sequence.
+ With the attention mechanism, the decoder receives an additional input with every
+time step representing the one (or many) to kens in the input sequence to pay “atten-
+tion” to, at this given decoder time step. All sequence positions from the encoder will
+be represented as a weighted average for each decoder time step.
+ Configuring and tuning the attention me chanism isn’t trivial, but various deep
+learning frameworks provide implementations to facilitate this. At the time of this
+writing, a pull request to the Keras package was discussed, but no  implementation had
+yet been accepted. 
+10.6 In the real world
+Sequence-to-sequence networks  are well suited for any ma chine learning application
+with variable-length input sequences or vari able-length output sequences. Since natu-
+ral language sequences of words almost al ways have unpredictable length, sequence-
+to-sequence models can improve the accura cy of most machine learning models.Today
+LSTMEncoder
+DecoderThought
+vectorThought
+vector
+Attention mechanismAttention
+layer
+LSTM
+Aujord’
+hui<start>Aujord’
+hui
+étaitétait
+uneune
+bonnebonne
+journéejournée
+...
+<stop> trèstrès
+LSTM LSTM LSTM LSTM LSTM LSTM LSTMLSTM LSTM LSTM LSTM LSTM LSTMwas a very good day
+Figure 10.11 Overview of the attention mechanism
+ 
+
+335 In the real world
+ Key sequence-to-sequence applications are
+Chatbot conversations
+Question answering
+Machine translation
+Image captioning
+Visual question answering
+Document summarization
+As you’ve seen in the previous sections, a dialog system is a common application for
+NLP. Sequence-to-sequence models are generative, which makes them especially well-suited to conversational di alog systems (chatbots). Se quence-to-sequence chatbots
+generate more varied, creative, and conversa tional dialog than information retrieval
+or knowledge-based chatbot approaches. Co nversational dialog systems mimic human
+conversation on a broad range of topics. Sequence-to-sequence chatbots can general-
+ize from limited-domain corpora and yet resp ond reasonably on topics not contained
+in their training set. In contrast, the “g rounding” of knowledge-based dialog systems
+(discussed in chapter 12) can limit their abi lity to participate in conversations on top-
+ics outside their training domains. Chapte r 12 compares the performance of chatbot
+architectures in greater detail.
+ Besides the Cornell Movie Dialog Corpus , various free and open source training
+sets are available, such as Deep Mind’s Q&A datasets.
+15, 16 When you need your dialog
+system to respond reliably in a specific do main, you’ll need to train it on a corpora of
+statements from that domain. The thought vector has a limited amount of informa-
+tion capacity and that capacity needs to be  filled with information on the topics you
+want your chatbot to be conversant in.
+ Another common application for sequence-t o-sequence networks is machine trans-
+lation. The concept of the thought vector al lows a translation a pplication to incorpo-
+rate the context  of the input data, and words with multiple meanings can be translated
+in the correct context. If you want to bu ild translation applications, the ManyThings
+website ( http:/ /www.manythings.org/anki/ ) provides sentence pairs that can be used
+as training sets. We've provided these pairs for you in the nlpia  package. In listing 10.8
+you can replace get_data('moviedialog')  with get_data('deu-eng')  for
+English-German statement pairs, for example.
+ Sequence-to-sequence models are also we ll-suited to text summarization, due to
+the difference in string length between input  and output. In this case, the input to the
+encoder network is, for example, news arti cles (or any other length document) and
+the decoder can be trained to generate a headline or abstract or any other summary
+sequence associated with the document. Se quence-to-sequence networks can provide
+15Q&A dataset: https:/ /cs.nyu.edu/~kcho/DMQA/ .
+16List of dialog corpora in  the NLPIA package docs: https:/ /github.com/totalgood/nlpia/blob/master/docs/
+notes/nlp--data.md#dialog-corpora .
+ 
+
+336 CHAPTER  10 Sequence-to-sequence models and attention
+more natural-sounding text summaries than summarization methods based on bag-of-
+words vector statistics. If yo u’re interested in developing such an application, the
+Kaggle news summary challenge17 provides a good training set.
+ Sequence-to-sequence networks aren’t lim ited to natural language applications.
+Two other applications are automated speec h recognition and image captioning. Cur-
+rent, state-of-the-art automa ted speech recognition systems18 use sequence-to-sequence
+networks to turn voice input amplitude samp le sequences into the thought vector that
+a sequence-to-sequence decoder can turn into  a text transcriptio n of the speech. The
+same concept applies to imag e captioning. The sequence of image pixels (regardless of
+image resolution) can be used as an input to  the encoder, and a decoder can be trained
+to generate an appropriate de scription. In fact, you can find a combined application
+of image captioning and Q&A system called visual questi on answering at https:/ /
+vqa.cloudcv.org/ . 
+Summary
+Sequence-to-sequence networks can be bu ilt with a modular, reusable encoder-
+decoder architecture.
+The encoder model generates a thought ve ctor, a dense, fixed-dimension vector
+representation of the information in  a variable-length input sequence.
+A decoder can use thought vectors to predict (generate) output sequences,
+including the replies of a chatbot.
+Due to the thought vector representati on, the input and the output sequence
+lengths don’t have to match.
+Thought vectors can only hold a limited amount of information. If you need athought vector to encode more comp lex concepts, the attention mechanism
+can help selectively encode what is important in the thought vector.
+17See the web page titled “NEWS SUMMARY: Kaggle” ( https:/ /www.kaggle.com/sunnysai12345/news
+-summary/data ).
+18State of the art speech recognition system: https:/ /arxiv.org/pdf/1610.03022.pdf .
+ 
+

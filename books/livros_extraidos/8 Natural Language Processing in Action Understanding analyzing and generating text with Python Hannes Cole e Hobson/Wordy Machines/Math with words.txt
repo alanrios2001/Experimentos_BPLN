@@ -1,0 +1,1060 @@
+70Math with words
+(TF-IDF vectors)
+Having collected and counted words (tokens) , and bucketed them into stems or lem-
+mas, it’s time to do something interestin g with them. Detecting words is useful for
+simple tasks, like getting statistics abou t word usage or doing keyword search. But
+you’d like to know which wo rds are more important to a particular document and
+across the corpus as a whole. Then you can use that “importance” value to find rel-
+evant documents in a corpus based on ke yword importance within each document.This chapter covers
+Counting words and term frequencies to analyze 
+meaning
+Predicting word occurrence probabilities with Zipf’s Law
+Vector representation of words and how to start using them
+Finding relevant documents from a corpus using inverse document frequencies
+Estimating the similarity of pairs of documents with cosine similarity  and Okapi BM25
+ 
+
+71 Bag of words
+ That will make a spam detector a little le ss likely to get tripped up by a single curse
+word or a few slightly-spammy words within  an email. And you’d like to measure how
+positive and prosocial a tweet is when you have a broad range of words with various
+degrees of “positivity” scores or labels. If  you have an idea about the frequency with
+which those words appear in a document in relation to  the rest of the documents, you
+can use that to further refine the “positivit y” of the document. In this chapter, you’ll
+learn about a more nuanced, less binary me asure of words and their usage within a
+document. This approach has been the mainst ay for generating features from natural
+language for commercial search en gines and spam filters for decades.
+ The next step in your adventure is to turn the words of chapter 2 into continuous
+numbers rather than just integers represen ting word counts or binary “bit vectors”
+that detect the presence or absence of part icular words. With re presentations of words
+in a continuous space, you can operate on  their representation with more exciting
+math. Your goal is to find numerical repr esentation of words that somehow capture
+the importance or informatio n content of the words they represent. You’ll have to
+wait until chapter 4 to see how to turn this  information content into numbers that rep-
+resent the meaning  of words.
+ In this chapter, we look at three increa singly powerful ways to represent words and
+their importance in a document:
+Bags of words —Vectors of word counts or frequencies
+Bags of n-grams —Counts of word pairs (bigrams), triplets (trigrams), and so on
+TF-IDF vectors —Word scores that better represent their importance
+IMPORTANT TF-IDF stands for term frequency times inverse document frequency .
+Term frequencies are the counts of each word in a document, which you
+learned about in previous chapters. Inverse document frequency means that
+you’ll divide each of those word counts by the number of documents in whichthe word occurs.
+Each of these techniques can be applied se parately or as part of an NLP pipeline.
+These are all statistical models in that they are frequency  based. Later in the book,
+you’ll see various ways to peer even deeper  into word relationships and their patterns
+and non-linearities.
+ But these “shallow” NLP machines are po werful and useful for many practical
+applications such as spam filtering and sentiment analysis.
+3.1 Bag of words
+In the previous chapter, you created your first vector space model of a text. You used
+one-hot encoding of each word and then co mbined all those vectors with a binary OR
+(or clipped sum) to create a vector representation of a text. And this binary bag-of-
+words vector makes a great index for docu ment retrieval when loaded into a data
+structure such as a Pandas DataFrame.
+ 
+
+72 CHAPTER  3Math with words (TF-IDF vectors)
+ Y o u  t h e n  l o o k e d  a t  a n  e v e n  m o r e  u s e f u l  v e c t o r  r e p r e s e n t a t i o n  t h a t  c o u n t s  t h e
+number of occurrences, or freq uency, of each word in the given text. As a first approx-
+imation, you assume that th e more times a word occurs , the more meaning it must
+contribute to that document. A document that refers to “wings” and “rudder” fre-
+quently may be more relevant to a problem involving jet airplanes or air travel, than
+say a document that refers frequently to “cats” and “gravity.” Or if you have classified
+some words as expressing po sitive emotions—words like “good,” “best,” “joy,” and
+“fantastic”—the more a document that contai ns those words is likely to have positive
+“sentiment.” You can imagine though how an algorithm that relied on these simple
+rules might be mistaken or led astray.
+ Let’s look at an example where coun ting occurrences of words is useful:
+>>> from nltk.tokenize import TreebankWordTokenizer
+>>> sentence = """The faster Harry got to the store, the faster Harry,
+... the faster, would get home.""">>> tokenizer = TreebankWordTokenizer()
+>>> tokens = tokenizer.tokenize(sentence.lower())
+>>> tokens['the',
+'faster',
+'harry',
+'got',
+'to','the',
+'store',
+',','the',
+'faster',
+'harry',',',
+'the',
+'faster',',',
+'would',
+'get','home',
+'.']
+With your simple list, you want to get unique words from the document and their
+counts. A Python dictionary serves this purpose nicely, and because you want to count
+the words as well, you can use Counter , as you did in previous chapters:
+>>> from collections import Counter
+>>> bag_of_words = Counter(tokens)>>> bag_of_words
+Counter({'the': 4,
+'faster': 3,'harry': 2,
+'got': 1,
+'to': 1,'store': 1,
+',': 3,
+'would': 1,
+ 
+
+73 Bag of words
+'get': 1,
+'home': 1,
+'.': 1})
+As with any good Python dictionary, the order of your keys got shuffled. The new
+order is optimized for storage, update, and re trieval, not consistent display. The infor-
+mation content contained in the order of words within the original statement has
+been discarded.
+NOTE A collections.Counter  o b j e c t  i s  a n  u n o r d e r e d  c o l l e c t i o n ,  a l s o
+called a bag or multiset. Depending on  your platform and Python version,
+you may find that a Counter  is displayed in a seemingly reasonable order,
+like lexical order or the order that to kens appeared in your statement. But
+just as for a standard Python dict , you cannot rely on the order of your
+tokens (keys) in a Counter .
+For short documents like this one, the unor dered bag of words still contains a lot of
+information about the original intent of th e sentence. And the information in a bag of
+words is sufficient to do so me powerful things such as  detect spam, compute senti-
+ment (positivity, happiness, and so on), an d even detect subtle intent, like sarcasm. It
+may be a bag, but it’s full of meaning and information. So let’s get these words
+ranked—sorted in some order that ’s easier to think about. The Counter  object has a
+handy method, most_common , for just this purpose:
+>>> bag_of_words.most_common(4)
+[('the', 4), (',', 3), ('faster', 3), ('harry', 2)]
+Specifically, the number of times a word o ccurs in a given document is called the term
+frequency , commonly abbreviated TF. In some ex amples you may see the count of word
+occurrences normalized (divided) by th e number of terms in the document.1
+ So your top four terms or tokens are “the ,” “,”, “harry,” and “faster.” But the word
+“the” and the punctuation “,” aren’t very informative about the intent of this docu-
+ment. And these uninformative tokens are li kely to appear a lot during your hurried
+adventure. So for this example, you’ll ignore them, along with a list of standard Eng-lish stop words and punctuation. This won’t always be the case, but for now it helps
+simplify the example. That leaves you with  “harry” and “faster” among the top tokens
+in your TF vector (bag of words).
+ Let’s calculate the term frequency of “harry” from the 
+Counter  object (bag_
+of_words ) you defined above:
+>>> times_harry_appears = bag_of_words['harry']
+>>> num_unique_words = len(bag_of_words)
+1However, normalized frequency is really a probability,  so it should probably not be called frequency.By default, most_common() lists all tokens
+from most frequent to least, but you’ve
+limited the list to the top four here.
+The number of unique tokens 
+from your original source
+ 
+
+74 CHAPTER  3Math with words (TF-IDF vectors)
+>>> tf = times_harry_appears / num_unique_words
+>>> round(tf, 4)
+0.1818
+Let’s pause for a second and look a little deeper at normalized term frequency, a
+phrase (and calculation) we use often thro ughout this book. It’s the word count tem-
+pered by how long the document is. But why “temper” it all? Let’s say you find the
+word “dog” 3 times in document A and 100 ti mes in document B. Clearly “dog” is way
+more important to document B. But wait. Let’s say you find out document A is a
+30-word email to a veterina rian and document B is War & Peace  (approx 580,000
+words!). Your first analysis  was straight-up backwards. The following equations take
+the document length into account:
+TF(“dog,”  document A) = 3/30 = .1
+TF(“dog,”  document B) = 100/580000 = .00017
+Now you have something you can see that describes “something” about the two docu-
+ments and their relationship to the word “d og” and each other. So instead of raw word
+counts to describe your do cuments in a corpus, you can use normalized term frequen-
+cies. Similarly you could calculate each word  and get the relative importance to the
+document of that term. Your protagonist, Harry, and his need for speed are clearly
+central to the story of this document. You’ ve made some great progress in turning text
+into numbers, beyond just the presence or  absence of a given word. Now this is a
+clearly contrived example, but you can quickly see how meaningful results could come
+from this approach. Let’s look at a bigger pi ece of text. Take these first few paragraphs
+from the Wikipedia article on kites:
+A kite is traditionally a tethered heavier-th an-air craft with wing surfaces that react
+against the air to create lift and drag. A kite consists of wings, tethers, and anchors.
+Kites often have a bridle to guide the face of the kite at the correct angle so the windcan lift it. A kite’s wing also may be so designed so a bridle is not needed; when
+kiting a sailplane for launch, the tether meet s the wing at a single point. A kite may
+have fixed or moving anchors. Untraditionall y in technical kiting, a kite consists of
+tether-set-coupled wing sets; even in techni cal kiting, though, a wing in the system is
+still often called the kite.
+The lift that sustains the kite in flight is generated when air flows around the kite’s
+surface, producing low pressure above and high pressure below the wings. The
+interaction with the wind also generates ho rizontal drag along the direction of the
+wind. The resultant force vector from the lift and drag force components is opposedby the tension of one or more of the lines or  tethers to which the kite is attached. The
+anchor point of the kite line may be static or moving (such as the towing of a kite by
+a running person, boat, free-falling anchors as in paragliders and fugitive parakites
+or vehicle).
+The same principles of fluid flow apply in liquids and kites are also used under water.
+A hybrid tethered craft comprising both a lighter-than-air balloon as well as a kite
+lifting surface is called a kytoon.
+ 
+
+75 Bag of words
+Kites have a long and varied history and many different types are flown
+individually and at festivals worldwide. Kites may be flown for recreation, art or
+other practical uses. Sport kites can be flown in aerial ballet, sometimes as part of acompetition. Power kites are multi-line steera ble kites designed to generate large forces
+which can be used to power activities such as kite surfing, kite landboarding, kitefishing, kite buggying and a new trend snow kiting. Even Man-lifting kites havebeen made.
+—Wikipedia
+Then you’ll assign the text to a variable:
+>>> from collections import Counter
+>>> from nltk.tokenize import TreebankWordTokenizer>>> tokenizer = TreebankWordTokenizer()
+>>> from nlpia.data.loaders import kite_text
+>>> tokens = tokenizer.tokenize(kite_text.lower())>>> token_counts = Counter(tokens)
+>>> token_counts
+Counter({'the': 26, 'a': 20, 'kite': 16, ',': 15, ...})
+NOTE The TreebankWordTokenizer  returns 'kite.' (with a period) as a
+token. The Treebank Toke nizer assumes that your document has already been
+segmented into separate sentences, so it ’ll only ignore punctuation at the very
+end of the string. Sentence segmentation  is tricky and you won’t learn about it
+until chapter 11. Nonetheless, the spaC y parser is faster and more accurate
+because it does sentence segmentation and tokenization (along with a lot of
+other things)2 in one pass. So use spaCy in your production app rather than the
+NLTK components we used for these simple examples.
+Okay, back to the example. So that is a lot of  stop words. It’s not likely that this Wikipe-
+dia article is about the articles “the” and “a,” nor the conjunction “and” and the other
+stop words. So let’ s ditch them for now:
+>>> import nltk
+>>> nltk.download('stopwords', quiet=True)
+True
+>>> stopwords = nltk.corpus.stopwords.words('english')>>> tokens = [x for x in tokens if x not in stopwords]
+>>> kite_counts = Counter(tokens)
+>>> kite_countsCounter({'kite': 16,
+'traditionally': 1,
+'tethered': 2,'heavier-than-air': 1,
+'craft': 2,
+'wing': 5,'surfaces': 1,
+'react': 1,
+2See the web page titled “spaCy 101: Everything you need to know” ( https:/ /spacy.io/usage/spacy-101
+#annotations-token ).kite_text = “A kite is 
+traditionally …” as above
+ 
+
+76 CHAPTER  3Math with words (TF-IDF vectors)
+'air': 2,
+...,
+'made': 1})}
+By looking purely at the number of times wo rds occur in this document, you’re learn-
+ing something about it. The terms kite(s) , wing, and lift are all important. And, if you
+didn’t know what this document was abou t, you just happened across this document
+in your vast database of Google-like know ledge, you might “programmatically” be able
+to infer it has something to do with “f light” or “lift” or, in fact, “kites.”
+ Across multiple documents in a corpus, thin gs get a little more interesting. A set of
+documents may all be about, say, kite flying. Yo u would imagine all the documents
+may refer to string and wind quite often, and the term frequencies TF("string ") and
+TF("wind ") would therefore rank highly in all th e documents. Now let’s look at a way
+to more gracefully represent these numbers for mathematical intents. 
+3.2 Vectorizing
+You’ve transformed your text into numbers on  a basic level. But yo u’ve still just stored
+them in a dictionary, so you’ve taken one st ep out of the text-based world and into the
+realm of mathematics. Next you’ll go ahead and jump in all the way. Instead of
+describing a document in terms of a frequency dictionary, you’ll make a vector ofthose word counts. In Python, this will be a list, but in general it’s an ordered collec-
+tion or array. You can do this quickly with
+>>> document_vector = []
+>>> doc_length = len(tokens)
+>>> for key, value in kite_counts.most_common():
+... document_vector.append(value / doc_length)>>> document_vector
+[0.07207207207207207,
+0.06756756756756757,0.036036036036036036,
+...,
+0.0045045045045045045]
+This list, or vector , is something you can do math on directly.
+TIP You can speed up processing of th ese data structures many ways.3 For
+now you’re just playing with the nuts and bolts, but soon you’ll want to speedthings up.
+Math isn’t very interesting with just one element. Having one vector for one docu-
+ment isn’t enough. You can grab a couple more documents and make vectors for each
+of them as well. But the values within each vector need to be relative to something
+consistent across all the vectors.  If you’re going to do math on them, they need to rep-
+resent a position in a commo n space, relative to someth ing consistent. Your vectors
+need to have the same origin and share the same scale, or “units ,” on each of their
+3See the web page titled “NumPy” ( http:/ /www.numpy.org/ ).
+ 
+
+77 Vectorizing
+dimensions. The first step in this process is  to normalize the counts by calculating nor-
+malized term frequency instead of raw count in the document (as you did in the last
+section); the second step is to make all th e vectors of standard length or dimension.
+ Also, you want the value for each element of the vector to represent the same word
+in each document’s vector. Bu t you may notice that your email to the vet isn’t going to
+contain many of the words that are in War & Peace  (or maybe it will, who knows?). But
+it’s fine (and as it happens, necessary) if your vectors contain values of 0 in various
+positions. You’ll find every unique word in  each document and then find every unique
+word in the union of those two sets. This collections of words in your vocabulary is
+often called a lexicon , which is the same concept referenced in earlier chapters, just in
+terms of your special corpus. Let’s look at what that would look like with something
+shorter than War & Peace . Let’s check in on Harry. You had one “document” already—
+let’s round out the corpus  with a couple more:
+>>> docs = ["The faster Harry got to the store, the faster and faster Harry
+➥ would get home."]
+>>> docs.append("Harry is hairy and faster than Jill.")
+>>> docs.append("Jill is not as hairy as Harry.")
+TIP If you’re playing along with us rather than typing these out, you can
+import them from the nlpia package: from nlpia.data.loaders import
+harry_docs as docs .
+First, let’s look at your lexicon for this corpus containing three documents:
+>>> doc_tokens = []
+>>> for doc in docs:... doc_tokens += [sorted(tokenizer.tokenize(doc.lower()))]>>> len(doc_tokens[0])17>>> all_doc_tokens = sum(doc_tokens, [])>>> len(all_doc_tokens)33>>> lexicon = sorted(set(all_doc_tokens))>>> len(lexicon)18>>> lexicon[',',
+'.','and','as','faster','get','got','hairy','harry','home','is','jill','not','store','than',
+ 
+
+78 CHAPTER  3Math with words (TF-IDF vectors)
+'the',
+'to',
+'would']
+Each of your three document vectors will ne ed to have 18 values, even if the docu-
+ment for that vector doesn’ t contain all 18 words in your lexicon. Each token is
+assigned a “slot” in your vectors correspondin g to its positi on in your lexicon. Some of
+those token counts in the vector will be zeros, which is what you want:
+>>> from collections import OrderedDict
+>>> zero_vector = OrderedDict((token, 0) for token in lexicon)
+>>> zero_vector
+OrderedDict([(',', 0),
+('.', 0),
+('and', 0),
+('as', 0),('faster', 0),
+('get', 0),
+('got', 0),('hairy', 0),('harry', 0),
+('home', 0),
+('is', 0),('jill', 0),
+('not', 0),
+('store', 0),('than', 0),
+('the', 0),
+('to', 0),('would', 0)])
+Now you’ll make copies of that base vector , update the values of the vector for each
+document, and store them in an array:
+>>> import copy
+>>> doc_vectors = []
+>>> for doc in docs:
+... vec = copy.copy(zero_vector)... tokens = tokenizer.tokenize(doc.lower())
+... token_counts = Counter(tokens)
+... for key, value in token_counts.items():... vec[key] = value / len(lexicon)
+... doc_vectors.append(vec)
+You have three vectors, one for each document. So what? What can you do with them?
+Your document word-count vectors can do all the cool stuff any vector can do, so let’s
+learn a bit more about vector s and vector spaces first.4
+4If you’d like more details about linear algebr a and vectors, take a look at appendix C.copy.copy() creates an independ ent copy, a separate instance of
+your zero vector, rather than reusing a reference (pointer) to
+the original object’s memory location. Otherwise you’d just be
+overwriting the same zero_vector with new values in each loop,
+and you wouldn’t have a fresh ze ro on each pass of the loop.
+ 
+
+79 Vectorizing
+3.2.1 Vector spaces
+Vectors are the primary building  blocks of linear algebra, or vector algebra. They’re
+an ordered list of numbers, or  coordinates, in a vector sp ace. They describe a location
+or position in that space. Or they can be used to identify a particular direction and
+magnitude or distance  in that space. A space  is the collection of all possible vectors that
+could appear in that space. So a vector with  two values would lie in a 2D vector space,
+a vector with three values in 3D vector space, and so on.
+ A piece of graph paper, or a grid of pixe ls in an image, are both nice 2D vector
+spaces. You can see how the order of these coordinates matter. If you reverse the x and
+y coordinates for locations on your graph paper, without reversing all your vector cal-culations, all your answers for linear alge bra problems would be flipped. Graph paper
+and images are examples of rectilinear, or  Euclidean spaces, because the x and y coor-
+dinates are perpendicular to each other. The vectors we talk about in this chapter are
+all rectilinear, Euclidean spaces.
+ What about latitude and longitude on a map or globe? That map or globe is definitely
+a 2D vector space because it’s  an ordered list of two numb ers: latitude and longitude.
+But each of the latitude-longitude pairs describes a point on an approximately spherical,
+bumpy surface—the Earth’s surface. And la titude and longitude coordinates aren’t
+exactly perpendicular, so a latitude-longitude  vector space isn’t rectilinear. That means
+you have to be careful when you calculate things like distance or closeness (similarity)
+between two points represented by a pair of 2D latitude-longitude vectors, or vectors in
+any non-Euclidean space. Think about how you would calculate the distance between
+the latitude and longitude coordinate s of Portland, OR and New York, NY.
+5
+ Figure 3.1 is one way to draw the 2D vectors (5, 5) , (3, 2) , and (-1, 1) . The
+h e a d  o f  a  v e c t o r  ( r e p r e s e n t e d  b y  t h e  p o i n t y  t i p  o f  a n  a r r o w )  i s  u s e d  t o  i d e n t i f y  a
+5You’d need to use a package like GeoPy ( https:/ /geopy.readthedocs.io ) to get the math right.Vectors in 2D space
+1 00
+–1–1 –2(–1, 1)(3, 2)(5, 5)
+23456123456
+Figure 3.1 2D vectors 
+ 
+
+80 CHAPTER  3Math with words (TF-IDF vectors)
+location in a vector space. So the vector heads in this diagram will be at those three
+pairs of coordinates. The tail of a position  vector (represented by the “rear” of the
+arrow) is always at the origin, or (0, 0) .
+ What about 3D vector spaces? Positions an d velocities in the 3D  physical world you
+live in can be represented by x, y, and z coordinates in a 3D vector. Or the curvilinear
+space formed by all the latitude-longitude-altitude triplets describing locations near
+the surface of the Earth.
+ But you aren’t limited to normal 3D space. You can have 5 dimensions, 10 dimen-
+sions, 5,000, whatever. The linear algebr a all works out the same. You might need
+more computing power as the dimensionality grows. And you’ll ru n into some “curse-
+of-dimensionality” issues, but you can wait to deal with that until the last chapter,
+chapter 13.6
+ For a natural language document vector space, the dimensionality of your vector
+space is the count of the number of distinct  words that appear in the entire corpus.
+For TF (and TF-IDF to come), sometimes we call this dimensionality capital letter “K.”
+This number of distinct words is also the vocabulary size of  your corpus, so in an aca-
+demic paper it’ll usually be called “|V|.” Yo u can then describe each document within
+this K-dimensional vector space by a K-dimensional vector. K = 18 in your three-
+document corpus about Harry and Jill. Becaus e humans can’t easily visualize spaces of
+more than three dimensions, let’s set aside most of those dimensions and look at two
+for a moment, so you can have a visual representation of the vectors on this flat page
+you’re reading. So in figure 3.2, K is reduc ed to two for a two-dimensional view of the
+18-dimensional Harry an d Jill vector space.
+ K-dimensional vectors work the same way, just in ways you can’t easily visualize.
+Now that you have a representation of each document and know they share a com-mon space, you have a path to compare them. You could measure the Euclidean dis-
+tance between the vectors by subtracting them and computing the length of the
+distance between them, which is called the 2-norm distance. It’s the distance a “crow”
+would have to fly (in a straight line) to get from a location identified by the tip (head)of one vector and the location of the tip of the other vector. Check out appendix C on
+linear algebra to see why this is a bad id ea for word count (term frequency) vectors.
+ Two vectors are “similar” if they share si milar direction. They might have similar
+magnitude (length), which would mean that the word count (term frequency) vectors
+are for documents of about th e same length. But do you care about document length
+in your similarity estimate for vector repr esentations of words in documents? Probably
+6The curse of dimensionality is that vectors will get exponentially farther and farther away from one another,
+in Euclidean distance, as the dimensionality increases. A lot of simple operations become impractical above 10
+or 20 dimensions, like sorting a large list of vectors base d on their distance from a “query” or “reference” vector
+(approximate nearest neighbor search). To dig deeper, check out Wikipedia’s “Curse of Dimensionality” arti-
+cle ( https:/ /en.wikipedia.org/w iki/Curse_of_dimensionality ), explore hyperspace wi th one of this book’s
+authors at Exploring Hyperspace ( https:/ /docs.google.com/presentation/d/1SEU8VL0KWPDKKZnBSaMx
+UBDDwI8yqIxu9RQtq2bpnNg ), play with the Python annoy  package ( https:/ /github.com/spotify/annoy ), or
+search Google Scholar for “high dimensional approximate nearest neighbors” ( https:/ /scholar.google.com/
+scholar?q=high+dimensional+approximate+nearest+neighbor ).
+ 
+
+81 Vectorizing
+not. You’d like your estimate of document similarity to find use of the same words
+about the same number of times in similar proportions. This accurate estimate would
+give you confidence that the documents th ey represent are probably talking about
+similar things.
+ Cosine similarity is mere ly the cosine of the angle between two vectors (theta),
+shown in figure 3.3, which can be calcul ated from the Euclid ian dot product using
+Cosine similarity is efficient to calculate because the dot product doesn’t require eval-
+uation of any trigonometric functions. In addition, cosine similarity has a convenient
+range for most machine lear ning problems: -1 to +1.Term frequency vectors in 2D space
+0.20
+0.15
+0.10
+0.05
+0.00
+–0.05
+–0.050.00 0.05 0.10doc_0 ~(0.1, 0.17)
+doc_0 ~(0.056, 0.056)TF of “faster”
+TF of “harry”doc_2 ~(0.056, 0)
+0.15 0.20
+Figure 3.2 2D term 
+frequency vectors 
+A · B = |A| |B| * cos Θ
+Term frequency vectors in 2D space
+0.20
+0.15
+0.10
+0.05
+0.00
+–0.05
+–0.050.00 0.05 0.10doc_0 ~(0.1, 0.17)
+doc_0 ~(0.056, 0.056)Θ2TF of “faster”
+TF of “harry”doc_2 ~(0.056, 0)
+0.15 0.20Θ1
+Figure 3.3 2D thetas 
+ 
+
+82 CHAPTER  3Math with words (TF-IDF vectors)
+In Python this would be
+a.dot(b) == np.linalg.norm(a) * np.linalg.norm(b) / np.cos(theta)
+Solving this relationship for cos(theta) , you can derive the cosine similarity using
+Or you can do it in pure Python without numpy , as in the following listing.
+>>> import math
+>>> def cosine_sim(vec1, vec2):
+... """ Let's convert our dictionaries to lists for easier matching."""... vec1 = [val for val in vec1.values()]
+... vec2 = [val for val in vec2.values()]
+...... dot_prod = 0
+... for i, v in enumerate(vec1):
+... dot_prod + = v * vec2[i]
+...
+... mag_1 = math.sqrt(sum([x**2 for x in vec1]))
+... mag_2 = math.sqrt(sum([x**2 for x in vec2]))...
+... return dot_prod / (mag_1 * mag_2)
+So you need to take the dot product of tw o of your vectors in question—multiply the
+elements of each vector pairwise—and th en sum up those products. You then divide
+by the norm (magnitude or le ngth) of each vector. The vector norm is the same as its
+Euclidean distance from the head to the tail  of the vector—the square root of the sum
+of the squares of its elements. This normalized dot product , like the output of the cosine
+function, will be a value between -1 and 1. It’s the cosine of the angle between these
+two vectors. This value is the same as the po rtion of the longer vector that’s covered by
+the shorter vector’s perpendicular projection onto the longer one. It gives you a value
+for how much the vectors point in the same direction.
+ A cosine similarity of 1 represents identical normalized vectors that point in
+exactly the same direction along all dimensions. The vectors may have different
+lengths or magnitudes, but they point in the same direct ion. Remember you divided
+the dot product by the norm of each vector , and this can happen before or after the
+dot product. So the vectors are normalized so they both have a length of 1 as you do
+the dot product. So the closer a cosine simila rity value is to 1, the closer the two vec-
+tors are in angle. For NLP document vectors that have a cosine similarity close to 1,
+you know that the documents are using simi lar words in similar proportion. So the
+documents whose document vect ors are close to each other are likely talking about
+the same thing.Listing 3.1 Compute cosine similarity in pythoncos Θ = A · B
+|A| |B|
+ 
+
+83 Zipf’s Law
+ A cosine similarity of 0 represents two vectors that share no components. They are
+orthogonal, perpendicular in all dimensions. For NLP TF vectors, this situation occurs
+only if the two documents share no word s in common. Because these documents use
+completely different words, they must be talking about completely different things.
+This doesn’t necessarily mean they have di fferent meanings or topics, just that they
+use completely different words.
+ A cosine similarity of -1 represents two vectors that  are anti-similar, completely
+opposite. They point in opposite directio ns. This can never happen for simple word
+count (term frequency) vectors or even normalized TF vectors (which we talk about
+later). Counts of words can never be nega tive. So word count (term frequency) vec-
+tors will always be in the same “quadrant” of the vector space. None of the term fre-
+quency vectors can sneak around into one of the quadrants behind the tail of the
+other vectors. None of your term freque ncy vectors can have components (word fre-
+quencies) that are the negative of another term frequency vector, because term fre-
+quencies just can’t be negative.
+ You won’t see any negative cosine similari ty values for pairs of vectors for natural
+language documents in this chapter. But in the next chapter, we develop a concept of
+words and topics that are “opposite” to ea ch other. And this will show up as docu-
+ments, words, and topics that  have cosine similarities of less than zero, or even -1.
+OPPOSITES ATTRACT There’s an interesting consequence of the way you cal-
+culated cosine similarity. If two vectors or document s have a cosine similarity
+of -1 (are opposites) to a third vector, th ey must be perfec tly similar to each
+other. They must be exactly the same  vectors. But the documents those vec-
+tors represent may not be exactly the same. Not only might the word order beshuffled, but one may be mu ch longer than the other, if it uses the same
+words in the same proportion.
+Later, you’ll come up with vectors that mo re accurately model a document. But for
+now, you’ve gotten a good intr oduction to the tools you need. 
+3.3 Zipf’s Law
+Now on to our main topic—sociology. Okay, not, but you’ll make a quick detour into
+the world of counting people and words, and you’ll learn a seemingly universal rule
+that governs the counting of most things. It turns out, that in language, like most
+things involving living organisms, patterns abound.
+ In the early twentieth century, the Fr ench stenographer Jean-Baptiste Estoup
+noticed a pattern in the frequencies of words that he painstakingly counted by handacross many documents (thank  goodness for computers an d Python). In the 1930s,
+the American linguist George Kingsley Zipf  sought to formalize Estoup’s observation,
+and this relationship eventually came to bear Zipf’s name:
+Zipf’s law states that given some corp us of natural language utterances, the
+frequency of any word is inversely proportional to its rank in the frequency table.
+Wikipedia
+ 
+
+84 CHAPTER  3Math with words (TF-IDF vectors)
+Specifically, inverse proportionality  refers to a situation where an item in a ranked list will
+appear with a frequency tied ex plicitly to its rank in the list. The first item in the ranked
+list will appear twice as ofte n as the second, and three times as often as the third, for
+example. One of the quick things you can do with any corpus or document is plot thefrequencies of word usages relative to thei r rank (in frequency). If you see any outliers
+that don’t fall along a straight line in a log-log plot, it may be worth investigating.
+ As an example of how far Zipf’s Law stretches beyond the world of words, figure
+3.4 charts the relationship between the popu lation of US cities and the rank of that
+population. It turns out that Zipf’s Law app lies to counts of lots of things. Nature is
+full of systems that experience exponential growth an d “network effects” like popula-
+tion dynamics, economic output , and resource distribution.
+7 It’s interesting that
+something as simple as Zipf’s Law could ho ld true across a wide range of natural and
+manmade phenomena. Nobel Laureate Pa ul Krugman, speaki ng about economic
+models and Zipf’s Law, put it this way:
+The usual complaint about economic theory is that our models are oversimplified—that
+they offer excessively neat views of complex, messy reality. [With Zipf’s law] the reverse istrue: You have complex, messy models, yet reality is startlingly neat and simple.
+Here’s an updated version of Krugman’s city population plot.
+8
+As with cities and social networks, so with  words. Let’s first download the Brown Cor-
+pus from NLTK:
+The Brown Corpus was the first million-word electronic corpus of English, created in
+1961 at Brown University. This corpus contai ns text from 500 sources, and the sources
+have been categorized by genre, su ch as news, editorial, and so on.9
+NLTK Documentation
+7See the web page titled “There is More than a Power Law in Zipf” ( https:/ /www.nature.com/articles/srep
+00812 ).
+8Population data downloaded from  Wikipedia using Pandas. See the nlpia.book.examples  code on GitHub
+(https:/ /github.com/totalgood/nlpia/blob/ma ster/src/nlpia/book/e xamples/ch03_zipf.py ).
+9For a complete list, see http:/ /icame.uib.no/brown/bcm-los.html .5
+5.500.511.5233.544.5
+2.5
+0
+Log of the populationLog of the rank
+6.50 7.50 8.50 9.50Figure 3.4 City population distribution
+ 
+
+85 Zipf’s Law
+>>> nltk.download('brown')
+>>> from nltk.corpus import brown>>> brown.words()[:10]
+['The',
+'Fulton','County',
+'Grand',
+'Jury','said',
+'Friday',
+'an','investigation',
+'of']
+>>> brown.tagged_words()[:5]
+[('The', 'AT'),
+('Fulton', 'NP-TL'),
+('County', 'NN-TL'),('Grand', 'JJ-TL'),
+('Jury', 'NN-TL')]
+>>> len(brown.words())1161192
+So with over 1 million tokens, you have something meaty to look at:
+>>> from collections import Counter
+>>> puncs = set((',', '.', '--', '-', '!', '?',
+... ':', ';', '``', "''", '(', ')', '[', ']'))>>> word_list = (x.lower() for x in brown.words() if x not in puncs)
+>>> token_counts = Counter(word_list)
+>>> token_counts.most_common(20)[('the', 69971),
+('of', 36412),
+('and', 28853),('to', 26158),
+('a', 23195),
+('in', 21337),('that', 10594),
+('is', 10109),
+('was', 9815),('he', 9548),
+('for', 9489),
+('it', 8760),('with', 7289),
+('as', 7253),
+('his', 6996),('on', 6741),
+('be', 6377),
+('at', 5372),('by', 5306),
+('i', 5164)]
+A quick glance shows that the word frequenc ies in the Brown corpus follow the loga-
+rithmic relationship Zipf predicted. “The” (rank 1 in term frequency) occurs roughly
+twice as often as “of” (rank 2 in term fr equency), and roughly three times as often as
+“and” (rank 3 in term frequency). If yo u don’t believe us, use the example codeThe Brown corpus 
+is about 3MB.
+words() is a built-in method of the 
+NTLK corpus object that returns the 
+tokenized corpus as a sequence of strs.
+You’ll learn about part-of-speech 
+tagging in chapter 2.
+ 
+
+86 CHAPTER  3Math with words (TF-IDF vectors)
+(https:/ /github.com/totalgood/nlpia/blo b/master/src/nlpia/ book/examples/ch03
+_zipf.py ) in the nlpia  package to see this yourself.
+ In short, if you rank the words of a co rpus by the number of occurrences and list
+them in descending order, you’ll find that , for a sufficiently large sample, the first
+word in that ranked list is twice as likely to occur in the corpus as the second word in
+the list. And it is four times as likely to appe ar as the fourth word in the list. So given a
+large corpus, you can use this breakdown to say statistically how likely a given word is
+to appear in any given do cument of that corpus. 
+3.4 Topic modeling
+Now back to your document vectors. Word counts are useful, but pure word count,
+even when normalized by the length of the document, doesn’t tell you much about
+the importance of that word in that document relative  to the rest of the documents in
+the corpus. If you could suss out that inform ation, you could start to describe docu-
+ments within the corpus. Say you have a corp us of every kite book ever written. “Kite”
+would almost surely occur many times in every book (document) you counted, but
+that doesn’t provide any new information; it doesn’t help dist inguish between those
+documents. Whereas so mething like “construction” or  “aerodynamics” might not be
+so prevalent across the entire corpus, but fo r the ones where it frequently occurred,
+you would know more about each document’s  nature. For this you need another tool.
+ Inverse document frequency, or IDF, is yo ur window through Zipf in topic analysis.
+Let’s take your term frequency counter from  earlier and expand on it. You can count
+tokens and bin them up two ways: per document and across the entire corpus. You’re
+going to be counting just by document.
+ Let’s return to the Kite example from  Wikipedia and grab another section (the
+History section); say it’s the second  document in your Kite corpus:
+Kites were invented in China, where materi als ideal for kite building were readily
+available: silk fabric for sail material; fine , high-tensile-strength silk for flying line;
+and resilient bamboo for a strong, lightweight framework.
+The kite has been claimed as the invention of the 5th-century BC Chinese
+philosophers Mozi (also Mo Di) and Lu  Ban (also Gongshu Ban). By 549 AD
+paper kites were certainly being flown, as it was recorded that in that year a paperkite was used as a message for a rescue  mission. Ancient and medieval Chinese
+sources describe kites being used for meas uring distances, testing the wind, lifting
+men, signaling, and communication for mi litary operations. The earliest known
+Chinese kites were flat (not  bowed) and often rectangula r. Later, tailless kites
+incorporated a stabilizing bowline. Kites were decorated with mythological motifs
+and legendary figures; some were fitted wi th strings and whistles to make musical
+sounds while flying. From China, kites were introduced to Cambodia, Thailand,
+India, Japan, Korea and the western world.
+After its introduction into India, the kite further evolved into the fighter kite, known
+as the patang in India, where thousands are flown every year on festivals such asMakar Sankranti.
+ 
+
+87 Topic modeling
+Kites were known throughout Polynesia,  as far as New Zealand, with the
+assumption being that the knowledge diff used from China along with the people.
+Anthropomorphic kites made from cloth and wood were used in religious ceremoniesto send prayers to the gods. Polynesian kite  traditions are used by anthropologists get
+an idea of early “primitive” Asian traditions that are believed to have at one timeexisted in Asia.
+Wikipedia
+First let’s get the total word count for each  document in your corpus, intro_doc and
+history_doc:
+>>> from nlpia.data.loaders import kite_text, kite_history
+>>> kite_intro = kite_text.lower()
+>>> intro_tokens = tokenizer.tokenize(kite_intro)
+>>> kite_history = kite_history.lower()>>> history_tokens = tokenizer.tokenize(kite_history)
+>>> intro_total = len(intro_tokens)
+>>> intro_total363>>> history_total = len(history_tokens)
+>>> history_total
+297
+Now with a couple tokenized kite documents in hand, let’s look at the term frequency
+of “kite” in each document. You’ll store th e TFs you find in two dictionaries, one for
+each document:
+>>> intro_tf = {}
+>>> history_tf = {}>>> intro_counts = Counter(intro_tokens)
+>>> intro_tf['kite'] = intro_counts['kite'] / intro_total
+>>> history_counts = Counter(history_tokens)>>> history_tf['kite'] = history_counts['kite'] / history_total
+>>> 'Term Frequency of "kite" in intro is: {:.4f}'.format(intro_tf['kite'])
+'Term Frequency of "kite" in intro is: 0.0441'>>> 'Term Frequency of "kite" in history is: {:.4f}'\
+... .format(history_tf['kite'])
+'Term Frequency of "kite" in history is: 0.0202'
+Okay, you have a number twice as large as the other. Is the intro section twice as much
+about kites? No, not really. So let’s dig a little deeper. First, let’s see how those num-
+bers relate to some other word, say “and”:
+>>> intro_tf['and'] = intro_counts['and'] / intro_total
+>>> history_tf['and'] = history_counts['and'] / history_total>>> print('Term Frequency of "and" in intro is: {:.4f}'\
+... .format(intro_tf['and']))
+Term Frequency of "and" in intro is: 0.0275>>> print('Term Frequency of "and" in history is: {:.4f}'\
+... .format(history_tf['and']))
+Term Frequency of "and" in history is: 0.0303“A kite is traditionally … ?” 
+“a kite is traditionally …”
+ 
+
+88 CHAPTER  3Math with words (TF-IDF vectors)
+Great! Y ou know both of these documents are about “and” just as much as they are
+about “kite”! Oh, wait. That’s no t helpful, huh? Just as in your first example, where the
+system seemed to think “the” was the most  important word in the document about
+your fast friend Harry, in this example “a nd” is considered highly relevant. Even at
+first glance, you can tell this isn’t revelatory.
+ A good way to think of a term’s inverse document frequency is this: How strange is
+it that this token is in this document? If a term appears in one document a lot of
+times, but occurs rarely in the rest of th e corpus, one could assume it’s important to
+that document specifically. Your first step toward topic analysis!
+ A term’s IDF is merely the ratio of the total number of documents to the number
+of documents the term appears in. In the case of “and” and “kite” in your current
+example, the answer is the same for both:
+2 total documents / 2 docume nts contain “and” = 2/2 = 1
+2 total documents / 2 document s contain “kite” = 2/2 = 1
+Not very interesting. So let’s look at another word “China.”
+2 total documents / 1 document contains “China” = 2/1 = 2
+Okay, that’s something different. Let’s use this  “rarity” measure to weight the term fre-
+quencies:
+>>> num_docs_containing_and = 0
+>>> for doc in [intro_tokens, history_tokens]:
+... if 'and' in doc:
+... num_docs_containing_and += 1
+And let’s grab the TF of “China” in the two documents:
+>>> intro_tf['china'] = intro_counts['china'] / intro_total>>> history_tf['china'] = history_counts['china'] / history_total
+And finally, the IDF for all three. You’ll store the IDFs in dict ionaries per document
+like you did with TF:
+>>> num_docs = 2
+>>> intro_idf = {}>>> history_idf = {}
+>>> intro_idf['and'] = num_docs / num_docs_containing_and
+>>> history_idf['and'] = num_docs / num_docs_containing_and>>> intro_idf['kite'] = num_docs / num_docs_containing_kite
+>>> history_idf['kite'] = num_docs / num_docs_containing_kite
+>>> intro_idf['china'] = num_docs / num_docs_containing_china>>> history_idf['china'] = num_docs / num_docs_containing_china
+And then for the intro document you find:
+>>> intro_tfidf = {}>>> intro_tfidf['and'] = intro_tf['and'] * intro_idf['and']
+>>> intro_tfidf['kite'] = intro_tf['kite'] * intro_idf['kite']
+>>> intro_tfidf['china'] = intro_tf['china'] * intro_idf['china']similarly for “kite” 
+and “China”
+ 
+
+89 Topic modeling
+And then for the history document:
+>>> history_tfidf = {}
+>>> history_tfidf['and'] = history_tf['and'] * history_idf['and']>>> history_tfidf['kite'] = history_tf['kite'] * history_idf['kite']
+>>> history_tfidf['china'] = history_tf['china'] * history_idf['china']
+3.4.1 Return of Zipf
+You’re almost there. Let’s say, though, you have a corpus of  1 million documents
+(maybe you’re baby-Google), someone searches  for the word “cat,” and in your 1 mil-
+lion documents you have exactly 1 document  that contains the word “cat.” The raw
+IDF of this is
+1,000,000 / 1 = 1,000,000
+Let’s imagine you have 10 docu ments with the word “dog” in  them. Your IDF for “dog” is
+1,000,000 / 10 = 100,000
+That’s a big difference. Your friend Zipf would say that’s too big, because it’s likely to
+happen a lot. Zipf’s Law showed that when  you compare the freq uencies of two words,
+like “cat” and “dog,” even if they occur a similar number of times, the more frequent
+word will have an exponentially higher freque ncy than the less frequent one. So Zipf’s
+Law suggests that you scale all your word frequencies (and document frequencies)
+with the log()  function, the inverse of exp() . This ensures that words such as “cat”
+and “dog,” which have similar counts, aren’t  exponentially different in frequency. And
+this distribution of word frequencies will ensure that your TF-IDF scores are more uni-
+formly distributed. So you should redefine ID F to be the log of th e original probability
+of that word occurring in one of your docu ments. You’ll want to take the log of the
+term frequency as well.10
+ The base of log function isn’t important,  because you only want to make the fre-
+quency distribution uniform, not to scal e it within a particular numerical range.11 If
+you use a base 10 log function, you’ll get:
+search: cat
+idf = log(1,000,000/1) = 6
+search: dog
+idf = log(1,000,000/10) = 5
+S o  n o w  y o u ’ r e  w e i g h t i n g  t h e  T F  r e s u l t s  o f  e a c h  m o r e  a p p r o p r i a t e l y  t o  t h e i r  o c c u r -
+rences in language, in general.
+10Gerard Salton and Chris Buckley first demonstrated the usefulness of log scaling for information retrieval in
+their paper Term Weighting Approach es in Automatic Text Retrieval ( https:/ /ecommons.cornell.edu/bit-
+stream/handle/1813/6721/87-881.pdf ).
+11Later we show you how to normalize the TF-IDF vectors a fter all the TF-IDF values have been calculated using
+this log scaling.
+ 
+
+90 CHAPTER  3Math with words (TF-IDF vectors)
+ And then finally, for a given term, t, in a given document, d, in a corpus, D, you get:
+So the more times a word appears in the document, the TF (and hence the TF-IDF)
+will go up. At the same time , as the number of documents that contain that word goes
+up, the IDF (and hence the TF-IDF) for that word will go down. So now, you have a
+number—something your computer can chew on . But what is it exactly? It relates a
+specific word or token to a sp ecific document in a specific corpus, and then it assigns
+a numeric value to the importance of that word in the given document, given its usage
+across the entire corpus.
+ In some classes, all the calc ulations will be done in log space so that multiplications
+become additions and divi sion becomes subtraction:
+>>> log_tf = log(term_occurences_in_doc) -\
+... log(num_terms_in_doc)
+>>> log_log_idf = log(log(total_num_docs) -\
+... log(num_docs_containing_term))>>> log_tf_idf = log_tf + log_idf
+This single number, the TF-IDF, is the humble foundation of a simple search engine.
+As you’ve stepped from the realm of text fi rmly into the realm of numbers, it’s time
+for some math. You won’t likely ever have to implement the preceding formulas for
+computing TF-IDF. Linear algebra isn’t nece ssary for full understanding of the tools
+used in natural language processing, but a general familiarity with how the formulas
+work can make their use more intuitive. 
+3.4.2 Relevance ranking
+As you saw earlier, you can easily compare two vectors and get their similarity, but you
+have since learned that merely counting wo rds isn’t as descriptive as using their TF-
+IDF. Therefore, in each document vector let’s replace each word’s word_count with
+the word’s TF-IDF. Now your vectors will more thoroughly reflect the meaning, or
+topic, of the document, as shown in this Harry example:
+>>> document_tfidf_vectors = []
+>>> for doc in docs:
+... vec = copy.copy(zero_vector)idf(t, D) = log number of documents conta ining tnumber of documentscount( d)count (t)tf(t, d) =  
+tfidf(t, d, D) = tf(t, d) * idf(t, D)
+Log probability of a particular
+term in a particular document Log of the log probability of a particular
+term occurring at least once in a
+document—the first lo g is to linearize
+the IDF (compensate for Zipf’s Law)
+Log TF-IDF is the log of the 
+product of TF and IDF or the sum of the logs of TF and IDF .
+You need to copy the zero_vector  to create a new,
+separate object. Otherwise you’d end up overwriting
+the same object/vector each time through the loop.
+ 
+
+91 Topic modeling
+... tokens = tokenizer.tokenize(doc.lower())
+... token_counts = Counter(tokens)
+...... for key, value in token_counts.items():
+... docs_containing_key = 0
+... for _doc in docs:... if key in _doc:
+... docs_containing_key += 1
+... tf = value / len(lexicon)... if docs_containing_key:
+... idf = len(docs) / docs_containing_key
+... else:... idf = 0
+... vec[key] = tf * idf
+... document_tfidf_vectors.append(vec)
+With this setup, you have K-dimensional ve ctor representation of each document in
+the corpus. And now on to the hunt! Or sear ch, in your case. Two vectors, in a given
+vector space, can be said to be similar if they have a similar angle. If you imagine each
+vector starting at the origin and reaching  out its prescribed distance and direction,
+the ones that reach out at the same angle ar e similar, even if they don’t reach out to
+the same distance.
+ Two vectors are considered similar if their cosine similarity is high, so you can find
+two similar vectors near each  other if they minimize:
+Now you have all you ne ed to do a basic TF-IDF-based search. You can treat the search
+query itself as a document, and therefore get the TF-IDF-based vector representation
+of it. The last step is then to find the documents whose vectors have the highest cosine
+similarities to the query and retu rn those as the search results.
+ If you take your three documents abou t Harry, and make the query “How long
+does it take to get to the store?” as shown here
+>>> query = "How long does it take to get to the store?"
+>>> query_vec = copy.copy(zero_vector)
+>>> query_vec = copy.copy(zero_vector)
+>>> tokens = tokenizer.tokenize(query.lower())
+>>> token_counts = Counter(tokens)
+>>> for key, value in token_counts.items():
+... docs_containing_key = 0
+... for _doc in documents:
+... if key in _doc.lower():... docs_containing_key += 1
+... if docs_containing_key == 0:
+... continuecos Θ = A · B
+|A| |B|
+copy.copy() ensures you’re dealing 
+with separate objects, not multiple 
+references to the same object.
+You didn’t find that token in the 
+lexicon, so go to the next key.
+ 
+
+92 CHAPTER  3Math with words (TF-IDF vectors)
+... tf = value / len(tokens)
+... idf = len(documents) / docs_containing_key
+... query_vec[key] = tf * idf>>> cosine_sim(query_vec, document_tfidf_vectors[0])
+0.5235048549676834
+>>> cosine_sim(query_vec, document_tfidf_vectors[1])0.0
+>>> cosine_sim(query_vec, document_tfidf_vectors[2])
+0.0
+you can safely say document 0 has the most  relevance for your query! And with this
+you can find relevant documents in any corpus , be it articles in Wikipedia, books from
+Gutenberg, or tweets from the wild west  that is Twitter. Google look out!
+ Actually, Google’s search engine is safe from competition from us. You have to do an
+“index scan” of your TF-IDF vectors with each query. That’s an O(N) algorithm. Mostsearch engines can respond in consta nt time (O(1)) because they use an inverted
+index .
+12 You aren’t going to implement an index that can find these matches in constant
+time here, but if you’re inte rested you might like explorin g the state-of-the-art Python
+implementation in the Whoosh13 package and its source code.14 Instead of showing you
+how to build this conventional keyword-base d search engine, in chapter 4 we show you
+the latest semantic indexing approach es that capture the meaning of text.
+TIP In the preceding code, you dropped the keys that weren’t found in the
+lexicon to avoid a divide-by-zero error.  But a better approach is to +1 the
+denominator of every IDF calculation,  which ensures no denominators are
+zero. In fact this approach—called additive smoothing (Laplace smoothing)15—
+will usually improve the search result s for TF-IDF keyword-based searches.
+Keyword search is only one tool in your NLP pipeline. You want to build a chatbot.
+But most chatbots rely heavily on a search engine. And some chatbots rely exclusively
+on a search engine as their only algorithm for generating responses. You need to take
+one additional step to turn your simple search index (TF-IDF) into a chatbot. You
+need to store your training data in pairs of questions (or statements) and appropriate
+responses. Then you can use TF-IDF to sear ch for a question (or statement) most like
+the user input text. Instead of returning th e most similar statement in your database,
+you return the response associated with th at statement. Like any tough computer sci-
+ence problem, ours can be solved with one more layer of indirect ion. And with that,
+you’re chatting!
+12See the web page titled “Inverted index” ( https:/ /en.wikipedia.org/wiki/Inverted_index ).
+13See the web page titled “Whoosh” ( https:/ /pypi.python.org/pypi/Whoosh ).
+14See the web page titled “GitHub - Mplsbeb/whoosh: A fast pure-Python search engine” ( https:/ /github.com/
+Mplsbeb/whoosh ).
+15See the web page titled “Additive smoothing” ( https:/ /en.wikipedia.org/wiki/Additive_smoothing) .
+ 
+
+93 Topic modeling
+3.4.3 Tools
+Now that was a lot of code for things that have long since been automated. You can
+find a quick path to the same result using the scikit-learn  package.16 If you
+haven’t already set up your environment us ing appendix A so that it includes this
+package, here’s one way to install it:
+pip install scipy
+pip install sklearn
+Here’s how you can use sklearn to build a TF -IDF matrix. The sklearn TF-IDF class is a
+model  with .fit()  and .transform()  methods that comply with the sklearn API for
+all machine learning models:
+>>> from sklearn.feature_extraction.text import TfidfVectorizer
+>>> corpus = docs>>> vectorizer = TfidfVectorizer(min_df=1)>>> model = vectorizer.fit_transform(corpus)>>> print(model.todense().round(2))[[0.16 0. 0.48 0.21 0.21 0. 0.25 0.21 0. 0. 0. 0.21 0. 0.64
+0.21 0.21]
+[0.37 0. 0.37 0. 0. 0.37 0.29 0. 0.37 0.37 0. 0. 0.49 0.
+0. 0. ]
+[0. 0.75 0. 0. 0. 0.29 0.22 0. 0.29 0.29 0.38 0. 0. 0.
+0. 0. ]]
+With scikit-learn , in four lines you created a matrix of your three documents and
+the inverse document frequency for each term in the lexicon. You have a matrix (prac-tically a list of lists in Python) that repr esents the three documents (the three rows of
+the matrix). The TF-IDF of each term, token,  or word in your lexicon make up the col-
+umns of the matrix (or again, the indices of each row). They only have 16, as they
+tokenize differently and drop the punctu ation; you had a comma and a period. On
+large texts this or some othe r pre-optimized TF-IDF model w ill save you scads of work. 
+3.4.4 Alternatives
+TF-IDF matrices (term-document matrices) have been the mainstay of information
+retrieval (search) for decades. As a result, researchers and corporations have spent alot of time trying to optimize that IDF pa rt to try to improve the relevance of search
+16See the web page titled “scikit-learn: machine learning in Python” ( http:/ /scikit-learn.org/ ).The TFIDFVectorizer model produces  a sparse numpy matrix, because
+a TF-IDF matrix usually contains mo stly zeros, since most documents
+use a small portion of the tota l words in the vocabulary.
+The .todense() method converts a sparse matrix
+back into a regular numpy matrix (filling in the
+gaps with zeros) for your viewing pleasure.
+ 
+
+94 CHAPTER  3Math with words (TF-IDF vectors)
+results. Table 3.1 lists some of the ways you can normalize and smooth your term fre-
+quency weights.17
+Search engines (information retrieval systems) match ke ywords (terms) between que-
+ries and documents in a corpus. If you’re bu ilding a search engine  and want to provide
+documents that are likely to match what your users are lo oking for, you should spend
+some time investigating the alternatives described by Piero Molino in table 3.1.Table 3.1 Alternative TF-IDF normalization approaches (Molino 2017)
+Scheme Definition
+17Word Embeddings Past, Present and Future  by Piero Molino at AI with the Best 2017.None 
+TF-IDFTF-ICFOkapi BM25  
+ATC
+LTU
+MI
+PosMI
+T-Test
+x
+2
+Lin98a
+Lin98b
+Gref94N
+njwij  = fij 
+wij  = log( fij) × log(    )
+wij  = log( fij) × log(    )
+wij  =                           log
+ wij  =
+wij  =
+wij  = log
+wij  = max(0, MI)
+wij  =
+wij  =
+wij  = −1 × log
+wij  =N
+fj
+fj
+fj
+jfij
+0.5+1.5 ×        + fij
+fij N
+max f nj(0.5+0.5 ×         ) log(    )N −nj +0.5
+fij +0.5
+fij N
+max f njΣ      [(0.5+0.5 ×         ) log(    ) ]2√
+√N
+i=1
+j
+fj(log( fij)+1.0)log(     )
+0.8+0.2 ×fj ×N
+nj
+P(tij |cj )
+P(tij )P(cj )
+P(tij |cj )−P(tij )P(cj )
+P(tij )P(cj )
+fij ×f
+fi ×fj
+Nnj
+log fij +1
+log nj +1See section 4.3.5 of From Distributional to Semantic Similarity  
+(https:/ /www.era.lib.ed.ac.uk/bitstream/handle/1842/563/
+IP030023.pdf#subsection.4.3.5 ) by James Richard Curran
+ 
+
+95 Topic modeling
+ One such alternative to using straight TF-I DF cosine distance to  rank query results
+is Okapi BM25, or its most recent variant, BM25F. 
+3.4.5 Okapi BM25
+The smart people at London’s City University came up with a better way to rank
+search results. Rather than merely computing the TF-IDF cosine similarity, they nor-
+malize and smooth the similarity. They also ignore duplicate terms in the query docu-
+ment, effectively clipping the term frequenc ies for the query vector at 1. And the dot
+product for the cosine similarity isn’t norm alized by the TF-IDF vector norms (num-
+ber of terms in the document and the quer y), but rather by a nonlinear function of
+the document length itself:
+q_idf * dot(q_tf, d_tf[i]) * 1.5 /
+➥(dot(q_tf, d_tf[i]) + .25 + .75 * d_num_words[i] / d_num_words.mean()))
+You can optimize your pipeline by choos ing the weighting scheme that gives your
+users the most relevant results. But if your  corpus isn’t too large, you might consider
+forging ahead with us into even more us eful and accurate representations of the
+meaning of words and documents. In subseq uent chapters, we show you how to imple-
+ment a semantic search engine that find s documents that “mean” something similar
+to the words in your query rather than ju st documents that use those exact words from
+your query. Semantic search is much better  than anything TF-IDF weighting and stem-
+ming and lemmatization can ever hope to achieve. The only reason Google and Bing
+and other web search engines don’t use the semantic search  approach is that their
+corpus is too large. Semantic word and topi c vectors don’t scale to billions of docu-
+ments, but millions of documents are no problem.
+ So you only need the most basic TF-IDF ve ctors to feed into your pipeline to get
+state-of-the-art performance for semantic search, document  classification, dialog sys-
+tems, and most of the other applications we  mentioned in chapter 1. TF-IDFs are the
+first stage in your pipeline, the most basic set of features you’ll extract from text. In
+the next chapter, we compute topic vectors from your TF-IDF ve ctors. Topic vectors
+are an even better representation of the meaning of the content of a bag of words
+than any of these carefully normalized an d smoothed TF-IDF vectors. And things only
+get better from there as we move on to Word2vec word vectors in chapter 6 and neu-
+ral net embeddings of the meaning of wo rds and documents in later chapters. 
+3.4.6 What’s next
+Now that you can convert natural language te xt to numbers, you can begin to manipu-
+late them and compute with them. Numbers firmly in hand, in the next chapter you’llrefine those numbers to try to represent the meaning  or topic of natural language text
+instead of only its words.
+ 
+
+96 CHAPTER  3Math with words (TF-IDF vectors)
+Summary
+Any web-scale search engine  with millisecond response  times has the power of a
+TF-IDF term document matrix hidden under the hood.
+Term frequencies must be  weighted by their inverse document frequency to
+ensure the most important, most me aningful words are given the heft they
+deserve.
+Zipf’s law can help you predict the freque ncies of all sorts of things, including
+words, characters, and people.
+The rows of a TF-IDF term document matrix can be used as a vector representa-tion of the meanings of those individual words to create a vector space model of
+word semantics.
+Euclidean distance and similarity between pairs of high dimensional vectorsdoesn’t adequately represent their similarity for most NLP applications.
+Cosine distance, the amount of “overl ap” between vectors, can be calculated
+efficiently by just multiplying the elemen ts of normalized vectors together and
+summing up those products.
+Cosine distance is the go-to similarity  score for most natural language vector
+representations. 
+ 
+

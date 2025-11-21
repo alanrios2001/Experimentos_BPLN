@@ -1,0 +1,951 @@
+155Baby steps with neural
+networks (perceptrons
+and backpropagation)
+In recent years, a lot of hype has develo ped around the promise of neural networks
+and their ability to classify and identify input data, and more recently the ability of
+certain network architectures to generate  original content. Companies large and
+small are using them for everything from image captioning and self-driving car nav-
+igation to identifying solar panels from satellite images and recognizing faces in
+security camera videos. And luckily for us , many NLP applications of neural nets
+exist as well. While deep neural networks  have inspired a lot of hype and hyper-
+bole, our robot overlo rds are probably further off than  any clickbait cares to admit.
+Neural networks are, howeve r, quite powerful tools, and you can easily use them in
+an NLP chatbot pipeline to classify in put text, summarize documents, and even
+generate novel works.This chapter covers
+Learning the history of neural networks
+Stacking perceptrons
+Understanding backpropagation
+Seeing the knobs to turn on neural networks
+Implementing a basic neural network in Keras
+ 
+
+156 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+ This chapter is intended as a primer fo r those with no experience in neural net-
+works. We don’t cover anything specific to  NLP in this chapter, but gaining a basic
+understanding of what is going on under the hood in a neural network is important for
+the upcoming chapters. If you’re familiar wi th the basics of a neural network, you can
+rest easy in skipping ahead to  the next chapter, where you di ve back into processing text
+with the various flavors of neural nets. Although the mathematics of the underlying
+algorithm, backpropagation , are outside this book’s scope, a high-level grasp of its basic
+functionality will help you understand language and the patterns hidden within.
+TIP Manning publishes two other tremendo us resources on deep learning:
+Deep Learning with Python , by François Chollet (Manning, 2017), is a deep
+dive into the wonders of deep learning by the creator of Keras himself.
+Grokking Deep Learning , by Andrew Trask (Manni ng, 2017), is a broad
+overview of deep learni ng models and practices.
+5.1 Neural networks, the ingredient list
+As the availability of processing power an d memory has exploded over the course of
+the decade, an old technology has come into its own again. First proposed in the
+1950s by Frank Rosenblatt, the perceptron1 offered a novel algorithm for finding pat-
+terns in data.
+  The basic concept lies in a rough mimicr y of the operation of a living neuron cell.
+As electrical signals flow into the cell through the dendrites  (see figure 5.1) into the
+nucleus, an electric charge begins to build  up. When the cell reaches a certain level of
+charge, it fires, sending an electri-
+cal signal out through the axon.
+However, the dendrites aren’t allcreated equal. The cell is more
+“sensitive” to signals through cer-
+tain dendrites than others, so ittakes less of a signal in thosepaths to fire the axon.
+    The biology that controls these
+relationships is most certainlybeyond the scope of this book,
+but the key concept to notice
+here is the way the cell weights
+incoming signals when deciding when to fire. The neuron will dynamically change
+those weights in the decision making process over the course of its life. You are going
+to mimic that process.
+1Rosenblatt, Frank (1957), “The perceptron—a perceiving and recognizing automaton.” Report 85-460-1, Cor-
+nell Aeronautical Laboratory.Dendrite
+NucleusAxon
+Figure 5.1 Neuron cell
+ 
+
+157 Neural networks, the ingredient list
+5.1.1 Perceptron
+Rosenblatt’s original project was to teach a machine to recognize images. The original
+perceptron was a conglomeration of phot o-receptors and potentiometers, not a com-
+puter in the current sense. But implementation specifics aside, Rosenblatt’s concept
+was to take the features of an image and assign a weight, a measure of importance, to
+each one. The features of the input image were each a small subsection of the image.
+ A grid of photo-receptors would be expose d to the image. Each receptor would see
+one small piece of the image. The brightne ss of the image that a particular photo-
+receptor could see would determine the strength of the signal that it would send tothe associated “dendrite.”
+ E a c h  d e n d r i t e  h a d  a n  a s s o c i a t e d  w e i g h t  i n  t h e  f o r m  o f  a  p o t e n t i o m e t e r .  O n c e
+enough signal came in, it would pass the si gnal into the main body of the “nucleus” of
+the “cell.” Once enough of those signals fr om all the potentiometers passed a certain
+threshold, the perceptron would fire down it s axon, indicating a po sitive match on the
+image it was presented with. If it didn’t fire  for a given image, that was a negative clas-
+sification match. Think “hot dog, not ho t dog” or “iris setosa, not iris setosa.”
+5.1.2 A numerical perceptron
+So far there has been a lot of hand wavi ng about biology and electric current and
+photo-receptors. Let’s pause for a second and peel out the most important parts of
+this concept.
+ Basically, you’d like to take an example fr om a dataset, show it to an algorithm, and
+have the algorithm say yes or no. That’s al l you’re doing so far. The first piece you
+need is a way to determine the features  of the sample. Choosing appropriate features
+turns out to be a surprising ly challenging part of machine learning. In “normal”
+machine learning problems, like predicting home prices, your features might besquare footage, last sold price, and ZIP code. Or perhaps you’d like to predict the spe-cies of a certain flower using the Iris dataset.
+2 In that case your features would be petal
+length, petal width, sepal length, and sepal width.
+ I n  R o s e n b l a t t ’ s  e x p e r i m e n t ,  t h e  f e a t u r e s  w e r e  t h e  i n t e n s i t y  v a l u e s  o f  e a c h  p i x e l
+(subsections of the image), one pixel per photo receptor. You then need a set ofweights to assign to each of the features. Don’t worry yet about where these weights
+come from. Just think of them as a percentage of the signal to let through into theneuron. If you’re familiar with linear regression, then you probably already know
+where these weights come from.
+3
+ 
+2The Iris dataset is frequently used to introduce mach ine learning to new students. See the Scikit-Learn docs
+(http:/ /scikit-learn.org/stable/auto_ex amples/datasets/plot_iris_dataset.html ).
+3The weights for the inputs to a single neuron are mathem atically equivalent to the slopes in a multivariate
+linear regression or logistic regression.
+ 
+
+158 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+TIP Generally, you’ll see the individual features denoted as xi, where i is a
+reference integer. And the collection of  all features for a given example are
+denoted as X representing a vector:
+X = [x1, x2, …, xi, …, xn]
+And similarly, you’ll see the associate weights for each feature as wi, where i
+corresponds to the index of feature x associated with that weight. And the
+weights are generally represented as a vector W:
+W = [w1, w2, …, wi, …, wn]
+With the features in hand, you just multiply each feature ( xi) by the corresponding
+weight (w i) and then sum up:
+ (x1 * w1) + (x2 * w2) + … + ( xi * wi) + …
+The one piece you’re missing here is the ne uron’s threshold to fire or not. And it’s
+just that, a threshold. Once the weighted su m is above a certain threshold, the percep-
+tron outputs 1. Otherwise it outputs 0.
+ You can represent this threshold with a simple step function (labeled “Activation
+Function” in figure 5.2). 
+Figure 5.2 Basic perceptron
+5.1.3 Detour through bias
+Figure 5.2 and this example reference bias. What is this? The bias is an “always on”
+input to the neuron. The neuron has a weight dedicated to it just as with every other
+element of the input, and that weight is trained along with the others in the exactsame way. This is represented in two ways in the various literature around neural net-
+works. You may see the input represente d as the base input vector, say of n-elements,0 or 1x
+yt01
+bias unitsum( W * X) + wbActivation Function
+t = threshold
+1x0
+x1
+x2
+wbw1w0
+w2
+ 
+
+159 Neural networks, the ingredient list
+with a 1 appended to the beginning or the end of the vector, giving you an n+1 dimen-
+sional vector. The position of the 1 is irrelevant to the network, as long as it’s consis-
+tent across all of your samp les. Other times pe ople presume the existence of the bias
+term and leave it off the input in a diagram,  but the weight associated with it exists
+separately and is always mu ltiplied by 1 and added to the dot product of the sample
+input’s values and their associated weights. Both are effectively the same—just a
+heads-up to notice the two common ways of displaying the concept.
+ The reason for having the bias  weight at all is that you need the neuron to be resil-
+ient to inputs of all zeros. It  may be the case that the network needs to learn to output
+0 in the face of inputs of 0, but it may no t. Without the bias term, the neuron would
+output 0 * weight = 0 for any weights you star ted with or tried to learn. With the bias
+term, you won’t have this prob lem. And in case the neuron needs to learn to output 0,
+in that case, the neuron can learn to decr ement the weight associated with the bias
+term enough to keep the dot product below the threshold.
+ Figure 5.3 is a rather neat  visualization of the analogy between some of the signals
+within a biological neuron in your brain and the signals of an  artificial neuron used for
+deep learning. If you want to  get deep, think about how you are using a biological neu-
+ron to read this book about natural language  processing to learn about deep learning.4
+Figure 5.3 A perceptron and a biological neuron
+And in mathematical terms, the ou tput of your perceptron, denoted f(x), looks like
+Equation 5.1 Threshold activation function 
+4Natural language understanding (NLU) is a term often us ed in academic circles to refer to natural language
+processing when that processing ap pears to demonstrate that the machine understands natural language text.
+Word2vec embeddings are one example of a natural language understanding task. Question answering andreading comprehension tasks also demonstrate understa nding. Neural networks in general are very often
+associated with natural language understanding.++Activation Output
+Axon
+DendriteyzInputs
+Xb = 1
+X0 
+...
+Xn 
+n
+f(x) = 1 if      xiwi > threshol d else 0   Σ
+i=0
+ 
+
+160 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+TIP The sum of the pairwise multiplications of the input vector ( X) and the
+weight vector ( W) is exactly the dot product of the two vectors. This is the
+most basic element of why linear algebra  factors so heavily in the development
+of neural networks. The other side effect  of this matrix multiplication struc-
+ture of a perceptron is that GPUs in modern computers turn out to be super-efficient at implementing neural networ ks due to their hyper-optimization of
+linear algebra operations.
+Your perceptron hasn’t learned  anything just yet. But yo u have achieved something
+quite important. You’ve passed data into a model and received an output. That output
+is likely wrong, given you said nothing a bout where the weight va lues come from. But
+this is where things will get interesting.
+TIP The base unit of any neural network is the neuron. And the basic per-
+ceptron is a special case of the more generalized neuron. We refer to theperceptron as a neuron for now.
+A PYTHONIC  NEURON
+Calculating the output of the neuron descri bed earlier is straightforward in Python.
+You can also use the numpy dot function to multiply yo ur two vectors together:
+>>> import numpy as np
+>>> example_input = [1, .2, .1, .05, .2]
+>>> example_weights = [.2, .12, .4, .6, .90]
+>>> input_vector = np.array(example_input)
+>>> weights = np.array(example_weights)
+>>> bias_weight = .2
+>>> activation_level = np.dot(input_vector, weights) +\
+... (bias_weight * 1)>>> activation_level
+0.674
+With that, if you use a simple threshold ac tivation function and choose a threshold of
+.5, your next step is the following:
+>>> threshold = 0.5
+>>> if activation_level >= threshold:... perceptron_output = 1
+... else:
+... perceptron_output = 0>>> perceptron_output)
+1
+Given the example_input, and that particular set of weights, this perceptron will out-
+put 1. But if you have se veral example_input vectors and the associated expectedThe multiplication by one (* 1) is just to emphasize 
+that the bias_weight is li ke all the other weights: 
+it’s multiplied by an input value, only the 
+bias_weight input feat ure value is always 1.
+ 
+
+161 Neural networks, the ingredient list
+outcomes with each (a labeled dataset), you can decide if the perceptron is correct or
+not for each guess . 
+CLASS IS IN SESSION
+So far you have set up a path toward making predictions based on data, which sets the
+stage for the main act: machine learning. The weight values up to this point have been
+brushed off as arbitrary values so far. In re ality, they are the key to the whole structure,
+and you need a way to “nudge” the weights up and down based on the result of theprediction for a given example.
+ The perceptron learns  by altering the weights up or down as a function of how
+wrong the system’s guess was for a given in put. But from where does it start? The
+weights of an untrained neuron start out random! Random values, near zero, are usu-
+ally chosen from a normal distribution. In the preceding example, you can see why
+starting the weights (including the bias weig ht) at zero would lead only to an output
+of zero. But establishing slig ht variations, without giving  any track through the neuron
+too much power, you have a foothold from where to be right and where to be wrong.
+ And from there you can start to learn. Ma ny different samples are shown to the sys-
+tem, and each time the weights are readju sted a small amount based on whether the
+neuron output was what you wanted or not. With enough examples (and under theright conditions), the error should  tend toward zero, and the system learns .
+ The trick is, and this is the key to the whol e concept, that each weight is adjusted by
+how much it contributed to the resulting erro r. A larger weight (which lets that data
+point affect the result more) should be blamed more for the rightness/wrongness of
+the perceptron’s output for that given input.
+ Let’s assume that your earlier 
+example_input  should have resulted in a 0 instead:
+>>> expected_output = 0
+>>> new_weights = []>>> for i, x in enumerate(example_input):
+... new_weights.append(weights[i] + (expected_output -\
+... perceptron_output) * x)
+>>> weights = np.array(new_weights)
+>>> example_weights
+[0.2, 0.12, 0.4, 0.6, 0.9]
+>>> weights
+[-0.8 -0.08 0.3 0.55 0.7]
+This process of exposing the network over  and over to the same training set can,
+under the right circumstances, lead to an accurate predictor even  on input that the
+perceptron has never seen. 
+LOGIC IS A FUN THING  TO LEARN
+So the preceding example was just some arbitrary numbers to  show how the math
+goes together. Let’s apply this to a problem. It’s a trivial toy problem, but itFor example, in the first index above: 
+new_weight = .2 + (0 - 1) * 1 = -0.8
+Original 
+weights 
+New 
+weights 
+ 
+
+162 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+demonstrates the basics of how you can teac h a computer a concep t, by only showing
+it labeled examples.
+ Let’s try to get the computer to unders tand the concept of logical OR. If either
+one side or the other of the expression is true (or both sides are), the logical OR state-ment is true. Simple enough. For this toy problem, you can easily  model every possible
+example by hand (this is rarely the case in reality). Each sample co nsists of two signals,
+each of which is either true (1) or false (0). See the following listing.
+>>> sample_data = [[0, 0], # False, False
+... [0, 1], # False, True
+... [1, 0], # True, False
+... [1, 1]] # True, True
+>>> expected_results = [0, # (False OR False) gives False
+... 1, # (False OR True ) gives True... 1, # (True OR False) gives True... 1] # (True OR True ) gives True
+>>> activation_threshold = 0.5
+You need a few tools to get started: numpy ju st to get used to doing vector (array) mul-
+tiplication, and random  to initialize the weights:
+>>> from random import random
+>>> import numpy as np
+>>> weights = np.random.random(2)/1000 # Small random floa t0<w< .001
+>>> weights
+[5.62332144e-04 7.69468028e-05]
+You need a bias as well:
+>>> bias_weight = np.random.random() / 1000>>> bias_weight
+0.0009984699077277136
+Then you can pass it through your pipeline and get a prediction for each of your four
+samples. See the following listing.
+>>> for idx, sample in enumerate(sample_data):
+... input_vector = np.array(sample)
+... activation_level = np.dot(input_vector, weights) +\... (bias_weight * 1)
+... if activation_level > activation_threshold:
+... perceptron_output = 1... else:
+... perceptron_output = 0Listing 5.1 OR problem setup
+Listing 5.2 Perceptron random guessing 
+ 
+
+163 Neural networks, the ingredient list
+... print('Predicted {}'.format(perceptron_output))
+... print('Expected: {}'.format(expected_results[idx]))
+... print()Predicted 0
+Expected: 0
+Predicted 0
+Expected: 1
+Predicted 0
+Expected: 1
+Predicted 0
+Expected: 1
+Your random weight values didn’t help your little neuron out that much—one right
+and three wrong. Let’s send it back to scho ol. Instead of just pr inting 1 or 0, you’ll
+update the weights at each iter ation. See the following listing.
+>>> for iteration_num in range(5):
+... correct_answers = 0
+... for idx, sample in enumerate(sample_data):
+... input_vector = np.array(sample)... weights = np.array(weights)
+... activation_level = np.dot(input_vector, weights) +\
+... (bias_weight * 1)... if activation_level > activation_threshold:
+... perceptron_output = 1
+... else:... perceptron_output = 0
+... if perceptron_output == expected_results[idx]:
+... correct_answers += 1... new_weights = []
+... for i, x in enumerate(sample):
+... new_weights.append(weights[i] + (expected_results[idx] -\... perceptron_output) * x)
+... bias_weight = bias_weight + ((expected_results[idx] -\
+... perceptron_output) * 1)... weights = np.array(new_weights)
+... print('{} correct answers out of 4, for iteration {}'\
+... .format(correct_answers, iteration_num))3 correct answers out of 4, for iteration 0
+2 correct answers out of 4, for iteration 1
+3 correct answers out of 4, for iteration 24 correct answers out of 4, for iteration 3
+4 correct answers out of 4, for iteration 4Listing 5.3 Perceptron learning
+This is where the magic happens. There are more  efficient ways of do ing this, but you broke
+it out into a loop to reinforce that each weight is updated by force of its input (xi). If an
+input was small or zero, the ef fect on that weight would be  minimal, regardless of the
+magnitude of the error. And conversely, the ef fect would be large if the input was large.The bias weight is updated
+as well, just like those
+associated with the inputs.
+ 
+
+164 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+Haha! What a good student your little perceptron is. By updating the weights in the
+inner loop, the perceptron is learning from its experience of the dataset. After the
+first iteration, it got two more correct (three out of four) than it did with random
+guessing (one out of four).
+ In the second iteration, it overcorrec ted the weights (chang ed them too much)
+and had to learn to backtrack with its adju stment of the weight s. By the time the
+fourth iteration completed, it had learned the relationships perfectly. The subsequent
+iterations do nothing to update the network, as there is an error of 0 at each sample,
+so no weight adjustments are made.
+ This is what is known as convergence . A model is said to converge when its error
+function settles to a minimum, or at least a consistent value. Sometimes you’re not so
+lucky. Sometimes a neural ne twork bounces around looking for optimal weights to sat-
+isfy the relationships in a batch of data and never converges. In se ction 5.8, you’ll see
+how an objective function or loss function  affects what your neur al net “thinks” are the
+optimal weights. 
+NEXT STEP
+The basic perceptron has an inherent flaw. If  the data isn’t linearly separable, or the
+relationship cannot be described by a linear relationship, the model won’t converge
+and won’t have any useful predictive power. It  won’t be able to predict the target vari-
+able accurately.
+ Early experiments were succ essful at learning to classify images based solely on
+example images and their classes. The init ial excitement of the concept was quickly
+tempered by the work of Minsky and Papert,5 who showed the perceptron was severely
+5Perceptrons by Minsky and Papert, 1969600
+500
+400300200
+100
+0
+–100
+2 1 3456789 1 0
+Figure 5.4 Linearly separable data 
+ 
+
+165 Neural networks, the ingredient list
+limited in the kinds of classi fications it can make. Minsky and Papert showed that if
+the data samples weren’t lin early separable into discre te groups, the perceptron
+wouldn’t be able to learn to classify the input data.
+ Linearly separable data po ints (as shown in figure 5.4) are no problem for a per-
+ceptron. Crossed up data will cause a single-neuron perceptron to forever spin its
+wheels without learning to predict anythi ng better than a random guess, a random
+flip of a coin. It’s not possible to draw a si ngle line between your two classes (dots and
+Xs) in figure 5.5.
+A perceptron finds a linear equation that describes the relationship between the fea-
+tures of your dataset and the target variable in your dataset. A perceptron is just doing
+linear regression. A perceptr on cannot describe a nonlinear equation or a nonlinear
+relationship.
+Local vs global minimum
+When a perceptron converges, it can be said to have found a linear equation that
+describes the relationship between the data  and the target variable. It doesn’t, how-
+ever, say anything about how good this de scriptive linear equation is, or how “mini-
+mum” the cost is. If there are multiple so lutions, multiple pos sible cost minimums,
+it will settle on one particular minimum determined by where its weights started. This
+is called a local minimum  because it’s the best (smallest cost) that could be found
+near where the weights started. It may not be the global minimum , which is the best
+you could ever find by searching all the possible weights. In most cases it’s not pos-
+sible to know if you’ve found the global minimum.600
+500
+400300200
+100
+–100
+0 10 15 20 25 50
+Figure 5.5 Nonlinearly separable data 
+ 
+
+166 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+A lot of relationships between data values aren’t linear, and there’s no good linear
+regression or linear equation that descri bes those relationships. And many datasets
+aren’t linearly separable into classes with lines or planes. Because most data in the
+world isn’t cleanly separable with lines and planes, the “proof” Minsky and Papertspublished relegated the perceptron to the storage shelves.
+ But the perceptron idea didn’t die easily . It resurfaced again when the Rumelhardt-
+McClelland collaboration effort (which  Geoffrey Hinton was involved in)
+6 showed you
+could use the idea to solve the XOR  problem with multiple perceptrons in concert.7
+The problem you solved with a single perceptron and no multilayer backpropagation
+was for a simpler problem, the OR problem. The key breakthrough by Rumelhardt-
+McClelland was the discovery of a way to allo cate the error appropriately to each of the
+perceptrons. The way they did this was to us e an old idea called backpropagation. With
+this idea for backpropagation across layers of neurons, the first modern neural net-
+work was born.
+ The basic perceptron has the inherent flaw  that if the data isn’t linearly separable,
+the model won’t converge to a soluti on with useful predictive power.
+NOTE The code in listing 5.3 solved the OR problem with a single percep-
+tron. The table of 1s and 0s in listing 5.1 that our perceptron learned was theoutput of binary OR logic. The XOR  problem slightly alters that table to try to
+teach the perceptron how to mimic an Exclusive OR  logic gate. If you changed
+the correct answer for th e last example from a 
+1 (True) to a 0 (False) to rep-
+resent XOR logic, that ma kes the problem a lot harder. The examples in each
+class (0 or 1) aren’t linearly separabl e without adding an additional neuron to
+our neural network.  The classes are diagonal fr om each other in our two-
+dimensional feature vector space (similar to  figure 5.5), so there’s no line you
+can draw that separates 1s (logic  Trues) from 0s (logic Falses).
+Even though they could solv e complex (nonlinear) proble ms, neural networks were,
+for a time, too computationally expensive. It was seen as a waste of precious computa-tional power to require two perceptrons and a bunch of fancy backpropagation math
+to solve the XOR problem, a problem that can be solved with a single logic gate or a
+single line of code. They proved impracti cal for common use, and they found their
+way back to the dusty shelves of academia  and supercomputer experimentation. This
+began the second “AI Winter”
+8 that lasted from around 1990 to about 2010.9 But even-
+tually computing power, backpropagation algorithms, and the pr oliferation of raw
+data, like labeled images of cats and dogs,10 caught up. Computationally expensive
+6Rumelhart, D. E., Hinton, G. E., and Williams, R. J.  (1986). “Learning representations by back-propagating
+errors.” Nature, 323, 533–536.
+7See the Wikipedia article “The XOR affair” ( https:/ /en.wikipedia.org/wiki/Perceptrons_(book)#The_XOR
+_affair ).
+8Wikipedia, https:/ /en.wikipedia.org/wiki/AI_winter#The_setbacks_of_the_late_1980s_and_early_1990s.
+9See the web page titled “Philosophical Transactions  of the Royal Society B: Biological Sciences” ( http:/ /
+rstb.royalsocietypublishing.org/content/365/1537/177.short ).
+ 
+
+167 Neural networks, the ingredient list
+algorithms and limited datasets were no longer show-stoppers. Thus the third age of
+neural networks began.
+ But back to what they found. 
+EMERGENCE  FROM THE SECOND  AI WINTER
+As with most great ideas, the good ones will bubble back to the surface eventually. It
+turns out that the basic idea behind the pe rceptron can be extended to overcome the
+basic limitation that doomed it at first. Th e idea is to gather multiple perceptrons
+together and feed the input into one (or several) perceptrons. Then you can feed the
+output of those perc eptrons into more perceptrons be fore finally comparing the out-
+put to the expected value. This system (a  neural network) ca n learn more complex
+patterns and overcome the challenge of cla sses that aren’t linearl y separable, like in
+the XOR problem. The key question is: How do you update the weights in the earlier
+layers?
+ Let’s pause for a moment and formalize an important part of the process. So far
+we’ve discussed errors and how much the pred iction was off base for a perceptron. Mea-
+suring this error is the job of a cost function , or loss function . A cost function, as you have
+seen, quantifies the mismatch between the co rrect answers that the network should out-
+put and the values of the actual outputs ( y) for the correspondi ng “questions” ( x) input
+into the network. The loss function tells us how often our network output the wrong
+answer and how wrong those answers were. Equation 5.2 is one example of a cost func-
+tion, just the error between the tr uth and your model’s prediction:
+err(x) = |y _ f(x)|
+Equation 5.2  Error between truth and prediction
+The goal in training a percep tron, or a neural network in general, is to minimize this
+cost function across all available input samples:
+Equation 5.3 Cost function you want to minimize
+You’ll soon see other cost functions, such  as mean squared erro r, but you won’t have
+to decide on the best cost function. It’s  usually already decided for you within most
+neural network frameworks. Th e most important thing to grasp is the idea that mini-
+mizing a cost function across a dataset is yo ur ultimate goal. Then the rest of the con-
+cepts presented here will make sense. 
+10See the PDF “Learning Multiple Layers of Featur es from Tiny Images” by Alex Krizhevsky ( http:/ /citese-
+erx.ist.psu.edu/viewdoc/download?doi =10.1.1.222. 9220&rep=rep1&type=pdf ).n
+J(x) = m in      err(xi)   Σ
+i=1
+ 
+
+168 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+BACKPROPAGATION
+Hinton and his colleagues decided there was a way to use multiple  perceptrons at the
+same time with one target. This they sh owed could solve problems that weren’t lin-
+early separable. They could now approxim ate nonlinear functions as well as linear
+ones.
+ But how in the world do you update th e weights of these various perceptrons?
+What does it even mean to have contribute d to an error? Say two perceptrons sit next
+to each other and each receive the same input. No matter what you do with output
+(concatenate it, add it, multiply it), when you try to push the error back to the initial
+weights it will be a function of the input (which was identical on both sides), so they
+would be updated the same amount at each  step and you’d never go anywhere. Your
+neurons would be redundant. They’d both end up with the same weights and yournetwork wouldn’t learn very much.
+ The concept gets even more mind bending when you imagine a perceptron that
+feeds into a second perceptron as the second’s input. Which is exactly what you’regoing to do.
+ Backpropagation helps you solve this prob lem, but you have to tweak your percep-
+tron a little to get there. Remember, th e weights were updated based on how much
+they contributed to the overall error. But if a weight is affecting an output that
+becomes the input for another perceptron, yo u no longer have a clear idea of what
+the error is at the beginning of that second perceptron.
+ You need a way to calculate th e amount a partic ular weight ( w
+1i in figure 5.6) con-
+tributed to the error given that it cont ributed to the error via other weights ( w1j) and
+(w2j) in the next layer. And the way to do that is with backpropagation .
+ Now is a good time to stop using the term “perceptron,” be cause you’re going to
+change how the weights in each neuron are updated. From here on out, we’ll refer to
+Input
+vectorHow do we
+update this?
+Neuron
+Neuron
+NeuronNeuronW1j
+W2j
+NeuronHidden
+“layer i”
+Output layer
+“layer j”Output
+vector
+W1j
+Figure 5.6 Neural net with hidden weights 
+ 
+
+169 Neural networks, the ingredient list
+the more general neuron  that includes the perceptron, bu t also its more powerful rela-
+tives. You’ll also see neurons referred to as cells or nodes in the literature, and in most
+cases the terms are interchangeable.
+ A neural network, regardless of flavor, is  nothing more than a collection of neu-
+rons with connections between them. We of ten organize them into layers, but that’s
+not required. Once you have an architectu re where the output of a neuron becomes
+the input of another neuron, you begin to talk about hidden  neurons and layers versus
+an input  or output  layer or neuron.
+ This is called a fully connected  network. Though not all the connections are shown
+in figure 5.7, in a fully connected netw ork each input element has a connection to
+every neuron in the next layer. And every conne ction has an associated weight. So in a
+network that takes a four-dimensional vector  as input and has 5 neurons, there will be
+20 total weights in the layer (4 weights for the connections to each  of the 5 neurons).
+ As with the input to the perceptron, where there was a weight for each input, the
+neurons in the second layer of a neural netw ork have a weight assigned not to the orig-
+inal input, but to each of the outputs from the first layer. So now you can see the diffi-culty in calculating the amount a first-layer weight contributed to the overall error. The
+first-layer weight has an effect  that is passed through not ju st a single other weight but
+through one weight in each of  the next layer’s neurons. The derivation and mathemat-
+ical details of the algorithm itself, althou gh extremely interesting, are beyond the
+scope of this book, but we take a brief moment for an overview so you aren’t left com-
+pletely in the dark about th e black box of neural nets.
+ Backpropagation, short for backpropagat ion of the errors, describes how you can
+discover the appropriate amount to update  a specific weight, given the input, the
+NeuronInput vector Hidden
+Output layer Output vector
+Neuron
+Neuron
+NeuronNeuron
+Neuron
+Neuron
+Figure 5.7 Fully connected neural net
+ 
+
+170 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+output, and the ex pected value. Propagation , or forward propagation, is an input flow-
+ing “forward” through the net and computing the output for the network for that input.To get to backpropagation, you first need to  change the perceptron’s activation func-
+tion to something that is slightly more complex.
+ Until now, you have been using a step function as your ar tificial neuron’s activation
+function . But as you’ll see in a moment, backpr opagation requires an activation func-
+tion that is nonlinear and continuously differentiable.
+11 Now each neuron will output
+a value between  two values, like 0 and 1, as it does in the commonly used sigmoid func-
+tion shown in equation 5.4:
+Equation 5.4 Sigmoid function
+There are many other activation functions, such as hyperbolic tangent  and rectified linear
+units ; they all have benefits and downsides. Each shines in different ways for different
+neural network architec tures, as you’ll learn in later chapters.
+ So why differentiable? If you can calculat e the derivative of the function, you can
+also do partial derivatives of the function, with respect to various variables in the func-tion itself. The hint of the magic is “with respect to various variables.” You have a path
+toward updating a weight with respect to the amount of input it received!
+11A continuously differentiable function is even more smooth than a differentiable function. See the Wikipedia
+article “Differentiable function” ( https:/ /en.wikipedia.org/wiki/Differentiable_function#Differentiability
+_and_continuity ).Why does your activation function need to be nonlinear? 
+Because you want your neurons to be able to model nonlinear relationships between
+your feature vectors and the target variable. If all a neuron could do is multiply inputs
+by weights and add them together, the out put would always be a linear function of
+the inputs and you couldn’t model even the simplest nonlinear relationships.
+But the threshold function you used for your neurons earlier was a nonlinear step func-
+tion. So the neurons you used before could theoretically be trained to work together
+to model nearly any nonlinear relationship… as long as you had enough neurons.
+That’s the advantage of a nonlinear activa tion function; it allows a neural net to
+model a nonlinear relationship. And a continuously differentiable nonlinear function,like a sigmoid, allows the error to propag ate smoothly back through multiple layers
+of neurons, speeding up your training pr ocess. Sigmoid neurons are quick learners.S(x) = 1
+1 + e−x
+ 
+
+171 Neural networks, the ingredient list
+DIFFERENTIATE  ALL THE THINGS
+You’ll start with the error of the ne twork and apply a cost function, say squared error , as
+shown in equation 5.5:
+MSE = (y _ f(x))2
+Equation 5.5 Mean squared error 
+You can then lean on the chain rule  of calculus to calculate the derivative of composi-
+tions of functions, as in equation 5.6. An d the network itself is  nothing but a composi-
+tion of functions (specifically dot products  followed by your new nonlinear activation
+function at each step):
+Equation 5.6 Chain rule
+You can now use this formula to find the deri vative of the activation function of each
+neuron with respect to the input that fed it. You can calculate how much that weight
+contributed to the final error and adjust it appropriately.
+ If the layer is the output layer, the upda te of the weights is rather straightforward,
+with the help of your easily differentiable  activation function. The derivative of the
+error with respect to the j-th output that fed it is
+Equation 5.7 Error derivative 
+If you’re updating the weights of a hidden layer, things are a little more complex, as
+you can see in equation 5.8:
+Equation 5.8 Derivative of the previous layer
+The function f(x) in equation 5.7 is the output, specifically the j-th position of the out-
+put vector. The y in equation 5.7 is the output of a node in either the i-th layer or the
+j-th layer, where the output of the i-th layer is the input of the j-th layer. So you have the
+ (the learning rate) times the output of th e earlier layer times the derivative of the
+activation function from the later layer with respect to  the weight that fed the output of(f(g(x))' = F'(x) = f'(g(x))g'(x)
+wij = −            = −  yi(yj − f(x)j))yj(1 − yj)wij Δ∂Errorα α
+wij = −         = −  yi(      wjl)yj(1 − yj)∂wij Δ Σ∂Eα δ α l
+l Lε
+ 
+
+172 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+the i-th layer into the j-th layer. The sum in equation 5. 8 expresses this for all inputs to
+all the layers.
+ It’s important to be specific about wh en the changes are applied to the weights
+themselves. As you calculate each weight up d a t e  i n  e a c h  l a y e r ,  t h e  c a l c u l a t i o n s  a l l
+depend on the network’s stat e during the forward pass. Once the error is calculated,
+you then calculate the proposed change to  each weight in the network. But do not
+apply any of them—at least until you get all the way back to the beginning of the net-
+work. Otherwise as you update weights toward  the end of the net, the derivatives cal-
+culated for the lower levels will no long er be the appropriate gradient for that
+particular input. You can ag gregate all the ups and down for each weight based on
+each training sample, withou t updating any of the weights and instead update them at
+the end of all the training, but we discu ss more on that choice in section 5.1.6.
+ And then to train the network, pass in al l the inputs. Get the associated error for
+each input. Backpropagate those errors to ea ch of the weights. And then update each
+weight with the total change in error. Afte r all the training data has gone through the
+network once, and the errors are backpropagated, we call this an epoch  of the neural
+network training cycle. The dataset can then  be passed in again and again to further
+refine the weights. Be careful, though, or the weights will overfit the training set and
+no longer be able to make meaningful pr edictions on new data points from outside
+the training set.
+ In equations 5.7 and 5.8,  is the learning rate . It determines how much of the
+observed error in the weight is corrected during a particular training cycle (epoch) orbatch of data. It usually remains constant during a single training cycle, but some
+sophisticated training algorithms will adju st it adaptively to speed up the training
+and ensure convergence. If 
+ is too large, you could ea sily overcorrect. Then the
+next error, presumably larger, would itself lead to a large weight  correction the other
+way, but even further from the goal. Set  too small and the model will take too long
+to converge to be practical, or worse, it will get stuck in a local minimum on the error
+surface . 
+5.1.4 Let’s go skiing—the error surface
+The goal of training in neural networks, as we  stated earlier, is to minimize a cost func-
+tion by finding the best parameters (weights). Keep in mind, this isn’t the error forany one particular data point. You want to minimize the cost for all the various errorstaken together.
+ Creating a visualization of this side of  the problem can help build a mental model
+of what you’re doing when you adjust the weights of the network as you go.
+ F r o m  e a r l i e r ,  m e a n  s q u a r e d  e r r o r  i s  a  c o m m o n  c o s t  f u n c t i o n  ( s h o w n  b a c k  i n
+equation 5.5). If you imagine plotting the error as a function of the possible weights,
+given a set of inputs and a set of expected outputs, a point exists where that function
+is closest to zero. That point is your minimum —the spot where your model has the
+least error.
+ 
+
+173 Neural networks, the ingredient list
+This minimum will be the set of weights that  gives the optimal output for a given train-
+ing example. You will often see this repres ented as a three-dimensional bowl with two
+of the axes being a two-dimensional weight  vector and the thir d being the error (see
+figure 5.8). That description is a vast si mplification, but the co ncept is the same in
+higher dimensional spaces (for ca ses with more than two weights).
+ Similarly, you can graph the error surface as a function of all possible weights across
+all the inputs of a training set. But you need to tweak the error function a little. You
+need something that represents the aggregat e error across all inputs for a given set of
+weights. For this example, you’ll use mean squared error  as the z axis (see equation 5.5).
+ Here again, you’ll get an error surface with a minimum th at is located at the set of
+weights. That set of weights will represent a mo del that best fits the entire training set. 
+5.1.5 Off the chair lift, onto the slope
+What does this visualization represent? At  each epoch, the algorithm is performing
+gradient descent  in trying to minimize the error. Ea ch time you adjust  the weights in a
+direction that will hopefully reduce your error the next time. A convex error surface
+will be great. Stand on the ski slope, look  around, find out which way is down, and go
+that way!
+ But you’re not always so lucky as to ha ve such a smoothly shaped bowl. The error
+surface may have some pits and divots scatte red about. This situation is what is known
+as a nonconvex error curve . And, as in skiing, if these pits are big enough, they can suck
+you in and you might not reach the bottom of the slope.
+Weight 1Weight 2
+Error for given pair of weights
+Figure 5.8 Convex error curve 
+ 
+
+174 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+ Again, the diagrams are representing we ights for two-dimensional input. But the
+concept is the same if you have a 10-dimensional input, or 50, or 1,000. In those
+higher dimensional spaces, visualizing it do esn’t make sense anymore, so you trust the
+math. Once you start using neural networks , visualizing the erro r surface becomes less
+important. You get the same information fr om watching (or plotting) the error or a
+related metric over the training time and seeing  if it’s trending toward 0. That will tell
+you if your network is on the right track or not. But these 3D representations are a
+helpful tool for creating a mental model of the process.
+ But what about the nonconvex error spac e? Aren’t those divots and pits a prob-
+lem? Yes, yes they are. Depending on wh ere you randomly start your weights, you
+could end up at radically different weights and the training would stop, as there’s no
+other way to go down from this local minimum  (see figure 5.9).
+ And as you get into even higher dimensional space, the local minima will follow
+you there as well. 
+Figure 5.9 Nonconvex error curve
+5.1.6 Let’s shake things up a bit
+Up until now, you have been aggregating th e error for all the training examples and
+skiing down the slope as best you could. Th is training approach, as described, is batch
+learning. A batch is a large subset of your training data. But batch learning has a static
+error surface for the entire batch. With this  single static surface, if you only head
+downhill from a random starting point, yo u could end up in some local minima (divot
+Initial random
+weight #1 Initial random
+weight #2
+Error for given pair of weights
+Weight 1Weight 2
+ 
+
+175 Neural networks, the ingredient list
+or hole) and not know that better option s exist for your weight values. Two other
+options to training can he lp you skirt these traps.
+ The first option is stochastic  gradient descent. In stocha stic gradient descent, you
+update the weights after each training exam ple, rather than afte r looking at all the
+training examples. And you reshuffle the or der of the training examples each time
+through. By doing this, the error surface is redrawn for each example, as each differ-
+ent input could have a different expected an swer. So the error surface for most exam-
+ples will look different. But you’re still just adjusting the weights based on gradient
+descent, for that example . Instead of gathering up the errors and then adjusting the
+weights once at the end of the epoch, you update the weights after every individualexample. The key point is that you’re moving toward  the presumed minimum (not all
+the way to that presumed minimum) at any given step.
+ And as you move toward the various minima  on this fluctuating surface, with the
+right data and right hyperparameters, you can more easily bumble toward the global
+minimum. If your model isn’t tuned properly or the training data is inconsistent, the
+model won’t converge, and you’ll just spin  and turn over and over and the model
+never learns anything. But in practice stoc hastic gradient descent proves quite effec-
+tive in avoiding local minima in most cases.  The downfall of this approach is that it’s
+slow. Calculating the forward pass and ba ckpropagation, and then updating the
+weights after each example, adds that much time to an al ready slow process.
+ The more common approach, your second training option, is mini-batch . In mini-
+batch training, a small subset of the training  set is passed in and the associated errors
+are aggregated as in full batch . Those errors are then backpropagated as with batch  and
+the weights updated for each subset of the tr aining set. This process is repeated with
+the next batch, and so on until the traini ng set is exhausted. And that again would
+constitute one epoch. This is a happy me dium; it gives you the benefits of both batch
+(speedy) and stochastic  (resilient) training methods.
+ Although the details of how backpropagation  works are fascinating,
+12 they aren’t triv-
+ial, and as noted earlier they’re outside the scope of this book. But a good mental image
+to keep handy is that of the error surface. In the end, a neural network is just a way to
+walk down the slope of the bowl as fast as possible  until you’re at the bottom. From a given
+point, look around you in every direction,  find the steepest way down (not a pleasant
+image if you’re scared of heig hts), and go that way. At the next step (batch, mini-batch,
+or stochastic), look around again, find th e steepest way , and now go that way . Soon
+enough, you’ll be by the fire in the ski lodge at the bottom of the valley. 
+5.1.7 Keras: Neural networks in Python
+Writing a neural network in raw Python is a fun experiment and can be helpful in put-
+ting all these pieces together, but Python is at a disadvantage regarding speed, and the
+shear number of calculations you’re dea ling with can make even moderately sized
+12Wikpedia, https:/ /en.wikipedia.org/wiki/Backpropagation .
+ 
+
+176 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+networks intractable. Many Python libraries, though, ge t you around the speed zone:
+PyTorch, Theano, TensorFlow, Lasagne, and many more. The examples in this book
+use Keras ( https:/ /keras.io/ ).
+ Keras is a high-level wrapper with an accessible API for Pyth on. The exposed API
+can be used with three different backends  almost interchangeably: Theano, Tensor-
+Flow from Google, and CNTK from Microsoft.  Each has its own low-level implementa-
+tion of the basic neural network elemen ts and has highly tuned linear algebra
+libraries to handle the dot products to make  the matrix multiplications of neural net-
+works as efficiently as possible.
+ Let’s look at the simple XOR problem and see if you can train a network using
+Keras.
+>>> import numpy as np
+>>> from keras.models import Sequential
+>>> from keras.layers import Dense, Activation>>> from keras.optimizers import SGD>>> # Our examples for an exclusive OR.
+>>> x_train = np.array([[0, 0],
+... [0, 1],... [1, 0],
+... [1, 1]])
+>>> y_train = np.array([[0],... [1],
+... [1],
+... [0]])>>> model = Sequential()
+>>> num_neurons = 10
+>>> model.add(Dense(num_neurons, input_dim=2))>>> model.add(Activation('tanh'))
+>>> model.add(Dense(1))
+>>> model.add(Activation('sigmoid'))>>> model.summary()
+Layer (type) Output Shape Param #
+=================================================================dense_18 (Dense) (None, 10) 30
+_________________________________________________________________
+activation_6 (Activation) (None, 10) 0_________________________________________________________________
+dense_19 (Dense) (None, 1) 11
+_________________________________________________________________activation_7 (Activation) (None, 1) 0
+=================================================================
+Total params: 41.0Trainable params: 41.0
+Non-trainable params: 0.0Listing 5.4 XOR Keras network
+The base Keras 
+model class Dense is a fully connected 
+layer of neurons.
+Stochastic gradient descent, 
+but there are others
+x_train is a list of samples of 2D 
+feature vectors used for training.
+y_train is the desired outcomes (target 
+values) for each feature vector sample.
+The fully connected hidden 
+layer will have 10 neurons.
+input_dim is only necessary for the first layer; subsequent
+layers will calculate the sh ape automatically from the
+output dimensions of the previous layer. We have 2D
+feature vectors for our 2- input XOR gate examples.The output layer has one neuron to output 
+a single binary classifi cation value (0 or 1).
+ 
+
+177 Neural networks, the ingredient list
+The model.summary()  gives you an overview of th e network parameters and num-
+ber of weights ( Param \# ) at each stage. Some quick ma th: 10 neurons, each with two
+weights (one for each value in the input vector), and one weight for the bias gives you
+30 weights to learn. The output layer has a weight for each of the 10 neurons in the
+first layer and one bias weight fo r a total of 11 in that layer.
+ The next bit of code is a bit opaque:
+>>> sgd = SGD(lr=0.1)
+>>> model.compile(loss='binary_crossentropy', optimizer=sgd,
+... metrics=['accuracy'])
+SGD is the stochastic gradie nt descent optimizer you impo rted. This is just how the
+model will try to minimize the error, or loss. lr is the learning rate, the fraction applied
+to the derivative of the error with respec t to each weight. Higher values will speed
+learn, but may force the model away from the global minimum by shooting past the
+goal; smaller values will be more precise bu t increase the training time and leave the
+model more vulnerable to loca l minima. The loss function itself is also defined as a
+parameter; here it’s binary_crossentropy . The metrics parameter is a list of
+options for the output stream during training. The compile  method builds, but
+doesn’t yet train the model. The weights are initialized, and you can use this randomstate to try to predict from your data set, but you’ll only get random guesses:
+>>> model.predict(x_train)
+[[ 0.5 ]
+[ 0.43494844]
+[ 0.50295198]
+[ 0.42517585]]
+The predict  method gives the raw output of the last layer, which would be generated
+by the sigmoid functi on in this example.
+ N o t  m u c h  t o  w r i t e  h o m e  a b o u t .  B u t  r e member this has no knowledge of the
+answers just yet; it’s just ap plying its random weights to the inputs. So let’s try to train
+this. See the following listing.
+model.fit(x_train, y_train, epochs=100)
+Epoch 1/100
+4/4 [==============================] - 0s - loss: 0.6917 - acc: 0.7500
+Epoch 2/1004/4 [==============================] - 0s - loss: 0.6911 - acc: 0.5000
+Epoch 3/100
+4/4 [==============================] - 0s - loss: 0.6906 - acc: 0.5000...
+Epoch 100/100
+4/4 [==============================] - 0s - loss: 0.6661 - acc: 1.0000Listing 5.5 Fit model to the XOR training set
+This is where you 
+train the model.
+ 
+
+178 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+TIP The network might not converge on the first try. The first compile might
+end up with base parameters from the random distribution that make findingthe global minimum di fficult or impossible. If you run into this situation, you
+can call 
+model.fit  again with the same parameters (or add even more
+epochs) and see if the network finds its way eventually. Or reinitialize the net-
+work with a different rand om starting point and try fit from there. If you try
+the latter, make sure that you don’t se t a random seed, or you’ll just repeat
+the same experiment over and over.
+As it looked at what was a tiny dataset over and over, it  finally figured out what was
+going on. It “learned” what exclusive-or (X OR) was, just from being shown examples!
+That is the magic of neural networks and what will guide you through the next few
+chapters:
+>>> model.predict_classes(x_train))
+4/4 [==============================] - 0s[[0]
+[1]
+[1]
+[0]]
+>>> model.predict(x_train))4/4 [==============================] - 0s
+[[ 0.0035659 ]
+[ 0.99123639][ 0.99285167]
+[ 0.00907462]]
+Calling predict  again (and predict_classes ) on the trained model yields better
+results. It gets 100% accuracy on your tiny dataset. Of course, accuracy isn’t necessarily
+the best measure of a predicti ve model, but for this toy example it will do. So in the
+following listing you save your grou nd-breaking XOR model for posterity.
+>>> import h5py
+>>> model_structure = model.to_json()
+>>> with open("basic_model.json", "w") as json_file:
+... json_file.write(model_structure)
+>>> model.save_weights("basic_weights.h5")
+And there are similar methods to re-instantiate  the model, so you don’t have to retrain
+every time you want to make a predicti on, which will be huge going forward.
+Although this model takes a few seconds to  run, in the coming chapters that will
+quickly grow to minutes, ho urs, even in some cases days depending on the hardware
+and the complexity of the model, so get ready!Listing 5.6 Save the trained model 
+Export the structure of 
+the network to a JSON blob for later use using 
+Keras' helper method.
+The trained weights must be saved separately. The first part
+just saves the network structure. You must re-instantiate
+the same model structure to reload them later.
+ 
+
+179 Neural networks, the ingredient list
+5.1.8 Onward and deepward
+As neural networks have spread and spaw ned the entire deep learning field, much
+research has been done (and continues to be done) into the details of these systems:
+Different activation functions (such as  sigmoid, rectified linear units, and
+hyperbolic tangent)
+Choosing a good learning rate, to dial up or down the effect of the error
+Dynamically adjusting the learning rate using a momentum  model to find the
+global minimum faster
+Application of dropout , where a randomly chosen set of weights are ignored in a
+given training pass to prevent the mode l from becoming too attuned to its
+training set (overfitting)
+Regularization of the weights to artificially dampen a single weight from grow-ing or shrinking too far from the rest of the weights (another tactic to avoidoverfitting)
+The list goes on and on. 
+5.1.9 Normalization: input with style
+Neural networks want a vector input and will do their best to work on whatever is fed
+to them, but one key thing to remember is input normalization . This is true of many
+machine learning models. Imagine the case of  trying to classify houses, say on their
+likelihood of selling in a given market. You have only two data points: number of bed-
+rooms and last selling price. This data could be represented as a vector. Say, for a two-
+bedroom house that last sold for $275,000:
+input_vec = [2, 275000]
+As the network tries to learn anything about this data, the weights associated with bed-
+rooms in the first layer would need to grow huge quickly to compete with the large val-
+ues associated with price. So it’s common practice to normalize the data so that each
+element retains its useful information fr om sample to sample. Normalization also
+ensures that each neuron works within a simi lar range of input values as the other ele-
+ments within a single sample  vector. Several approaches exist for normalization, such
+as mean normalization, feature scaling, and coefficient of variation. But the goal is to
+get the data in some range like [-1, 1] or [0, 1] for each element in each sample with-out losing information.
+ You won’t have to worry too much about this with NLP, as TF-IDF, one-hot encod-
+ing, and word2vec (as you’ll soon see) are normalized already. Keep it in mind for
+when your input feature vectors aren’t norm alized (such as with raw word frequencies
+or counts).
+ Finally, a last bit of terminology. Not a great deal of consensus exists on what con-
+stitutes a perceptron versus a multi-neur on layer versus deep learning, but we’ve
+found it handy to differentiate between a pe rceptron and a neural  network if you have
+ 
+
+180 CHAPTER  5Baby steps with neural networks (perceptrons and backpropagation)
+to use the activation function’s derivative to  properly update the weights. In this book,
+we use neural network and deep learning in  this context and save the term “percep-
+tron” for its (very) important place in history. 
+Summary
+Minimizing a cost function is a path toward learning.
+A backpropagation algorithm is the means by which a network learns .
+The amount a weight contributes to a model’s error is directly related to the
+amount it needs to be updated.
+Neural networks are, at thei r heart, optimization engines.
+Watch out for pitfalls (local minima) duri ng training by monitoring the gradual
+reduction in error.
+Keras helps make all of this ne ural network math accessible. 
+ 
+

@@ -1,0 +1,319 @@
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 221 — #1
+9 Artiﬁcial Neural Networks
+JAMES B. HENDERSON
+1 Introduction
+Artiﬁcial neural networks (ANNs) have been used in a variety of ways in thestudy of language. In this chapter we will focus on work in NLP within theframework of statistical modeling.
+1For statistical modeling, the most useful ANN
+architecture is the multi-layered perceptron (MLP). MLPs can be used for prob-ability estimation and feature induction, and have been extended for modelingboth sequential and structured data. Their most successful applications in NLPhave been language modeling and parsing. MLPs have also been inspirational formuch current research in machine learning methods, and can be reinterpreted interms of approximations to latent variable models.
+In this chapter we will ﬁrst cover background material, and then discuss con-
+temporary research. The emphasis will be on the usefulness of ANNs as anengineering tool, but theoretical motivations and context will be given whereverpossible. ANNs have the advantages of being robust in training and testing, ofbeing fast in testing, and of requiring little prior knowledge of the domain. ANNsare also interesting because they discover compact feature-based representationsspeciﬁc to the task they are trained on.
+2 Background
+The term ‘artiﬁcial neural network,’ or often just ‘neural network,’ refers to avariety of computational models which share certain properties inspired by thenetworks of neurons found in the brain. They consist of a distributed network ofsimple processing units, and usually they are designed to be trained from data.These were some of the earliest machine learning methods in artiﬁcial intelligence(AI), and they have been inﬂuential in many aspects of machine learning research.Within AI, most research on ANNs has lost any pretence of being neurologicallymotivated, and today is mostly of engineering interest. It is mostly its usefulnessfor engineering solutions which has interested research in NLP .
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 222 — #2
+222 James B. Henderson
+Another property typically associated with ANNs is the unsupervised induc-
+tion of representations during learning. Some of the processing units in the ANNhave no predeﬁned meaning; they acquire their meaning during training. In somecases, these units are the output of the ANN, as for example for the unsupervisedclustering of self-organizing maps (Kohonen 1984). In other cases, these units forman intermediate representation in between the input and the output of the ANN.Such units are called ‘hidden units,’ and are similar to latent variables, as we willdiscuss in Section 3.3. By far the most popular form of ANN has been the multi-layered perceptron (MLP), and its recurrent variants. MLPs are used for functionapproximation, categorization, and sequence modeling.
+2.1 Multi-layered perceptrons
+Multi-layered perceptrons (MLPs) (Rumelhart et al., 1986) were developed as ananswer to the criticism that the perceptron algorithm could only learn a very lim-ited class of problems (Minsky & Papert 1969). The perceptron algorithm learnsto discriminate between output classes based on a linear combination of its inputfeatures. This linearity means that a perceptron can only solve linearly separableproblems, where a line (or more generally a hyperplane) can be drawn in inputspace which separates the output classes. A simple example of a problem whichis not linearly separable is the XOR function, since no line can separate the zerocases (⟨0, 0⟩, ⟨1, 1⟩) from the one cases (⟨0, 1⟩, ⟨1, 0⟩).
+MLPs address this limitation by having multiple layers of units, where the
+middle layers have processing units whose outputs are a continuous non-linearfunction of their inputs. These middle layers, called hidden layers, allow an MLPto map the input space into a new space of features where the output classes arelinearly separable. In fact, the non-linearity of the hidden units means that MLPscan approximate any arbitrary function (Hornik et al., 1989). Also, because the hid-den unit functions are continuous, there is a simple learning algorithm for MLPs,called backpropagation (Rumelhart et al., 1986). In this section we discuss the MLParchitecture and learning methods in more detail.2.1.1 The MLP architecture An MLP is illustrated in Figure 9.1. The nodes of
+the graph are the processing units, and the edges are weighted links. The units areorganized into input units, output units, and hidden units. Given a vector of inputvalues xplaced on the input units, the MLP will compute a vector of output values
+yon its output units. In the process it will iteratively compute values for each layer
+of hidden units. MLPs are feed-forward networks, which means that there can be
+no loops in the directed graph of links, so this iterative computation can be donein a single pass from the inputs to the outputs.
+Au n i tj computes its output value, called its activation, as a function of the
+weights w
+jion links from units ito unit jand the activations ziof these units i.
+Usually this computation is some function of the weighted sum wj0+∑
+iziwjiof
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 223 — #3
+Artiﬁcial Neural Networks 223
+Input Output
+Hidden
+Figure 9.1 A multi-layered perceptron.
+j’s inputs zi, where wj0is the bias of jand wjiis 0 if no such link exists. For the
+hidden units, the output of each unit zjis often a normalized log-linear function of
+its weighted inputs, called a sigmoid function:(1) z
+j=1
+1+exp(
+−(
+wj0+∑
+iziwji))
+This non-linear function ranges from 0 to 1.2
+For the output units yj, we can approximate a continuous function by simply
+using the weighted sum wj0+∑
+iziwji, or we can do binary classiﬁcation by thresh-
+olding this sum. Multi-class classiﬁcation can be done using one output unit perclass, and choosing the maximum weighted sum. But most often in NLP we areinterested in a probability distribution over classes. For two classes, we can usethe sigmoid function (as in logistic regression), and for more than two classes wecan use a normalized exponential function. These will be discussed in more detailbelow when we discuss probability estimation.
+The computation performed by a single layer of an MLP should be familiar to
+anyone familiar with logistic regression or maximum entropy models. The maininterest of MLPs (and neural networks in general) is in their layers of hidden unitsbetween their inputs and outputs. There are several ways of interpreting hiddenlayers, but the most intuitive for our purposes is interpreting them as computinga new set of continuous-valued features from their input features. These vectorsof features are often called distributed representations, to contrast them with theatomic symbols used in many other AI methods. As discussed above, the originalmotivation for this computation was to map into a new feature space where theproblem could be solved with a (log-)linear model. Although this motivation hassince been largely superseded by kernel methods, MLPs still have the advantagethat their space of mappings is very general and efﬁcient, whereas kernels need tobe chosen speciﬁc to a problem to balance power against speed. A second motiva-tion is to map a large number of features into a relatively small number of features(in contrast to the explosion of features with kernel methods). This compressionprovides both greater efﬁciency and a form of smoothing across sparse featurespaces. As we will see in Section 2.2, this compression can be repeated iterativelyto allow unbounded inputs to be compressed into ﬁnite feature vectors.2.1.2 Learning in MLPs The ﬁrst learning algorithm developed for MLPs was
+the backpropagation algorithm (Rumelhart et al., 1986). Backpropagation is a
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 224 — #4
+224 James B. Henderson
+simple gradient descent algorithm; the algorithm starts with a random set ofweights, and at each step changes the weights a little bit in the direction whichwill maximally reduce the error (discussed below). Calculating the direction forthis update step requires computing the ﬁrst derivative of the error with respectto every weight for a given datapoint, and then summing over datapoints in thetraining set. Computing this derivative can be easily done in MLPs by iterativelycomputing the derivative of the error for each layer, starting from the outputs andproceeding backward towards the inputs. As with computing outputs, computingthese derivatives can be done in a single pass through the network. This process ofpropagating the error derivatives back through the network gives rise to the name‘backpropagation.’
+There are now many other learning algorithms for MLPs, one of the most pop-
+ular being conjugate gradient descent. These generally require more complexcomputations at each step, but converge in many fewer steps. However, due to itssimplicity and applicability to many types of ANNs, we will focus on techniquesfor backpropagation.
+While the non-linearity of MLP units gives MLPs the power to approximate
+any arbitrary function (Hornik et al., 1989), this non-linearity also makes learn-ing much more difﬁcult. In particular, a fundamental difﬁculty of learning inMLPs is that pure gradient descent algorithms will only ﬁnd a locally optimalset of weights. If we view an MLP’s error as a function of its weights (called the‘error surface’), this function can have many positions where moving in any direc-tion results in an increase in error, called local minima. When gradient descentreaches the bottom of a local minimum it will get trapped, thereby preventingit from ﬁnding the global minimum. Usually we do not care about ﬁnding theexact best set of weights, as long as we ﬁnd a model that is reasonably close tothe best, but it is still generally necessary to apply some technique to avoid localminima.
+Two common techniques for avoiding local minima are multiple random initial-
+izations and stochastic gradient descent. Just by running our learning algorithmmultiple times with different random initializations, we can get a sample of theminima and take the best one. This sample also gives us an idea about the extentto which local minima are a problem. Stochastic gradient descent adds random-ness directly to each update step, so that the weights sometimes move uphill onthe error surface. This allows the weights to ‘jump’ out of shallow local minima,but is not enough to jump out of the good deep minima. One simple and verycommon way to implement stochastic gradient descent is to perform updates aftereach datapoint in the training set (called on-line learning). Pure gradient descentlearning requires summing the updates over the whole training set (called batchlearning) before changing any weights. By changing weights after each datapoint,the total change is essentially the same as the summed updates, but individualchanges vary randomly around that total.
+In addition to on-line learning, several techniques have been developed for
+training MLPs which have proved important to their success. One is momen-tum, which computes the next update as a weighted average between the current
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 225 — #5
+Artiﬁcial Neural Networks 225
+datapoint’s update and the previous update:Δ
+tji=mΔt−1ji+(1−m)δt
+ji
+where Δtjiis the update actually performed for step t,mis the momentum weight,
+andδt
+jiis the gradient descent update computed on datapoint t. This results in
+an update which is an exponentially decaying average over the gradient descentupdates from the most recent datapoints. Momentum in effect makes on-linelearning less random and more like batch learning, meaning that the stochasticgradient descent is less stochastic. This speeds up learning, at the risk of beingmore susceptible to local minima. By adjusting the momentum m, we can adjust
+this trade-off.
+A second parameter which we can adjust is the learning rate. Weights are
+updated proportionately to a learning rate η:
+w
+tji=wt−1ji+ηΔtji
+To guarantee that gradient descent will converge, ηneeds to be arbitrarily small,
+but to speed up learning ηneeds to be sufﬁciently large. Thus the learning rate is
+set at a high level early in training and reduced as training proceeds.
+Neural networks are very powerful models, so it is important to prevent them
+from tailoring their weights so precisely to the training data that they do not gen-eralize to the testing data, called ‘overﬁtting.’ In particular, the larger the MLP’sweights become, the more the MLP is able to overﬁt the training data. Overﬁttingis avoided through regularization. Two common forms of regularization for MLPsare weight decay and early stopping.
+Weight decay penalizes large weights by subtracting a proportion ρof each
+weight from itself:w
+tji=(1−ρ)wt−1ji+ηΔtji
+This is equivalent to a Gaussian prior over weights. It is not applied to the biasweights, since we do not want to assume that unit outputs tend to be near 0.5.As with the learning rate, typically training starts with ρat a high value and ρis
+reduced during training.
+Early stopping involves holding out a development set from the training set,
+and periodically evaluating the MLP on this development set. We stop trainingwhen performance on this development set goes down, and we use the best-performing set of weights as our ﬁnal model. As with weight decay, by stoppingtraining before performance on the training set reaches its maximum, we preventweights from growing too large.2.1.3 Probability estimation Statistical approaches to NLP often require mod-
+els which produce proper probability estimates. MLPs can be trained to produceprobability estimates by choosing appropriate functions for the output and theerror. If we use a normalized exponential output function and cross-entropy error
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 226 — #6
+226 James B. Henderson
+x1
+x2P(C1 | x1, x2)
+P(C2 | x1, x2)
+HiddenInput Output
+Figure 9.2 Category probabilities estimated by an MLP .
+function, then after training, the MLP will output an estimate of the probabilitydistribution over output categories (Bishop 1995).
+The normalized exponential output function (often called ‘softmax’) takes
+the exponential function of the weighted sum of each category’s inputs, andnormalizes across categories:(2) y
+j=exp(wj0+∑
+iziwji)∑
+j′exp(wj′0+∑
+iziwj′i)
+where ziis the activation of unit i,wjiis the weight of the link from unit ito unit j,
+wj0is the bias, and j′ranges over the set of alternative categories including j.T h e
+normalization ensures that this function fulﬁls the formal requirements for a prob-ability distribution over the alternative output categories. When there are only twocategories, it is equivalent to use the sigmoid function given in equation (1), whereone category has probability estimate y
+jand the other 1 −yj.
+The cross-entropy error function is the negative log probability assigned to the
+correct category, summed over the training data:(3) error=−∑
+klog(
+yk
+targetk)
+where yk
+targetkis the output for datapoint kfor the correct category targetk.
+Training tries to ﬁnd the weights which minimize the cross-entropy error func-
+tion given the normalized exponential output function. Given enough data, theglobal minimum will be at weights which give us the true probability distribu-tion P(y
+k|xk)over output categories given the input xk(Bishop 1995).3Since our
+training data is always limited, we cannot expect the model to compute the trueprobability distribution, but this property ensures that we can consider the outputsas estimates of the true probability.
+2.2 Recurrent MLPs
+Multi-layered perceptrons compute a function from a ﬁxed-length vector of inputvalues to a ﬁxed-length vector of output values. This is often insufﬁcient for NLPtasks, because inputs and outputs are sequences which can be arbitrarily long,such as the words in a sentence. For such problems we can use recurrent MLPs.
+They are called ‘recurrent’ because their graph of links includes links which loop
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 227 — #7
+Artiﬁcial Neural Networks 227
+Input Output
+Hidden
+Figure 9.3 A recurrent MLP , speciﬁcally a simple recurrent network.
+back towards the input, as illustrated by the dotted arrows in Figure 9.3. However,these recurrent links do not represent loops in the ﬂow of information through thenetwork, but instead are interpreted as connecting one position tin the sequence
+to the subsequent position t+1 in the sequence.
+With this deﬁnition of the recurrent links, for any given sequence we can redraw
+the recurrent MLP as a feed-forward MLP by making a copy of the network foreach position tin the sequence, and connecting each pair of adjacent copies tand
+t+1 with the recurrent links (Rumelhart et al., 1986). Thus the weighted input
+for a unit jin the copy for position t+1i sw
+j0+∑
+izt+1iwji+∑
+iztiw′ji, where
+ztiis the activation of the copy of unit iat position t,t h e wjiare the normal
+link weights and the w′jiare the recurrent link weights. This ‘unfolding’ can be
+done for any ﬁnite sequence length, so we can apply such a model to arbitrarilylong sequences. The weights w
+jiand w′jiof links in each of the copies is the same
+as in the original recurrent network, which ensures that the regularities learnedby the network generalize across positions tin the sequence. On the other hand,
+when we compute the activations of the units in the unfolded network, these acti-vations z
+timay differ across positions tin the sequence, allowing different inputs,
+hidden values, and outputs for each position.
+As mentioned in section 2.1.1, hidden layers can be used to compress their
+input features into a smaller number of hidden features. With recurrent connec-tions between hidden layers, a recurrent network can compute a compressedrepresentation which itself includes information from previous compressed rep-resentations. By performing this compression repeatedly, at each step adding newinput features, a recurrent network can compress an unbounded sequence intoa ﬁnite vector of hidden features. This compression is trained to preserve theinformation about the sequence history which will be needed for future outputs.However, there is a strong bias in this training towards discovering correlationsbetween inputs and outputs which are close together in the chain of connectedhidden layers. If information must be passed through many hidden layers to reachan output with which it is correlated, then learning is unlikely to discover this cor-relation. For this reason, the pattern of interconnection between hidden layers hasa big impact on the inductive bias of learning.
+One simple and effective recurrent MLP architecture which uses unbounded
+compression is simple recurrent networks (SRNs) (Elman 1991), illustrated inFigures 9.3 and 9.4. SRNs use a single hidden layer at each position in a sequence,
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 228 — #8
+228 James B. Henderson
+position t position t +1
+Figure 9.4 A recurrent MLP unfolded over the sequence.
+which has links from that position’s input units and from the previous position’shidden units. It is appropriate for modeling sequences where correlations tend tobe local in the sequence, because of the inductive bias discussed above.
+Many natural language phenomena are best modeled with structures which
+are more complicated than sequences, such as constituency trees, dependencygraphs, or predicate–argument structures. While such structures can be ﬂattenedinto a sequential derivation, attempts to apply SRNs directly to these derivationsequences have not successfully scaled up beyond small parse-trees (Ho & Chan1999). This is because correlations are local in the structure, not in the deriva-tion sequence, so a sequential pattern of interconnection imposes an inappropriateinductive bias. Also, the same link weights are applied between any two deriva-tion steps, while the structural relationship between two adjacent decisions canchange radically depending on the preceding derivation.
+One neural network architecture which has been proposed for such structured
+classiﬁcation problems is recursive neural networks (RNNs) (Frasconi et al., 1998).RNNs can be applied to any directed acyclic graph, such as a tree. With thisapproach, a copy of the network is made for each node of the graph, and recur-rent connections are placed between any two copies which have an edge in thegraph. This architecture is a direct instantiation of the idea that the pattern ofinterconnection between hidden layers should reﬂect locality in the structurebeing modeled. However, such a simple and direct interpretation of the structuredoes not always achieve good empirical performance, as was found when it wasapplied to constituency parsing (Costa et al., 2001).
+Another recurrent MLP architecture which has been successfully applied to
+structure processing is simple synchrony networks (SSNs) (Lane & Henderson2001; Henderson 2003). SSNs model structures through their derivation sequence(as with SRNs), but the pattern of interconnection between hidden layers isdeﬁned in terms of the structure (as with RNNs), not just the sequence. An exam-ple of such a pattern of interconnection is given in Figure 9.6. Several architectureswere originally proposed involving hidden layers assigned to both sentence posi-tions and derivation steps (Lane & Henderson 2001), but recent work has onlyused the simplest form of SSN architecture, which only has one hidden layer foreach derivation step. This architecture is illustrated in Figure 9.5. A given deriva-tion step’s hidden layer is linked to hidden layers from previous steps based onthe partial structure which has been constructed at that derivation step. A set of
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 229 — #9
+Artiﬁcial Neural Networks 229
+DtStSt−1
+Dt−1S1
+Dt−cSt−c
+D1
+Figure 9.5 The SSN architecture, unfolded over a derivation sequence, with derivation
+decisions Dtand hidden layers St. Connections which are local in the derived structure
+can be arbitrarily long in the derivation sequence.
+structural relationships are deﬁned which reﬂect how the designer expects deci-sions about different nodes in the structure to be correlated, and link weights arelearned for each of these relationships. Whenever one of these relationships holdsbetween the current decision and a previous one, their hidden layers are connectedwith the associated link weights. This architecture allows the system designer totailor the inductive bias of the model to the appropriate notion of structural local-ity for the speciﬁc task. SSNs have achieved competitive results in several naturallanguage parsing tasks, as will be discussed more in Section 3.2.
+3 Contemporary Research
+In recent years, artiﬁcial neural networks have often been viewed as a good engi-neering tool. They have achieved impressive empirical performance in a numberof applications. Of particular note is their success in discovering useful features ofwords and joint models of multiple tasks. Experience from these successes contin-ues to inspire research in other machine learning methods, such as kernel methodsand latent variable models.
+3.1 Language modeling
+One of the main challenges in many NLP applications is the very large numberof words that occur in any given language. Typically in NLP each different word(or at least each different lemma) is treated as a distinct atomic category, mak-ing it difﬁcult to generalize from one word to another. A good example of thisproblem occurs in language modeling, where n-gram models are standard. Neu-
+ral networks have been used to exploit similarities between words by trainingfeature-based representations of them.
+Language modeling is the task of predicting the probabilities of sentences for
+a given language. The probability of a sentence P(s
+1,...,sm)can be decomposed
+into a sequence of probabilities∏
+tP(s t|s1,...,st−1)for individual words stgiven
+the words preceding it. Typically these individual probabilities are estimated from
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 230 — #10
+230 James B. Henderson
+aw i n d o wo fn −1 previous words P(s t|st−n+1 ,...,st−1), using smoothed counts
+ofn-grams of words. But n-gram counts become unreliable with large n, because
+the number of possible n-grams grows with the number of distinct words to the
+power of n.
+3.1.1 Neural network language models The application of neural networks
+to language modeling has been successful at improving accuracy over n-gram
+models by exploiting similarities between words, and thereby estimating reliablestatistics even for large n-grams. Bengio et al. (2003) proposed a model con-
+sisting of two parts, one which models the similarities between words and onewhich models the individual probabilities P(s
+t|st−n+1 ,...,st−1). The latter compo-
+nent is an MLP for estimating probabilities over multiple classes, as discussed inSection 2.1.3. The input to this MLP is the concatenation of n−1 feature vectors,
+one for each preceding word s
+t−n+1 ,...,st−1. These word features are computed
+with the ﬁrst component of the model.
+The ﬁrst component of the model maps a word skto a vector of continuous
+valued features C(s k). The vector C(s k)is not dependent on the position of the
+word, so a given word is input to the MLP component as the same word featuresregardless of its relative position. This makes C(s
+k)a kind of lexicon. We want the
+feature vectors in this lexicon to reﬂect the similarities between words by havingsimilar words share features. In addition, different pairs of words can be similarin different ways, as reﬂected in which features they share.
+The word features C(s
+k)and the MLP estimating P(s t|st−n+1 ,...,st−1)are trained
+jointly to optimize the probability estimate. This results in word features C(s k)
+which are trained to reﬂect exactly the word similarities which are needed bythe probability estimation model. For this reason, they work better than ﬁndingsimilarities based on some independent criteria (such as latent semantic indexing,Deerwester et al., 1990), or trying to specify them by hand.
+In empirical comparisons, Bengio et al. (2003) found that their neural network
+model performed signiﬁcantly better than state-of-the-art n-gram models. Further
+improvement could be achieved by mixing these two models, indicating that thesetwo types of model do well on different parts of the data. Also, as the size of theword window nwas increased, the neural network continued to improve with
+larger nwhile the n-gram models had stopped improving. This indicates that the
+representation of word similarity C(s
+k)succeeded in overcoming the unreliable
+statistics of large n-grams.
+The main disadvantage Bengio et al. (2003) found was that training times
+for the neural network language model were very computationally demanding,requiring sophisticated methods for speeding up and parallelizing the computa-tions. Schwenk and Gauvain (2005) succeeded in scaling this model up to evenlarger data sets (600 million words), and demonstrated an improvement in speechrecognition using it.3.1.2 Neural syntactic language models One alternative to n-gram language
+models is to use a syntactic parse to select which previous words are conditioned
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 231 — #11
+Artiﬁcial Neural Networks 231
+on when predicting the next word, called a structured language model (Chelba &Jelinek 2000) (SLM, discussed in more detail in Chapter 3). Since the parse cannotbe determined unambiguously, such models sum over a selected set of the mostprobable parses to compute the probability of the word sequence. To improvethe accuracy of the language model, while keeping the parsing models simpleenough to make parsing efﬁcient, some SLM models include a separate compo-nent which re-estimates the language model probabilities after the best parseshave been found.
+Emami and Jelinek (2005) investigated combining the advantages of SLMs with
+the techniques developed for the neural network language models of Bengioet al. (2003). They found signiﬁcant improvements over their baseline SLM byusing neural networks. In particular, the largest gain came from replacing there-estimation component with a neural network. Also replacing the parsing com-ponents of the SLM model with neural networks achieved slightly better results,but at substantial computational cost.
+3.2 Parsing
+Natural language parsing (see Chapters 4 and 13) is an important challenge forany machine learning method, both because of the complexity of its structuredoutputs and because of its signiﬁcance for linguistic and cognitive theories. Neu-ral network parsing models have been amongst the best natural language parserssince Henderson (2003). There are neural network-based models for constituencyparsing, dependency parsing, and semantic role parsing.3.2.1 Constituency parsing The most common benchmark task for natural
+language parsing is training and testing on the Wall Street Journal portion of the
+Penn Treebank (WSJ ). This is a corpus of sentences labeled with constituency trees.
+The standard performance measure is the harmonic mean of precision and recallon labeled constituents, called F-measure.
+The only neural network architecture to achieve competitive results on the WSJ
+corpus has been simple synchrony networks. Henderson (2003) exploited SSNs’ability to encode structurally deﬁned inductive biases to train an SSN to be astatistical model of binarized left-corner derivations of the trees, and achieved89.5 percent F-measure on the WSJ test set. The model includes enough types
+of interconnection between hidden layers so that any information in the historyof the derivation could in theory be passed through a sequence of hidden layersto reach the current derivation decision, so the model imposes no hard indepen-dence assumptions. However, decisions about structurally local nodes in the treeare closer together in this ﬂow of information, so correlations tend to be learnedfor these decisions. An example of the pattern of interconnections between hiddenlayers is given in Figure 9.6. Experiments where these hidden–hidden connec-tions are replaced with hand-crafted features (non-terminal labels) indicate thatthe ability to pass information between hidden layers was the main reason for thegood empirical performance of this model. The lack of improvement when head
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 232 — #12
+232 James B. Henderson
+S
+NP
+RB/often VBZ/runsVP
+NNP/MaryROOT
+D9=?
+Figure 9.6 An SSN unfolded over a constituency structure.
+identiﬁcation was added to the model suggests that the SSN was able to discoverthe need to identify heads from the distributions in the data without heads beinglabeled.
+As is often the case with neural network models, one of the challenges in design-
+ing a successful SSN parser was efﬁciency. The choice of binarized left-cornerderivations in Henderson (2003) was made because it allowed near-deterministicincremental parsing. This allowed the space of possible parses to be exploredusing a beam search through the space of possible derivations. The search couldbe pruned to a small number of candidates after each time the derivations reachedaw o r d .
+The statistical model estimated by the SSN in Henderson (2003) is generative,
+meaning that it estimates the joint probability of both the output constituency treeand the input sentence. This means that the SSN tries to learn to accurately predictthe words of the sentence, even though we know what those words are before westart parsing. This prediction is important to the model, because it manifests cor-relations between words and decisions which are made prior to that word in thederivation. If there is a decision in a given candidate derivation which is incom-patible with a word to be predicted subsequently, then the model should give thatword prediction a very small probability, thereby penalizing the whole deriva-tion. In this way, derivations with compatible previous decisions will be givenhigher probabilities than those with incompatible previous decisions. Henderson(2004) proposed a method for training the SSN model of Henderson (2003) whichmaintained this ability to discriminate between compatible and incompatible pre-vious parses, while removing the requirement to learn to accurately predict wordswhich do not discriminate. The SSN was trained to optimize an approximation tothe conditional probability of the constituency tree given the sentence. By itself,this discriminatively trained SSN parsing model performed slightly better thanthe generative SSN model. When the discriminatively trained SSN was used tore-rank candidate parses selected by the generative SSN, there was a substantialimprovement, achieving state-of-the-art accuracies (90.1 percent F-measure on theWSJ test set) and relatively fast parsing times.
+3.2.2 Dependency parsing Dependency structures encode syntactic structure
+with labeled directed arcs (dependencies) between the headwords of constituents.Titov and Henderson (2007b) applied SSNs to this task for 10 different languages,achieving the best result for a single-model system in the CoNLL 2007 shared
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 233 — #13
+Artiﬁcial Neural Networks 233
+task (Nivre et al., 2007). The approach taken was the same as that taken inHenderson (2003). The SSN is trained to estimate the probabilities for a genera-tive model of dependency structure derivations. Efﬁciency is ensured by usingderivations that allow near-deterministic parsing, in particular a version of theMALT parser derivations (Nivre et al., 2004). A set of hidden-to-hidden intercon-nections are deﬁned which bias towards learning structurally local correlations,and do not impose any hard independence assumptions. The learning of hiddenvectors proved to be particularly robust across languages, because it did not suf-fer from the lack of expertise on particular languages, as would have been the casewith methods which require hand-coded feature engineering. Also, the ability touse a very small beam in searching the space of MALT-style derivations meansthat the parser is rather fast.
+4
+3.2.3 Functional and semantic role parsing As exempliﬁed in Bengio et al.
+(2003), work on neural networks has often found that sharing hidden represen-tations for multiple related purposes can help the model generalize. This ideahas been applied in several neural network models of parsing, where hiddenlayers are trained jointly for both syntactic parsing and parsing some form ofsemantic representation. The SSN architecture has been successfully trained on thecombinations of constituency parsing with functional parsing (Merlo & Musillo2005), constituency parsing with semantic role labeling (Musillo & Merlo 2006),and dependency parsing with semantic role labeling (Henderson et al., 2008b;Gesmundo et al., 2009).
+Although it has generally been ignored in work on parsing, the Penn Tree-
+bank corpus (Marcus et al., 1993) includes extensions to some non-terminal labelswhich reﬂect the syntactic or semantic function of the constituents, such as NP-
+SBJ for subject noun phrases or PP-TMP for temporal prepositional phrases. Merlo
+and Musillo (2005) propose a parser which recovers this extended annotation byextending the SSN syntactic parser of Henderson (2003). By jointly training onboth the syntactic annotation and the extended functional annotation, they achievegood accuracies on function parsing and a small (but non-signiﬁcant) increase inperformance on syntactic parsing.
+Musillo and Merlo (2006) applied the same approach to jointly parse syntactic
+constituency structures and the semantic role labeling in PropBank (Palmer et al.,2005). Again, they modiﬁed the SSN parser of Henderson (2003) by extendingsyntactic constituent labels with semantic role labels. However, this approach doesnot directly encode the structural relationships between the constituents labeledwith semantic roles and their predicates in the sentence, which limits the extentto which an appropriate structural domain of locality can be deﬁned. Empiricalresults showed no signiﬁcant change in syntactic parsing performance, and goodperformance on the joint task, although not as good as the state of the art.
+Henderson et al. (2008b) solve the problem of recovering both syntactic struc-
+ture and semantic structure using a synchronous parsing approach. In this work,both syntax and semantics are annotated as dependency structures, consisting oflabeled arcs between the headwords of constituents. Two different derivations are
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 234 — #14
+234 James B. Henderson
+deﬁned, one for the syntactic dependency structure and one for the semantic roledependency structure. Both these derivations process the sentence incrementallyfrom left to right. A joint model of the two structures is deﬁned by synchronizingthese two derivations at each word, alternating between the two derivations eachtime they reach the prediction of a word.
+Henderson et al. (2008b) use an SSN to estimate the probabilities for this joint
+model of syntactic and semantic structure. Hidden states are divided into twotypes, those used for making syntactic derivation decisions and those used formaking semantic derivation decisions. This division reﬂects the large differencesin the generalizations which need to be learned for the two structures. Interconnec-tions are deﬁned both between hidden states of the same type and between hiddenstates of different types. The between-derivation interconnections allow the twoderivations to condition their decisions on each other, thereby reﬂecting the factthat the two structures are highly correlated. Empirical results for this joint modeldemonstrated good accuracy, amongst the best group of systems on the CoNLL2008 and 2009 shared tasks (Surdeanu et al., 2008; Hajiˇ c et al., 2009). When the two
+derivations are modeled separately, without the interconnections between syntac-tic and semantic hidden states, there is a very large drop in accuracy, indicatingthat joint modeling is crucial to this model’s success.3.2.4 Semantic role tagging Semantic role labeling is deﬁned as the task of
+labeling semantic relationships between predicates and the syntactic constituentswhich are their arguments. Finding candidate syntactic constituents (or theirdependency counterparts) for a predicate’s argument roles requires a more com-plex processing architecture than is necessary for sequence labeling tasks, suchas language modeling or part-of-speech tagging. However, not all applicationsrequire this form of semantic representation, so it is interesting to consider alter-native tasks based on SRL. Collobert and Weston (2007) propose a task where, foreach predicate, all the words in a constituent are tagged with the semantic roleassigned to that constituent. Words which are not part of any constituent with asemantic role are given the null tag. We will call this task semantic role tagging
+(SRT). Accuracy is measured as the percentage of words tagged correctly, withouttrying to map these tags back to constituents.
+5
+Collobert and Weston (2007) solve this sequence labeling problem by applying
+an MLP at each individual position of the sentence. The MLP is trained to esti-mate the probability of each semantic role tag for that word, given a window ofwords in the sentence. The novel aspect of this model is the way the inputs to theMLP are calculated. This calculation is a linear combination of two sets of param-eters: features of each word in the window, and a weight matrix for the distancesbetween this word and the target word and the predicate word. As with the lan-guage model of Bengio et al. (2003), the same word features are used whereverthe word appears. These features, the distance parameters, and the MLP probabil-ity estimator are all trained jointly to optimize the SRT task. This relatively simplemodel performs well. It outperformed a state-of-the-art SRL system, when the SRL
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 235 — #15
+Artiﬁcial Neural Networks 235
+system was evaluated on the SRT task. How well the neural network SRT systemwould work if it were somehow evaluated on the SRL task is not clear.
+A subsequent version of this neural network SRT system (Collobert and Weston
+2008) also achieved impressive accuracies on the SRT task. It used a slightly morecomplicated neural network architecture, which was designed to allow joint learn-ing of a large number of tasks (part-of-speech tagging, chunking, named entitytagging, semantic role tagging, language modeling, and identifying synonyms).As in the previous model, a lexicon of word feature vectors plays a central rolein this architecture. These word features are trained jointly across all the tasks.Because only this lexicon is shared, there is no requirement that all the tasks beannotated on the same data set, thereby allowing each task to be trained on what-ever data is available for that task. Collobert and Weston (2008) demonstrate thattraining jointly with other tasks helps ﬁnd word features which generalize wellfor SRT. The largest gain in SRT accuracy is from training the word features in alanguage model on a large amount of unlabeled data.
+3.3 Theoretical advances
+Neural networks were one of the earliest machine learning methods, and theyhave had a large inﬂuence on recent advances in machine learning. For exam-ple, maximum entropy models can be thought of as single-layer neural net-works, without any hidden layers. Also, much of the theory behind supportvector machines is related to the theory behind categorization with neural net-works. More importantly, latent variables in graphical models have an obviousresemblance to the hidden vectors of neural networks.
+One way to understand the relationship between the hidden vectors of neural
+networks and the latent variables of graphical models has recently been formal-ized by Titov and Henderson (2007a). They show that MLPs can be interpretedas an approximation to a Bayesian network with the same graphical structureand with normalized exponential potential functions. In particular, they proposea form of Bayesian network called incremental sigmoid belief networks (ISBNs),which can be approximated by SSNs. Titov and Henderson (2007a) show that amore accurate alternative approximation performs better as a model of naturallanguage parsing, but this alternative is much slower, so in many cases it is bet-ter to use an SSN. This was the reason SSNs were used in Titov & Henderson(2007b) and Henderson et al. (2008b), despite the discussion being cast in terms ofISBNs. This latent-variable interpretation of MLP models should allow a more the-oretically driven advancement of neural network architectures, while maintainingthe attractive engineering properties which have resulted in the wide range ofempirical successes they have achieved.
+4 Further Reading
+Due to our focus on statistical modeling, we have not discussed self-organizingmaps (SOMs) (Kohonen 1984). SOMs are a clustering method which discovers a
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 236 — #16
+236 James B. Henderson
+multi-dimensional grid of related clusters. Using a two-dimensional grid, theyhave been applied to visualizing and browsing very large collections of text doc-uments (Kohonen et al., 2000). The SOM learns to place related documents closetogether on the grid, resulting in a two-dimensional display of the range of topicsin the text collection.
+The early neurological motivations behind artiﬁcial neural networks have led to
+many claims about the cognitive plausibility, or lack thereof, of various models.This perspective often goes by the name of connectionism, and contrasts with thenon-statistical rule-based symbolic systems that were popular in AI at the timewhen MLPs were being popularized. Many of the original motivations for thesearguments (experience-based, soft constraints, graceful degradation, etc.) are nowsubsumed by all statistical models. Chapter 17,
+COMPUTATIONAL PSYCHOLIN -
+GUISTICS , discusses several connectionist models and their use in psycholinguistic
+modeling.
+The more extreme variants of connectionism, called the ‘subsymbolic’ app-
+roach, eschew any use of system-internal symbols (St. John & McClelland 1992;Miikkulainen 1993), and typically do not consider any architecture to be connec-tionist if it is more powerful than a recurrent MLP for sequence processing (as inHo & Chan 1999). This perspective has been criticized on the grounds that such anarchitecture is not sufﬁciently powerful to account for the generalizations whichexist in natural language (Fodor & McLaughlin 1990). The adequacy of such archi-tectures has been investigated empirically in Lawrence et al. (2000), achievingvery limited levels of generalization. A second, looser interpretation of connec-tionism allows for more powerful computational architectures, but preserves thedistributed nature of computation (Henderson 1994; Stevenson 1994; Henderson& Lane 1998). These are sometimes referred to as hybrid connectionist-symbolicapproaches. The cognitive plausibility of more powerful neural network architec-tures can be justiﬁed by theories of neurological mechanisms to solve the variablebinding problem (Shastri & Ajjanagadde 1993; Henderson 2001).
+NOTES
+1 Note that we consider cognitive models to be outside the scope of this chapter, and con-
+nectionist models will only be surveyed brieﬂy due to their poor empirical performance.See Chapter 17,
+COMPUTATIONAL PSYCHOLINGUISTICS , for discussion of these topics.
+2 Often MLPs use the tanh function instead of the sigmoid function. This is just the sig-
+moid function rescaled so it ranges from −1 to 1. It makes no theoretical difference, but
+seems to work better in practice.
+3 For this to be exactly true, we need to assume that the true probability distribution has
+an appropriate form, but this is a weak assumption when we have sufﬁcient hiddenunits. See Bishop (1995) for details.
+4 Much of Titov and Henderson (2007b) and Henderson et al. (2008b) (discussed below)
+describes their models in terms of a latent variable model, incremental sigmoid belief
+
+“9781405155816_4_009” — 2010/5/8 — 11:51 — page 237 — #17
+Artiﬁcial Neural Networks 237
+networks, discussed in Section 3.3. However, the approximation to ISBNs which theyuse is an SSN, so the actual model tested is an SSN.
+5 Collobert and Weston (2007) refer to this new task also as semantic role labeling, but
+this is inaccurate given the very different nature of the task. In particular, the evaluationmeasure they use gives equal weight to identifying the null tag, which forms the major-
+ity of tags for their task. It is therefore not surprising that models trained to optimizeSRL do not perform as well on SRT as models trained to optimize SRT.
+

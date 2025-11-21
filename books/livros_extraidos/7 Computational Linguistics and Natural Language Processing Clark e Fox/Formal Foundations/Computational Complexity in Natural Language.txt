@@ -1,0 +1,969 @@
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 43 — #1
+2 Computational Complexity
+in Natural Language
+IAN PRATT-HARTMANN
+We have become so used to viewing natural language in computational terms thatwe need occasionally to remind ourselves of the methodological commitment thisview entails. That commitment is this: we assume that to understand linguistictasks – tasks such as recognizing sentences, determining their structure, extractingtheir meaning, and manipulating the information they contain – is to discover thealgorithms required to perform those tasks, and to investigate their computationalproperties. To be sure, the physical realization of the corresponding processes inhumans is a legitimate study too, but one from which the computational inves-tigation of language may be pursued in splendid isolation. Complexity theory isthe mathematical study of the resources – both in time and space – required toperform computational tasks. What bounds can we place – from above or below –on the number of steps taken to compute such-and-such a function, or a functionbelonging to such-and-such a class? What bounds can we place on the amountof memory required? It is therefore not surprising that, in the study of naturallanguage, complexity-theoretic issues abound.
+Since anycomputational task can be the object of complexity-theoretic investiga-
+tion, it would be hopeless even to attempt a complete survey of complexity theoryin the study of natural language. We focus therefore on a selection of topics innatural language where there has been a particular accumulation of complexity-theoretic results. Section 2 discusses parsing and recognition; Section 3 discussesthe computation of logical form; and Section 4 discusses the problem of determin-ing logical relationships between sentences in natural language. But we begin witha brief review of complexity theory itself.
+1 A Brief Review of Complexity Theory
+Any account of complexity theory rests on some model of computation. The mostwidely used such model is the multi-tape Turing machine; and that is the modelwe use here. Throughout this chapter, we employ standard notation for strings: if
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 44 — #2
+44 Ian Pratt-Hartmann
+Σis an alphabet (a ﬁnite, non-empty set of symbols), Σ∗denotes the set of strings
+(ﬁnite sequences of elements) over Σ. The length of any string σis denoted |σ|;
+the empty (zero-length) string is denoted ϵ; and the concatenation of strings σand
+τis denoted στ. We follow standard practice in ignoring the difference between
+elements of Σand the corresponding one-element strings.
+1.1 Turing machines and models of computation
+Informally, a multi-tape Turing machine comprises a ﬁnite number of tapes,aﬁ n i t e
+set of states,a n da n instruction table. The tapes may be thought of as the machine’s
+memory, the states as the line numbers of its program, and the instruction table asthe instructions of that program. The tapes are numbered consecutively from 1 to(say) K≥2; Tape 1 is referred to as the input tape and Tape Kas the output tape;
+all other tapes are work-tapes (Figure 2.1). Each tape consists of a one-way inﬁnite
+sequence of squares (i.e., there is a leftmost square, but no rightmost square), andis scanned by its own tape-head , which is always located over one of these squares.
+Every square contains a unique symbol, which is either a member of some non-empty, ﬁnite set Σ, called the alphabet of the Turing machine, or one of the special
+symbols ⌞ ⌟(read: ‘blank’) or ⊿(read: ‘start’).
+The set of states, Q, is assumed to contain a pair of distinguished states: the
+initial state q
+0and the halting state q 1; otherwise, states have no internal structure.
+The instruction table of the Turing machine is a ﬁnite set Tof quintuples
+(1)⟨p,¯s,q,¯t,¯d⟩,
+where pand qare states (i.e., elements of Q),¯s=(s1,...,sK)and¯t=(t1,...,tK)
+areK-tuples of symbols (i.e., elements of Σ∪{⌞ ⌟,⊿}), and ¯d=(d1,...,dK)is a K-
+tuple whose elements are the special tags left, right,a n d stay. Informally, the
+Turing machine interprets the instruction (1) as follows:
+(2)If the current state is p, and, for each k(1≤k≤K), the square currently
+being scanned on Tape kcontains the symbol sk, then set the new state to be
+q, and, for each k(1≤k≤K) do the following: write tkon the square cur-
+rently being scanned on Tape k, and place Tape k’s head either one square
+left, or one square right, or in its current location, as directed by dk.
+We can make Tape 1 a read-only tape by insisting that it is never altered (i.e., thatt
+1=s1); likewise, we can make Tape Ka write-only tape by insisting that its head
+never moves to the left. The symbol ⊿is used to indicate the extreme left of a tape:
+we insist that, if any tape-head is over this symbol, it never receives an instructionto move left; moreover, ⊿is never written or overwritten. The halting state q
+1
+indicates that the computation is over, and we insist that no instruction can beexecuted in this state. (It is easy to specify these conditions formally.) Technicallyspeaking, a Turing machine is simply a tuple M=⟨K,Σ,Q,q
+0,q1,T⟩conforming
+to the above speciﬁcations.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 45 — #3
+Computational Complexity in Natural Language 45
+s1 sm⌞ ⌟ Tape 1
+Tape 2 ⊿
+...
+⊿ t1 tl⌞ ⌟Tape KT
+Figure 2.1 Architecture of a multi-tape Turing machine.
+Turing machines perform computations , which proceed in discrete time-steps. At
+each time-step, the machine is in a speciﬁc conﬁguration , consisting of its current
+state q, the position of the tape-head for each of the tapes, and the contents of each
+of the tapes. The initial conﬁguration is as follows: the current state is q0(the initial
+state), with each tape-head positioned over the leftmost square of the tape; Tape 0has the symbol ⊿in the leftmost square, followed by a string σ∈Σ
+∗, called the
+input of the computation, and is otherwise ﬁlled with ⌞ ⌟; all other tapes have the
+symbol ⊿in the leftmost square, and are otherwise ﬁlled with ⌞ ⌟. At each time-step,
+an instruction from Tof the form (1) is executed as speciﬁed in (2), resulting in the
+next conﬁguration. The computation halts when (and only when) no instructioninTcan be executed. Note that, if the halting state q
+1is reached, the computation
+necessarily halts at that point. A runis a (ﬁnite or inﬁnite) sequence of conﬁgura-
+tions obtained in this way; if the run is ﬁnite, so that the Turing machine halts, wecall it a terminating run. Given a terminating run, the output of the computation
+is the string of Σ
+∗which, in the ﬁnal conﬁguration, is written on the output tape
+(strictly) between the ⊿and the ﬁrst ⌞ ⌟. Notice that, in general, a Turing machine
+may be able to execute more than one instruction at any given time. In that case,we should think of the choice being made freely by the machine. We call a Turingmachine deterministic just in case, for any state pand any K-tuple of symbols ¯s,T
+contains at most one instruction of the form (1) starting with the pair ⟨p,¯s⟩(i.e., the
+machine never has a choice as to which instruction to perform). A non-deterministic
+Turing machine is just another term for a Turing machine.
+D
+EFINITION 1( C OMPUTABLE ).Let M be a deterministic Turing machine over alphabet
+Σ. For any string σ∈Σ∗, either M halts on input σ, or it does not. In the former case, M
+will output a deﬁnite string τ∈Σ∗, and we can deﬁne the partial function f M:Σ∗→Σ∗
+as follows.f
+M(σ)={
+τif M halts on input σ
+undeﬁned otherwise
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 46 — #4
+46 Ian Pratt-Hartmann
+We say that M computes the function f M. A partial function f :Σ∗→Σ∗isTuring
+computable (or just: computable) if it is computed by some deterministic Turing
+machine.
+The instruction table of a Turing machine is ﬁxed. Thus, a Turing machine is not
+a model of a computing machine in the sense we normally imagine, but rather ofa computer program: there is only one thing it computes. On the other hand, sinceTuring machines are, formally, just tuples of ﬁnite objects, any Turing machineMcan easily be coded as a string σ
+′
+Mover a suitable alphabet Σ′, and that string
+can be input to another Turing machine, say M′. It can be shown that there exists a
+universal Turing machine U , which is able to simulate anyTuring machine Mover an
+alphabet Σin the following sense: for any string, σ∈Σ∗,Mhas a non-terminating
+r u no ni n p u tσ if and only if Uhas a terminating run on input σ′
+Mσ; moreover, in
+case of termination, the output of M′is the same as the output of M. Any such
+Turing machine Ui s a model of a computing machine in the sense we normally
+imagine: it is able to execute an arbitrary ‘program’ σ′
+Mon arbitrary ‘data’ σ.G i v e n
+such a coding scheme, consider the halting function ,H:(Σ′)∗→{ ⊤ ,⊥}deﬁned as
+H(σ′)={
+⊤ifσ′encodes a Turing machine Mthat has a terminating run on input ϵ
+⊥otherwise
+This function is clearly well deﬁned, and indeed total. Perhaps the most funda-mental fact in computability theory is due to Turing (1936–7):
+T
+HEOREM 1( T URING ).The halting function is not computable.
+Deﬁnition 1 applies to functions f:Σ∗→Σ∗for any alphabet Σ. However,
+this deﬁnition can be extended to functions with other countable domains andranges, relative to some coding of the relevant inputs and outputs as strings overan alphabet. Consider for instance the familiar coding of natural numbers as bitstrings (elements of {0, 1}
+∗). For n∈N, denote by ¯nthe standard binary represen-
+tation of n(without leading zeros); and for s∈{0, 1}∗, denote by # sthe natural
+number represented by s.I f f:N→Nis a function, we consider fcomputable if
+the function g:{0, 1}∗→{0, 1}∗deﬁned by
+g(s)=(f(#s))
+is computable in the sense of Deﬁnition 1. Computability of functions with otherdomains and ranges – e.g., rational numbers, lists, graphs, etc. – is understood sim-ilarly. Technically, this extended notion of computability is relative to the codingscheme employed. In practice, however, all reasonable coding schemes usuallyyield the same computability (and complexity) results; if so, it is legitimate tospeak of such functions as being computable or non-computable, leaving theoperative coding scheme implicit.
+The architecture of Turing machines given above is, in all essential details, that
+set out in Turing (1936–7). We have followed more recent practice in distinguish-ing input, output and work-tapes (Turing’s machine had a single tape) to make it
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 47 — #5
+Computational Complexity in Natural Language 47
+a little easier to talk about space-bounded computations. But this makes no dif-ference to any of the results reported here. The thesis that Turing computabilitycaptures our pre-theoretic notion of computability is generally referred to as theChurch–Turing thesis . It is important to appreciate that this thesis does not rest on
+the existence of universal Turing machines, or indeed on any purely mathematicalfact. Methodologically, the apparatus introduced above is an exercise in concep-tual analysis: the proposed replacement of an informally understood notion witha rigorous deﬁnition. Historically, several competing analyses of computabilitywere proposed at more or less the same time, most notably Gödel’s notion ofrecursive function and Church’s λ-calculus . All three notions in effect coincide, how-
+ever; so there is general consensus about the formal model presented here. For anaccessible modern treatment, see Papadimitriou (1994, Chapter 2).
+The fundamental goal of complexity theory is to analyze the resources, in either
+time or space, required to perform computational tasks. The ﬁrst step is to measurethe computational resources required by particular algorithms.
+D
+EFINITION 2.Let M be a Turing machine with alphabet Σ, and let g :N→Nbe a
+function. We say M runs in time g if, for all but ﬁnitely many strings σ∈Σ∗, any run
+of M on input σhalts within at most g (|σ|)steps. Similarly, M runs in space g if, for all
+but ﬁnitely many strings σ∈Σ∗, any run of M on input σuses at most g (|σ|)squares
+on any of its work-tapes.Allowing Mto break the bound gin ﬁnitely many cases avoids problems caused by
+zero-length inputs and other trivial anomalies. Notice also the asymmetry in thedeﬁnitions of time and space complexity: because measures of space complexityinclude only the work-tapes (and so exclude the input and output tapes), they can
+besublinear. For time complexity, sublinear bounds make little sense, because they
+do not give the machine the opportunity to read its input.
+Unfortunately, Deﬁnition 2 is too fragile to provide a meaningful measure of
+algorithmic complexity. Suppose Mis a deterministic Turing machine computing
+some function in time g,a n dl e t cbe a positive number. Provided gis mod-
+erately fast-growing (say, faster than linear growth), it is routine to constructanother deterministic Turing machine M
+′– perhaps with more tapes or more
+states or a larger alphabet – that computes the same function in time cg(n).T h a t
+is: we can always speed up Mby a linear factor! Since Mand M′do not rep-
+resent interestingly different algorithms, the statement that a Turing machineruns in time – say – 3n
+2+n+4a so p p o s e dt o1 4 n2+87n+11 is, from an
+algorithmic point of view, not signiﬁcant. Similar remarks also apply to spacebounds.
+D
+EFINITION 3.Let M be a Turing machine, and G a set of functions from NtoN.W e
+say that M runs in time G if, for some g ∈G, M runs in time g. Similarly, we say that M
+runs in space G if, for some g ∈G, M runs in space g.
+In particular, the following classes of functions suggest themselves.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 48 — #6
+48 Ian Pratt-Hartmann
+DEFINITION 4(O-NOTATION ).Let g :Nk→Nbe a function. Denote by O (g)the set
+of functionsO(g)={
+g
+′:Nk→N|there exist c ∈N,n′1,...,n′k∈Ns.t.
+for all n 1>n′1...for all n k>n′k,g′(n1,...,nk)≤cg(n1,...,nk)}
+Informally, O(g)is the class of functions which are eventually dominated by some
+positive multiple of g. Combining Deﬁnitions 3 and 4, it makes sense to say, for
+example, that a given Turing machine runs in time (or space) O(n2),o r O(n3),
+orO(2n). And this sort of complexity measure, it turns out, is robust under the
+expansions of computational resources considered above. For example, it can beshown that, for any k>0, there is a function that can be computed by a deter-
+ministic Turing machine running in time O(n
+k+1)which cannot be computed by
+any deterministic Turing machine running in time O(nk); and similarly for space
+bounds. (The precise statement of these theorems, known as separation theorems,
+is somewhat intricate; see Kozen, 2006, Lecture 3, or Papadimitriou, 1994: 143ff.)O-notation has the further advantage of permitting a useful degree of informalitywhen analyzing the complexity of an algorithm, since a pseudo-code descriptionof that algorithm, of the sort standardly found in computing texts, often sufﬁcesto show that it will run in time or space O(g)(for some function g) without our
+having ﬁrst to compile that description into a Turing machine. Finally, a wordof caution. Knowing that a Turing machine (or algorithm) has time complexityO(g)at best imposes a bound on how rapidly the cost of computation grows
+with the size of the input. That is, the complexity measures in question are asymp-
+totic. In many cases, algorithms with suboptimal asymptotic complexity measuresperform best in practice.
+1.2 Decision problems
+So far, we have discussed complexity measures for particular algorithms, under-stood as deterministic Turing machines. We now develop this idea in two crucial –though logically quite separate – ways.
+The ﬁrst development extends Deﬁnition 1 to non-deterministic computation.
+To do this, we ﬁrst restrict attention to functions whose range contains just twoelements – we conventionally employ ⊤and⊥– representing ‘YES’ and ‘NO’
+respectively. A function f:A→{ ⊤ ,⊥}, where Ais a countable set, is called a deci-
+sion problem,o rs i m p l ya problem. While decision problems may initially seem of
+limited practical interest, they play a central role in complexity theory. Moreover,the restriction to decision problems is less severe than might at ﬁrst appear: thecomplexity of many functions can often be usefully characterized in terms of thecomplexity of closely related decision problems.
+Now, any decision problem f:A→{ ⊤ ,⊥}can alternatively be regarded as a
+subset ofA– namely, the subset {a∈A|f(a)=⊤ } . In particular, if A=Σ
+∗for some
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 49 — #7
+Computational Complexity in Natural Language 49
+alphabet Σ(or if the encoding of AinΣ∗is obvious), a decision problem deﬁned
+onAis, in effect, a set of strings over Σ, or, in the parlance of formal language
+theory, a language overΣ. Conversely, of course, any language L⊆Σ∗may be
+regarded as a decision problem f:Σ∗→{ ⊤ ,⊥}given by:
+f(σ)={
+⊤ifσ∈L
+⊥otherwise
+The observation that decision problems and languages are essentially the samething prompts the following deﬁnition.
+D
+EFINITION 5.Let M be a Turing machine over the alphabet Σ, and suppose without
+loss of generality that Σcontains the symbol ⊤. We say that M accepts as t r i n gσ ∈Σ∗
+if there exists a terminating run of M with input σand output ⊤. The language L ⊆Σ∗
+recognized by M, denoted L (M), is the set of strings accepted by M.
+It is important to bear in mind that, in Deﬁnition 5, Mcan be non-deterministic .T h a t
+is:L(M) is the set of inputs for which Mm a yyield the output ⊤. (It is sometimes
+convenient to imagine a benign helper guiding Mto make the ‘right’ choice of
+instructions required to accept a string σ∈L.) Equally important is that, if σ̸∈L,
+there is no requirement for Mto produce any particular output (as long as it is not
+⊤, of course), or indeed to halt at all.
+The case where Mhalts on every input is of particular interest, however:
+DEFINITION 6( D ECIDABLE ).Let L be a language. We call L decidable if it is
+recognized by a Turing machine guaranteed to halt on every input.It is routine to show that any decidable language is in fact recognized by a deter-
+ministic Turing machine that halts on every input. Furthermore, that machine can
+easily be modiﬁed so as always to produce one of the two outputs ⊤,⊥.T h u s ,a
+decision problem f:Σ
+∗→{ ⊤ ,⊥}is a computable function, in the sense of Deﬁ-
+nition 1, just in case the corresponding language L={σ|f(σ)=⊤ } is decidable,
+in the sense of Deﬁnition 6. Henceforth, then, we shall identify decision problemsand languages, employing whichever term is most appropriate in context.
+We may think of Deﬁnition 5 as a generalization of Deﬁnition 1 to the case of
+non-deterministic computation. The signiﬁcance of this generalization is that, while
+deterministic and non-deterministic Turing machines recognize the same class oflanguages, they may not in general do so within the same computational bounds,a possibility which plays a central role in complexity theory.
+We can generalize the above observations on linear speedup to the case of non-
+deterministic computation for decision problems. We give a reasonably preciseversion here:
+T
+HEOREM 2.Let L be a language over some alphabet, let g :N→Nand h :N→N
+be functions, let c ≥1, and suppose g (n)≥n+1, and h(n) ≥logn. If L is recognized
+by some Turing machine running in time cg (n), then it is recognized by some Turing
+machine running in time g(n). If L is recognized by some Turing machine running in
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 50 — #8
+50 Ian Pratt-Hartmann
+space ch(n), then it is recognized by some Turing machine running in space h(n).T h eprevious statements continue to hold when “Turing machine” is replaced throughout by“deterministic Turing machine.”
+Now for the second development in our analysis of complexity. So far, we
+have provided measures of the time and space requirements of particular Turing
+machines (or, by extension, and using O-notation, of particular algorithms ). But
+what primarily interests us in complexity theory are the time and space require-ments of a maximally efﬁcient Turing machine for computing a particular function or,
+more speciﬁcally, solving a particular decision problem . Recalling the equivalence
+between decision problems and languages discussed above, we deﬁne:
+D
+EFINITION 7.Let L be a language over some alphabet, and let G be a set of functions
+fromNtoN. We say that L is in TIME (G)(or SP ACE(G)) if there exists a deterministic
+Turing machine M recognizing L, such that M runs in time (respectively, space) G.
+Classes of languages of the form TIME(G) or SPACE(G) are referred to as (deter-
+ministic) complexity classes. To avoid notational clutter, if gis a function from N
+toN, we write TIME( g)instead of TIME({g}); and similarly for other complexity
+classes.
+So far, we have encountered classes of functions of the form O(g)for various g.
+When analyzing the complexity of languages (rather than of speciﬁc algorithms),
+however, larger classes of functions are typically more useful.
+DEFINITION 8.Let P, E, and E k(for k>1)be the sets of functions from NtoNdeﬁned
+as follows:
+P={
+nc|c>0}
+E={
+2nc|c>0}
+E2={
+22nc
+|c>0}
+Ek={
+22···2}nc
+kt i m e s|c>0}
+A function g :N→Nw h i c hi si nE kfor some k is said to be elementary .
+Non-elementary functions grow rapidly. However, it is easy to deﬁne a com-putable function which is non-elementary:f(n)=2
+2···2}
+ntimes
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 51 — #9
+Computational Complexity in Natural Language 51
+Combining Deﬁnitions 7 and 8, we obtain complexity classes which are oftenknown under the following, more pronounceable names:
+LOGSPACE =SPACE(log n)
+PTIME =TIME(P) PSPACE =SPACE(P)
+EXPTIME =TIME(E) EXPSPACE =SPACE(E)
+k-EXPTIME =TIME(E
+k) k-EXPSPACE =SPACE(E k)
+Thus, PTIME is the class of languages recognizable by a deterministic Turingmachine in polynomial time, EXPSPACE, the class of languages recognizable bya deterministic Turing machine in exponential space, and so on. In some texts,LOGSPACE is referred to as L, PTIME as P , and EXPTIME as EXP . Notice, inciden-tally, that there is no point in deﬁning, say, G={log(n
+c)|c>0}and then setting
+LOGSPACE =SPACE(G), since, by Theorem 2, linear factors may be ignored.
+Finally, if Lis not recognizable by any Turing machine running in time bounded
+by an elementary function, then Lis said to have non-elementary complexity .W e
+shall encounter examples of decidable, but non-elementary, problems below.
+Deﬁnition 7 may be adapted directly to deal with non-deterministic
+computation.
+DEFINITION 9.Let L be a language over some alphabet, and let G be a set of functions
+fromNtoN. We say that L is in NTIME (G)(or NSP ACE(G)) if there exists a Turing
+machine M recognizing L, such that M runs in time (respectively, space) G.
+Classes of languages of the form NTIME(G) or NSPACE(G) are referred to as (non-
+deterministic) complexity classes.
+Combining Deﬁnitions 8 and 9, we obtain complexity classes which are often
+known under the following, more pronounceable names:
+(3)NLOGSPACE =NSPACE (log n)
+NPTIME =NTIME (P) NPSPACE =NSPACE (P)
+NEXPTIME =NTIME (E) NEXPSPACE =NSPACE (E)
+Nk-EXPTIME =NTIME (Ek) Nk-EXPSPACE =NSPACE (Ek)
+In some texts, NLOGSPACE is referred to as NL, NPTIME as NP , and NEXPTIMEas NEXP .
+Notice the asymmetry involved in the notion of non-deterministic computation:
+Mrecognizes L⊆Σ
+∗just in case, for each string σ∈Σ∗,σ∈Lif and only if there
+exists a successfully terminating run of M(i.e., a terminating run with output ⊤)
+on input σ–t h a ti st os a y , σ∈Σ∗\Lif and only if allruns of Mon input σfail to
+halt successfully. This asymmetry prompts us to deﬁne the complement classes as
+follows.
+DEFINITION 10. IfCis a class of languages, then Co-C is the class of languages L such
+thatΣ∗\Li si nC ,w h e r eΣ is the alphabet of L.
+It is easy to see that, for any interesting class of functions G, TIME(G) =C o -
+TIME(G) and SPACE(G) =C o - S P A C E ( G). For this reason, we never speak of
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 52 — #10
+52 Ian Pratt-Hartmann
+Co-PTIME, Co-PSPACE, etc. The situation with non-deterministic complexityclasses is different, however. It is not known whether NPTIME =Co-NPTIME;
+and similarly for many other classes of the form Co-NTIME(G). Indeed, suchcomplexity classes are regularly encountered. In particular, putting togetherDeﬁnition 10, and the NTIME-classes listed in (3), we obtain the complexityclasses Co-NPTIME, Co-NEXPTIME, and Co-N k-EXPTIME. (And similarly for the
+corresponding space-complexity classes; but see Theorem 4.)
+1.3 Relations between complexity classes
+It is obvious from the above deﬁnitions that any language in TIME(G)(or SPACE( G)) is non-deterministically recognizable within the same bounds.
+Formally,
+TIME(G) ⊆NTIME (G) SPACE(G) ⊆NSPACE(G)
+A little less obviously, we see that:
+NPTIME ⊆EXPTIME NEXPTIME ⊆2-EXPTIME ···
+Consider the ﬁrst of these inclusions. If Mnon-deterministically recognizes L,a n d
+pis a polynomial such that Mis guaranteed to halt within time p(n) on input of
+size n, the number of possible runs of Mon inputs of this size is easily seen to be
+bounded by 2
+q(n)for some polynomial q. But then a deterministic Turing machine
+M′, simulating M, can check all of these runs in exponential time, outputting ⊤if
+any one of them halts successfully. Hence, NPTIME ⊆EXPTIME. The inclusion
+NEXPTIME ⊆2-EXPTIME follows analogously; and so on up the complexity hier-
+archy. In fact, similar arguments establish the following more elaborate system ofinclusions.
+(4)PTIME ⊆NPTIME ⊆PSPACE ⊆
+EXPTIME ⊆NEXPTIME ⊆EXPSPACE ⊆
+2-EXPTIME ⊆2-NEXPTIME ···
+The following result establishes that, for classes of sufﬁciently ‘large’ functions,
+non-determinism makes no difference to space complexity (Savitch 1970).
+T
+HEOREM 3( S AVITCH ).If g(n)≥logn, then NSPACE (g(n)) ⊆SPACE((g(n))2)
+In some statements of this theorem, certain technical conditions are imposed ong; but see, e.g., Kozen (2006: 15–16). Since the classes of functions P,E,E
+2,
+etc. are closed under squaring, we have NPSPACE =PSPACE, NEXPSPACE =
+EXPSPACE, and so on. As an instant corollary, since these deterministic classes are
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 53 — #11
+Computational Complexity in Natural Language 53
+equal to their complements, we have NPSPACE =Co-NPSPACE, NEXPSPACE =
+C o - N E X P S P A C E ,a n ds oo n .
+Care is required when applying the reasoning of the previous paragraph. Setting
+g(n)=logn, Theorem 3 tells us that NLOGSPACE ⊆SPACE ((log n)2); however,
+this is not sufﬁcient to imply that NLOGSPACE ⊆LOGPSPACE. Nevertheless, the
+following result establishes that equivalence under complementation continues tohold even in this case (Immerman 1988).
+T
+HEOREM 4( I MMERMAN –SZELEPCSÉNYI ).If g(n)≥logn, then NSPACE(g(n)) =
+Co-NSPACE (g(n))
+In some statements of this theorem, certain technical conditions are imposed ong; but again, see Kozen (2006: 22–4). As a special case, we have NSPACE (n)=
+Co-NSPACE (n), which settled a long-standing conjecture in formal language the-
+ory (see Section 2.3 below). As an instant corollary of Theorem 4, NLOGSPACE =
+Co-NLOGSPACE.
+Adding these ‘small’ complexity classes to the inclusions (4), we obtain(5)LOGSPACE ⊆NLOGSPACE ⊆PTIME ⊆NPTIME ⊆
+PSPACE ⊆EXPTIME ⊆NEXPTIME ⊆
+EXPSPACE ⊆2-EXPTIME ⊆2-NEXPTIME ···
+1.4 Lower bounds
+Notwithstanding the above caveats on the interpretation of asymptoticcomplexity measures, saying that a language is in a complexity class Cplaces
+some kind of upper bound on the resources required to recognize it. But what of
+lower bounds? What if we want to say that a language cannot be recognized within
+certain time or space bounds? For the complexity classes introduced above, usefullower-bound characterizations are indeed possible.
+The basic idea is that of a reduction of one language (or decision problem) to
+another. Let L
+1and L2be languages, perhaps over different alphabets Σ1andΣ2.
+Suppose that there exists a function g:Σ∗
+1→Σ∗
+2such that, for any string σ∈Σ∗
+1,
+σ∈L1if and only if g(σ)∈L2. We may think of gas a means of ‘translating’ L1into
+L2: in particular, any Turing machine recognizing L2can be modiﬁed to recognize
+L1by simply prepending the translation g. If the cost of this translation is small,
+then we may regard L2as being ‘at least as hard to recognize as’ L1.
+DEFINITION 11 (R EDUCTION ).LetΣ1andΣ2be alphabets, and let L ibe a language
+overΣi(i=1, 2).Areduction of L1toL2is a function g :Σ∗
+1→Σ∗
+2, such that g can
+be computed by a (deterministic) Turing machine in space O(log n), and for all σ∈Σ∗
+1,
+σ∈L1if and only if g(σ) ∈L2; in that case, we say that L 1isreducible to L2. If, instead,
+g can merely be computed in time O (nk)f o rs o m ek ,w ec a l li ta polynomial reduction,
+and we say that L 1ispolynomially reducible to L2.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 54 — #12
+54 Ian Pratt-Hartmann
+LetCbe any of the complexity classes mentioned in (5), or the complement of any
+of these classes. It can be shown that, if L2is inC,a n d L1is reducible to L2, then
+L1is inC. We say that Cis ‘closed under reductions’. If Cis any of the complexity
+classes mentioned in (4), then Cis, similarly, ‘closed under polynomial reductions.’
+THEOREM 5.The relation of reducibility is transitive: if L 1is reducible to L 2, and L 2to
+L3,t h e nL 1is reducible to L 3.
+We remark that Theorem 5 is not obvious (though its analogue in the case ofpolynomial reducibility is) see, e.g., Papadimitriou (1994: 164).
+Now we can give our characterization of lower complexity bounds.
+D
+EFINITION 12 (H ARDNESS AND COMPLETENESS ).LetCbe a complexity class. A
+language L is said to be hard for C,o rC-hard, if any language in Cis reducible to
+L; L is said to be complete for C,o rC-complete,i fLi s C-hard and also in C. Addi-
+tionally, L is said to be C-hard under polynomial reduction if any decision problem
+inCis polynomially reducible to L; similarly for C-completeness under polynomial
+reduction.It follows from Theorem 5 that, if L
+1isC-hard for some complexity class C,a n dL 1
+is reducible to L2, then L2isC-hard. Similarly, mutatis mutandis, for hardness under
+polynomial reductions. Notice that the notion of LOGSPACE-completeness isuninteresting: any problem in LOGSPACE is by deﬁnition LOGSPACE-complete.Under polynomial reductions, the notion of PTIME-completeness is similarlyuninteresting. Deﬁnition 12 reﬂects the fact that reducibility in logarithmic spaceis taken to be the default in complexity theory. However, for most higher complex-ity classes, it is generally easier and just as informative to work with reducibilityin polynomial time; and this is what is often done in practice. Hardness results,in the sense of Deﬁnition 12, are sometimes referred to, for obvious reasons, as‘lower complexity bounds.’ However, it is important not to be misled by this ter-minology: for example, it is easy to show that there are PTIME-hard problems inTIME(n); but TIME(n) is properly contained in PTIME!
+Many natural problems (it is easier here to speak of problems rather than lan-
+guages) can be shown to be complete for the complexity classes introduced above.Here are three very well-known examples. In the context of propositional logic,aliteral is a proposition letter or a negated proposition letter; proposition letters
+are said to be positive literals, their negations negative literals. A clause is a disjunc-
+tion of literals; a clause is said to be Horn if it contains at most one positive literal.
+Theorems 6–9 are among the most fundamental in complexity theory. For an acces-sible treatment, see, e.g., Papadimitriou (1994: 171, 176, and 398 respectively).Theorem 6 is due to Cook (1971).
+T
+HEOREM 6( C OOK ).The problem of determining whether a given set of clauses is
+satisﬁable is NPTIME-complete.
+THEOREM 7.The problem of determining whether a given set of Horn clauses is
+satisﬁable is PTIME-complete.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 55 — #13
+Computational Complexity in Natural Language 55
+THEOREM 8.The problem of determining the satisﬁability of a given set of clauses, all of
+which contain at most two literals, is NLOGSP ACE-complete.Theorem 8 is very closely related to the following graph-theoretical problem.Given a ﬁnite directed graph, one node in that graph is said to be reachable from
+another if there is a ﬁnite sequence of directed edges in that graph leading fromthe ﬁrst node to the second.
+T
+HEOREM 9.The problem of determining whether, in a given directed graph, one node is
+reachable from another, is NLOGSP ACE-complete.Note that, in each case, we assume that inputs (clauses, graphs, ...) are coded in
+some standard way as strings over some alphabet. All reasonable coding schemesyield the same complexity results.
+Such completeness results are often less surprising than they at ﬁrst appear. For
+example, Theorem 6 is established by showing that, given a non-deterministicTuring machine Mthat runs in polynomial time, the conditions for a sequence of
+conﬁgurations of Mto be a run of Mwith input σcan be encoded, in a natural way,
+as a set of clauses whose size is bounded by a polynomial function of the lengthofσ. And once one language Lis shown to be hard for a complexity class, other
+languages can be shown to be hard for that class by showing that Lis reducible to
+them.
+2 Parsing and Recognition
+As already mentioned, in the context of formal language theory, a language is a
+set of strings over some alphabet Σ. Some languages are speciﬁed by grammars,
+which are themselves ﬁnite objects whose semantics is deﬁned by a grammar frame-
+work . Familiar grammar frameworks are: context-sensitive grammars, deﬁnite
+clause grammars, tree adjoining grammars, context-free grammars, and non-deterministic ﬁnite state automata. Within a given grammar framework F,a n y
+grammar G recognizes a unique language L(G), namely, the set of strings accepted
+byG. Thus, the apparatus of the multi-tape Turing machine also constitutes a
+grammar framework in this sense. Each grammar in that framework – that is,each speciﬁc Turing machine Mover signature Σ– recognizes the language L(M)
+comprising the set of strings over Σaccepted by M, in the sense of Deﬁnition 5.
+IfFis a grammar framework, we understand the universal recognition problem
+forFto be the following problem: given a grammar GinFand a string σover the
+alphabet of G, determine whether σ∈L(G). This problem is to be distinguished
+from the ﬁxed-language recognition problem for any GinF: given a string σover
+the alphabet of G, determine whether σ∈L(G). The complexity of the universal
+recognition problem for a framework Fis in general higher than that of the ﬁxed-
+language recognition problem for any grammar in F.
+In this section, we survey the complexity of the universal recognition problem
+and the ﬁxed-language recognition problem for various grammar frameworks. For
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 56 — #14
+56 Ian Pratt-Hartmann
+the framework of Turing machines, we already know the answer: it is (essentially)a restatement of Theorem 1 that the universal recognition problem for Turingmachines is undecidable; and it is an immediate consequence of the existence of auniversal Turing machine that there exist Turing machines whose ﬁxed-languagerecognition problem is undecidable. For less expressive grammar frameworks,however, there is much more to be said, as we shall see.
+2.1 Regular languages
+Let us begin with one of the least expressive of the commonly encounteredgrammar frameworks. A non-deterministic ﬁnite state automaton (NFSA) is a tuple
+A=⟨Σ,Q,q
+0,q1,T⟩, where Σis an alphabet, Qa set (the set of states ofA),q0
+and q1distinct elements of Q(the initial state and the accepting state respectively),
+and Ta ﬁnite set of triples ⟨p,s,q⟩(the transitions ofA), where p,q∈Qand s∈Σ.
+Informally, the transition ⟨p,s,q⟩has the interpretation
+If the current state is p, and the next symbol to be read is s, then set the new
+state to be q.
+An NFSA Ais said to accept the string σ=s1,...,snif, starting in the state q0,a n d
+reading the symbols s1,...,snsuccessively, there is a sequence of transitions in T
+leading to the state q1. NFSAs may be pictured as labeled graphs in the obvious
+way: the nodes are labeled by elements of Q, and the edges by elements of Σ.A
+string is accepted if it is possible to step through the graph from the initial state tothe ﬁnal state in such a way that the string is exactly consumed.
+It is a standard result of formal language theory that the class of languages
+accepted by NFSAs coincides with the class of regular languages. A regular expres-
+sion o v e ra na l p h a b e t Σis deﬁned recursively to be any expression of the forms ∅,
+ϵ,s,e
+1∪e2,e1e2,o re∗, where s∈Σand e,e1,a n d e2are regular expressions. Any
+regular expression erecognizes a language L(e) overΣ, deﬁned (with harmless
+abuse of notation) as follows:
+L(∅)=∅ L(e1∪e2)=L(e1)∪L(e2)
+L(ϵ)={ϵ} L(e1e2)={στ|σ∈L(e1)andτ∈L(e2)}
+L(s)={s}fors∈Σ L(e∗)={σ1... σ k|k≥0a n d σi∈L(e) for all i(1≤i≤k)}
+Aregular language is any language L(e), where eis a regular expression.
+Deciding whether a given NFSA accepts a given string is easily reducible to
+the problem of reachability in directed graphs, and vice versa. By Theorem 9,therefore, we have:
+T
+HEOREM 10. The universal recognition problem for NFSAs is NLOGSP ACE-complete.
+What about the ﬁxed-language recognition problem? An NFSA can be thought ofas a Turing machine with a ﬁnite memory – that is, a Turing machine which never
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 57 — #15
+Computational Complexity in Natural Language 57
+uses more than a constant amount of space on any of its work-tapes. With a littlecare, this equivalence can be shown to be exact: a language is regular if and onlyif it can be recognized by a Turing machine with ﬁxed space bound. Hence:
+T
+HEOREM 11. For any NFSA A,L(A)is in SP ACE(c) for some constant c.
+Thus, the universal recognition problem for NFSAs has higher complexity
+than the recognition problem for any speciﬁc regular language. A subtly differ-ent illustration of this phenomenon is provided by the grammar framework ofextended regular expressions. An extended regular expression o v e ra na l p h a b e t Σis
+deﬁned exactly as for regular expressions, except that we have a complementationoperator ¯e, with semantics given by:
+L(¯e)=Σ
+∗\L(e)
+A well-known theorem of formal language theory states that the class of regu-lar languages is closed under complementation, and hence is equal to the class oflanguages recognized by extended regular expressions. Thus, the grammar frame-works of NFSAs and extended regular expressions are equal in expressive power.However, Stockmeyer and Meyer (1973: 3) show that:
+T
+HEOREM 12. The universal recognition problem for extended regular expressions is in
+PTIME.Theorem 12 does not immediately follow from Theorem 10: extended regularexpressions constitute a more compact way of specifying regular languages thando NFSAs. Of course, when it comes to the ﬁxed-language recognition prob-lem for languages deﬁned by extended regular expressions, this must be thesame as for NFSAs, because they are the same languages. For a useful list ofcomplexity-theoretic results regarding regular languages, see Yu (1997: 96ff.).
+2.2 Context-free languages
+Probably the most familiar and useful grammar framework in linguistics is thatof context-free grammars. Formally, a context-free grammar (CFG) is a quadruple
+G=⟨N,Σ,S,P⟩, where Nis a set of non-terminals (typically, category labels such
+as S, NP , VP , etc.), Σan alphabet, Sa distinguished start symbol inN(for example,
+the category S), and Pa list of productions for rewriting non-terminals (such as S →
+NP VP , NP →Det N, etc.). Elements of Σare usually referred to as terminals in this
+context. A CFG accepts the string of terminals σif some sequence of productions
+can be found which rewrites the start symbol Stoσ. A language recognized by a
+CFG is called a context-free language. For example, the language {a
+nbn|n≥0}is
+context-free, but not regular. (For a detailed discussion, see Chapter 1, Section 6.)
+A number of well-known algorithms exist to determine whether, given a CFG G
+and a string σ,Gaccepts σ. Perhaps the best known is the CYK algorithm, named
+after its simultaneous inventors, Cocke, Younger, and Kasami (see, e.g., Younger1967). Under reasonable assumptions about what qualiﬁes as a constant-time
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 58 — #16
+58 Ian Pratt-Hartmann
+operation, this algorithm runs in time O(mn3), where mis the number of produc-
+tions in G,a n d nis the length of σ; however, it requires that the given grammar G
+be in Chomsky normal form. The slightly more sophisticated algorithm of Earley(1970) dispenses with this assumption. Thus, the universal recognition problemfor context-free languages is in PTIME. Furthermore, it is easy to reduce this prob-lem to the satisﬁability problem for Horn clauses in propositional logic, whence,by Theorem 7, it is also PTIME-hard (Jones & Laaser 1977). Hence:
+T
+HEOREM 13. The universal recognition problem for CFGs is PTIME-complete.
+On the other hand, for the ﬁxed-language recognition problem, we can again do alittle better (Lewis et al., 1965; Nepomnyashchii 1975):
+T
+HEOREM 14. For any CFG G, L(G) is in SP ACE((log n)2). Moreover, there exists a
+context-free language which is NLOGSP ACE-hard.The proof in both cases is rather technical.
+CFGs are not the only way of describing context-free languages: the framework
+ofLambek grammars (Lambek 1958) provides an alternative. We content ourselves
+with an informal explanation here, referring the reader to, e.g., Carpenter (1997).The Lambek calculus (with product) is a logical system allowing the derivation of
+sequents involving category expressions. A category expression is either a basic cat-
+egory or a derived category of the forms X/Y,Y\X,o r X·Y. Examples of basic
+categories are S and NP . Examples of derived categories are NP \S, NP ·NP, and
+(NP\S)/NP. Intuitively, a category expression X/Ydescribes a string which, when
+a string of category Yis placed to its right, will result in a string of category X;s i m -
+ilarly, Y\Xdescribes a string which, when a string of category Yis placed to its left,
+will result in a string of category X; and ﬁnally, X·Ydescribes a string which is the
+result of concatenating a string of category Xand a string of category Y.T h u s ,a n
+intransitive verb, and indeed any verb phrase, might be assigned category NP\S,while a transitive verb might be assigned category (NP\S)/NP.
+Asequent in the Lambek calculus is an expression of the form
+X
+1···Xn→X,
+where X1,...,Xnand Xare category expressions. Intuitively, such a sequent has
+the meaning: “The result of concatenating any strings of categories X1,...,Xn,
+in that order, is a string of category X.” An example of a sequent is
+(6) NP (NP\S)/NP NP →S,
+which thus has the informal interpretation
+(7)ifσ1,σ2,a n dσ3are strings of categories NP, (NP\S)/NP, and NP
+respectively, then σ1σ2σ3is of category S.
+We remark that, under the advertised interpretations of the relevant derived cat-egories, (7) is a true statement. Formally, however, it is the rules of the Lambek
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 59 — #17
+Computational Complexity in Natural Language 59
+S→SN P →NP
+NP(NP\ S)→S(\I)NP→NP
+NP(NP\ S)/NP NP →S(/I)
+Figure 2.2 A derivation in the Lambek calculus.
+calculus (rather than judgments such as (7)) that determine whether any givensequent is derivable. We do not give these rules here. As an example, how-ever, Figure 2.2 shows the derivation of sequent (6). It can be shown that therules of the Lambek calculus are correct and complete for the interpretation givenabove (Pentus 1994).
+ALambek grammar (with product) over a signature Σis a ﬁnite list Gof pairs of
+the form (s,C)where s∈Σand Cis a category expression. We say that the gram-
+mar G accepts the string σ=s
+1...snjust in case there exist category expressions
+C1,...,Cnsuch that: (i) (si,Ci)∈Gfor each i(1≤i≤n), and (ii) the sequent
+C1···Cn→Scan be derived in the Lambek calculus. (Again, Sis a distinguished
+start symbol.) For example, if Gcontains the pairs
+(John, NP), (Mary, NP), (loves, (NP\S)/NP),
+then, since (6) is a valid sequent, Gaccepts the sentence ‘John loves Mary.’ It
+is known (Pentus 1993, 1997) that the class of languages recognized by Lambekgrammars is exactly the class of context-free languages.
+A crucial result concerning the Lambek calculus is the so-called cut-elimination
+theorem (Lambek 1958), which allows us to show that the problem of determin-
+ing the validity of a given sequent in the Lambek calculus is in NPTIME. Morerecently, Pentus (2006) has shown that the problem of determining the validityof a sequent in the Lambek calculus (with product) is NPTIME-complete. Thisimmediately translates, in the present context, to the following result.
+T
+HEOREM 15 (P ENTUS ).The universal recognition problem for Lambek grammars
+(with product) is NPTIME-complete.
+We remark in passing that the corresponding problem for the Lambek calculuswithout the product operation ·(i.e., just the operations /and\)i s ,a tt h et i m eo f
+writing, open. This restriction does not decrease the class of languages which canbe recognized by such grammars: these are still exactly the context-free languages.
+2.3 More expressive grammar frameworks
+As the preceding discussion illustrates, the complexity of the universal recogni-tion problem for a grammar framework cannot be read off in any simple way fromits expressive power. Nevertheless, commonly encountered grammar frameworkswith higher expressive power do tend, by and large, to exhibit higher recogni-tion complexity. A well-known example is provided by the class of tree adjoining
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 60 — #18
+60 Ian Pratt-Hartmann
+grammars (TAGs). A more detailed explanation of TAGs can be found in Chapter 4,
+Section 7. Very roughly, a TAG is a ﬁnite set of ‘local’ trees which can be combinedinto larger trees to license sentences, much as CFGs combine productions (whichcan equally be thought of as local trees) into phrase structures. The essentiallynew element in TAGs is the operation of adjunction, in which a local tree may be
+‘spliced’ into an existing tree. A language recognized by a TAG is called a tree
+adjoining language .
+The more elaborate apparatus of TAGs leads to an increase in recognition capac-
+ity: the languages {a
+nbncn|n≥1}and{anbncndn|n≥1}are tree adjoining
+languages, but not context-free languages. It also leads to an increase in recog-nition complexity. Various parsing algorithms have been developed which showthat the recognition problem for a TAG can be solved in time O(n
+6), where nis
+the length of the input string (Schabes 1994). Interestingly, TAGs turn out to beexpressively equivalent to several other natural grammar frameworks, includ-ing head grammars, linear-indexed grammars,a n d combinatory categorial grammars
+(Vijay-Shanker & Weir 1994). These equivalences can be used to establish that allthese grammar frameworks have universal recognition problems with comparablecomplexity.
+More expressive still is the framework of deﬁnite clause grammars (DCGs). Again,
+we give only an informal explanation here. Like a CFG, a DCG consists of a set ofproductions over ﬁxed sets of terminal and non-terminal symbols, together witha distinguished non-terminal S. The only difference is that the non-terminals now
+take arguments drawn from a term-language T. The expressions of Tare built up
+from a ﬁxed vocabulary of individual constants, variables, and function symbols.We assume that there is at least one individual constant in T. Each non-terminal
+in a DCG is associated with a non-negative integer, called its arity , and, in any
+production, is supplied with a list of arguments according to that arity. A typicalDCG production has the form
+(8) A(s
+1,...,sn)→B1(t1,1,...,t1,ℓ1)···B m(tm,1,...,tm,ℓ m),
+where Ais a non-terminal with arity n,a n dt h e Biare non-terminals with arity ℓi
+for all i(1≤i≤m). (In general, the right-hand side is also allowed to contain
+terminals.) The distinguished non-terminal Sis assumed to have arity 0. A ground
+instance of a production is the result of consistently substituting, for the variables
+in that production, terms which contain no variables. The notion of acceptance is
+then deﬁned in the same way as for a CFG, by regarding each production as theset of its ground instances. (Of course, this set of productions may be inﬁnite, andthus will not in general constitute an actual CFG.)
+Figure 2.3 shows a set of productions for a DCG Gwith non-terminals
+{S, A, B, C, D, E} and terminals {a, b, c, d, e}. Each of the non-terminals has arity 1,
+except for S, the distinguished non-terminal. Figure 2.4 shows a derivation ofthe string aabbccddee in G, where the variable xin the ﬁrst production takes
+the value f(1). This variable in effect counts the number of times the rulesf o r t h e n o n - t e r m i n a l s A , ..., E a r e i n voked (with a value f
+n−1(1)encoding n
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 61 — #19
+Computational Complexity in Natural Language 61
+S→A(x)B ( x)C ( x)D ( x)E ( x)
+A(1)→aA ( f (x))→aA ( x)
+B(1)→bB ( f (x))→bB (x)
+C(1)→cC ( f (x))→cC (x)
+D(1)→dD ( f (x))→dD ( x)
+E(1)→eE ( f (x))→eE (x)
+Figure 2.3 Productions of a DCG recognizing the language {anbncndnen|n≥0}.
+S
+A(f(1))
+aA ( 1 )
+aB(f(1))
+bB ( 1 )
+bC(f(1))
+cC ( 1 )
+cD(f(1))
+dD ( 1 )
+dE(f(1))
+eE ( 1 )
+e
+Figure 2.4 Derivation of the string aabbccddee in the DCG of Figure 2.3.
+invocations), and ensures that this number is the same in each case. Thus,L(G)={a
+nbncndnen|n≥0}; this language is not a tree adjoining language.
+The DCG framework is of interest in part because it is so attractive to implement:
+indeed, DCGs are a built-in feature of the Prolog programming language (Pereira& Warren 1980). The basis for such implementations is the concept of uniﬁcation.
+We say that any terms t
+1and t2ofTunify if there is a simultaneous substitu-
+tion of terms for variables in t1and t2which make these expressions identical.
+If two terms unify, then there is a ‘most general’ uniﬁer, which is unique upto renaming of variables. In a DCG-parser, when a non-terminal A(u
+1,...,un)is
+expanded by the production (8), the most general uniﬁer of the terms A(u 1,...,un)
+and A(s 1,...,sn)is ﬁrst computed; if this uniﬁer exists, all variable bindings thus
+created are carried through to all the non-terminals B1(¯t1),...,Bm(¯tm), which are
+then subject to expansion as before. Computing an explicit representation of themost general uniﬁer of two terms is computationally expensive, because that rep-resentation is in general exponentially large in the size of the terms. However,determining whether two terms unify is much easier (Paterson & Wegman 1978;
+de Champeaux 1986):
+T
+HEOREM 16. The problem of determining whether two terms unify is in TIME (n+1).
+DCGs thus present an interesting object of study from a complexity-theoretic
+point of view. We have:
+THEOREM 17. The universal recognition problem for DCGs is undecidable. Indeed, there
+is a DCG G such that L(G) is undecidable.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 62 — #20
+62 Ian Pratt-Hartmann
+Theorem 17 follows almost directly from Theorem 1, because the operation of anyTuring machine Mcan easily be simulated using a DCG in which the values of
+variables are used to store conﬁgurations of M.
+However, by imposing various reasonable constraints on DCGs, decidability
+can be restored. Let us say that a production is consuming if the right-hand side
+either consists of a single terminal or has a length of at least 2; and let us saythat a DCG is consuming if all its productions are. For example, the production
+a(f(x))→a(x) is not consuming, because its right-hand side consists of a single non-terminal; on the other hand, the DCG of Figure 2.3 is consuming. It is easy to showthat, if a consuming DCG accepts a string σof length n, the resulting parse-tree
+has at most 3n −1 nodes, so decidability in this case should not be a surprise. In
+fact, we have:
+T
+HEOREM 18. The universal recognition problem for consuming DCGs is NPTIME-
+complete. Indeed, there exists a consuming DCG G such that L (G)is NPTIME-complete.
+The upper bound in Theorem 18 follows from the following observations. Givena consuming DCG Gand a string σof length n, we ﬁrst guess a parse-tree
+featuring at most 3n −1 nodes. Each non-leaf node is labeled with the (unin-
+stantiated) production of Gresponsible for generating it, and each leaf node is
+labeled with a terminal, so as to form the string σ. (If the same production is
+used at more than one non-leaf node, new copies are made containing fresh vari-ables.) We need only check that the terms in the copies of the productions ateach node can be simultaneously uniﬁed in the obvious way. This check amountsto determining the uniﬁability of two (polynomially large) terms, and can becarried out in polynomial time by Theorem 16. The NPTIME-hardness of L(G)
+for certain consuming DCGs Gis easily shown by a simple reduction of the
+satisﬁability problem for propositional logic clauses; the result then follows byTheorem 6.
+Alternatively, we might say that a DCG is function-free if there are no func-
+tion symbols in its productions. (Thus, the DCG featured in Figure 2.4 is notfunction-free, because several of its productions feature the function symbol f.)We have:
+T
+HEOREM 19. The universal recognition problem for function-free DCGs is EXPTIME-
+complete. However, for any ﬁxed function-free DCG G, L (G)is in PTIME.
+Theorem 19 follows straightforwardly from the close connection betweenfunction-free DCGs and the logic programming language DATALOG (see,e.g., Libkin 2004, Chapter 10, or Dantsin et al., 2001). More generally, there is aclose connection between DCGs on the one hand and so-called ﬁxed-point logicson the other, which allows standard results from complexity theory to be carriedover to the study of DCGs. For example, Rounds (1988) describes two DCG-like grammar frameworks, one able to recognize all and only the languages inTIME(2
+n), the other able to recognize all and only the languages in PTIME. Rounds
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 63 — #21
+Computational Complexity in Natural Language 63
+shows that the second of his two grammar frameworks is at least as expressive asthat of TAG (and its equivalents), mentioned above.
+A more traditional grammar framework generalizing CFGs is that of the
+context-sensitive grammars. A context-sensitive grammar (CSG) is like a CFG,
+except that the productions are now of the form α→β, where αandβare strings
+of symbols such that |α|≤|β|. These productions are interpreted as rewrite rules,
+in much the same way as productions of a CFG. For comparison, note that, in aCFG, all productions have the form A→β, where Ais a non-terminal. Indeed,
+if we assume (which we may without essential loss of generality) that produc-tions in CFGs have non-empty right-hand sides, the condition |α|≤|β|is then
+trivially satisﬁed, whence CFGs are a special case of CSGs. Recalling the equiva-lence of languages and decision problems, it is routine to show that the class ofcontext-sensitive languages is exactly the complexity class NSPACE(n). In fact, wehave the following result concerning recognition complexity for context-sensitivelanguages.
+T
+HEOREM 20. The universal recognition problem for CSGs is PSP ACE-complete.
+Indeed, there exists a CSG G such that L (G)is PSP ACE-complete.
+For a formal deﬁnition of context-sensitive grammars and a proof of Theorem 20,see Hopcroft and Ullman (1979b: 223 and 347ff.). It was long conjectured thatthe complement of a context-sensitive language is itself a context-sensitive lan-guage. This conjecture was settled, positively, by Theorem 4, using the fact thatthe context-sensitive languages coincide with NSPACE( n).
+All the grammar frameworks examined so far have precise formal deﬁnitions,
+which makes for a clear-cut complexity analysis. However, many mainstreamgrammar frameworks which aspire to describe natural languages are much lessrigidly deﬁned (and indeed much more liable to periodic revision); consequently,it is harder to provide deﬁnitive results about computational complexity. Trans-formational grammar is a case in point. Let us take a transformational grammarto consist of two components: a CFG generating a collection of phrase-structuretrees – so-called deep structures – and a collection of transformations which map
+these deep structures to other phrase-structure trees – so-called surface structures.
+As t r i n gσ isaccepted byGjust in case σcan be read off the leaves of some sur-
+face structure obtained in this way. Absent a formal speciﬁcation of the sorts oftransformations allowed in transformational grammar, it is impossible to deter-mine the complexity of its recognition problem. However, analyzing a version ofChomsky’s aspects theory, Peters and Ritchie (1973) show the existence of trans-
+formational grammars which can recognize undecidable languages. Certainly,then, the universal recognition problem for transformational grammars (thusunderstood) is undecidable. Other analyses of grammar frameworks in the trans-formational tradition paint a picture of lower complexity, however. Thus, Berwickand Weinberg (1984: 125ff.) analyze the complexity of government-binding gram-
+mars, a formalization of the approach taken in Chomsky (1981), and show thatrecognition complexity for such grammars is in the class PSPACE.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 64 — #22
+64 Ian Pratt-Hartmann
+2.4 Model-theoretic semantics
+Recent trends in linguistics – particularly within the transformationaltradition – have shown a preference for specifying grammars not in terms of gener-ative mechanisms but, rather, in terms of constraints to which sentence structuresare required to conform. On this view of grammar, a string σis grammatical just
+in case it has a structure which satisﬁes those constraints. How can we determinethe complexity of the recognition problem when grammars are presented in thisway? The answer is to employ a formal language: this formal language must bepowerful enough to express the constraints constituting the grammar in question,and yet not so powerful that working with it leads to undecidable problems.
+Monadic second-order logic (MSO) is a formal language containing two sorts of
+variables: those ranging over objects (as in ordinary ﬁrst-order logic), and thoseranging over setsof objects. For the moment, let us suppose that the ‘objects’ in
+question are positions in a string σover an alphabet Σ. We conﬁne ourselves to
+a language containing a unary atomic predicate s, for every s∈Σ, and binary
+predicates ∈and≤. We now interpret these predicates over the set of positions in σ
+as follows (we adopt the convention of using lowercase letters for object variablesand uppercase letters for set variables): x∈Xmeans ‘x is a member of X’;x≤y
+means ‘x is non-strictly to the left of y’; and s(x) means ‘position xis ﬁlled with
+symbol s,’ for each s∈Σ. Formulas are built up from atomic formulas using
+Boolean connectives and quantiﬁers (over both sorts of variables) in the normalway. The standard semantics for these connectives then determines, for a givenformula ϕ(with no free variables) and a given string σ, whether ϕis true in σ.
+That is: any σ∈Σ
+∗is a structure (in the logicians’ sense) interpreting the above
+language.
+On this view, we can think of an MSO-formula ϕ(with no free variables) as a
+grammar: a string σisaccepted byϕjust in case ϕis true in σ. The following result
+was proved by Büchi (1960).
+THEOREM 21 (B ÜCHI ).A language is recognized by an MSO-formula if and only if it
+is regular.
+Now, this approach to deﬁning languages using formulas of MSO can be gen-
+eralized in the following way. Suppose we take our variables to range, not overpositions in strings, but over positions (nodes) in ﬁnite trees. (Think of the trees
+in question as phrase structures of sentences.) And suppose we take our languageto feature the binary predicates ∈,◁
+1,a n d ◁2, as well as unary predicates drawn
+from a ﬁnite set of labels. These predicates are then interpreted as follows: x∈X
+again means ‘ xis a member of X’;x◁1ymeans ‘x is the mother of y’;x◁2ymeans
+‘xis a left sister of y’; and s(x) means that xis labeled with s, for each label s.A l l
+other formulas are then interpreted according to the usual semantics of MSO. Inthis way, we can think of an MSO-formula ϕ(with no free variables) as licensing a
+set of labeled trees: namely, the trees in which ϕis true. It was shown by Thatcher
+and Wright (1968) that the sets of trees (i.e., tree languages ) recognized in this way
+are – to within some additional labeling – the sets of trees generated by CFGs.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 65 — #23
+Computational Complexity in Natural Language 65
+Indeed, one can interpret MSO-formulas over ‘trees’ of higher dimensions,
+obtaining grammar frameworks of still greater expressive power. This approachto syntax is often referred to as model-theoretic syntax (Rogers 2003). Its appeal is
+partly due to the fact that MSO can express many relationships dear to linguists’hearts. For example, it is straightforward to write down a formula ϕ
+C(x,y)which
+is satisﬁed by nodes xand yin a tree just in case node xC-commands node y
+in that tree. Rogers (2003) notes that some principles of Rizzi’s theory of rela-
+tivized minimality (Rizzi 1990) can be expressed using formulas of the language
+sketched above. From a complexity-theoretic point of view, this approach is inter-esting because the problem of determining whether a formula of MSO is satisﬁableover ﬁnite trees is decidable (see, e.g., Börger et al., 1997: 315ff.):
+T
+HEOREM 22. The problem of determining the satisﬁability of a formula of MSO over
+ﬁnite trees is decidable, but has non-elementary complexity.
+3 Complexity and Semantics
+Most linguistic theories are more than a criterion for deﬁning a set of acceptablesentences: they also assign one or more levels of structure to those sentences whichthey do accept. The question then arises as to the computational complexity ofrecovering that structure.
+Consider, for example, context-free grammars. Let Gbe a CFG. If σ∈L(G),
+then Gassigns to σone or more phrase structures representing the derivation of
+σby the productions of G. It is easy to construct a CFG Gfor which there exists a
+sequence {σ
+n}n∈Nof strings accepted by G, such that the length of σnis bounded
+above by some polynomial function of n, while the number of phrase structures
+which Gassigns to σnis bounded below by an exponential function of n.T h a ti s :
+the number of parses produced by a CFG Gcan grow exponentially. Nevertheless,
+the set of phrase structures assigned to any string σbyGmay always be compactly
+represented in the form of an acyclic directed graph, which can be expanded intoa complete list of the phrase structures in question; moreover, using a variant ofthe CYK or Earley algorithms, that compact representation may be computed intime O(n
+3m). (Trivially, listing all the represented phrase structures will in general
+take exponential time.) For a general discussion on the relationship between thecomplexity of recognition and parsing, see Ruzzo (1979).
+Arguably, determining the syntactic structure of a sentence is of little value
+unless we can use that structure to recover the sentence’s meaning. The notion ofmeaning in general is too vague to admit of immediate formal analysis. However,we might sensibly begin with the more speciﬁc problem of recovering, at leastfor certain fragments of natural languages, logical form, in the sense of producing
+translations such as:
+(9)Every boy loves some girl who admires him∀x(boy (x)→∃ y(girl(y) ∧admire (y,x)∧love(x,y)))
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 66 — #24
+66 Ian Pratt-Hartmann
+IP/y1(y2)→NP/y 1I′/y2
+I′/y1→is a N′/y1
+I′/λx[¬y 1(x)]→ is not a N′/y1
+NP/y 1→PropN/y 1
+NP/y 1(y2)→Det/y 1N′/y2
+N′/y1→N/y 1.Det/λpλq[∃x(p(x) ∧q(x))]→some
+Det/λpλq[∀x(p(x) →q(x))]→every
+Det/λpλq[∀x(p(x) →¬ q(x))]→no
+N/cynic →cynic
+N/philosopher →philosopher
+...PropN/λp[p(socrates )]→ Socrates
+PropN/λp[p(diogenes)]→Diogenes
+...
+Figure 2.5 Semantically annotated CFG generating the language of the syllogistic.
+The framework of CFGs (and indeed the other grammar frameworks mentionedabove) can be modiﬁed to yield such logical forms. Approaches vary, but onepopular technique is to associate with each vocabulary item an expression of thesimply typed λ-calculus (STLC) representing its meaning, and to associate with
+each production a prescription for combining the meanings of the items in itsright-hand side. In the following explanation, we assume basic familiarity withSTLC; for an in-depth account, the reader is referred to Hindley and Seldin (1986,Chapter 13). A production in such a grammar has the formA/ξ→B
+1/y1...Bm/ym
+where y1,...,ymare distinct variables, and ξis an STLC-expression whose free
+variables are conﬁned to y1,...,yn. Such a production functions exactly as in
+an ordinary CFG, except that the meaning of the phrase Ais computed by
+substituting the (already computed) meanings of the B1,...,Bmfor all occur-
+rences of the corresponding variables y1,...,yminξ, and then β-reducing. This
+approach is, more or less, that championed by Montague (1974) (see Chapter 15,Section 2.1). For an accessible modern treatment, including a relatively non-technical explanation of the relevant aspects of higher-order logic, see Blackburn& Bos (2005).
+Consider, for example, the productions shown in Figure 2.5. The underlying
+CFG evidently recognizes the sentence ‘Every cynic is a philosopher,’ via theparse-tree shown in Figure 2.6. By computing the semantic values of each nodein that tree, as shown, the (expected) ﬁrst-order translation
+∀x(cynic(x)∧→ philosopher (x))
+is eventually generated. In fact, the grammar of Figure 2.5 recognizes the set ofEnglish sentences having the forms
+⎧⎪⎪⎨⎪⎪⎩⎧⎨⎩EverySomeNo⎫⎬⎭L
+S⎫⎪⎪⎬⎪⎪⎭{is ais not a}
+M,
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 67 — #25
+Computational Complexity in Natural Language 67
+IP
+∀x(cynic (x)→philosopher (x))
+NP
+λq[∀x(cynic (x)→q(x))]
+Det
+λpλq[∀x(p(x) →q(x))]
+EveryN′
+cynic
+N
+cynic
+cynicI′
+philosopher
+is a N′
+philosopher
+N
+philosopher
+philosopher
+Figure 2.6 Meaning derivation in a semantically annotated CFG.
+where Sis a proper noun, and Land Mare common nouns, yielding, in each case,
+the expected translation into ﬁrst-order logic. The question now arises: what is thecomputational complexity of recovering logical forms in this way?
+The answer depends on how, exactly, logical forms are allowed to be repre-
+sented. If the underlying grammar Gis a CFG, then the CYK or Earley algorithms
+can again be modiﬁed to produce, in polynomial time, a compact representation ofall meanings which Gassigns to a given string σ, just as for parse-trees. However,
+these representations will not be β-reduced. That is, in order to produce ordi-
+nary logical translations such as (9), we need to compute the normal forms for theexpressions which our parser yields. That these normal forms can be computedfollows at once from the normalization theorem for STLC, though the complexityof the relevant function is high (Statman 1979):
+T
+HEOREM 23. The problem of deciding whether one expression in STLC is the normal
+form of another has non-elementary complexity.In practice, however, the normalization of semantic representations produced byrealistic semantically annotated CFGs is never a problem.
+4 Determining Logical Relationships between
+Sentences
+Computing anything is of little use if nothing is then done with the results. Andwhile the uses to which humans put computed meanings may perhaps foreverremain lost in the mists of psycholinguistics, complexity theory does have some-thing to say about the more deﬁnite subject of determining logical relationships
+between sentences in natural language. That is the topic of this ﬁnal section.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 68 — #26
+68 Ian Pratt-Hartmann
+That sentences in natural language exhibit interesting logical relationships was
+recognized in antiquity. For example, the argument
+(10)Every logician is a philosopherSome stoic is a logicianNo dentist is a philosopher
+Some stoic is not a dentist
+is evidently valid: every possible situation in which the premises are true is onein which the conclusion is true. Likewise valid, but less evidently so, is theargument
+(11)Every skeptic recommends every skeptic to every cynicNo skeptic recommends any stoic who hates any cynic
+to any philosopher
+Diogenes is a cynic whom every skeptic hatesEvery cynic is a philosopher
+No stoic is a skeptic
+Observe that argument (11) uses a wider variety of grammatical constructionsthan argument (10), speciﬁcally: transitive and ditransitive verbs, as well as rel-ative clauses. The question therefore arises as to how the difﬁculty of determininglogical relationships between sentences in naturally delineated fragments of natu-ral languages depends on the grammatical resources included in those fragments.Are ditransitive verbs really harder than transitive verbs? Passives harder thanactives? How much extra effort is required to deal with relative clauses (eithersubject relatives or object relatives)? Is ‘donkey-anaphora’ more computationallyintensive than other forms of bound-variable anaphora? And so on.
+Consider the grammar of Figure 2.5, which, as we saw in Section 3, yields the
+language of the traditional syllogistic. In particular, this grammar recognizes allthe sentences in argument (10), and translates that argument to the ﬁrst-ordersequent
+∀x(logician (x)→philosopher (x))
+∃x(stoic (x)∧logician (x))
+∀x(dentist(x) →¬ philosopher (x))
+∃x(stoic (x)∧¬dentist (x))
+Since the primary form-determining element in this fragment of English is the
+copula, we refer to it as Cop. With translations into ﬁrst-order logic at our disposal,
+we can now formally characterize a notion of validity in this fragment. Speciﬁcally,we take an argument in the fragment Cop to be valid just in case the ﬁrst-order
+sequent into which it is translated is valid according to the semantics of ﬁrst-orderlogic. Likewise, we take a set of sentences in Cop to be satisﬁable just in case the set
+of formulas to which they are translated is satisﬁable according to the semanticsof ﬁrst-order logic.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 69 — #27
+Computational Complexity in Natural Language 69
+I′/y1→VP/ y1
+I′/y1→NegP/y 1
+NegP/λx[¬y 1(x)]→ Neg VP/y 1
+VP/ y1(y2)→TV/y 1NP/y 2
+Neg→does notTV/λs λx[s(λy[admire (x,y)])]
+→admires
+TV/λs λx[s(λy[despise (x,y)])]
+→despises
+...
+Figure 2.7 Productions for extending the syllogistic with transitive verbs.
+Thus, the fragment Cop is more than a mere set of strings (the grammatical sen-
+tences): it is a set of strings together with associated logical concepts of validity andsatisﬁability. In particular, we may pose the satisﬁability problem for Cop: givenas e t Eof sentences in Cop, determine whether Eis satisﬁable. Furthermore, since
+every sentence in Cop is logically equivalent to the negation of some other, satisﬁ-ability and validity are dual notions, in the familiar sense: an argument is valid justin case its premises together with the negation of its conclusion are unsatisﬁable.Hence, the complexity of the validity problem for Cop can be read off immediatelyfrom the complexity of the satisﬁability problem.
+It is routine to show that determining the satisﬁability of a collection of sen-
+tences in the fragment Cop is essentially the same as the problem of determiningthe satisﬁability of a collection of propositional clauses each of which contains atmost two literals. Recalling Theorem 8, we have:
+T
+HEOREM 24. The problem of determining the satisﬁability of a set of sentences in Cop
+is NLOGSP ACE-complete.It follows of course that the problem of determining the validity of an argumentin Cop is also NLOGSPACE-complete, by Theorem 4. This conﬁrms our subjectiveimpression that this problem is nearly trivial.
+What happens if we expand the fragment Cop? Let us deﬁne the fragment
+Cop+TV to be the set of sentences recognized by the productions of Figure 2.5
+together with those of Figure 2.7. (We have simpliﬁed the treatment by ignor-ing verb inﬂections and negative-polarity determiners; these simpliﬁcations arenot computationally signiﬁcant.) It is easy to see that this fragment contains thefollowing sentence, and translates it to the indicated ﬁrst-order formula.
+(12)Every stoic hates every sceptic∀x(stoic (x)→∀ y(sceptic (y)→hate(x, y)))
+We need to address the issue of scope ambiguities in the context of Cop+TV . Thereare two possibilities here: either we can resolve these ambiguities by ﬁat, tak-ing subjects always to outscope objects; or we can augment the language withsome form of marking to indicate quantiﬁer scope. For simplicity, we choose theformer course (though the latter would lead to essentially the same complexityresults). Similarly, let Cop+TV+DTV be the fragment which extends Cop with both
+transitive and ditransitive verbs. (Writing the required productions is completelyroutine.) Thus, Cop+TV+DTV contains the following sentence, and translates it tothe indicated ﬁrst-order formula.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 70 — #28
+70 Ian Pratt-Hartmann
+(13)No stoic recommends every sceptic to some cynic∀x(stoic (x)→¬ ∀ y(sceptic (y)→∃ z(cynic (z)∧recommend (x,y,z))))
+Again, we take subjects to outscope direct objects, and direct objects to outscopeindirect objects.
+Is inference in these larger fragments more complex? The following two results
+(substantially) answer this question.
+T
+HEOREM 25. The problem of determining the satisﬁability of a set of sentences in
+Cop+TV is NLOGSP ACE-complete.
+THEOREM 26. The problem of determining the satisﬁability of a set of sentences in
+Cop+TV+DTV is in PTIME.The proofs of these theorems are more elaborate than for Cop; we refer thereader to Pratt-Hartmann and Moss (2009) and Pratt-Hartmann and Third (2006)respectively.
+Returning to the fragment Cop, what happens if we now add relative clauses?
+Thus, for example, we have the valid argument
+Every philosopher who is not a stoic is an EpicureanNo Epicurean is a beekeeperNo stoic is a beekeeper
+No philosopher is a beekeeper
+It is straightforward to write a semantically annotated context-free grammaraccepting such sentences, and generating the obvious semantics. Let us call theresulting fragment of English Cop+Rel (see Pratt-Hartmann 2004 for a formal def-inition). The ﬁrst-order formulas into which Cop+Rel sentences are translated allhave one variable – that is to say, they lie within the one-variable fragment of ﬁrst-order logic. The satisﬁability problem for this fragment is essentially the same asthat for clauses of the propositional calculus. Thus, from Theorem 6:
+T
+HEOREM 27. The problem of determining the satisﬁability of a set of sentences in
+Cop+Rel is NPTIME-complete.On the other hand, the fragment Cop+Rel+TV+DTV recognizes all the sentencesin argument (11), and translates them into the ﬁrst-order sequent
+∀x(sceptic (x)→∀ y(sceptic (y)→∀ z(cynic (z)→recommend (x,y,z))))
+∀x(sceptic (x)→¬ ∃ y(stoic (y)∧∃z(cynic (w)∧hate(y, w))∧
+∃z(philosopher (z)∧recommend (x,y,z))))
+cynic(diogenes )∧∀x(sceptic (x)→hate(x, diogenes ))
+∀x(cynic (x)→philosopher (x))
+∀x(stoic (x)→¬ sceptic (x))
+Again, we have the question: does adding transitive and ditransitive verbs toCop+Rel lead to an increase in complexity? This time, the answer is yes.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 71 — #29
+Computational Complexity in Natural Language 71
+THEOREM 28. The problem of determining the satisﬁability of a set of sentences in
+Cop+Rel+TV is EXPTIME-complete.
+THEOREM 29. The problem of determining the satisﬁability of a set of sentences in
+Cop+Rel+TV+DTV is NEXPTIME-complete.Theorem 29 conﬁrms our subjective impression that determining the validity ofargument (11) is harder than determining the validity of argument (10). For proofsof the above theorems, see Pratt-Hartmann (2004) and Pratt-Hartmann and Third(2006).
+A remark is in order at this point to correct a false impression that the foregoing
+discussion may have created. As we have observed, the complexity of determin-ing entailments within a fragment of a natural language evidently depends onthe constructions made available by the syntax of that fragment. However, it alsodepends, of course, on the presence in the lexicon of words with a ‘logical’ charac-ter. Consider, for example, the effect of expanding the fragments Cop and Cop+TVwith numerical determiners, yielding sentences such as
+(14) At least 13 artists are beekeepers
+in the former case, and
+(15) At most 5 carpenters admire at most 4 dentists
+in the latter. Calling the resulting fragments Cop+Num and Cop+TV+Num, weobtain the following results (Pratt-Hartmann 2008):
+T
+HEOREM 30. The problem of determining the satisﬁability of a set of sentences in
+Cop+Num is NPTIME-complete; the problem of determining the satisﬁability of a set ofsentences in Cop+TV+Num is NEXPTIME-complete.Thus, the complexity-theoretic impact of such numerical expressions is dramatic.
+Finally, we consider the complexity-theoretic consequences of adding bound-
+variable anaphora to our fragments. Consider the sentences
+No artist admires any beekeeper who does not admire himselfNo artist admires any beekeeper who does not admire him
+It is routine to add grammar rules to Cop+Rel+TV producing the conventionaltranslations into ﬁrst-order logic:
+∀x(artist (x)→∀ y(beekeeper (y)∧¬admire (y,y)→¬ admire (x,y)))
+∀x(artist (x)→∀ y(beekeeper (y)∧¬admire (y,x)→¬ admire (x,y)))
+For such anaphoric fragments, two further issues regarding the ﬁrst-order trans-lations arise. First, we assume the (standard) universal interpretation of ‘donkey-sentences’
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 72 — #30
+72 Ian Pratt-Hartmann
+Every farmer who owns a donkey beats it∀x∀y(farmer (x)∧donkey (y)∧own(x, y)→beat(x,y))
+Second, we must decide how to treat anaphoric ambiguities. The sentence
+(16) Every sceptic who admires a cynic despises every stoic who hates him
+has two interpretations:
+(17)∀x(sceptic(x) ∧∃y(cynic(y)∧admire (x,y))→
+∀z(stoic (z)∧hate(z, x)→despise (x,z)))
+(18)∀x∀y(sceptic (x)∧cynic(y)∧admire (x,y)→
+∀z(stoic(z)∧hate(z, y)→despise (x,z)))
+according as the pronoun ‘him’ takes as antecedent the NP headed by ‘sceptic’ orthe NP headed by ‘cynic’. (The NP headed by ‘stoic’ is not available as a pronounantecedent here.)
+Note that, in the (standard) phrase-structure tree for this sentence, the NP
+headed by ‘sceptic’ is closer to the pronoun than is the NP headed by ‘cynic’. Thisobservation suggests making the artiﬁcial stipulation that pronouns must take their
+closest allowed antecedents . Here, closest means ‘closest measured along edges of the
+phrase-structure’ and allowed means ‘allowed by the principles of binding theory.’
+(We ignore case and gender agreement.) Thus, under this stipulation, sentence (16)has only the reading (17). Let the resulting fragment of English, with the stipula-tion of closest available pronomial antecedents, be called Cop+Rel+TV+RA (‘RA’forrestricted anaphora ).
+Formula (17) can be equivalently written∀x(sceptic(x) ∧∃y(cynic (y)∧admire (x,y))→
+∀y(stoic (y)∧hate(y, x)→despise (x,y)))
+with the variable zreplaced by y. The resulting formula has only two variables.
+Indeed, it can be shown that every sentence of Cop+Rel+TV+RA translates into aformula in the two-variable fragment of ﬁrst-order logic. The satisﬁability problemfor this fragment is known to be NEXPTIME-complete (see, e.g., Börger et al.,1997, Chapter 8). Moreover, Cop+Rel+TV+RA can easily be shown to encode aNEXPTIME-hard problem. Hence, we have:
+T
+HEOREM 31. The problem of determining the satisﬁability of a set of sentences in
+Cop+Rel+TV+RA is NEXPTIME-complete.We mention in passing that the reduction of NEXPTIME-hard problems to satisﬁa-bility for sets of Cop+Rel+TV+RA sentences does not require the use of sentencesfeaturing donkey-anaphora. However awkward such sentences may be for thesmooth running of formal semantics, they do not lead to more complex inferentialproblems.
+
+“9781405155816_4_002” — 2010/5/8 — 14:38 — page 73 — #31
+Computational Complexity in Natural Language 73
+The restriction that pronouns take their closest possible antecedents is essential
+to the complexity bound of Theorem 31. As an alternative treatment of anaphoricambiguity, we might augment the sentences of Cop+Rel+TV+RA with indicesindicating antecedents in the normal way. Thus, for example, the sentence
+Every sceptic
+1who admires a cynic 2despises every stoic 3who hates him 2
+would have (18) as its only reading. Let the resulting fragment be denoted byCop+Rel+TV+GA (‘GA’ for general anaphora). It is possible to show:
+T
+HEOREM 32. The problem of determining the satisﬁability of a set of sentences in
+Cop+Rel+TV+GA is not decidable.
+It seems clear that many more results of the kind outlined in this section await
+discovery.
+See also: Chapter 1, FORMAL LANGUAGE THEORY , Chapter 4, THEORY OF
+PARSING , and Chapter 15, COMPUTATIONAL SEMANTICS .
+

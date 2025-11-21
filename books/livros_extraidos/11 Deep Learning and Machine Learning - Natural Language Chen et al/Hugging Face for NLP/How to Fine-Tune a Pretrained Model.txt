@@ -1,0 +1,892 @@
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /seven.pnum/three.pnum
+speciﬁctask. HuggingFace’s transformers libraryprovidesaneasywaytoﬁne-tunemodelslikeBERT,
+GPT, or T/five.pnum for custom downstream tasks such as classiﬁcation , translation, or summarization.
+In this section, we will demonstrate how to ﬁne-tune a pretra ined model for a simple text classi-
+ﬁcation task. We will use a pretrained BERT model from Huggin g Face’s transformers library and a
+dataset available through the datasets library.
+/four.pnum.8./one.pnum Setting Up
+Before we start, ensure that you have installed the necessar y libraries:
+/one.pnum!pip install transformers datasets
+/four.pnum.8./two.pnum Loading a Pretrained Model
+We will use a pretrained BERT model ( bert-base-uncased )and a tokenizer. First, let’s load the model
+and the tokenizer:
+/one.pnumfrom transformers import BertForSequenceClassification , BertTokenizer
+/two.pnum
+/three.pnum% Load the tokenizer and the pretrained model
+/four.pnummodel_name = "bert-base-uncased"
+/five.pnumtokenizer = BertTokenizer.from_pretrained(model_name)
+6model = BertForSequenceClassification.from_pretrained (model_name, num_labels=2)
+Here, we use BertForSequenceClassification to load a BERT model that is already conﬁgured for
+a classiﬁcation task. The parameter num_labels indicates the number of target labels (/two.pnum in our case,
+since we are doing binary classiﬁcation).
+/four.pnum.8./three.pnum Preparing the Dataset
+WewilluseadatasetfromHuggingFace’s datasets library. Forthisexample,let’sloadthe imdbmovie
+review dataset for binary sentiment classiﬁcation:
+/one.pnumfrom datasets import load_dataset
+/two.pnum
+/three.pnum% Load the dataset
+/four.pnumdataset = load_dataset( "imdb")
+/five.pnumtrain_dataset = dataset[ ’train’]
+6test_dataset = dataset[ ’test’]
+ThiscommandloadstheIMDBdataset, whichcontainsmovie re viewslabeledaseitherpositiveor
+negative.
+/four.pnum.8./four.pnum Preprocessing the Data
+To use the BERT model, we need to tokenize the text data and con vert it into a format the model
+understands:
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /seven.pnum/four.pnum
+/one.pnumdef tokenize_function(examples):
+/two.pnumreturn tokenizer(examples[ ’text’], padding= "max_length" , truncation=True)
+/three.pnum
+/four.pnum% Tokenize the datasets
+/five.pnumtrain_dataset = train_dataset.map(tokenize_function, b atched=True)
+6test_dataset = test_dataset.map(tokenize_function, bat ched=True)
+Here, we tokenize each review and truncate or pad them to the s ame length.
+/four.pnum.8./five.pnum Fine-Tuning the Model
+Next, we use the Trainer API from Hugging Face to ﬁne-tune the model. The trainer simp liﬁes the
+training loop andhandlesmanytasks like gradient accumula tion, evaluation, and saving checkpoints.
+/one.pnumfrom transformers import Trainer, TrainingArguments
+/two.pnum
+/three.pnum% Set training arguments
+/four.pnumtraining_args = TrainingArguments(
+/five.pnumoutput_dir= "./results" ,
+6evaluation_strategy= "epoch",
+/seven.pnumper_device_train_batch_size=8,
+8per_device_eval_batch_size=8,
+/nine.pnumnum_train_epochs=3,
+/one.pnum/zero.pnumweight_decay=0.01,
+/one.pnum/one.pnum)
+/one.pnum/two.pnum
+/one.pnum/three.pnum% Define the trainer
+/one.pnum/four.pnumtrainer = Trainer(
+/one.pnum/five.pnummodel=model,
+/one.pnum6args=training_args,
+/one.pnum/seven.pnumtrain_dataset=train_dataset,
+/one.pnum8eval_dataset=test_dataset,
+/one.pnum/nine.pnum)
+/two.pnum/zero.pnum
+/two.pnum/one.pnum% Fine-tune the model
+/two.pnum/two.pnumtrainer.train()
+In this setup:
+•output_dir speciﬁes where the model’s checkpoints will be saved.
+•evaluation_strategy="epoch" performs evaluation at the end of each epoch.
+•per_device_train_batch_size andper_device_eval_batch_size specifythebatchsizefortrain-
+ing and evaluation.
+•num_train_epochs is the number of times we iterate through the entire training dataset.
+•weight_decay applies regularization to prevent overﬁtting.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /seven.pnum/five.pnum
+/four.pnum.8.6 Evaluating the Model
+Once the model is trained, you can evaluate it using the evaluate() function:
+/one.pnum% Evaluate the model
+/two.pnumtrainer.evaluate()
+This command will return evaluation metrics such as accurac y and loss.
+/four.pnum.8./seven.pnum Conclusion
+Fine-tuningapretrainedmodelonaspeciﬁctaskisanefﬁcie ntwaytoutilizethelarge-scaleknowledge
+from models like BERT. The Hugging Face library simpliﬁes th is process by providing ready-to-use
+pretrained models and an easy interface for training and eva luation.
+/four.pnum.8.8 Hyperparameter Tuning
+Fine-tuning a pretrained model involves selecting appropr iate hyperparameters such as the learning
+rate, batch size, and number of epochs. These parameters can have a signiﬁcant impact on the per-
+formance of the model.
+For example, a common learning rate for ﬁne-tuning transfor mer-based models is in the range of
+1e−5to5e−5. However, these values should be experimented with based on the speciﬁc dataset and
+task.
+In the example above, the learning rate was automatically se t by theTrainer . To explicitly set the
+learning rate, you can modify the TrainingArguments :
+/one.pnumtraining_args = TrainingArguments(
+/two.pnumoutput_dir= "./results" ,
+/three.pnumevaluation_strategy= "epoch",
+/four.pnumper_device_train_batch_size=8,
+/five.pnumper_device_eval_batch_size=8,
+6num_train_epochs=3,
+/seven.pnumweight_decay=0.01,
+8learning_rate=2e-5, % Custom learning rate
+/nine.pnum)
+Tuning the Batch Size: The batch size can affect boththetraining speedandthemode l’s ability to
+generalize. Larger batch sizes allow for faster training bu t can lead to overﬁtting, while smaller batch
+sizes can lead to better generalization but slower training .
+It’s good practice to try different combinations of these pa rameters and use the validation set to
+track the performance of the model.
+/four.pnum.8./nine.pnum Saving the Fine-Tuned Model
+Oncethemodelisﬁne-tuned,you’llwanttosaveitsothatitc anbeloadedlaterforinferenceorfurther
+ﬁne-tuning. Hugging Face provides a convenientmethod for s aving both the model and the tokenizer.
+To save the model and tokenizer:
+/one.pnum% Save the model and tokenizer
+/two.pnummodel.save_pretrained( "./fine-tuned-bert" )
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /seven.pnum6
+/three.pnumtokenizer.save_pretrained( "./fine-tuned-bert" )
+Thiswillsavethemodel’sweightsandthetokenizerconﬁgur ationinthedirectory ./fine-tuned-bert .
+You can easily load the model and tokenizer again for later us e.
+/four.pnum.8./one.pnum/zero.pnum Loading the Fine-Tuned Model for Inference
+Afterﬁne-tuningandsaving themodel, you may wantto load it for inferenceonnewdata. Here ishow
+you can load the saved model and tokenizer to make prediction s:
+/one.pnumfrom transformers import BertTokenizer, BertForSequence Classification
+/two.pnum
+/three.pnum% Load the saved model and tokenizer
+/four.pnummodel = BertForSequenceClassification.from_pretrained ("./fine-tuned-bert" )
+/five.pnumtokenizer = BertTokenizer.from_pretrained( "./fine-tuned-bert" )
+6
+/seven.pnum% Example input
+8text ="This movie was fantastic!"
+/nine.pnum
+/one.pnum/zero.pnum% Tokenize the input text
+/one.pnum/one.pnuminputs = tokenizer(text, return_tensors= "pt", padding=True, truncation=True)
+/one.pnum/two.pnum
+/one.pnum/three.pnum% Make prediction
+/one.pnum/four.pnumwith torch.no_grad():
+/one.pnum/five.pnumoutputs = model(**inputs)
+/one.pnum6predictions = torch.argmax(outputs.logits, dim=-1)
+/one.pnum/seven.pnum
+/one.pnum8% Print the prediction
+/one.pnum/nine.pnumprint("Predicted label:" , predictions.item())
+Here, we:
+• Load the ﬁne-tuned BERT model and tokenizer from the saved d irectory.
+• Tokenize a new input text for classiﬁcation.
+• Use the model to make a prediction by passing the tokenized t ext through it.
+• Print the predicted label (in this case, a binary sentiment prediction).
+/four.pnum.8./one.pnum/one.pnum Evaluating on a Test Set
+Oncethemodelisﬁne-tunedandsaved,wecanevaluateitsper formanceonatestdatasettomeasure
+its generalization ability. The test set should contain exa mples that the model has not seen during
+training or validation.
+To evaluate the ﬁne-tuned model on the test dataset, we can ag ain use the Trainer :
+/one.pnum% Evaluate the model on the test set
+/two.pnumresults = trainer.evaluate(eval_dataset=test_dataset)
+/three.pnumprint("Test Accuracy:" , results[ ’eval_accuracy’ ])
+This evaluatestheﬁne-tunedmodelon thetestdatasetandre turnsvarious metrics, suchasaccu-
+racy, which you can use to assess the model’s performance on u nseen data.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /seven.pnum/seven.pnum
+/four.pnum.8./one.pnum/two.pnum Advanced Techniques for Fine-Tuning
+While the above example demonstrates basic ﬁne-tuning, sev eral advanced techniques can improve
+the performance of your model. Some of these include:
+•Layer-wise Learning Rate Decay: Apply different learning rates to different layers of the tr ans-
+former model. Typically, the earlier layers require smalle r updates compared to the later layers.
+•Data Augmentation: Use techniques like synonym replacement, back translation , or noise injec-
+tion to increase the variety of training data and make the mod el more robust.
+•Early Stopping: Stop the training process if the validation loss does not imp rove for a certain
+number of epochs. This can prevent overﬁtting.
+•FP/one.pnum6 Training: Fine-tune the model using mixed precision (half-precision ) to reduce memory
+usage and speed up training.
+Here’s an example of enabling mixed precision (FP/one.pnum6) traini ng in the TrainingArguments :
+/one.pnumtraining_args = TrainingArguments(
+/two.pnumoutput_dir= "./results" ,
+/three.pnumevaluation_strategy= "epoch",
+/four.pnumper_device_train_batch_size=8,
+/five.pnumper_device_eval_batch_size=8,
+6num_train_epochs=3,
+/seven.pnumweight_decay=0.01,
+8learning_rate=2e-5,
+/nine.pnumfp16=True % Enable mixed precision training
+/one.pnum/zero.pnum)
+This will reduce the memory footprint and can lead to faster t raining on modern GPUs.
+/four.pnum.8./one.pnum/three.pnum Conclusion and Next Steps
+Fine-tuning a pretrained model using Hugging Face’s transformers library is a powerful way to adapt
+large-scale models to speciﬁc NLP tasks. This process not on ly saves time and computational re-
+sources but also leads to highly accurate models by leveragi ng the knowledge already learned during
+pretraining.
+In the next sections, we will explore how to ﬁne-tune differe nt types of models, such as T/five.pnum for text
+generation tasks and BART for summarization, and we will cov er how to handle multi-label classiﬁca-
+tion, sequence tagging, and other advanced tasks.
+/four.pnum.8./one.pnum/four.pnum Evaluating with Different Metrics
+While accuracy is an important metric for many tasks, other m etrics might be more appropriate de-
+pendingonthespeciﬁcusecase. Forexample,incasesofimba lanceddatasets,metricslikeprecision,
+recall, and F/one.pnum-score provide a more nuanced view of performa nce.
+Hugging Face’s datasets library provides built-in metrics that can be used to evalua te models.
+Here’s how you can use precision, recall, and F/one.pnum-score:
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /seven.pnum8
+/one.pnumfrom datasets import load_metric
+/two.pnum
+/three.pnum% Load the metric for precision, recall, F1
+/four.pnummetric = load_metric( "precision" ,"recall" ,"f1")
+/five.pnum
+6% Define a function to compute these metrics
+/seven.pnumdef compute_metrics(eval_pred):
+8logits, labels = eval_pred
+/nine.pnumpredictions = np.argmax(logits, axis=-1)
+/one.pnum/zero.pnumprecision = metric.compute(predictions=predictions, re ferences=labels, average= "binary" )[’
+precision’ ]
+/one.pnum/one.pnumrecall = metric.compute(predictions=predictions, refer ences=labels, average= "binary" )[’recall’
+]
+/one.pnum/two.pnumf1 = metric.compute(predictions=predictions, reference s=labels, average= "binary" )[’f1’]
+/one.pnum/three.pnumreturn { "precision" : precision, "recall" : recall, "f1": f1}
+/one.pnum/four.pnum
+/one.pnum/five.pnum% Add the compute_metrics function to the Trainer
+/one.pnum6trainer = Trainer(
+/one.pnum/seven.pnummodel=model,
+/one.pnum8args=training_args,
+/one.pnum/nine.pnumtrain_dataset=train_dataset,
+/two.pnum/zero.pnumeval_dataset=test_dataset,
+/two.pnum/one.pnumcompute_metrics=compute_metrics,
+/two.pnum/two.pnum)
+/two.pnum/three.pnum
+/two.pnum/four.pnum% Fine-tune the model
+/two.pnum/five.pnumtrainer.train()
+Here, the compute_metrics function calculates precision, recall, and F/one.pnum-score. Thes e metrics pro-
+vide a more comprehensive view of model performance, especi ally in cases where one class may be
+more frequent than the other.
+/four.pnum.8./one.pnum/five.pnum Transfer Learning for Different Tasks
+Fine-tuning pretrained models can be applied not only for cl assiﬁcation tasks but also for other NLP
+tasks like sequence-to-sequence tasks (e.g., text generat ion), question answering, and named entity
+recognition (NER). Let’s brieﬂy explore how transfer learn ing can be applied to these different tasks.
+/four.pnum.8./one.pnum/five.pnum./one.pnum Text Generation using T/five.pnum
+T/five.pnum(Text-to-TextTransferTransformer)isamodelfromHugg ingFace’s transformers librarythattreats
+all NLP tasks as text-to-text tasks. You can ﬁne-tune T/five.pnum for t ext generation, summarization, or trans-
+lation tasks.
+Here’s how you can load and ﬁne-tune a T/five.pnum model for text summar ization:
+/one.pnumfrom transformers import T5Tokenizer, T5ForConditionalG eneration
+/two.pnum
+/three.pnum% Load the tokenizer and model
+/four.pnummodel_name = "t5-small"
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /seven.pnum/nine.pnum
+/five.pnumtokenizer = T5Tokenizer.from_pretrained(model_name)
+6model = T5ForConditionalGeneration.from_pretrained(mo del_name)
+/seven.pnum
+8% Example: Summarize a text
+/nine.pnumtext ="The quick brown fox jumps over the lazy dog. It was a sunny day , and the dog was enjoying
+the warmth."
+/one.pnum/zero.pnum
+/one.pnum/one.pnum% Preprocess the input
+/one.pnum/two.pnuminputs = tokenizer( "summarize: " + text, return_tensors= "pt", padding=True, truncation=True)
+/one.pnum/three.pnum
+/one.pnum/four.pnum% Generate the summary
+/one.pnum/five.pnumsummary_ids = model.generate(inputs[ ’input_ids’ ], max_length=50, num_beams=4, early_stopping=True)
+/one.pnum6
+/one.pnum/seven.pnum% Decode and print the summary
+/one.pnum8summary = tokenizer.decode(summary_ids[0], skip_specia l_tokens=True)
+/one.pnum/nine.pnumprint("Summary:" , summary)
+In this example, we load a pretrained T/five.pnum model and ﬁne-tuneit for the task of summarization. The
+model takes text as input and generates a condensed summary.
+/four.pnum.8./one.pnum/five.pnum./two.pnum Question Answering with BERT
+Question answering is another common NLP task, where the mod el is provided with a context (para-
+graph)andaquestion,anditmustextractthecorrectanswer fromthecontext. Here’showtoﬁne-tune
+a BERT model for question answering:
+from transformers import BertForQuestionAnswering, Bert Tokenizer
+% Load the tokenizer and model for question answering
+model_name = "bert-base-uncased"
+tokenizer = BertTokenizer.from_pretrained(model_name)
+model = BertForQuestionAnswering.from_pretrained(mode l_name)
+% Example context and question
+context = "Hugging␣Face␣is␣a␣technology␣company␣based ␣in␣New␣York␣and␣Paris."
+question = "Where␣is␣Hugging␣Face␣based?"
+% Tokenize the inputs
+inputs = tokenizer.encode_plus(question, context, retur n_tensors="pt")
+% Get the model prediction
+with torch.no_grad():
+outputs = model(**inputs)
+start_scores = outputs.start_logits
+end_scores = outputs.end_logits
+% Get the most likely start and end of the answer
+answer_start = torch.argmax(start_scores)
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP 8/zero.pnum
+answer_end = torch.argmax(end_scores) + 1
+% Decode the answer
+answer = tokenizer.convert_tokens_to_string(tokenizer .convert_ids_to_tokens(inputs[’
+input_ids’][0][answer_start:answer_end]))
+print("Answer:", answer)
+Here, the BERT model is ﬁne-tuned for the question-answerin g task, where it identiﬁes the start
+and end positions of the answer in the context.
+/four.pnum.8./one.pnum6 Multi-Task Fine-Tuning
+In some scenarios, it is beneﬁcial to ﬁne-tune a model on mult iple related tasks simultaneously. This
+isknownasmulti-tasklearning. HuggingFaceallowsyoutoﬁ ne-tunemodelsformultipletasks,which
+can improve the model’s performance on each individual task by leveraging shared representations.
+Here’s an example of how you might structure a multi-task ﬁne -tuning setup using the Hugging
+Face library:
+/one.pnumfrom transformers import AutoModelForSequenceClassific ation, AutoTokenizer, Trainer,
+TrainingArguments
+/two.pnum
+/three.pnum% Load a tokenizer and model for multi-task classification
+/four.pnummodel_name = "distilbert-base-uncased"
+/five.pnumtokenizer = AutoTokenizer.from_pretrained(model_name)
+6model = AutoModelForSequenceClassification.from_pretr ained(model_name, num_labels=3)
+/seven.pnum
+8% Prepare multiple datasets for different tasks (e.g., sent iment analysis and topic classification
+)
+/nine.pnumtask1_dataset = load_dataset( "glue","sst2") % Sentiment analysis
+/one.pnum/zero.pnumtask2_dataset = load_dataset( "ag_news" ) % Topic classification
+/one.pnum/one.pnum
+/one.pnum/two.pnum% Tokenize both datasets
+/one.pnum/three.pnumtask1_tokenized = task1_dataset.map(lambda x: tokenizer (x[’sentence’ ], truncation=True, padding=
+True), batched=True)
+/one.pnum/four.pnumtask2_tokenized = task2_dataset.map(lambda x: tokenizer (x[’text’], truncation=True, padding=True),
+batched=True)
+/one.pnum/five.pnum
+/one.pnum6% Set up training arguments
+/one.pnum/seven.pnumtraining_args = TrainingArguments(
+/one.pnum8output_dir= "./multi_task_model" ,
+/one.pnum/nine.pnumper_device_train_batch_size=8,
+/two.pnum/zero.pnumevaluation_strategy= "steps",
+/two.pnum/one.pnumsave_steps=500,
+/two.pnum/two.pnumnum_train_epochs=3
+/two.pnum/three.pnum)
+/two.pnum/four.pnum
+/two.pnum/five.pnum% Define a Trainer for each task and fine-tune the model
+/two.pnum6trainer = Trainer(
+/two.pnum/seven.pnummodel=model,
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP 8/one.pnum
+/two.pnum8args=training_args,
+/two.pnum/nine.pnumtrain_dataset=task1_tokenized[ ’train’],
+/three.pnum/zero.pnumeval_dataset=task1_tokenized[ ’validation’ ],
+/three.pnum/one.pnum)
+/three.pnum/two.pnum
+/three.pnum/three.pnumtrainer.train()
+/three.pnum/four.pnum
+/three.pnum/five.pnum% Fine-tune for task 2
+/three.pnum6trainer.train_dataset = task2_tokenized[ ’train’]
+/three.pnum/seven.pnumtrainer.eval_dataset = task2_tokenized[ ’validation’ ]
+/three.pnum8trainer.train()
+In thiscase, we are ﬁne-tuningamodel forbothsentimentana lysis(SST-/two.pnum dataset)andtopic clas-
+siﬁcation (AG News dataset).
+/four.pnum.8./one.pnum/seven.pnum Optimizing Model for Deployment
+Deploying a ﬁne-tuned model is only one part of the journey. E nsuring the model performs efﬁciently
+during inference—especially when dealing with large model s or real-time applications—requires addi-
+tionaloptimizationsteps. Inthissection, wewillexplore methodstooptimizetheﬁne-tunedmodelfor
+fast and efﬁcient inference.
+/four.pnum.8./one.pnum/seven.pnum./one.pnum Quantization
+Quantizationisatechniquewherethemodelweightsareconv ertedfrom/three.pnum/two.pnum-bitﬂoatingpointstolower
+precision, such as 8-bitintegers. This can signiﬁcantly re duce the model’ssize and improveinference
+speed while maintaining acceptable accuracy.
+Hugging Face provides support for model quantization using torch.quantization :
+/one.pnumfrom transformers import BertForSequenceClassification
+/two.pnumimport torch
+/three.pnum
+/four.pnum% Load the fine-tuned model
+/five.pnummodel = BertForSequenceClassification.from_pretrained ("fine-tuned-bert" )
+6
+/seven.pnum% Apply dynamic quantization
+8quantized_model = torch.quantization.quantize_dynamic (
+/nine.pnummodel, {torch.nn.Linear}, dtype=torch.qint8
+/one.pnum/zero.pnum)
+/one.pnum/one.pnum
+/one.pnum/two.pnum% Save the quantized model
+/one.pnum/three.pnumquantized_model.save_pretrained( "./quantized-bert" )
+Here, dynamic quantization is applied to the Linearlayers of the model, reducing memory usage
+and boosting inference speed.
+/four.pnum.8./one.pnum/seven.pnum./two.pnum Distillation
+Another powerful optimization technique is distillation , where a large, ﬁne-tuned model (the teacher
+model) is used to train a smaller model (the student model). T he smaller model retains much of the
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP 8/two.pnum
+performance of the larger model but is signiﬁcantly faster d uring inference.
+DistilBERT [6/seven.pnum], for example, is a smaller version of BERT that has been train ed using knowledge
+distillation. You can either use pre-distilled models prov ided by Hugging Face or perform distillation
+on your custom models.
+Here’s an example of loading a distillation-friendly model likeDistilBERT :
+/one.pnumfrom transformers import DistilBertForSequenceClassifi cation, DistilBertTokenizer
+/two.pnum
+/three.pnum% Load the pre-trained DistilBERT model and tokenizer
+/four.pnumtokenizer = DistilBertTokenizer.from_pretrained( "distilbert-base-uncased" )
+/five.pnummodel = DistilBertForSequenceClassification.from_pret rained("distilbert-base-uncased" )
+This approach can be beneﬁcial when deploying models in envi ronments where computational
+resources are limited, such as mobile or embeddedsystems.
+/four.pnum.8./one.pnum/seven.pnum./three.pnum Model Pruning
+Model pruning [ 68] is another technique to reduce the size of the model by remov ing less important
+weights or layers. By pruning unnecessary weights, the mode l becomes smaller and faster without a
+signiﬁcant loss in performance.
+While Hugging Face’s transformers library does not natively support pruning yet, libraries li ke
+torch.nn.utils.prune can be used in conjunction with the Hugging Face models to pru ne speciﬁc
+layers.
+/one.pnumimport torch.nn.utils.prune as prune
+/two.pnum
+/three.pnum% Example: Prune 40\% of the weights from a linear layer
+/four.pnumprune.l1_unstructured(model.classifier, name= ’weight’ , amount=0.4)
+/four.pnum.8./one.pnum/seven.pnum./four.pnum Using ONNX for Deployment
+Anotherpopularoptionforoptimizingmodelsforproductio nistoconvertthemintotheONNXformat,
+which is widely supported by various deployment platforms, such as TensorFlow Serving, Azure, and
+AWS.
+You can use the transformers library’s built-in ONNX exporter:
+/one.pnumfrom transformers import BertForSequenceClassification
+/two.pnumfrom transformers.onnx import export
+/three.pnum
+/four.pnum% Load the model
+/five.pnummodel = BertForSequenceClassification.from_pretrained ("fine-tuned-bert" )
+6
+/seven.pnum% Export the model to ONNX format
+8export(model, tokenizer, "bert-onnx-model.onnx" , opset=11)
+Once converted to ONNX format, the model can be loaded into an y ONNX runtime for efﬁcient
+inference on a variety of devices.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP 8/three.pnum
+/four.pnum.8./one.pnum8 Distributed Training and Model Parallelism
+Whentraining large models like GPT-/three.pnum or even BERT-large, it may be necessary to leveragedistributed
+trainingtechniquesduetomemoryconstraints. Distribute dtrainingallowsmodelstobetrainedacross
+multipleGPUsorevenmultiplemachines. HuggingFacesuppo rtstwomainformsofdistributedtrain-
+ing: Data Parallelism and Model Parallelism.
+/four.pnum.8./one.pnum8./one.pnum Data Parallelism
+Indataparallelism,thedatasetissplitintosmallerbatch es,andeachbatchisprocessedonaseparate
+GPU. After each batch is processed, the gradients are averag ed, and the model is updated.
+HuggingFace’s Trainer APIsupportsdataparallelismautomaticallyifmultipleGP Usareavailable:
+/one.pnumtraining_args = TrainingArguments(
+/two.pnumoutput_dir= "./results" ,
+/three.pnumper_device_train_batch_size=8,
+/four.pnumevaluation_strategy= "epoch",
+/five.pnumnum_train_epochs=3,
+6logging_dir= ’./logs’ ,
+/seven.pnumlogging_steps=10,
+8dataloader_num_workers=4,
+/nine.pnumdistributed_type= "multi-gpu"
+/one.pnum/zero.pnum)
+/one.pnum/one.pnum
+/one.pnum/two.pnum% Define the Trainer
+/one.pnum/three.pnumtrainer = Trainer(
+/one.pnum/four.pnummodel=model,
+/one.pnum/five.pnumargs=training_args,
+/one.pnum6train_dataset=train_dataset,
+/one.pnum/seven.pnumeval_dataset=eval_dataset
+/one.pnum8)
+/one.pnum/nine.pnum
+/two.pnum/zero.pnum% Start training with multiple GPUs
+/two.pnum/one.pnumtrainer.train()
+If you are runningon multiplemachines, you can usedistribu tedtraining libraries like DeepSpeed or
+torch.distributed .
+/four.pnum.8./one.pnum8./two.pnum Model Parallelism
+Inmodelparallelism,themodelitselfissplitacrossmulti pleGPUs. Thisisusefulforverylargemodels
+that cannot ﬁt on a single GPU. Hugging Face provides native s upport for model parallelism:
+/one.pnum% Enable model parallelism
+/two.pnummodel.parallelize()
+/three.pnum
+/four.pnum% Continue training as usual
+/five.pnumtrainer.train()
+Withmodelparallelismenabled,themodel’slayersaredist ributedacrossmultipledevices,making
+it possible to train even the largest models.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP 8/four.pnum
+/four.pnum.8./one.pnum/nine.pnum Transfer Learning: Fine-Tuning for Domain-Speciﬁc Tasks
+Whenﬁne-tuningapretrainedmodelfordomain-speciﬁctask s(e.g.,biomedicaltext,legaldocuments,
+etc.),it’simportanttoconsiderthenatureofthedata. Pre trainedmodelslikeBERTorGPT-/two.pnumhavebeen
+trained on a wide range of general-purpose corpora, but for t asks like medical NER (Named Entity
+Recognition), domain-speciﬁc knowledge can signiﬁcantly improve performance.
+Hugging Face provides models that have been pretrained on do main-speciﬁc datasets such as
+SciBERT for scientiﬁc text or BioBERT for biomedical litera ture.
+/four.pnum.8./one.pnum/nine.pnum./one.pnum Fine-Tuning SciBERT for Scientiﬁc Text Classiﬁcation
+SciBERT [ 6/nine.pnum] is a pretrained model for processing scientiﬁc publicatio ns. You can ﬁne-tune it for spe-
+ciﬁc tasks like classiﬁcation or information retrieval.
+Here’s an example of how to ﬁne-tune SciBERT:
+/one.pnumfrom transformers import AutoModelForSequenceClassific ation, AutoTokenizer
+/two.pnum
+/three.pnum% Load the SciBERT model and tokenizer
+/four.pnummodel_name = "allenai/scibert_scivocab_uncased"
+/five.pnumtokenizer = AutoTokenizer.from_pretrained(model_name)
+6model = AutoModelForSequenceClassification.from_pretr ained(model_name, num_labels=2)
+/seven.pnum
+8% Fine-tune on your custom scientific dataset
+/nine.pnumtrain_dataset = load_dataset( "your_scientific_dataset" , split= "train")
+/one.pnum/zero.pnumtest_dataset = load_dataset( "your_scientific_dataset" , split= "test")
+/one.pnum/one.pnum
+/one.pnum/two.pnum% Tokenize the dataset
+/one.pnum/three.pnumtrain_dataset = train_dataset.map(lambda x: tokenizer(x [’text’], truncation=True, padding=True),
+batched=True)
+/one.pnum/four.pnumtest_dataset = test_dataset.map(lambda x: tokenizer(x[ ’text’], truncation=True, padding=True),
+batched=True)
+/one.pnum/five.pnum
+/one.pnum6% Define Trainer and start training
+/one.pnum/seven.pnumtrainer = Trainer(
+/one.pnum8model=model,
+/one.pnum/nine.pnumargs=TrainingArguments(output_dir= "./results" , num_train_epochs=3),
+/two.pnum/zero.pnumtrain_dataset=train_dataset,
+/two.pnum/one.pnumeval_dataset=test_dataset
+/two.pnum/two.pnum)
+/two.pnum/three.pnum
+/two.pnum/four.pnumtrainer.train()
+Using domain-speciﬁc models like SciBERT can lead to better performance, especially when the
+model needs to understand highly technical or domain-speci ﬁc language.
+/four.pnum.8./two.pnum/zero.pnum Conclusion
+In this section, we have explored several advanced topics in ﬁne-tuning and deploying NLP models.
+Fromoptimizingmodelsthroughtechniqueslikequantizati on,distillation,andpruning[ /seven.pnum/zero.pnum],tohandling
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP 8/five.pnum
+large-scale models through distributed training and model parallelism, there are numerous ways to
+make the most of pretrained models in real-world applicatio ns.
+We also looked into domain-speciﬁc models, which can provid e even better performance when
+ﬁne-tuned for speciﬁc industries, such as scientiﬁc resear ch or healthcare.
+In the next section, we will dive deeper into building custom datasets and creating new model
+architectures from scratch, offering greater ﬂexibility f or highly specialized tasks.
+/four.pnum.8./two.pnum/one.pnum Building Custom Datasets for Fine-Tuning
+While Hugging Face’s datasets library provides many pre-built datasets, there are cases w here you
+need to ﬁne-tune models on custom datasets tailored to your s peciﬁc task. In this section, we will
+walk through how to prepare and load a custom dataset for ﬁne- tuning a model.
+/four.pnum.8./two.pnum/one.pnum./one.pnum Preparing a Custom Dataset
+First, ensure that your dataset is in a format that can be easi ly loaded into the model. Typically,
+datasets are structured in CSV, JSON, or TSV formats. Here is an example of loading a CSV dataset
+for text classiﬁcation:
+/one.pnumimport pandas as pd
+/two.pnumfrom datasets import Dataset
+/three.pnum
+/four.pnum% Load a CSV dataset into a pandas DataFrame
+/five.pnumdf = pd.read_csv( "my_dataset.csv" )
+6
+/seven.pnum% Convert the DataFrame into a Hugging Face Dataset
+8dataset = Dataset.from_pandas(df)
+/nine.pnum
+/one.pnum/zero.pnum% Split the dataset into train, validation, and test sets
+/one.pnum/one.pnumtrain_testvalid = dataset.train_test_split(test_size= 0.2)
+/one.pnum/two.pnumtest_valid = train_testvalid[ ’test’].train_test_split(test_size=0.5)
+/one.pnum/three.pnumtrain_dataset = train_testvalid[ ’train’]
+/one.pnum/four.pnumtest_dataset = test_valid[ ’test’]
+/one.pnum/five.pnumvalid_dataset = test_valid[ ’train’]
+In this example, we ﬁrst load a CSV dataset into a pandas DataF rame, convert it into a Hugging
+Facedataset,andthensplititinto training, validation, a ndtestsets. Thisisacommon workﬂow when
+dealing with custom datasets.
+/four.pnum.8./two.pnum/one.pnum./two.pnum Tokenizing Custom Data
+Once the dataset is loaded, we need to tokenize the data so tha t it can be used with transformer
+models. This involves encoding the text into tokens that the model understands.
+/one.pnumfrom transformers import AutoTokenizer
+/two.pnum
+/three.pnum% Load the tokenizer
+/four.pnumtokenizer = AutoTokenizer.from_pretrained( "bert-base-uncased" )
+/five.pnum
+6% Tokenize the datasets
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP 86
+/seven.pnumdef tokenize_function(examples):
+8return tokenizer(examples[ ’text’], truncation=True, padding=True)
+/nine.pnum
+/one.pnum/zero.pnum% Apply the tokenizer to the dataset
+/one.pnum/one.pnumtrain_dataset = train_dataset.map(tokenize_function, b atched=True)
+/one.pnum/two.pnumvalid_dataset = valid_dataset.map(tokenize_function, b atched=True)
+/one.pnum/three.pnumtest_dataset = test_dataset.map(tokenize_function, bat ched=True)
+This function tokenizes each example in the dataset by trunc ating or padding the input text to the
+appropriate length. After tokenization, the dataset is rea dy for ﬁne-tuning.
+/four.pnum.8./two.pnum/one.pnum./three.pnum Training with Custom Datasets
+Once the data is tokenized, we can proceed with training the m odel using the Trainer API as we did
+earlier. The same training process can be applied regardles s of whether the dataset is custom or
+pre-built.
+/one.pnumfrom transformers import Trainer, TrainingArguments
+/two.pnum
+/three.pnum% Define the training arguments
+/four.pnumtraining_args = TrainingArguments(
+/five.pnumoutput_dir= "./results" ,
+6num_train_epochs=3,
+/seven.pnumper_device_train_batch_size=8,
+8per_device_eval_batch_size=8,
+/nine.pnumevaluation_strategy= "epoch",
+/one.pnum/zero.pnumlogging_dir= ’./logs’ ,
+/one.pnum/one.pnum)
+/one.pnum/two.pnum
+/one.pnum/three.pnum% Initialize the trainer with the custom dataset
+/one.pnum/four.pnumtrainer = Trainer(
+/one.pnum/five.pnummodel=model,
+/one.pnum6args=training_args,
+/one.pnum/seven.pnumtrain_dataset=train_dataset,
+/one.pnum8eval_dataset=valid_dataset,
+/one.pnum/nine.pnum)
+/two.pnum/zero.pnum
+/two.pnum/one.pnum% Train the model
+/two.pnum/two.pnumtrainer.train()
+/four.pnum.8./two.pnum/two.pnum Evaluating Edge Cases and Out-of-Distribution Data
+Once a model is ﬁne-tuned, it is important to test it not only o n typical examples but also on edge
+cases and out-of-distribution (OOD) data to ensure robustn ess and generalizability. Edge cases are
+examples that lie on the boundary of the model’s knowledge or ability to classify correctly.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP 8/seven.pnum
+/four.pnum.8./two.pnum/two.pnum./one.pnum Handling Edge Cases
+For instance, if you are buildinga sentimentclassiﬁer, som e edgecases could involve sentenceswith
+ambiguous or conﬂicting sentiments, such as sarcastic or mi xed reviews.
+To evaluate how themodelhandlesedgecases, you cancreate a smalltest setoftheseexamples
+and use the same evaluate() function to compute performance metrics:
+/one.pnum% Define some edge cases
+/two.pnumedge_cases = [ "I love this movie but the ending was terrible." ,
+/three.pnum "This product was not the best, but still quite good overall. "]
+/four.pnum
+/five.pnum% Tokenize the edge cases
+6inputs = tokenizer(edge_cases, return_tensors= "pt", padding=True, truncation=True)
+/seven.pnum
+8% Evaluate the model ’s predictions
+/nine.pnumwith torch.no_grad():
+/one.pnum/zero.pnumoutputs = model(**inputs)
+/one.pnum/one.pnumpredictions = torch.argmax(outputs.logits, dim=-1)
+/one.pnum/two.pnum
+/one.pnum/three.pnum% Print the predictions
+/one.pnum/four.pnumprint(predictions)
+By systematically testing on edge cases, you can better unde rstand the limitations of the model
+and areas where further ﬁne-tuning may be necessary.
+/four.pnum.8./two.pnum/two.pnum./two.pnum Out-of-Distribution (OOD) Data
+Out-of-distribution (OOD) refers to data that is very diffe rent from the data the model was trained on.
+Testing on OOD data helps evaluate whether the model general izes well beyond its training set.
+For example, if you have ﬁne-tuned a model on English-langua ge news articles, you might test it
+on OOD data such as tweets, blog posts, or scientiﬁc papers, w hich could have different linguistic
+structures or vocabularies.
+You can measure the model’s performance on OOD datasets by lo ading a completely different
+dataset from Hugging Face’s datasets library and evaluating the ﬁne-tuned model:
+/one.pnum% Load an out-of-distribution dataset
+/two.pnumood_dataset = load_dataset( "ag_news" , split= "test")
+/three.pnum
+/four.pnum% Tokenize and evaluate on OOD data
+/five.pnumood_dataset = ood_dataset.map(tokenize_function, batch ed=True)
+6
+/seven.pnum% Evaluate the model on OOD data
+8results = trainer.evaluate(eval_dataset=ood_dataset)
+/nine.pnumprint("OOD Test Accuracy:" , results[ ’eval_accuracy’ ])
+This allows you to gauge how well your model performs when enc ountering unfamiliar data.
+/four.pnum.8./two.pnum/three.pnum Advanced Model Architectures
+Beyond BERT and GPT models, several advanced model architec tures can be ﬁne-tuned for speciﬁc
+tasks in NLP. Some of these architectures provide superior p erformance for tasks like translation,
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP 88
+summarization, and question answering.
+/four.pnum.8./two.pnum/three.pnum./one.pnum BART: Bidirectional and Auto-Regressive Transformer s
+BART (Bidirectional andAuto-RegressiveTransformers) is a particularly powerfulmodel for tasks like
+text generation, summarization, and translation. It is des igned to combine the strengths of both bidi-
+rectional models (like BERT) and auto-regressive models (l ike GPT).
+Here’s how you can ﬁne-tune BART for summarization:
+/one.pnumfrom transformers import BartForConditionalGeneration, BartTokenizer
+/two.pnum
+/three.pnum% Load BART tokenizer and model
+/four.pnumtokenizer = BartTokenizer.from_pretrained( "facebook/bart-large-cnn" )
+/five.pnummodel = BartForConditionalGeneration.from_pretrained( "facebook/bart-large-cnn" )
+6
+/seven.pnum% Tokenize the input text
+8text ="The quick brown fox jumps over the lazy dog."
+/nine.pnuminputs = tokenizer([text], max_length=1024, return_tens ors="pt", truncation=True)
+/one.pnum/zero.pnum
+/one.pnum/one.pnum% Generate a summary
+/one.pnum/two.pnumsummary_ids = model.generate(inputs[ ’input_ids’ ], num_beams=4, max_length=50, early_stopping=True)
+/one.pnum/three.pnum
+/one.pnum/four.pnum% Decode the summary
+/one.pnum/five.pnumsummary = tokenizer.decode(summary_ids[0], skip_specia l_tokens=True)
+/one.pnum6print("Summary:" , summary)
+BART can also be used for tasks like machine translation and d ialogue generation, making it one
+of the most versatile models for sequence-to-sequence task s.
+/four.pnum.8./two.pnum/three.pnum./two.pnum T/five.pnum: Text-to-Text Transfer Transformer
+T/five.pnum (Text-to-Text Transfer Transformer) treats every NLP ta sk as a text-to-text task. This uniformity
+allows T/five.pnum to handle a wide variety of NLP problems using the sa me architecture. It can be ﬁne-tuned
+for summarization, translation, classiﬁcation, and more.
+Here’s an example of using T/five.pnum for text generation:
+/one.pnumfrom transformers import T5ForConditionalGeneration, T5 Tokenizer
+/two.pnum
+/three.pnum% Load the T5 model and tokenizer
+/four.pnumtokenizer = T5Tokenizer.from_pretrained( "t5-small" )
+/five.pnummodel = T5ForConditionalGeneration.from_pretrained( "t5-small" )
+6
+/seven.pnum% Define the input text
+8input_text = "translate English to French: The house is wonderful."
+/nine.pnum
+/one.pnum/zero.pnum% Tokenize the input
+/one.pnum/one.pnuminput_ids = tokenizer(input_text, return_tensors= "pt").input_ids
+/one.pnum/two.pnum
+/one.pnum/three.pnum% Generate the output
+/one.pnum/four.pnumoutputs = model.generate(input_ids)
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP 8/nine.pnum
+/one.pnum/five.pnum
+/one.pnum6% Decode and print the output
+/one.pnum/seven.pnumprint(tokenizer.decode(outputs[0], skip_special_toke ns=True))
+This example shows how to use T/five.pnum for translation, but the same process can be applied to tasks
+like summarization or classiﬁcation by simply changing the task preﬁx.
+/four.pnum.8./two.pnum/four.pnum Error Analysis and Responsible AI
+Evenafterﬁne-tuning,modelscanmake incorrect or biasedp redictions. Error analysisis akey step in
+identifying these errors and improving model performance.
+/four.pnum.8./two.pnum/four.pnum./one.pnum Performing Error Analysis
+After training a model, it is essential to examine where it fa ils. This can involve inspecting incorrect
+predictions, analyzing confusion matrices, and identifyi ng patterns in errors.
+Here’s an example of how to compute a confusion matrix using H ugging Face’s datasets :
+/one.pnumfrom sklearn.metrics import confusion_matrix
+/two.pnum
+/three.pnum% Make predictions on the test set
+/four.pnumpredictions = trainer.predict(test_dataset).predictio ns
+/five.pnumpred_labels = np.argmax(predictions, axis=1)
+6
+/seven.pnum% Get the true labels
+8true_labels = test_dataset[ "label"]
+/nine.pnum
+/one.pnum/zero.pnum% Compute the confusion matrix
+/one.pnum/one.pnumcm = confusion_matrix(true_labels, pred_labels)
+/one.pnum/two.pnum
+/one.pnum/three.pnum% Print the confusion matrix
+/one.pnum/four.pnumprint(cm)
+/four.pnum.8./two.pnum/four.pnum./two.pnum Addressing Bias and Fairness
+It is critical to consider fairness when building and deploy ing models. Models trained on biased data
+may produce biased results, which can lead to harmful real-w orld consequences.
+HuggingFace supportsvarious metrics for detecting biasan dfairnessissuesinmodels. Oneway
+to mitigate bias is through data augmentation techniques, w hich can ensure more balanced training
+data.
+/four.pnum.8./two.pnum/five.pnum Conclusion
+In this chapter, we expanded on advanced techniques for ﬁne- tuning, optimizing, and deploying NLP
+models. Weexploredcustomdatasetcreation, edgecaseeval uation, out-of-distributionhandling,and
+model architectures such as BART and T/five.pnum. Additionally, we ad dressed error analysis and responsible
+AI practices to ensure robust and fair models.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /nine.pnum/zero.pnum
+In the following sections, we will explore domain adaptatio n, self-supervised learning techniques,
+and integrating NLP models into larger systems for real-wor ld applications.
+/four.pnum.8./two.pnum6 Domain Adaptation in NLP
+Domain adaptation is the process of ﬁne-tuning a pretrained model on a domain-speciﬁc dataset to
+improve its performance on tasks related to that particular domain. This is especially useful when
+you are dealing with specialized datasets, such as legal doc uments, medical records, or scientiﬁc
+literature, where general-purpose pretrained models may u nderperform.
+/four.pnum.8./two.pnum6./one.pnum Pretrained Domain-Speciﬁc Models
+Before diving into custom domain adaptation, it’s often hel pful to check if there are any publicly avail-
+ablepretrainedmodelsspeciﬁctoyourdomain. HuggingFace offersmodelssuchas BioBERT (trained
+onbiomedicalliterature)and LegalBERT (trainedonlegaltext). Usingadomain-speciﬁcmodelcangi ve
+you a head start.
+Here’s an example of how to ﬁne-tune BioBERT for a custom medical text classiﬁcation task:
+/one.pnumfrom transformers import BertForSequenceClassification , AutoTokenizer
+/two.pnum
+/three.pnum% Load BioBERT model and tokenizer
+/four.pnummodel = BertForSequenceClassification.from_pretrained ("dmis-lab/biobert-base-cased-v1.1" )
+/five.pnumtokenizer = AutoTokenizer.from_pretrained( "dmis-lab/biobert-base-cased-v1.1" )
+6
+/seven.pnum% Tokenize and fine-tune using a medical dataset
+8train_dataset = load_dataset( "my_medical_dataset" , split= "train")
+/nine.pnumtrain_dataset = train_dataset.map(lambda x: tokenizer(x [’text’], padding=True, truncation=True),
+batched=True)
+/one.pnum/zero.pnum
+/one.pnum/one.pnum% Training process remains the same as before
+/one.pnum/two.pnumtrainer = Trainer(
+/one.pnum/three.pnummodel=model,
+/one.pnum/four.pnumargs=training_args,
+/one.pnum/five.pnumtrain_dataset=train_dataset
+/one.pnum6)
+/one.pnum/seven.pnumtrainer.train()
+This approach leverages a domain-speciﬁc pretrained model ,BioBERT ,which already has a strong
+understandingof biomedical language. Fine-tuningitfurt heron a speciﬁcmedical task (e.g.,classify-
+ing diseases) will improve performance in that domain.
+/four.pnum.8./two.pnum6./two.pnum Adapting General Models to Speciﬁc Domains
+Ifnodomain-speciﬁcmodelisavailable,youcanﬁne-tuneag eneral-purposemodellikeBERTorGPT-/two.pnum
+onadomain-speciﬁcdataset. Youcanalsoperformadditiona lpretraining(sometimescalled“domain-
+speciﬁc pretraining”) before ﬁne-tuning. This process inv olves training the model further on a large
+corpus of domain-speciﬁc text before ﬁne-tuning it for the t arget task.
+Here’s how to continue pretraining BERT on domain-speciﬁc d ata before ﬁne-tuning:
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /nine.pnum/one.pnum
+/one.pnumfrom transformers import BertForMaskedLM, BertTokenizer
+/two.pnumfrom transformers import DataCollatorForLanguageModeli ng
+/three.pnum
+/four.pnum% Load general BERT model and tokenizer
+/five.pnummodel = BertForMaskedLM.from_pretrained( "bert-base-uncased" )
+6tokenizer = BertTokenizer.from_pretrained( "bert-base-uncased" )
+/seven.pnum
+8% Prepare your domain-specific corpus
+/nine.pnumdataset = load_dataset( "text", data_files={ "train":"domain_text.txt" }, split= "train")
+/one.pnum/zero.pnum
+/one.pnum/one.pnum% Tokenize the dataset
+/one.pnum/two.pnumdataset = dataset.map(lambda examples: tokenizer(exampl es[’text’], truncation=True, padding=True),
+batched=True)
+/one.pnum/three.pnum
+/one.pnum/four.pnum% Data collator for masked language modeling (MLM)
+/one.pnum/five.pnumdata_collator = DataCollatorForLanguageModeling(token izer=tokenizer, mlm=True, mlm_probability
+=0.15)
+/one.pnum6
+/one.pnum/seven.pnum% Define training arguments and Trainer
+/one.pnum8training_args = TrainingArguments(
+/one.pnum/nine.pnumoutput_dir= "./domain-bert" ,
+/two.pnum/zero.pnumoverwrite_output_dir=True,
+/two.pnum/one.pnumnum_train_epochs=5,
+/two.pnum/two.pnumper_device_train_batch_size=8,
+/two.pnum/three.pnumsave_steps=10_000,
+/two.pnum/four.pnumsave_total_limit=2,
+/two.pnum/five.pnum)
+/two.pnum6
+/two.pnum/seven.pnumtrainer = Trainer(
+/two.pnum8model=model,
+/two.pnum/nine.pnumargs=training_args,
+/three.pnum/zero.pnumtrain_dataset=dataset,
+/three.pnum/one.pnumdata_collator=data_collator,
+/three.pnum/two.pnum)
+/three.pnum/three.pnum
+/three.pnum/four.pnum% Perform domain-specific pretraining
+/three.pnum/five.pnumtrainer.train()
+This code performs further masked language model (MLM) pret raining on your domain-speciﬁc
+corpus, making the general-purpose BERT model better suite d for tasks in that domain. After this
+pretraining step, you can ﬁne-tune the model on your task-sp eciﬁc data.
+/four.pnum.8./two.pnum/seven.pnum Transfer Learning in Multilingual Models
+Transfer learning is particularly powerful in multilingua l models, where knowledge learned from one
+language can be transferred to other languages, especially in low-resource language settings. Hug-
+gingFace’s transformers libraryincludesmultilingualmodelslike mBERT(MultilingualBERT)and XLM-R
+(XLM-RoBERTa), which are pretrained on many languages.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /nine.pnum/two.pnum
+/four.pnum.8./two.pnum/seven.pnum./one.pnum Fine-Tuning Multilingual BERT
+Fine-tuning a multilingual model follows the same process a s monolingual models. However, multi-
+lingual models are useful for zero-shot or few-shot learnin g in languages that do not have extensive
+datasets.
+Here’s how to ﬁne-tune mBERTon a multilingual sentiment classiﬁcation task:
+/one.pnumfrom transformers import BertForSequenceClassification , BertTokenizer
+/two.pnum
+/three.pnum% Load multilingual BERT (mBERT)
+/four.pnummodel = BertForSequenceClassification.from_pretrained ("bert-base-multilingual-cased" )
+/five.pnumtokenizer = BertTokenizer.from_pretrained( "bert-base-multilingual-cased" )
+6
+/seven.pnum% Load and tokenize multilingual dataset
+8train_dataset = load_dataset( "multilingual_dataset" , split= "train")
+/nine.pnumtrain_dataset = train_dataset.map(lambda x: tokenizer(x [’text’], padding=True, truncation=True),
+batched=True)
+/one.pnum/zero.pnum
+/one.pnum/one.pnum% Fine-tune the model
+/one.pnum/two.pnumtrainer = Trainer(
+/one.pnum/three.pnummodel=model,
+/one.pnum/four.pnumargs=training_args,
+/one.pnum/five.pnumtrain_dataset=train_dataset
+/one.pnum6)
+/one.pnum/seven.pnumtrainer.train()
+The key advantage of multilingual modelsis their ability to transfer knowledge from high-resource
+languages (e.g., English) to low-resource languages. For e xample, after ﬁne-tuning on multilingual
+data, the model can generalize to make predictions on langua ges with fewer labeled examples.
+/four.pnum.8./two.pnum8 Self-Supervised Learning for NLP
+Self-supervisedlearningisaparadigmwheremodelslearnu sefulrepresentationsfromlargeamounts
+ofunlabeleddata. InNLP, thisisachievedthroughtechniqu eslikemaskedlanguagemodeling(MLM),
+as used in BERT, or autoregressive learning, as used in GPT.
+/four.pnum.8./two.pnum8./one.pnum Masked Language Modeling (MLM) with BERT
+Masked language modeling involves randomly masking certai n tokens in the input and training the
+model to predict them. This trains the model to understand th e context and semantics of language,
+which can later be applied to downstream tasks.
+Here’s an example of training a BERT model using the MLM objec tive:
+/one.pnumfrom transformers import BertForMaskedLM, BertTokenizer , DataCollatorForLanguageModeling
+/two.pnum
+/three.pnum# Load BERT for masked language modeling
+/four.pnummodel = BertForMaskedLM.from_pretrained( "bert-base-uncased" )
+/five.pnumtokenizer = BertTokenizer.from_pretrained( "bert-base-uncased" )
+6
+/seven.pnum# Prepare dataset and tokenize
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /nine.pnum/three.pnum
+8dataset = load_dataset( "text", data_files={ "train":"large_unlabeled_corpus.txt" }, split= "train")
+/nine.pnumdataset = dataset.map(lambda examples: tokenizer(exampl es[’text’], truncation=True, padding=True),
+batched=True)
+/one.pnum/zero.pnum
+/one.pnum/one.pnum# Prepare data collator for masked language modeling
+/one.pnum/two.pnumdata_collator = DataCollatorForLanguageModeling(token izer=tokenizer, mlm=True, mlm_probability
+=0.15)
+/one.pnum/three.pnum
+/one.pnum/four.pnum# Define training arguments and train the model
+/one.pnum/five.pnumtrainer = Trainer(
+/one.pnum6model=model,
+/one.pnum/seven.pnumargs=TrainingArguments(
+/one.pnum8 output_dir= "./mlm-model" ,
+/one.pnum/nine.pnum per_device_train_batch_size=8,
+/two.pnum/zero.pnum num_train_epochs=3
+/two.pnum/one.pnum),
+/two.pnum/two.pnumdata_collator=data_collator,
+/two.pnum/three.pnumtrain_dataset=dataset
+/two.pnum/four.pnum)
+/two.pnum/five.pnum
+/two.pnum6# Train with masked language modeling
+/two.pnum/seven.pnumtrainer.train()
+This process allows the model to learn strong language repre sentations in an unsupervised man-
+ner,whichcanbeappliedtodownstreamtaskssuchasclassiﬁ cation, questionanswering,orsumma-
+rization.
+/four.pnum.8./two.pnum/nine.pnum Integrating NLP Models into End-to-End Systems
+Integrating ﬁne-tuned models into real-world application s often requires connecting the model to a
+larger system, such as a web service, mobile app, or chatbot. This process includes model serving,
+API development, and performance optimization for real-ti me inference.
+/four.pnum.8./two.pnum/nine.pnum./one.pnum Serving a Model with FastAPI
+One common approach for serving an NLP model is to use FastAPI , a high-performance web frame-
+work for building APIs. Here’s an example of deploying a Hugg ing Face model as a REST API using
+FastAPI:
+/one.pnumfrom fastapi import FastAPI
+/two.pnumfrom transformers import pipeline
+/three.pnum
+/four.pnum# Initialize FastAPI and a Hugging Face pipeline
+/five.pnumapp = FastAPI()
+6classifier = pipeline( "sentiment-analysis" )
+/seven.pnum
+8# Define a POST endpoint for sentiment analysis
+/nine.pnum@app.post( "/predict" )
+/one.pnum/zero.pnumasync def predict(text: str):
+/one.pnum/one.pnumresult = classifier(text)
+

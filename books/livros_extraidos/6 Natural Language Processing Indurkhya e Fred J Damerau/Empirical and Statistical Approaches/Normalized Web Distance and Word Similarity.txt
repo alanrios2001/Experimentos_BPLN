@@ -1,0 +1,650 @@
+13
+Normalized Web
+Distance and Word
+Similarity
+Paul M.B. Vitányi
+CentrumWiskunde&Informatica
+Rudi L. Cilibrasi
+CentrumWiskunde&Informatica13.1 Introduction ..........................................................29313.2 SomeMethodsforWordSimilarity................................295
+AssociationMeasures •Attributes •RelationalWordSimilarity •Latent
+SemanticAnalysis
+13.3 BackgroundoftheNWDMethod..................................29713.4 BriefIntroductiontoKolmogorovComplexity...................29813.5 InformationDistance................................................300
+NormalizedInformationDistance •NormalizedCompressionDistance
+13.6 WordSimilarity:NormalizedWebDistance......................30213.7 ApplicationsandExperiments......................................304
+HierarchicalClustering •Classiﬁcation •MatchingtheMeaning •
+SystematicComparisonwithWordNetSemantics
+13.8 Conclusion............................................................311References....................................................................312
+13.1 Introduction
+Objects can be given literally, like the literal four-letter genome of a mouse, or the literal text of War
+andPeace byTolstoy.Forsimplicity,wetakeitthatallmeaningoftheobjectisrepresentedbytheliteral
+objectitself. Objectscanalsobegivenbyname, like“thefour-lettergenomeofamouse,” or“thetextofWar and Peace by Tolstoy.” There are also objects that cannot be given literally, but only by name, and
+that acquire their meaning from their contexts in background common knowledge in humankind, like“home”or“red.”
+To make computers more intelligent one would like to represent meaning in computer-digestible
+form. Long-term and labor-intensive eﬀorts such as the Cycproject (Landauer and Dumais, 1995) and
+theWordNet project(Milleretal.)trytoestablishsemanticrelationsbetweencommonobjects,or,more
+precisely, namesf o rt h o s eo b j e c t s .T h ei d e ai st oc r e a t eas e m a n t i cw e bo fs u c hv a s tp r o p o r t i o n st h a t
+rudimentary intelligence, and knowledge about the real world, spontaneously emerge. This idea comesat the great cost of designing structures capable of manipulating knowledge, and entering high-qualitycontents in these structures by knowledgeable human experts. While the eﬀorts are long running andlargescale,theoverallinformationenteredisminutecomparedtowhatisavailableontheInternet.
+293
+
+294 HandbookofNaturalLanguageProcessing
+TheriseoftheInternethasenticedmillionsofuserstotypeintrillionsofcharacterstocreatebillions
+of web pages of on average low-quality contents. The sheer mass of the information about almost everyconceivabletopicmakesitlikelythatextremeswillcancelandthemajorityoraverageismeaningfulinalow-qualityapproximatesense.
+Thegoalofthischapteristointroducethenormalizedwebdistance(NWD)methodtodeterminethe
+similarity between words and phrases. It is a general way to tap the amorphous low-grade knowledgeavailable for free on the Internet, typed in by local users aiming at the personal gratiﬁcation of diverseobjectives, and yet globally achieving what is eﬀectively the largest semantic electronic database in theworld. Moreover, this database is available for all by using any search engine that can return aggregatepage-count estimates for a large range of search-queries. In the paper (Cilibrasi and Vitányi, 2007)introducingtheNWDitwascalled‘normalizedGoogledistance(NGD),’butsinceGoogledoesnotallowcomputersearchesanymore,weoptforthemoreneutralanddescriptiveNWD.
+Previously, a compression-based method was developed to establish a universal similarity metric
+among objects given as ﬁnite binary strings (Bennett et al., 1998; Cilibrasi and Vitányi, 2005; Cilibrasiet al., 2004; Keogh et al., 2007; Li et al., 2001, 2004; Santos et al., 2006), which was widely reported(Delahaye,2004;Muir,2003;Patch,2003)andhasledtohundredsofapplicationsinresearchasreportedbyGoogleScholar.Theobjectscanbegenomes(CilibrasiandVitányi,2007;Lietal.,2001,2004),musicpieces in MIDI format (Cilibrasi and Vitányi, 2007; Cilibrasi et al., 2004), computer programs in RubyorC,picturesinsimplebitmapformats,astronomicaldata,literature(CilibrasiandVitányi,2005),timesequences such as heart rhythm data (Keogh et al., 2007; Santos et al., 2006), and so on. The method isfeaturefreeinthesensethatitdoesnotanalyzetheﬁleslookingforparticularfeatures;ratheritanalyzesallfeaturessimultaneouslyanddeterminesthesimilaritybetweeneverypairofobjectsaccordingtothemostdominantsharedfeature.Itisnotparameterladen,infact,therearenoparameterstoset.Inthegenomiccontext it is alignment free and much faster than alignment methods; it provides an alignment-freemethodsuchaslookedforinmanygenomicproblems.
+But in the case of word similarity, we do not have the objects themselves. Rather, we have names for
+objects, or other words, and the crucial point is that the compression method described above analyzestheobjectsthemselves.Thisprecludesthecomparisonofabstractnotionsorotherobjectsthatdonotlendthemselvestodirectanalysis, likeemotions, colors, Socrates, Plato, MikeBonanno, andAlbertEinstein.Whilethemethodthatcomparestheobjectsthemselvesisparticularlysuitedtoobtainknowledgeaboutthe similarity of objects themselves, irrespective of common beliefs about such similarities, the NWDmethodofCilibrasiandVitányi(2007)usesonlythenameofanobject(orevenmoresimplywordsandphrases), and obtains knowledge about the similarity of objects (or the words and phrases), by tappingavailableinformationgeneratedbymultitudesofWebusers.
+In Cilibrasi and Vitányi (2007), the following example experiment determining word similarity by
+the NWD method is described. At that time, a Google search for “horse,” returned 46,700,000 hits. Thenumber of hits for the search term “rider” was 12,200,000. Searching for the pages where both “horse”and “rider” occur gave 2,630,000 hits, and Google indexed 8,058,044,651 web pages at the time. Usingthesenumbersinthemainformula(13.8)wederivebelow,with N=8,058,044,651,thisyieldsaNWD,
+denotedby e
+G(·,·),betweentheterms“horse”and“rider”asfollows:
+eG(horse,rider) ≈0.443.
+We did the same calculation when Google indexed only half the number of pages: 4,285,199,774. It isinstructive that the probabilities of the used search terms did not change signiﬁcantly in the meantime:withhalfthenumber of pagesindexed, thenumber ofhitsfor“horse”was23,700,000, for “rider”itwas6,270,000,andfor“horse,rider”itwas1,180,000.The e
+G(horse,rider)wecomputedinthatsituationwas
+≈0.460. This is in line with our contention that the relative frequencies of web pages containing searchtermsgivesobjectiveinformationaboutthesemanticrelationsbetweenthesearchterms.
+
+NormalizedWebDistanceandWordSimilarity 295
+13.2 Some Methods for Word Similarity
+There is a great deal of work in cognitive psychology (Landauer and Dumais, 1997), linguistics, andcomputer science, about using word (or phrase) frequencies in context in text corpora to developmeasures for word similarity or word association, partially surveyed in Tan et al. (2002) and Terra andClarke(2003),goingbacktoatleastthe1960s(Lesk,1969).Someissuesinwordsimilarityareassociationmeasures,attributedwordsimilarity,andrelationalwordsimilarity.
+13.2.1 Association Measures
+AssociationmeasureswerethesubjectofTurney(2001,2002).TherethealgorithmusediscalledPMI-IR,shortforpointwisemutualinformation(PMI),toanalyzestatisticaldatacollectedbyinformationretrieval(IR).ThePMI-IRalgorithminTurney(2001),likeLSAdiscussedinSection13.2.4,andinfacttheNWDmethod,whichformsthecoreofthischapter,isbasedonco-occurrenceofwords.Assumewearegivenname1andwearelookingwhichname2isclosestrelated.Essentiallythealgorithmusestheideathattherelatednessofname2toname1isexpressedby
+score(name2) =logPr(name2 & name1)
+Pr(name1) Pr(name2).
+Here the precise meaning of the connective “&” is subject to reﬁnements as below. It can mean “in thesame page” or “occurrences near one another in a certain window size,” and so on. Since the methodis looking for the maximum score one can drop the logarithm and Pr(name1) (because name1 is ﬁxed).Thus,theformulasimpliﬁestolookingforname2thatmaximizes
+Pr(name2&name1)
+Pr(name2). (13.1)
+This leaves the question of how to compute the probabilities. This is done using a search engine andthe Internet. The search engine used in the reference is Altavista, and four diﬀerent probabilities arepresented.Notethatbecausewearelookingataratio,weneedonlythenumberofhitsofAltavistaforagivensearchterm.
+•Inthesimplestcaseweconsiderco-occurrencewhenthetwowordsoccurinthesamepage:
+score
+1(name2) =hits(name1 AND name2 )
+hits(name2).
+•Thenextmethodasksifthewordsoccurneareachother:
+score2(name2) =hits(name1 NEAR name2)
+hits(name2).
+Two other methods in increasing degree of sophistication are presented to reﬁne the hits with AND,NOT,NEARinbothnumeratoranddenominator.
+Related preceding work in Brin et al. (1997) deﬁnes a notion of ‘interest’ to determine interesting
+associations in large databases. The interestof the association between AandBis deﬁned exactly like
+(13.1)withoutthelogarithm.Thishasapparentlybeenusedfordataminingbutnotfortextmining.
+We continue with the results in Turney (2001). Experiments were done on synonym test questions
+fromtheTestofEnglishasaForeignLanguage(TOEFL)and50synonymtestquestionsfromacollectionoftestsforstudentsofEnglishasaSecondLanguage(ESL).Onbothtests, thealgorithmobtainsascoreof74%.PMI-IRiscontrastedwithLatentSemanticAnalysis(LSA),Section13.2.4,whichachievesascore
+
+296 HandbookofNaturalLanguageProcessing
+of64%onthesame80TOEFLquestions.ReferenceTurney(2001)notesthatPMI-IRusesamuchlargerdata source than LSA and PMI-IR (in all of the scores except for score
+1) uses a much smaller chunk
+(text window examined) size than LSA. A similar application using the same method is used in Turney(2002) with some more or less evident reﬁnements to classify 410 reviews from the Web site Epinionssampled from four diﬀerent domains (reviews of automobiles, banks, movies, and travel destinations).Theaccuracyrangesfrom84%forautomobilereviewsto66%formoviereviews.
+13.2.2 Attributes
+Here the approach is to determine attributes as representation of words. Consider a target noun, say“horse,”andthisnounoccursinasentenceas“theriderridesthehorse.”Thenwehavethetriple(rider,rides,horse)andthepair(rider,rides)isanattributeofthenoun“horse.”ThisapproachisthencoupledwithanappropriatewordsimilaritymeasureliketheonediscussedbasedonPMI,oranotheronelikethecosinesimilaritymeasureinLSAasinSection13.2.4.Infact,LSAisanexampleofattributionalsimilarityofwords.GoodreferencesareEhlert(2003),Freitagetal.(2005)andMoralyiskiandDias(2007).
+13.2.3 Relational Word Similarity
+We cite Turney (2006): “Relational similarity is correspondence between relations, in contrast withattributionalsimilarity,whichiscorrespondencebetweenattributes.Whentwowordshaveahighdegreeof attributional similarity, we call them synonyms. When two pairs of words have a high degree ofrelational similarity, we say that their relations are analogous. For example, the word pair mason:stoneis analogous to the pair carpenter:wood.” In this context, LSA as in Section 13.2.4 measures similaritybetween two words but not between two relations between two pairs of words. One way to measuresimilarity between the relatedness of pairs of words is to score the relation between a pair of words asfrequenciesoffeatures(predeﬁnedpatternsinalargecorpus)invectorsandthencomparetheclosenessoftherespectivevectorsbymeasuringthedistanceaccordingtotheEuclideandistance,thecosinebetweenthe vectors, or the logarithm of the cosine. Often a search engine such as Altavista or Google is used todeterminethefrequencyinformationtobuildthevectors.InTurney(2006),theauthorintroducesanewmethod ‘latent relational analysis (LRA)’ that uses a search engine, a thesaurus of synonyms, and singlevaluedecompositionorSVD.ForSVDseethediscussiononLSAbelow.LRAisaninvolvedmethod,andformoredetailswereferthereadertothecitedreference.
+13.2.4 Latent Semantic Analysis
+Most of the approaches have tackled synonymy detection based on the vector space model and/orprobabilistic models. Obviously, there exist many other works for other semantic relations. One ofthe most successful is LSA (Landauer and Dumais, 1997) that has been applied in various forms in agreat number of applications. The basic assumption of LSA is that “the cognitive similarity betweenany two words is reﬂected in the way they co-occur in small subsamples of the language.” In particular,this is implemented by constructing a matrix with rows labeled by the ddocuments involved, and the
+columns labeled by the aattributes (words, phrases). The entries are the number of times the column
+attribute occurs in the row document. The entries are then processed by taking the logarithm of theentry and dividing it by the number of documents the attribute occurred in, or some other normalizingfunction. This results in a sparse but high-dimensional matrix A. A main feature of LSA is to reduce
+the dimensionality of the matrix by projecting it into an adequate subspace of lower dimension usingsingularvaluedecomposition A=UDV
+T,whereU,Vareorthogonalmatricesand Disadiagonalmatrix.
+The diagonal elements λ1,...,λp(p=min{d,a})satisfy λ1≥ ··· ≥ λp, and the closest matrix Akof
+dimension k<Rank(A)in terms of the so-called Frobenius norm is obtained by setting λi=0 for
+i>k. UsingAkcorresponds to using the most important dimensions. Each attribute is now taken to
+
+NormalizedWebDistanceandWordSimilarity 297
+correspondtoacolumnvectorin Ak,andthesimilaritybetweentwoattributesisusuallytakentobethe
+cosinebetweentheirtwovectors.
+To compare LSA to the method of using the NWD of Cilibrasi and Vitányi (2007) we treat in detail
+below,thedocumentscouldbethewebpages,theentriesinmatrix Aarethefrequenciesofasearchterm
+in each web page. This is then converted as above to obtain vectors for each search term. Subsequently,the cosine between vectors gives the similarity between the terms. LSA has been used in a plethoraof applications ranging from database query systems to synonymy answering systems in TOEFL tests.Comparing LSA’s performance to the NWD performance is problematic for several reasons. First, thenumericalquantitymeasuringthesemanticdistancebetweenpairsoftermscannotdirectlybecompared,since they have quite diﬀerent epistemologies. Indirect comparison could be given using the method asbasisforaparticularapplication,andcomparingaccuracies.However,applicationofLSAintermsoftheWebusingasearchengineiscomputationallyoutofthequestion,becausethematrix Awouldhave10
+10
+rows,evenifthesearchenginewouldreportfrequenciesofoccurrencesinwebpagesandidentifythewebpagesproperly.OnewouldneedtoretrievetheentireWebdatabase,whichismanyterabytes.Moreover,each invocation of a Web search takes a signiﬁcant amount of time, and we cannot automatically makemore thana certain number of them per day. Analternativeinterpretation by considering the Web as asingledocumentmakesthematrix AaboveintoavectorandappearstodefeattheLSAprocessaltogether.
+Summarizing,thebasicideaofourmethodissimilartothatofLSAinspirit.Whatisnovelisthatwecandoitwithselectedtermsoveraverylargedocumentcollection,whereasLSAinvolvesmatrixoperationsoveraclosedcollectionoflimitedsize,andhenceisnotpossibletoapplyintheWebcontext.
+As with LSA, many other previous approaches of extracting correlations from text documents are
+based on text corpora that are many orders of magnitudes smaller, and that are in local storage, and onassumptions that are more reﬁned, than what we propose here. In contrast, Bagrow and ben Avraham(2005),CimianoandStaab(2004),andTurney(2001,2002)andthemanyreferencescitedthere,usetheWebandsearchenginepagecountstoidentifylexico-syntacticpatternsorotherdata.Again,thetheory,aim,featureanalysis,andexecutionarediﬀerentfromours.
+13.3 Background of the NWD Method
+The NWD method below automatically extracts semantic relations between arbitrary objects from theWebinamannerthatisfeaturefree, uptothesearchengineused, andcomputationallyfeasible. Thisisanewdirectionoffeature-freeandparameter-freedatamining.Sincethemethodisparameter-free,itisversatileandasaconsequencedomain,genre,andlanguageindependent.
+ThemainthrustinCilibrasiandVitányi(2007)istodevelopanewtheoryofsemanticdistancebetween
+apairofobjects,basedon(andunavoidablybiasedby)abackgroundcontentsconsistingofadatabaseofdocuments.AnexampleofthelatteristhesetofpagesconstitutingtheInternet.Anotherexamplewouldbe the set of all ten-word phrases generated by a sliding window passing over the text in a database ofwebpages.
+Similarityrelationsbetweenpairsofobjectsaredistilledfromthedocumentsbyjustusingthenumber
+of documents in which the objects occur, singly and jointly. These counts may be taken with regard tolocation,thatis,weconsiderasequenceofwords,orwithoutregardtolocationwhichmeansweuseabagofwords.Theymaybetakenwithregardtomultiplicityinatermfrequencyvectororwithoutregardtomultiplicityinabinarytermvector,asthesettingdictates.Thesedecisionsdeterminethenormalizationfactorsandfeatureclassesthatareanalyzed,butdonotaltersubstantiallythestructureofthealgorithm.Forus,thesemanticsofawordorphraseconsistsofthesetofwebpagesreturnedbythequeryconcerned.Notethatthiscanmeanthattermswithdiﬀerentmeaningshavethesamesemantics,andthatoppositessuch as “true” and “false” often have a similar semantics. Thus, we just discover associations betweenterms,suggestingalikelyrelationship.
+
+298 HandbookofNaturalLanguageProcessing
+AstheWebgrows,thesemanticsmaybecomelessprimitive.Thetheoreticalunderpinningisbasedon
+thetheoryofKolmogorovcomplexity(LiandVitányi,2008),andisintermsofcodingandcompression.Thisallowstoexpressandprovepropertiesofabsoluterelationsbetweenobjectsthatcannotbeexpressedby other approaches. We start with a technical introduction outlining some notions underpinningour approach: the Kolmogorov complexity (Section 13.4), and information distance resulting in thecompression-based similarity metric (Section 13.5). In Section 13.6, we give the theoretic underpinningoftheNWD.InSection13.7.1andSection13.7.2,wepresentclusteringandclassiﬁcationexperimentstovalidatetheuniversality,therobustness,andtheaccuracyoftheNWD.InSection13.7.3,wepresentatoyexample of translation. In Section 13.7.4, we test repetitive automatic performance of the NWD againstuncontroversialsemanticknowledge: Wepresenttheresultsofamassiverandomizedclassiﬁcationtrialwe conducted to gauge the accuracy of our method against the expert knowledge implemented overdecades in the WordNet database. The preliminary publication in 2004 of (Cilibrasi and Vitányi, 2007)thisworkintheWebarchiveArXivwaswidelyreportedanddiscussed,forexampleGraham-Rowe(2005)andSlashdot(2005).TheactualexperimentaldatacanbedownloadedfromCilibrasi(2004).Themethodisimplementedasaneasy-to-usesoftwaretool(Cilibrasi,2003),freeforcommercialandnoncommercialuseaccordingtoaBSDstylelicense.
+The application of the theory we develop is a method that is justiﬁed by the vastness of the Internet,
+theassumptionthatthemassofinformationissodiversethatthefrequenciesofpagesreturnedbyagoodset of search engine queries averages the semantic information in such a way that one can distill a validsemantic distance between the query subjects. The method starts from scratch, is feature-free in that itusesjusttheWebandasearchenginetosupplycontents,andautomaticallygeneratesrelativesemanticsbetween words and phrases. As noted in Bagrow and ben Avraham (2005), the returned counts can beinaccurate although linguists judge the accuracy of, for example, Google counts trustworthy enough. InKellerandLapata(2003),(seealsothemanyreferencestorelatedresearch)itisshownthatWebsearchesfor rare two-word phrases correlated well with the frequency found in traditional corpora, as well aswithhumanjudgmentsofwhetherthosephraseswerenatural. Thus, searchenginesontheWebarethesimplest means to get the most information. The experimental evidence provided here shows that ourmethod yields reasonable results, gauged against common sense (‘colors’ are diﬀerent from ‘numbers’)andagainsttheexpertknowledgeintheWordNetdatabase.
+13.4 Brief Introduction to Kolmogorov Complexity
+The basis of much of the theory explored in this chapter is the Kolmogorov complexity (Kolmogorov,1965).ForanintroductionanddetailsseethetextbookLiandVitányi(2008).Herewegivesomeintuitionandnotation.Weassumeaﬁxedreferenceuniversalprogrammingsystem.SuchasystemmaybeageneralcomputerlanguagesuchasLISPorRuby,anditmayalsobeaﬁxedreferenceuniversalTuringmachine U
+inagivenstandardenumerationofTuringmachines T
+1,T2,...ofthetypesuchthat U(i,p)=Ti(p)< ∞
+foreveryindex iandprogram p.Thisalsoinvolvesthat Ustartedoninput (i,p)andTistartedoninput p
+bothhaltafteraﬁnitenumberofsteps,whichmaybediﬀerentinbothcasesandpossiblyunknown.SuchU’s have been called ‘optimal’ (Kolmogorov, 1965). The last choice has the advantage of being formally
+simple and hence easy to theoretically manipulate. But the choice makes no diﬀerence in principle, andthetheoryisinvariantunderchangesamongtheuniversalprogrammingsystems,providedwesticktoaparticularchoice.WeonlyconsiderprogramsthatarebinaryﬁnitestringsandsuchthatforeveryTuringmachine the set of programs is a preﬁx-free set or preﬁx code: no program is a proper preﬁx of another
+programforthisTuringmachine.Thus,universalprogrammingsystemsaresuchthattheassociatedsetofprogramsisapreﬁxcode—asisthecaseinallstandardcomputerlanguages.
+TheKolmogorov complexity K (x)of a string xis the length, in bits, of a shortest computer program
+(theremaybemorethanone)oftheﬁxedreferencecomputingsystem,suchasaﬁxedoptimaluniversalTuringmachinethat(withoutinput)produces xasoutput.Thechoiceofcomputingsystemchangesthe
+
+NormalizedWebDistanceandWordSimilarity 299
+valueofK(x)byatmostanadditiveﬁxedconstant.Since K(x)goestoinﬁnitywith x,thisadditiveﬁxed
+constantisanignorablequantityifweconsiderlarge x.Giventheﬁxedreferencecomputingsystem,the
+functionKisnotcomputable.
+One way to think about the Kolmogorov complexity K(x)is to view it as the length, in bits, of
+the ultimate compressed version from which xcan be recovered by a general decompression program.
+Compressing xusingthecompressor gzipresultsinaﬁle xgwith(forﬁlesthatcontainredundancies)the
+length |xg|<|x|. Using a better compressor bzip2results in a ﬁle xbwith (for redundant ﬁles) usually
+|xb|<|xg|; using a still better compressor like PPMZresults in a ﬁle xpwith (for again appropriately
+redundant ﬁles) |xp|<|xb|. The Kolmogorov complexity K(x)gives a lower bound on the ultimate
+length of a compressed version for every existing compressor, or compressors that are possible but notyetknown:thevalue K(x)islessorequaltothelengthofeveryeﬀectivelycompressedversionof x.That
+is,K(x)givesustheultimatevalueofthelengthofacompressedversionof x(moreprecisely,fromwhich
+versionxcanbereconstructedbyageneralpurposedecompresser),andourtaskindesigningbetterand
+bettercompressorsistoapproachthislowerboundascloselyaspossible.
+Similarly, we can deﬁne the conditional Kolmogorov complexity K (x|y)as the length of a shortest
+programthatcomputesoutput xgiveninput y,andthejointKolmogorovcomplexityK (x,y)asthelength
+ofashortestprogramthatwithoutinputcomputesthepair x,yandawaytotellthemapart.
+Deﬁnition13.1 Acomputablerationalvaluedfunctionisonethatcanbecomputedbyahaltingprogram
+onthereferenceuniversalTuringmachine.Afunctionf withrealvaluesisuppersemicomputableifthereisacomputablerationalvaluedfunction φ(x,k)suchthat φ(x,k+1)≤φ(x,k)andlim
+k→∞φ(x,k)=f(x);
+itislowersemicomputableif −f isuppersemicomputable.Wecallarealvaluedfunctionf computableifit
+isbothlowersemicomputableanduppersemicomputable.
+It has been proved (Li and Vitányi, 2008) that the Kolmogorov complexity is the least upper semi-
+computable code length up to an additive constant term. Clearly, every Turing machine Tideﬁnes an
+upper semicomputable code length of a source word xby min q{|q|:Ti(q)=x}. WithUthe ﬁxed refer-
+ence optimal universal Turing machine, for every ithere is a constant cisuch that for every xwe have
+k(x)=minp{|p|:U(p)=x}≤minq{|q|:Ti(q)=x}+ci.
+Animportantidentityisthe symmetryofinformation
+K(x,y)=K(x)+K(y|x)=K(y)+K(x|y), (13.2)
+whichholdsuptoan O(logK(xy))additiveterm.
+Thefollowingnotioniscrucialinthelatersections.Wedeﬁnethe universalprobability mby
+m(x)=2−K(x), (13.3)
+which satisﬁes∑
+xm(x)≤1 by the Kraft inequality (Cover and Thomas, 1991; Kraft, 1949; Li and
+Vitányi, 2008)since {K(x):x∈{0,1}∗}isthelengthsetofapreﬁxcode. Toobtainaproperprobability
+massfunctionwecanconcentratethesurplusprobabilityonanewundeﬁnedelement usothatm(u)=
+1−∑
+xm(x). The universal probability mass function mis a form of Occam’s razor sincem(x)is high
+forsimpleobjects xwhoseK(x)islowsuchas K(x)=O(log|x|),a n dm(y)islowforcomplexobjects y
+whoseK(y)ishighsuchas K(y)≥|y|.
+Ithasbeenproven(LiandVitányi,2008)that misthegreatestlowersemicomputableprobabilitymass
+functionuptoaconstantmultiplicativefactor.Namely,itiseasytoseethat misalowersemicomputable
+probabilitymassfunction,anditturnsoutthatforeverylowersemicomputableprobabilitymassfunctionPthereisaconstantc
+Psuchthatforevery xwehavecPm(x)≥P(x).
+
+300 HandbookofNaturalLanguageProcessing
+13.5 Information Distance
+InBennettetal.(1998),thefollowingnotionisconsidered:giventwostrings xandy,whatisthelengthof
+theshortestbinaryprograminthereferenceuniversalcomputingsystemsuchthattheprogramcomputesoutputyfrominput x,andalsooutput xfrominput y.Thisiscalledthe informationdistance.Itturnsout
+that,uptoanegligiblelogarithmicadditiveterm,itisequalto
+E(x,y)=max{K(x|y),K(y|x)}. (13.4)
+Wenowdiscusstheimportantpropertiesof E.
+Deﬁnition13.2 AdistanceD (x,y)isametricifD(x ,x)=0andD (x,y)>0forx ̸=y;D(x,y)=D(y,x)
+(symmetry);andD(x ,y)≤D(x,z)+D(z,y),(triangleinequality)forallx,y,z.
+For
+adistancefunctionormetrictobereasonable,ithastosatisfyanadditionalcondition,referredto
+asdensitycondition .Intuitivelythismeansthatforeveryobject xandpositiverealvalue dthereisatmost
+acertainﬁnitenumber ofobjects yatdistance dfromx. Thisrequirement excludesdegeneratedistance
+measureslike D(x,y)=1forallx̸=y.Exactlyhowfastwewantthedistancesofthestrings yfromxto
+gotoinﬁnityisnotimportant,itisonlyamatterofscaling.Forconvenience,wewillrequirethefollowingdensityconditions:
+∑
+y:y̸=x2−D(x,y)≤1a n d∑
+x:x̸=y2−D(x,y)≤1. (13.5)
+Finally, we allow only distance measures that are computable in some broad sense, which will not beseen as unduly restrictive. The upper semicomputability in Deﬁnition 13.1 is readily extended to two-argument functions and in the present context to distances. We require the distances we deal with tobe upper semicomputable. This is reasonable: if we have more and more time to process xandy,t h e n
+we may discover newer and newer similarities among them, and thus may revise our upper bound ontheirdistance.Deﬁnition 13.3 An admissible distance is a total, possibly asymmetric, nonnegative function with real
+valuesonthepairsx ,yofbinarystringsthatis0ifandonlyifx =y,isuppersemicomputable,andsatisﬁes
+thedensityrequirement(13.5).Deﬁnition13.4 Considerafamily
+Foftwo-argumentrealvaluedfunctions. Afunctionf isuniversalfor
+thefamily Fifforeveryg ∈Fwehave
+f(x,y)≤g(x,y)+cg,
+wherec gisaconstantthatdependsonlyong butnotonx ,yandf.Wesaythatf minorizeseveryg ∈Fup
+toanadditiveconstant.
+ThefollowingtheoremisproveninBennettetal.(1998)andLiandVitányi(2008).
+Theorem13.1
+i.Eisuniversalforthefamilyofadmissibledistances.ii.Esatisﬁesthemetric(in)equalitiesuptoanO(1)additiveterm.If two strings xandyare close according to someadmissible distance D, then they are at least as close
+accordingtothemetric E.Everyfeatureinwhichwecancomparetwostringscanbequantiﬁedinterms
+
+NormalizedWebDistanceandWordSimilarity 301
+ofadistance,andeverydistancecanbeviewedasexpressingaquantiﬁcationofhowmuchofaparticularfeature the strings do not have in common (the feature being quantiﬁed by that distance). Therefore,theinformationdistanceisanadmissibledistancebetweentwostringsminorizingthe dominant feature
+expressible as an admissible distance that they have in common. This means that, if we consider morethan two strings, the information distance between every pair may be based on minorizing a diﬀerentdominantfeature.
+13.5.1 Normalized Information Distance
+Ifstringsoflength1000bitsdiﬀerby800bitsthenthesestringsareverydiﬀerent.However,iftwostringsof 1,000,000 bits diﬀer by 800 bits only, then they are very similar. Therefore, the information distanceitself is not suitable to express true similarity. For that we must deﬁne a relative information distance:we need to normalize the information distance. Our objective is to normalize the universal informationdistanceEin (13.4) to obtain a universal similarity distance. It should give a similarity with distance 0
+whenobjectsaremaximallysimilaranddistance1whentheyaremaximallydissimilar.Suchanapproachwas ﬁrst proposed in Li et al. (2001) in the context of genomics-based phylogeny, and improved in Lietal. (2004)totheoneweusehere. Severalalternativewaysofnormalizingtheinformationdistancedonot work. It is paramount that the normalized version of the information metric is also a metric in thecase we deal with literal objects that contain all their properties within. Were it not, then the relativerelations between the objects would be disrupted and this could lead to anomalies, if, for instance, thetriangleinequalitywouldbeviolatedforthenormalizedversion.However,fornonliteralobjectsthathavea semantic distance NWD based on hit count statistics as in Section 13.6, which is the real substance ofthiswork,thetriangleinequalitywillbeseennottohold.
+Thenormalizedinformationdistance (NID)isdeﬁnedby
+e(x,y)=max{K(x|y),K(y|x)}
+max{K(x),K(y)}. (13.6)
+Theorem13.2
+Thenormalizedinformationdistancee (x,y)takesvaluesintherange[0,1]andisametric,uptoignorable
+discrepancies.
+The theorem is proven in Li et al. (2004) and the ignorable discrepancies are additive terms
+O((logK)/K),w h e r e Kis the maximum of the Kolmogorov complexities of strings x,x,y,o rx,y,z
+involved in the metric (in)equalities. The NID discovers for every pair of strings the feature inwhich they are most similar, and expresses that similarity on a scale from 0 to 1 (0 being the sameand1beingcompletelydiﬀerentinthesenseofsharingnofeatures).Ithasseveralwonderfulpropertiesthatjustifyitsdescriptionasthemostinformativemetric(Lietal.,2004).
+13.5.2 Normalized Compression Distance
+The NID e(x,y), which we call ‘the’ similarity metric because it accounts for the dominant similarity
+between two objects, is not computable since the Kolmogorov complexity is not computable. First weobservethatusing K(x,y)=K(xy)+O(logmin{K (x),K(y)}andthesymmetryofinformation(13.2)we
+obtain
+max{K(x|y),K(y|x)}=K(xy)−min{K(x),K(y)},
+uptoanadditivelogarithmicterm O(logK(xy)),whichweignoreinthesequel.InordertousetheNID
+in practice, admittedly with a leap of faith, the approximation of the Kolmogorov complexity uses real
+
+302 HandbookofNaturalLanguageProcessing
+compressors to approximate the Kolmogorov complexities K(x),K(y),K(xy). A compression algorithm
+deﬁnes a computable function from strings to the lengths of the compressed versions of those strings.Therefore,thenumberofbitsofthecompressedversionofastringisanupperboundontheKolmogorovcomplexityofthatstring, uptoanadditiveconstantdependingonthecompressorbutnotonthestringinquestion.ThisdirectionhasyieldedaverypracticalsuccessoftheKolmogorovcomplexity.Substitutethe last displayed equation in the NID of (13.6), and subsequently use a real-world compressor Z(such
+asgzip,bzip2 ,andPPMZ)toheuristicallyreplacetheKolmogorovcomplexity.Inthisway,weobtainthe
+distancee
+Z,oftencalledthe normalizedcompressiondistance (NCD),deﬁnedby
+eZ(x,y)=Z(xy)−min{Z (x),Z(y)}
+max{Z(x),Z(y)}, (13.7)
+whereZ(x)denotesthebinarylengthofthecompressedversionoftheﬁle x,compressedwithcompressor
+Z.Thedistance eZisactuallyafamilyofdistancesparametrizedwiththecompressor Z.Thebetter Zis,the
+closereZapproachestheNID,thebettertheresults.Since Ziscomputablethedistance eZiscomputable.
+InCilibrasiandVitányi(2005),itisshownthatundermildconditionsonthecompressor Z,thedistance
+eZtakesvaluesin[0,1]andisametric,uptonegligibleerrors.Onemayimagine easthelimitingcase eK,
+whereK(x)denotesthenumberofbitsintheshortestcodefor xfromwhich xcanbedecompressedbya
+computablegeneralpurposedecompressor.
+13.6 Word Similarity: Normalized Web Distance
+CanweﬁndanequivalentoftheNIDfornamesandabstractconcepts?InCilibrasiandVitányi(2007),theformula(13.6)todeterminewordsimilarityfromtheInternetisderived.Itisalsoproventhatthedistanceinvolved is ‘universal’ in a precise quantiﬁed manner. The present approach follows the treatment in LiandVitányi(2008)andobtains‘universality’inyetanothermannerbyviewingtheNWD(13.8)belowasacomputableapproximationtotheuniversaldistribution mof(13.3).
+LetWbe the set of pages of the Internet, and let x⊆Wbe the set of pages containing the search
+termx. By the conditional version of (13.3) in (Li and Vitányi, 2008), which appears straightforward
+but is cumbersome to explain here, we have log1 /m(x|x ⊆W)=K(x|x⊆W)+O(1). This equality
+relatestheincompressibilityofthesetofpagesontheWebcontainingagivensearchtermtoitsuniversalprobability. We know that mis lower semicomputable since Kis upper semicomputable, and mis not
+computable since Kis not computable. While we cannot compute m, a natural heuristic is to use the
+distribution of xon the Web to approximate m(x|x⊆W). Let us deﬁne the probability mass function
+g(x)to be the probability that the search term xappears in a page indexed by a given Internet search
+engineG,thatis,thenumberofpagesreturneddividedbythenumber N,whichisthesumofthenumbers
+of occurrences of search terms in each page, summed over all pages indexed. Then the Shannon–Fanocode(LiandVitányi,2008)lengthassociatedwith gcanbesetat
+G(x)=log1
+g(x).
+Replacing Z(x)byG(x)in the formula in (13.7), we obtain the distance eG, called the NWD, which we
+canviewasyetanotherapproximationoftheNID,deﬁnedby
+eG(x,y)=G(xy)−min{G(x ),G(y)}
+max{G(x),G(y)}
+=max{logf(x),logf(y)}−logf(x,y)
+logN−min{logf(x),logf(y)}, (13.8)
+
+NormalizedWebDistanceandWordSimilarity 303
+wheref(x)isthenumberofpagescontaining x, thefrequency f(x,y)isthenumberofpagescontaining
+bothxandy,andNisdeﬁnedabove.
+Since the code Gis a Shannon–Fano code for the probability mass function git yields an on average
+minimal code-word length. This is not so good as an individually minimal code-word length, but is anapproximation to it. Therefore, we can view the search engine G as a compressor using the Web, andG(x)as the binary length of the compressed version of the set of all pages containing the search term x,
+giventheindexedpagesontheWeb. Thedistance e
+Gisactuallyafamilyofdistancesparametrizedwith
+thesearchengineG.
+The better a search engine G is in the sense of covering more of the Internet and returning more
+accurate aggregate page counts, the closer eGapproaches the NID eof (13.6), with K(x)replaced by
+K(x|x⊆W)andsimilarlytheotherterms,andthebettertheresultsareexpectedtobe.
+In practice, we use the page counts returned by the search engine for the frequencies and choose N.
+From(13.8)itisapparentthatbyincreasing NwedecreasetheNWD,everythinggetsclosertogether,and
+bydecreasing NweincreasetheNWD,everythinggetsfurtherapart.Ourexperimentssuggestthatevery
+reasonablevaluecanbeusedasnormalizingfactor N, andourresultsseemingeneralinsensitivetothis
+choice. This parameter Ncan be adjusted as appropriate, and one can often use the number of indexed
+pagesfor N.Nmaybeautomaticallyscaledanddeﬁnedasanarbitraryweightedsumofcommonsearch
+termpagecounts.
+The better G is the more informative the results are expected to be. In Cilibrasi and Vitányi (2007) it
+isshownthatthedistance eGiscomputableandissymmetric,thatis, eG(x,y)=eG(y,x).Itonlysatisﬁes
+“half”oftheidentityproperty,namely eG(x,x)=0forallx,b u teG(x,y)=0canholdevenif x̸=y,for
+example,iftheterms xandyalwaysoccurtogetherinawebpage.
+The NWD also does notsatisfy the triangle inequality eG(x,y)≤eG(x,z)+eG(z,y)for allx,y,z.T o
+see that, choose x,y,a n dzsuch that xandynever occur together, zoccurs exactly on those pages on
+whichxoryoccurs,and f(x)=f(y)=√N.Thenf(x)=f(y)=f(x,z)=f(y,z)=√N,f(z)=2√N,
+andf(x,y)=0.Thisyields eG(x,y)=∞andeG(x,z)=eG(z,y)=2/logN,whichviolatesthetriangle
+inequalityforall N.ItfollowsthattheNWDisnotametric.
+Therefore, the liberation from lossless compression as in (13.6) to probabilities based on page counts
+asin(13.8)causesincertaincasesthelossofmetricity.Butthisisproperforarelativesemantics.Indeed,we should view the distance e
+Gbetween two concepts as a relative semantic similarity measure between
+thoseconcepts.Whileconcept xissemanticallyclosetoconcept yandconcept yissemanticallycloseto
+conceptz,concept xcanbesemanticallyverydiﬀerentfromconcept z.
+AnotherimportantpropertyoftheNWDisits scale-invariance undertheassumptionthatifthenumber
+Nofpagesindexedbythesearchenginegrowssuﬃcientlylarge,thenumberofpagescontainingagiven
+search term goes to a ﬁxed fraction of N, and so does the number of pages containing conjunctions
+of search terms. This means that if Ndoubles, then so do the f-frequencies. For the NWD to give
+us an objective semantic relation between search terms, it needs to become stable when the numberNof indexed pages grows. Some evidence that this actually happens was given in the example in
+Section13.1.
+TheNWDcanbeusedasatooltoinvestigatethemeaningoftermsandtherelationsbetweenthemas
+givenbytheInternet.Thisapproachcanbecomparedwiththe Cycproject(LandauerandDumais,1995),
+whichtriestocreateartiﬁcialcommonsense.Cyc’sknowledgebaseconsistsofhundredsofmicrotheoriesandhundredsofthousandsofterms,aswellasoveramillionhand-craftedassertionswritteninaformallanguage called CycL (Reed and Lenat, 2002). CycL is an enhanced variety of ﬁrst order predicate logic.This knowledge base was created over the course of decades by paid human experts. It is therefore ofextremely high quality. The Internet, on the other hand, is almost completely unstructured, and oﬀersonlyaprimitivequerycapabilitythatisnotnearlyﬂexibleenoughtorepresentformaldeduction.ButwhatitlacksinexpressivenesstheInternetmakesupforinsize;Internetsearchengineshavealreadyindexedmore than ten billion pages and show no signs of slowing down. Therefore, search engine databasesrepresentthelargestpubliclyavailablesinglecorpusofaggregatestatisticalandindexinginformationso
+
+304 HandbookofNaturalLanguageProcessing
+farcreated,anditseemsthatevenrudimentaryanalysisthereofyieldsavarietyofintriguingpossibilities.It is unlikely, however, that this approach can ever achieve 100% accuracy like in principle deductivelogiccan,becausetheInternetmirrorshumankind’sownimperfectandvariednature.But,aswewillseebelow,inpracticaltermstheNWDcanoﬀeraneasywaytoprovideresultsthataregoodenoughformanyapplications,andwhichwouldbefartoomuchworkifnotimpossibletoprograminadeductiveway.
+InthefollowingsectionswepresentanumberofapplicationsoftheNWD:thehierarchicalclustering
+andtheclassiﬁcationofconceptsandnamesinavarietyofdomains,andﬁndingcorrespondingwordsindiﬀerentlanguages.
+13.7 Applications and Experiments
+To perform the experiments in this section, we used the CompLearn software tool (Cilibrasi, 2003).
+The same tool has been used also to construct trees representing hierarchical clusters of objects in anunsupervisedwayusingtheNCD.However,nowweusetheNWD.
+13.7.1 Hierarchical Clustering
+ThemethodﬁrstcalculatesadistancematrixusingtheNWDsamongallpairsoftermsintheinputlist.Then it calculates a best-matching unrooted ternary tree using a novel quartet-method style heuristicbased on randomized hill-climbing using a new ﬁtness objective function optimizing the summed costsof all quartet topologies embedded in candidate trees (Cilibrasi and Vitányi, 2005). Of course, given thedistancematrixonecanusealsostandardtree-reconstructionsoftwarefrombiologicalpackagessuchastheMOLPHYpackage(AdachiandHasegawa,1996).
+However, such biological packages are based on data that are structured like rooted binary trees, and
+possiblydonotperformwellonhierarchicalclusteringofarbitrarynaturaldatasets.
+Colors and numbers. In the ﬁrst example (Cilibrasi and Vitányi, 2007), the objects to be clustered are
+search terms consisting of the names of colors, numbers, and some words that are related but no colorornumber.Theprogramautomaticallyorganizedthecolorstowardonesideofthetreeandthenumberstowardtheother,asinFigure13.1.Itarrangesthetermsthathaveasonlymeaningacolororanumber,and nothing else, on the farthest reach of the color side and the number side, respectively. It puts themore general terms black and white, and zero, one, and two, toward the center, thus indicating theirmoreambiguousinterpretation.Also,thingsthatwerenotexactlycolorsornumbersarealsoputtowardthecenter,liketheword“small.”Wemayconsiderthisan(admittedlyveryweak)exampleofautomaticontologycreation.
+Englishdramatistsandnovelists.Theauthorsandtextsusedare
+WILLIAM SHAKESPEARE :A Midsummer Night’s Dream; Julius Caesar; Love’s Labours Lost; Romeo and
+Juliet.
+JONATHANSWIFT :TheBattleoftheBooks;Gulliver’sTravels;ATaleofaTub;AModestProposal .
+OSCARWILDE :LadyWindermere’sFan;AWomanofNoImportance;Salome;ThePictureofDorianGray .
+The clustering is given in Figure 13.2, and to provide a feeling for the ﬁgures involved we give the
+associatedNWDmatrixinFigure13.3.The S(T)valuewritteninFigure13.2givestheﬁdelityofthetree
+asarepresentationofthepairwisedistancesintheNWDmatrix: S(T)=1isperfectandS(T )=0isas
+badaspossible(FordetailsseeCilibrasi,2003;CilibrasiandVitányi,2005).
+Thequestionariseswhyweshouldexpectthisoutcome.Arenamesofartisticobjectssodistinct?Yes.
+Thepointalsobeingthatthedistancesfromeverysingleobjecttoallotherobjectsareinvolved.Thetreetakesthisglobalaspectintoaccountandthereforedisambiguatesothermeaningsoftheobjectstoretainthemeaningthatisrelevantforthiscollection.
+
+NormalizedWebDistanceandWordSimilarity 305
+Black
+n8
+Whiten4Blue
+n14n13
+n10Chartreusen6n7Purple
+Eightn9
+Sevenn11Fiven15
+Fourn0
+Fortytwon2Greenn5
+Onen16n12
+n3Orange
+Red
+SixSmalln18n1
+ThreeTransparentZero
+Two
+n17Yellow
+FIGURE13.1 Colors,numbers,andothertermsarrangedintoatreebasedontheNWDsbetweentheterms.
+Isthedistinguishingfeaturesubjectmatterortitlestyle?Intheseexperimentswithobjectsbelongingto
+theculturalheritageitisclearlyasubjectmatter.Tostressthepointweused“JuliusCaesar”ofShakespeare.
+ThistermoccursontheWeboverwhelminglyinothercontextsandstyles.Yetthecollectionoftheother
+objectsused,andthesemanticdistancetowardthoseobjects,givenbytheNWDformula,singledoutthe
+semanticsof“JuliusCaesar”relevanttothisexperiment.Thetermco-occurrenceinthisspeciﬁccontext
+of author discussion is not swamped by other uses of this common term because of the particular form
+oftheNWDandthedistancesbeingpairwise.Usingverycommonbooktitlesthisswampingeﬀectmay
+stillarisethough.
+
+306 HandbookofNaturalLanguageProcessing
+Complearn version 0.8.19
+tree score S(T) = 0.940416
+compressor : google
+username : cilibrark0Love's Labours Lost
+k4
+k2A Midsummer Night's Dream
+Romeo and Juliet
+Julius Caesark3k1
+Salome
+k9
+k8
+A Woman of No Importance
+Lady Windermere's FanThe Picture of Dorian Grayk6
+Gulliver's Travelsk7k5
+A Modest ProposalTale of a Tub
+The Battle of the Books
+FIGURE13.2 Hierarchicalclusteringofauthors.
+A Woman of No
+Importance0.000 0.458 0.479 0.444 0.494 0.149 0.362 0.471 0.371 0.300 0.278 0.261
+A Midsummer
+Night’s Dream0.458 −0.011 0.563 0.382 0.301 0.506 0.340 0.244 0.499 0.537 0.535 0.425
+A Modest Proposal 0.479 0.573 0.002 0.323 0.506 0.575 0.607 0.502 0.605 0.335 0.360 0.463Gulliver’s Travels 0.445 0.392 0.323 0.000 0.368 0.509 0.485 0.339 0.535 0.285 0.330 0.228Julius Caesar 0.494 0.299 0.507 0.368 0.000 0.611 0.313 0.211 0.373 0.491 0.535 0.447Lady
+Windermere’sFan0.149 0.506 0.575 0.565 0.612 0.000 0.524 0.604 0.571 0.347 0.347 0.461
+Love’s Labours
+Lost0.363 0.332 0.607 0.486 0.313 0.525 0.000 0.351 0.549 0.514 0.462 0.513
+Romeo and Juliet 0.471 0.248 0.502 0.339 0.210 0.604 0.351 0.000 0.389 0.527 0.544 0.380Salome 0.371 0.499 0.605 0.540 0.373 0.568 0.553 0.389 0.000 0.520 0.538 0.407Tale of a Tub 0.300 0.537 0.335 0.284 0.492 0.347 0.514 0.527 0.524 0.000 0.160 0.421The Battle of the
+Books0.278 0.535 0.359 0.330 0.533 0.347 0.462 0.544 0.541 0.160 0.000 0.373
+The Picture of
+Dorian Gray0.261 0.415 0.463 0.229 0.447 0.324 0.513 0.380 0.402 0.420 0.373 0.000
+FIGURE13.3 DistancematrixofpairwiseNWDs.
+
+NormalizedWebDistanceandWordSimilarity 307
+Does the system get confused if we add more artists? Representing the NWD matrix in bifurcating
+treeswithoutdistortionbecomesmorediﬃcultfor,say,morethan25objects(SeeCilibrasiandVitányi,
+2005).
+Whataboutothersubjects,suchasmusicorsculpture?Presumably,thesystemwillbemoretrustworthy
+ifthesubjectsaremorecommonontheWeb.
+Theseexperimentsarerepresentativeforthosewehaveperformedwiththecurrentsoftware. Wedid
+not cherry pick the best outcomes. For example, all experiments with these three English writers, with
+diﬀerentselectionsoffourworksofeach,alwaysyieldedatreesothatwecoulddrawaconvexhullaround
+theworksofeachauthor,withoutoverlap.
+The NWD method works independently of the alphabet, and even takes Chinese characters. In the
+example of Figure 13.4, several Chinese names were entered. The tree shows the separation according
+to concepts such as regions, political parties, people, etc. See Figure 13.5 for English translations of
+thesenames. Thedottedlineswithnumbersbetweeneachadjacentnodealongtheperimeterofthetree
+representtheNWDvaluesbetweenadjacentnodesintheﬁnalorderedtree.Thetreeispresentedinsuch
+awaythatthesumofthesevaluesintheentireringisminimized.Thisgenerallyresultsintreesthatmake
+themostsenseuponinitialvisualinspection,convertinganunorderedbifurcatingtreetoanorderedone.
+0.421
+0.547
+0.518
+k7
+k1
+k140.547
+0.225
+0.0100.1900.332
+0.163k18
+k9k120.139
+0.098
+0.282
+0.305
+0.174
+0.2840.164
+0.212
+0.212
+0.262
+0.3170.1890.151
+0.227
+0.1810.106k16 k8k0k11
+k2k3k22
+k19k6
+k4k20
+k15k10
+k13k17
+k21k5
+FIGURE 13.4 Names of several Chinese people, political parties, regions, and others. The nodes and solid lines
+constituteatreeconstructedbyahierarchicalclusteringmethodbasedontheNWDsbetweenallnames.Thenumbers
+attheperimeterofthetreerepresentNWDvaluesbetweenthenodespointedtobythe dottedlines .Foranexplanation
+ofthenames,refertoFigure13.5.
+
+308 HandbookofNaturalLanguageProcessing
+China
+People΄s Republic of China
+Republic of China
+Shirike (bird) (outgroup)
+Taiwan (with simplified character “tai”)
+Taiwan solidarity union [Taiwanese political party]
+Taiwan independence
+(abbreviation of the above)
+(abbreviation of Taiwan solidarity union)
+Annette Lu
+Kuomintag
+James Soong
+Li Ao
+Democratic progressive party
+(abbreviation of the above)
+Yu Shyi–kun
+Wan Jin–pyng
+Unification [Chinese unification]
+Green party
+Taiwan (with traditional character  “tai”)
+Su Tseng–chang
+People first party [political party in Taiwan]
+Frank Hsieh
+Ma Ying–jeou
+A presidential advisor and 2008 presidential hopeful
+FIGURE13.5 Explanations of the Chinese names used in the experiment that produced Figure 13.4. (Courtesy of
+Dr.KaihsuTai.)
+Thisfeatureallowsforaquickvisualinspectionaroundtheedgestodeterminethemajorgroupingsand
+divisionsamongcoarsestructuredproblems.
+13.7.2 Classiﬁcation
+Incasesinwhichthesetofobjectscanbelarge,inthemillions,clusteringcannotdousmuchgood.We
+may also want to do deﬁnite classiﬁcation, rather than the more fuzzy clustering. To this purpose, we
+augmentthesearchenginemethodbyaddingatrainablecomponentofthelearningsystem.Hereweuse
+theSupportVectorMachine(SVM)asatrainablecomponent.FortheSVMmethodusedinthischapter,
+we refer to the survey (Burges, 1998). One can use the eGdistances as an oblivious feature-extraction
+techniquetoconvertgenericobjectsintoﬁnite-dimensionalvectors.
+Let us consider a binary classiﬁcation problem on examples represented by search terms. In these
+experiments we require a human expert to provide a list of, say, 40 training words , consisting of half
+positive examples and half negative examples, to illustrate the contemplated concept class. The expert
+also provides, say, six anchor words a 1,...,a6, of which half are in some way related to the concept
+underconsideration.Then,weusetheanchorwordstoconverteachofthe40trainingwords w1,...,w40
+to six-dimensional training vectors ¯v1,...,¯v40.T h ee n t r y vj,iof¯vj=(vj,1,...,vj,6)is deﬁned as vj,i=
+eG(wj,ai)(1≤j≤40, 1 ≤i≤6). The training vectors are then used to train an SVM to learn the
+concept, and then test words may be classiﬁed using the same anchors and trained SVM model. Finally
+
+NormalizedWebDistanceandWordSimilarity 309
+Training Data
+Positive Training (22 cases)
+avalanche bomb threat broken leg burglary car collisiondeath threat ﬁre ﬂood gas leak heart attackhurricane landslide murder overdose pneumoniarape roof collapse sinking ship stroke tornadotrain wreck trapped minersNegative Training (25 cases)
+arthritis broken dishwasher broken toe cat in tree contempt of courtdandruﬀ delayed train dizziness drunkenness enumerationﬂat tire frog headache leaky faucet litteringmissing dog paper cut practical joke rain roof leaksore throat sunset truancy vagrancy vulgarityAnchors (6 dimensions)
+crime happy help safe urgentwash
+Testing Results
+Positive tests Negative tests
+Positive assault, coma, menopause, prank call,Predictions electrocution, heat stroke, pregnancy, traﬃc jam
+homicide, looting,meningitis, robbery,suicide
+Negative sprained ankle acne, annoying sister,Predictions campﬁre, desk,
+mayday, meal
+Accuracy 15/20 = 75.00%
+FIGURE13.6 NWD–SVMlearningof“emergencies.”
+testingisperformedusing20examplesinabalancedensembletoyieldaﬁnalaccuracy.Thekernel-widthand error-cost parameters are automatically determined using ﬁvefold cross validation. The LIBSVMsoftware(ChangandLin,2001)wasusedforallSVMexperiments.
+Classiﬁcation of “emergencies.” In Figure 13.6, we trained using a list of “emergencies” as positive
+examples, and a list of “almost emergencies” as negative examples. The ﬁgure is self-explanatory. Theaccuracyonthetestsetis75%.
+Classiﬁcation of prime numbers . In an experiment to learn prime numbers, we used the literal search
+termsbelow(digitalnumbersandalphabeticalwords)intheGooglesearchengine.
+Positivetrainingexamples:11,13,17,19,2,23,29,3,31,37,41,43,47,5,53,59,61,67,7,71,73.Negativetrainingexamples :10,12,14,15,16,18,20,21,22,24,25,26,27,28,30,32,33,34,4,6,
+8,9.
+Anchorwords:composite,number,orange,prime,record.Unseen test examples : The numbers 101, 103, 107, 109, 79, 83, 89, 97 were correctly classiﬁed as
+primes.Thenumbers36,38,40,42,44,45,46,48,49werecorrectlyclassiﬁedasnonprimes.Thenumbers91and110werefalsepositives,sincetheywereincorrectlyclassiﬁedasprimes.Therewerenofalsenegatives.Theaccuracyonthetestsetis17 /19=89.47%.Thus,themethodlearns
+todistinguishprimenumbersfromnonprimenumbersbyexample,usingasearchengine.Thisexampleillustratesseveralcommonfeaturesofourmethodthatdistinguishitfromthestrictlydeductivetechniques.
+
+310 HandbookofNaturalLanguageProcessing
+13.7.3 Matching the Meaning
+Assume that there are ﬁve words that appear in two diﬀerent matched sentences, but the permutationassociating the English and Spanish words is, as yet, undetermined. Let us say, plant, car, dance, speak,
+friendversusbailar, hablar, amigo, coche, planta . At the outset we assume a preexisting vocabulary
+of eight English words with their matched Spanish translations: tooth, diente; joy, alegria; tree, arbol;
+electricity,electricidad;table,tabla;money,dinero;sound,sonido;music,musica .Canweinferthecorrect
+permutationmappingtheunknownwordsusingthepreexistingvocabularyasabasis?
+WestartbyforminganEnglishbasismatrixinwhicheachentryisthe e
+GdistancebetweentheEnglish
+wordlabelingthecolumnandtheEnglishwordlabelingtherow.Welabelthecolumnsbythetranslation-knownEnglishwords,andtherowsbythetranslation-unknownEnglishwords.Next,weformaSpanishmatrixwiththeknownSpanishwordslabelingthecolumnsinthesameorderastheknownEnglishwords.ButnowwelabeltherowsbychoosingoneofthemanypossiblepermutationsoftheunknownSpanishwords. For every permutation, each matrix entry is the e
+Gdistance between the Spanish words labeling
+the column and the row. Finally, choose the permutation with the highest positive correlation betweenthe English basis matrix and the Spanish matrix associated with the permutation. If there is no positivecorrelation, report a failure to extend the vocabulary. The method inferred the correct permutation forthetestingwords: plant,planta;car,coche;dance,bailar;speak,hablar;friend,amigo .
+13.7.4 Systematic Comparison with WordNet Semantics
+WordNet (Miller et al.) is a semantic concordance of English. It focuses on the meaning of words bydividingthemintocategories.Weusethisasfollows.Acategorywewanttolearn,theconcept,istermed,say, “electrical,” and represents anything that may pertain to electrical devices. The negative examplesare constituted by simply everything else. This category represents a typical expansion of a node in theWordNet hierarchy. In an experiment we ran, the accuracy on this test set is 100%: It turns out that“electricalterms”areunambiguousandeasytolearnandclassifybyourmethod.
+TheinformationintheWordNetdatabaseisenteredoverthedecadesbyhumanexpertsandisprecise.
+Thedatabaseisanacademicventureandispubliclyaccessible.Henceitisagoodbaselineagainstwhichtojudgetheaccuracyofourmethodinanindirectmanner.Whilewecannotdirectlycomparethesemanticdistance, the NWD, between objects, we can indirectly judge how accurate it is by using it as basis for alearningalgorithm.Inparticular,weinvestigatedhowwellsemanticcategoriesthatarelearnedusingtheNWD–SVMapproachagreewiththecorrespondingWordNetcategories.FordetailsaboutthestructureofWordNetwerefertotheoﬃcialWordNetdocumentationavailableonline.
+We considered 100 randomly selected semantic categories from the WordNet database. For each
+category we executed the following sequence. First, the SVM is trained on 50 labeled training samples.ThepositiveexamplesarerandomlydrawnfromtheWordNetdatabaseinthecategoryinquestion.Thenegativeexamplesarerandomlydrawnfromadictionary.Whilethelatterexamplesmaybefalsenegatives,weconsidertheprobabilitynegligible.Foreveryexperimentweusedatotalofsixanchors,threeofwhicharerandomlydrawnfromtheWordNetdatabasecategoryinquestion,andthreeofwhicharedrawnfromthedictionary.Subsequently,everyexampleisconvertedtosix-dimensionalvectorsusingNWD.The ith
+entryofthevectoristheNWDbetweenthe ithanchorandtheexampleconcerned (1≤i≤6).TheSVM
+istrainedontheresultinglabeledvectors.Thekernel-widthanderror-costparametersareautomaticallydeterminedusingﬁvefoldcrossvalidation.Finally,testingofhowwelltheSVMhaslearnedtheclassiﬁerisperformedusing20newexamplesinabalancedensembleofpositiveandnegativeexamplesobtainedinthesameway,andconvertedtosix-dimensionalvectorsinthesamemanner,asthetrainingexamples.Thisresultsinanaccuracyscoreofcorrectlyclassiﬁedtestexamples.Weran100experiments.TheactualdataareavailableatCilibrasi(2004).
+A histogram of agreement accuracies is shown in Figure 13.7. On average, our method turns out to
+agreewellwiththeWordNetsemanticconcordancemadebyhumanexperts.Themeanoftheaccuracies
+
+NormalizedWebDistanceandWordSimilarity 311
+051015202530
+0.4 0.5 0.6 0.7 0.8 0.9 11 . 1Number of trials
+AccuracyAccuracy histogram
+FIGURE13.7 Histogramofaccuraciesover100trialsofWordNetexperiment.
+ofagreementsis0.8725.Thevarianceis ≈0.01367,whichgivesastandarddeviationof ≈0.1169.Thus,
+itisraretoﬁndagreementlessthan75%.ThetotalnumberofWebsearchesinvolvedinthisrandomized
+automatictrialisupperboundedby100 ×70×6×3=126,000.Aconsiderablesavingsresultedfrom
+thefactthatitissimpletocachesearchcountresultsforeﬃciency.Foreverynewterm,incomputingits
+six-dimensional vector, the NWD computed with respect to the six anchors requires the counts for the
+anchors which needs to be computed only once for each experiment, the count of the new term which
+canbecomputedonce,andthecountofthejointoccurrenceofthenewtermandeachofthesixanchors,
+whichhastobecomputedineachcase.Altogether,thisgivesatotalof6 +70+70×6=496forevery
+experiment,so49,600Websearchesfortheentiretrial.
+13.8 Conclusion
+The approach in this chapter rests on the idea that information distance between two objects can be
+measured by the size of the shortest description that transforms each object into the other one. This
+idea is most naturally expressed mathematically using the Kolmogorov complexity. The Kolmogorov
+complexity, moreover, provides mathematical tools to show that such a measure is, in a proper sense,
+universal among all (upper semi)computable distance measures satisfying a natural density condition.
+Thesecomprisemost,ifnotall,distancesonemaybeinterestedin.Sincetwolarge,verysimilar,objects
+may have the same information distance as two small, very dissimilar, objects, in terms of similarity
+it is the relative distance we are interested in. Hence we normalize the information metric to create a
+relativesimilarityinbetween0and1.However,thenormalizedinformationmetricisuncomputable.We
+approximateitsKolmogorovcomplexitypartsbyoﬀ-the-shelfcompressionprograms(inthecaseofthe
+normalizedcompressiondistance)orreadilyavailablestatisticsfromtheInternet(incaseoftheNWD).
+Theoutcomesaretwopracticaldistancemeasuresforliteralaswellasfornon-literaldatathathavebeen
+provedusefulinnumerousapplications,someofwhichhavebeenpresentedintheprevioussections.
+It is interesting that while the (normalized) information distance and the normalized compression
+distance between literal objects are metrics, this is notthe case for the NWD between nonliteral objects
+like words, which is the measure of word similarity that we use here. The latter derives the code-word
+
+312 HandbookofNaturalLanguageProcessing
+lengths involved from statistics gathered from the Internet or another large database with an associatedsearchenginethatreturnsaggregatepagecountsorsomethingsimilar.Thishastwoeﬀects:(1)thecode-wordlengthinvolvedisonethatonaverageisshortestfortheprobabilityinvolved,and(2)thestatisticsinvolvedarerelatedtohitsonInternetpagesandnottogenuineprobabilities.Forexample,ifeverypagecontainingterm xalsocontainsterm yandviceversa,thentheNWDbetween xandyis0,eventhough
+xandymay be diﬀerent (like “yes” and “no”). The consequence is that the NWD distance takes values
+primarily (but not exclusively) in [0, 1] and is not a metric. Thus, while ‘name1’ is semantically close to‘name2,’ and ‘name2’ is semantically close to ‘name3,’ ‘name1’ can be semantically very diﬀerent from‘name3.’ This is as it should be for a relative semantics: while ‘man’ is close to ‘centaur,’ and ‘centaur’ iscloseto‘horse,’‘man’isfarremovedfrom‘horse’(Zhangetal.,2007).
+The NWD can be compared with the Cycproject (Landauer and Dumais, 1995) or the WordNet
+project(Milleretal.).Theseprojectstrytocreateartiﬁcialcommonsense.Theknowledgebasesinvolvedwere created over the course of decades by paid human experts. They are therefore of extremely highquality. An aggregate page count returned by a search engine, on the other hand, is almost completelyunstructured, and oﬀers only a primitive query capability that is not nearly ﬂexible enough to representformal deduction. But what it lacks in expressiveness a search engine makes up for in size; many searchenginesalreadyindexmorethantenbillionpagesandmoredatacomesonlineeveryday.
+References
+Adachi, J. and M. Hasegawa. MOLPHY version 2.3: Programs for molecular phylogenetics based
+on maximum likelihood. Computer Science Monograph, Vol. 28. Institute of StatisticalMathematics,1996.
+Bagrow, J.P. and D. ben Avraham. On the google-fame of scientists and other populations. In AIP
+ConferenceProceedings,Gallipoli,Italyvol.779:1,pp.81–89,2005.
+Bennett, C.H., P.Gács, M.Li, P.M.B.Vitányi, andW.Zurek. Informationdistance. IEEETrans. Inform.
+Theory,44(4):1407–1423,1998.
+Brin,S.,R.Motwani,J.Ullman,andS.Tsur.Dynamicitemsetcountingandimplicationrulesformarket
+basketdata.In ProceedingsoftheACM-SIGMODInternationalConferenceonManagementofData ,
+Tucson,AZ,pp.255–264,1997.
+Burges, C.J.C. A tutorial on support vector machines for pattern recognition. Data Min. Knowl. Disc .,
+2(2):121–167,1998.
+Chang, C.-C. and C.-J. Lin. LIBSVM: A library for support vector machines. Software available at
+http://www.csie.ntu.edu.tw/cjlin/libsvm,2001.
+Cilibrasi,R.L.Complearn.http://www.complearn.org,2003.Cilibrasi, R.L. Automatic meaning discovery using google: 100 experiments in learning WordNet
+categories.SeesupportingmaterialonaccompanyingWebpage,2004.
+Cilibrasi, R.L.andP.M.B.Vitányi. Clustering bycompression. IEEE Trans. Inform. Theory, 51(4):1523–
+1545,2005.
+Cilibrasi, R.L. and P.M.B. Vitányi. The Google similarity distance. IEEE Trans. Knowl. Data Eng .,
+19(3):370–383,2007.Preliminaryversion:AutomaticmeaningdiscoveryusingGoogle,http://xxx.lanl.gov/abs/cs.CL/0412098,2007.
+Cilibrasi, R.L., P.M.B. Vitányi, and R. de Wolf. Algorithmic clustering of music based on string
+compression. ComputerMusicJ.,28(4):49–67,2004.
+Cimiano,P.andS.Staab.LearningbyGoogling. SIGKDDExplor.,6(2):24–33,2004.
+Cover,T.M.andJ.A.Thomas. ElementsofInformationTheory .JohnWiley&Sons,NewYork,1991.
+Delahaye, J.P. Classer musiques, langues, images, textes et genomes. Pour La Science , 317:98–103,
+March2004.
+
+NormalizedWebDistanceandWordSimilarity 313
+Ehlert, E. Making accurate lexical semantic similarity judgments using word-context co-occurrence
+statistics.Master’sthesis,2003.
+Freitag,D.,M.Blume,J.Byrnes,E.Chow,S.Kapadia,R.Rohwer,andZ.Wang.Newexperimentsindis-
+tributionalrepresentationsofsynonymy.In ProceedingsoftheNinthConferenceonComputational
+NaturalLanguageLearning ,AnnArbor,MI,pp.25–31,2005.
+Graham-Rowe,D.Asearchformeaning. NewScientist ,p.21,January29,2005.
+Keller, F. and M. Lapata. Using the web to obtain frequencies for unseen bigrams. Comput. Linguist .,
+29(3):459–484,2003.
+Keogh, E., S.Lonardi, C.A.Ratanamahatana, L.Wei, H.S.Lee, andJ.Handley. Compression-baseddata
+miningofsequentialdata. DataMin.Knowl.Disc .,14:99–129,2007.Preliminaryversion:E.Keogh,
+S. Lonardi, and C.A. Ratanamahatana, Toward parameter-free data mining, In Proceedings of the
+10th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining , Toronto,
+Canada,pp.206–215,2004.
+Kolmogorov, A.N. Three approaches to the quantitative deﬁnition of information. Problems Inform.
+Transm.,1(1):1–7,1965.
+Kraft, L.G. A device for quantizing, grouping and coding amplitude modulated pulses. Master’s thesis,
+DepartmentofElectricalEngineering,MIT,Cambridge,MA,1949.
+Landauer, T. and S. Dumais. Cyc: A large-scale investment in knowledge infrastructure. Comm. ACM ,
+38(11):33–38,1995.
+Landauer T. and S. Dumais. A solution to Plato’s problem: The latent semantic analysis theory of
+acquisition,inductionandrepresentationofknowledge. Psychol.Rev.,104:211–240,1997.
+Lesk,M.E.Word-wordassociationsindocumentretrievalsystems. Am.Doc.,20(1):27–38,1969.
+Li, M. and P.M.B. Vitányi. An Introduction to Kolmogorov Complexity and Its Applications , 3rd edn.
+Springer-Verlag,NewYork,2008.
+Li,M.,J.Badger,X.Chen,S.Kwong,P.Kearney,andH.Zhang.Aninformation-basedsequencedistance
+anditsapplicationtowholemitochondrialgenomephylogeny. Bioinformatics ,17(2):149–154,2001.
+Li, M., X. Chen, X. Li, B. Ma, and P.M.B. Vitányi. The similarity metric. IEEE Trans. Inform. Theory,
+50(12):3250–3264,2004.
+Miller,G.A.etal.AlexicaldatabasefortheEnglishlanguage.http://www.cogsci.princeton.edu/wn.Moralyiski, R. and G. Dias. One sense per discourse for synonym detection. In Proceedings of the
+International Conference on Recent Advances in Natural Language Processing , Borovets, Bulgaria,
+pp.383–387,2007.
+Muir,H.Softwaretounzipidentityofunknowncomposers. NewScientist ,April12,2003.
+Patch,K.Softwaresortstunes. TechnologyResearchNews ,April23/30,2003.
+Reed, S.L. and D.B. Lenat. Mapping ontologies into cyc. In Proceedings of the AAAI Conference 2002
+WorkshoponOntologiesfortheSemanticWeb ,Edmonton,Canada,July2002.
+Santos, C.C., J. Bernardes, P.M.B. Vitányi, and L. Antunes. Clustering fetal heart rate tracings by
+compression. In Proceedings of the 19th IEEE International Symposium Computer-Based Medical
+Systems,SaltLakeCity,UT,pp.685–670,2006.
+Slashdotcontributers.Slashdot.FromJanuary29,2005:http://science.slashdot.org/article.pl?sid =05/01/
+29/1815242&tid =217&tid=14.
+Tan, P.N., V. Kumar, and J. Srivastava. Selecting the right interestingness measure for associating
+patterns.In ProceedingsoftheACM-SIGKDDConferenceonKnowledgeDiscoveryandDataMining ,
+Edmonton,Canada,pp.491–502,2002.
+Terra, E.andC.L.A.Clarke. Frequencyestimatesforstatisticalwordsimilaritymeasures. In Proceedings
+oftheHLT–NAACL,Edmonton,Canada,pp.244–251,2003.
+Turney,P.D.Miningthewebforsynonyms:Pmi-irversuslsaontoeﬂ.In Proceedingsofthe12thEuropean
+ConferenceonMachineLearning,Freiburg,Germany,pp.491–502,2001.
+
+314 HandbookofNaturalLanguageProcessing
+Turney, P.D. Thumbs up or thumbs down? Semantic orientation applied to unsupervised classiﬁcation
+ofreviews.In Proceedingsofthe40thAnnualMeetingonAssociationforComputationalLinguistics ,
+Philadelphia,PA,pp.417–424,2002.
+Turney,P.D.Similarityofsemanticrelations. Comput.Linguist .,32(3):379–416,2006.
+Zhang,X.,Y.Hao,X.Zhu,andM.Li.Informationdistancefromaquestiontoananswer.In Proceedings
+of the 13th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining ,
+NewYork,pp.874–883.ACMPress,2007.
+

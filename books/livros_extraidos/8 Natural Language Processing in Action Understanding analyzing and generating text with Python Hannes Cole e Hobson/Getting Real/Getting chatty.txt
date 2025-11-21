@@ -1,0 +1,1516 @@
+365Getting chatty
+(dialog engines)
+We opened this book with the idea of a dialog engine or chatbot NLP pipeline
+because we think it’s one of the most im portant NLP applications of this century.
+For the first time in history we can spea k to a machine in our own language, and we
+can’t always tell that it isn’t human. Machines can fake being human, which is a lotThis chapter covers
+Understanding four chatbot approaches
+Finding out what Artificial Intelligence Markup 
+Language is all about
+Understanding the difference between chatbot pipelines and other NLP pipelines
+Learning about a hybrid chatbot architecture that combines the best ideas into one
+Using machine learning to make your chatbot get smarter over time
+Giving your chatbot agency—enabling it to spontaneously say what’s on its mind
+ 
+
+366 CHAPTER  12 Getting chatty (dialog engines)
+harder than it sounds. There are several ca sh prize competitions, if you think you and
+your chatbot have the right stuff:
+The Alexa Prize ($3.5M)1
+Loebner Prize ($7k)2
+The Winograd Schema Challenge ($27k)3
+The Marcus Test4
+The Lovelace Test5
+Beyond the pure fun and magic of building  a conversational machine, beyond the
+glory that awaits you if you bu ild a bot that can beat humans  at an IQ test, beyond the
+warm fuzzy feeling of saving the world from malicious hacker botnets, and beyond the
+wealth that awaits you if you can beat Go ogle and Amazon at their virtual assistant
+games—the techniques you’ll learn in this chapter will give you the tools you need to
+get the job done.
+ The 21st century is going to be built on a foundation of AI (artificial intelligence)
+that assists us. And the most natural interfac e for AI is natural language conversation.
+For example, Aira.io’s chatbot Chloe is help ing to interpret the world for people who
+are blind or have low-vision. Other companie s are building lawyer chatbots that save
+users thousands of dollars (or pounds) on  parking tickets and hours of courtroom
+time. And self-driving cars w ill likely soon have conversa tional interfaces similar to
+Google Assistant and Goog le Maps to help you get where you want to go.
+12.1 Language skill
+You finally have all the pieces you need  to assemble a chatbot—more formally, a dialog
+system or dialog engine . You’ll build an NLP pipeline that  can participate in natural lan-
+guage conversations.
+ Some of the NLP skills you’ll use include
+Tokenization, stemming, and lemmatization
+Vector space language models such as bag-of-words vectors or topic vectors
+(semantic vectors)
+Deeper language representations such as  word vectors or LSTM thought vectors
+Sequence-to-sequence tran slators (from chapter 10)
+Pattern matching (from chapter 11)
+Templates for generating natural language text
+1“The Alexa Prize,” https:/ /developer.am azon.com/alexaprize .
+2“Loebner Prize” at Bletchley Park, http:/ /www.aisb.org.uk/events/loebner-prize .
+3“Establishing a Human Baseline for the Winograd Schema Challenge,” by David Bender, http:/ /ceur-ws.org/
+Vol-1353/paper_30.pdf;  “An alternative to the Turing test,” Kurzweil, http:/ /www.kurzweilai.net/an-alterna-
+tive-to-the-turing-test-winograd-schema- challenge-annual-competition-announced .
+4“What Comes After the Turing Test,” New Yorker, Jan 2014, http:/ /www.newyorker.com/tech/elements/
+what-comes-after-the-turing-test .
+5“The Lovelace 2.0 Test of Artificial Creativity and Intelli gence,” by Reidl, https:/ /arxiv.org/pdf/1410.6142
+.pdf.
+ 
+
+367 Language skill
+With these tools, you can build a chatbot with interesting behavior.
+ Let’s make sure we’re on the same page about what a chatbot is. In some commu-
+nities, the word “chatbot” is used in a s lightly derogatory way to refer to “canned
+response” systems.6 These are chatbots that find patterns in the input text and use
+matches on those patterns to trigge r a fixed, or temp lated, response.7 You can think of
+these as FAQ bots that only know the answer s to basic, general questions. These basic
+dialog systems are useful mainly for auto mated customer service phone-tree systems,
+where it’s possible to hand off the conversation to a human when the chatbot runs out
+of canned responses.
+ But this doesn’t mean that your chatbot needs to be so limited. If you’re particu-
+larly clever about these patterns and template s, your chatbot can be the therapist in a
+convincing psychotherapy or counseling session. All the wa y back in 1964, Joseph Wei-
+zenbaum used patterns and templates to build the first popular chatbot, ELIZA.8 And
+the remarkably effective Facebook Messenger  therapy bot, Woebot, relies heavily on
+the pattern-matching and templated response  approach. All that’s needed to build
+Turing prize-winning chatbots is to add a little state (context) management to your
+pattern-matching system.
+ Steve Worswick’s Mitsuku chatbot won the Loebner Prize ( https:/ /en.wikipedia
+.org/wiki/Turing_test ), a form of the Turing Test, in 2016 and 2017 using pattern
+matching and templates. He added context or statefulness,  to give Mitsuku a bit more
+depth. You can read about the other winners on Wikipedia ( https:/ /en.wikipedia.org/
+wiki/Loebner_Prize#Winners ). Amazon recently added th is additional layer of con-
+versational depth (context) to Alex a and called it “Follow-Up Mode.”9 You’ll learn
+how to add context to your own pattern -maching chatbots in this chapter.
+12.1.1 Modern approaches
+Chatbots have come a long way since the days of ELIZA. Pattern-matching technology
+has been generalized and refined over th e decades. And completely new approaches
+have been developed to supp lement pattern matching. In recent literature, chatbots
+are often referred to as dial og systems, perhaps because of  this greater sophistication.
+Matching patterns in text and populating canned-response templates with informa-
+tion extracted with those patt erns is only one of four mo dern approaches to building
+chatbots:
+Pattern matching —Pattern matching and response templates (canned
+responses)
+Grounding —Logical knowledge graphs an d inference on those graphs
+6Wikipedia “Canned Response,” https:/ /en.wikipedia.org/wiki/Canned_response .
+7“A Chatbot Dialogue Manager” by A.F. van Woud enberg, Open University of the Netherlands, http:/ /
+dspace.ou.nl/bitstream/1820/5390/1/INF_20140617_Woudenberg.pdf .
+8Wikipedia: https:/ /en.wikipedia.org/wiki/ELIZA .
+9See the Verge article “Amazon Follow-Up Mode” ( https:/ /www.theverge.com /2018/3/9/17101330/amazon-
+alexa-follow-up-mode-back-to-back-requests ).
+ 
+
+368 CHAPTER  12 Getting chatty (dialog engines)
+Search —Text retrieval 
+Generative —Statistics and machine learning
+This is roughly the order in which these approaches were developed. And that’s the
+order in which we present them here. But before showing you how to use each tech-
+nique to generate replies, we show you how chatbots use these techniques in thereal world.
+ The most advanced chatbots use a hybrid ap proach that combines all of these tech-
+niques. This hybrid approach enables them  to accomplish a broad range of tasks.
+Here’s a list of a few of these chatbot applications; you may notice that the more
+advanced chatbots, such as Siri, Alexa, an d Allo, are listed alongside multiple types of
+problems and applications:
+Question answering —Google Search, Alexa, Siri, Watson
+Virtual assistants —Google Assistant, Alex a, Siri, MS paperclip
+Conversational —Google Assistant, Google Smart Reply, Mitsuki Bot
+Marketing —Twitter bots, blogger bots, Facebook bots, Google Search, Google
+Assistant, Alexa, Allo
+Customer service —Storefront bots, technical support bots
+Community management —Bonusly, Slackbot
+Therapy —Woebot, Wysa, YourDost, Siri, Allo
+Can you think of ways to combine the four ba sic dialog engine types to create chatbots
+for these seven applications? Figure 12.1 shows how some chatbots do it.
+ Let’s talk briefly about these applicatio ns to help you build a chatbot for your
+application.
+1. Patterns1. Patterns Question Answering
+Virtual Assistance
+Conversation
+Marketing
+Customer Service
+Community
+Therapy2. Grounding
+3. Search
+4. Generative
+Figure 12.1 Chatbot techniques used for some example applications
+ 
+
+369 Language skill
+QUESTION  ANSWERING  DIALOG  SYSTEMS
+Question answering chatbots are used to answer factual questions about the world,
+which can include questions about the chat bot itself. Many question answering sys-
+tems first search a knowledge base or relati onal database to “ground” them in the real
+world. If they can’t find an acceptable answer there, they may search a corpus of
+unstructured data (or even the entire Web) to find answers to your questions. This is
+essentially what Google Search does. Parsing a statement to discern the question in
+need of answering and then picking the right answer requires a complex pipeline that
+combines most of the elements covered in  previous chapters. Question answering
+chatbots are the most difficult to implemen t well because they require coordinating so
+many different elements. 
+VIRTUAL  ASSISTANTS
+Virtual assistants, such as Alexa and Google  Assistant, are helpful when you have a
+goal in mind. Goals or intents are usually simple things such as launching an app, set-
+ting a reminder, playing some music, or tu rning on the lights in your home. For this
+reason, virtual assistants are often called go al-based dialog engines. Dialog with such
+chatbots is intended to conclude quickly, with the user being satisfied that a particular
+action has been accomplish ed or some bit of inform ation has been retrieved.
+ You’re probably familiar with the virtual assistants on your phone or your home
+automation system. But you may not know that  virtual assistants can also help you with
+your legal troubles and taxes. Though Intu it’s TurboTax wizards aren’t very chatty,
+they do implement a complex phone tree. You don’t interact with them by voice or
+chat, but by filling in forms with structured  data. So the TurboTax wizard can’t really
+be called a chatbot yet, but it’ll surely be wrapped in a chat interface soon, if the tax-
+bot AskMyUncleSam takes off.10
+ Lawyer virtual assistant chatbots have succ essfully appealed millions of dollars in
+parking tickets in New York and London.11 And there’s even a United Kingdom law
+firm where the only interaction you’ll ever  have with a lawyer is through a chatbot.12
+Lawyers are certainly goal-based virtual assi stants, only they’ll do more than set an
+appointment date: they’ll set you a court date and maybe help you win your case.
+ Aira.io ( http:/ /aira.io ) is building a virtual assistant called Chloe. Chloe gives blind
+and low-vision people access to a “visual interpreter for the blind.” During onboard-
+ing, Chloe can ask customers things such as “Are you a white cane user?” “Do you have
+a guide dog?” and “Do you have any food alle rgies or dietary preferences you’d like us
+to know about?” This is called voice first  design, when your app is designed from the
+10Jan 2017, Venture Beat post by AskMyUncleSam: https:/ /venturebeat.com/20 17/01/27/how-this-chatbot-
+powered-by-machine-learning-can-help-with-your-taxes/ .
+11June 2016, “Chatbot Lawyer Overturns 160,000 Parkin g Tickets in London and New York,” The Guardian,
+https:/ /www.theguardian.com/technology/2016/jun/28/c hatbot-ai-lawyer-donotpa y-parking-tickets-london
+-new-york .
+12Nov 2017, “Chatbot-based ‘firm without lawyer s’ launched” blog post  by Legal Futures: https:/ /www.legalfu-
+tures.co.uk/latest-news/chatbot-ba sed-firm-without-lawyers-launched .
+ 
+
+370 CHAPTER  12 Getting chatty (dialog engines)
+ground up around a dialog system. In the future, the assistance that Chloe can pro-
+vide will be greatly expanded as she learns  to understand the real world through live
+video feeds. And the “explorers” around the world interacting with Chloe will be
+training her to understand common everyday tasks that humans perform in theworld. Chloe is one of the few virtual assist ants designed entirely to assist and not to
+influence or manipulate.
+13
+ Virtual assistants such as Siri, Google A ssistant, Cortana, and Aira’s Chloe are get-
+ting smarter every day. Virtual assistants learn from their interactions with humans
+and the other machines they’re connected to. They’re developing evermore general,
+domain-independent intelligence . If you want to learn abou t artificial general intelli-
+gence (AGI), you’ll want to experiment with virt ual assistants and conversational chat-
+bots as part of that research. 
+CONVERSATIONAL  CHATBOTS
+Conversational chatbots, su ch as Worswick’s Mitsuku14 or any of the Pandorabots,15
+are designed to entertain. They can often be implemented with very few lines of code,
+as long as you have lots of data. But doing conversation well is an ever-evolving chal-
+lenge. The accuracy or performance of a conversational chatbot is usually measured
+with something like a Turing test. In a typical Turing test, humans interact with
+another chat participant through a terminal and try to figure out if it’s a bot or a
+human. The better the chatbot is at being indistinguishable from a human, the better
+its performance on a Turing test metric.
+ The domain (variety of knowledge) and human behaviors that a chatbot is
+expected to implement, in these Turing tests, is expanding every year. And as the chat-bots get better at fooling us, we humans get better at detecting their trickery. ELIZAfooled many of us in the BBS-era of the 1980s into thinking that “she” was a therapisthelping us get through our daily lives. It took decades of research and developmentbefore chatbots could fool us again.
+Fool me once, shame on bots; fo ol me twice, shame on humans.
+                                                                                              Anonymous Human
+Recently, Mitsuku won the Loeb ner challenge, a competition that uses a Turing test to
+rank chatbots.
+16 Conversational chatbots are used mostly for academic  research, enter-
+tainment (video games), and advertisement. 
+13We rarely acknowledge to ourselves the influence that vi rtual assistants and search engines exert over our free
+will and beliefs. And we rarely care that their incent ives and motivations are diff erent from our own. These
+misaligned incentives are present not only in technology such as virtual assistants, but within culture itself.
+Check out Sapiens  and Homo Deus  by Yuval Noah Harari if you’re interested in learning about where culture
+and technology are taking us.
+14See the web page titled “Mitsuku Chatbot” ( http:/ /www.square-bear.co.uk/aiml ).
+15See the web page titled “Pandorabots AIML Chatbot Directory” ( https:/ /www.chatbots.org ).
+16See the web page titled “Loebner Prize” ( https:/ /en.wikipedia.org/wiki/Loebner _Prize ).
+ 
+
+371 Language skill
+MARKETING  CHATBOTS
+Marketing chatbots are designed to inform  users about a product and entice them to
+purchase it. More and more video games,  movies, and TV shows are launched with
+chatbots on websites promoting them: 17
+HBO promoted “Westworld” with “Aeden.”18
+Sony promoted “Resident Evil” with “Red Queen.”19
+Disney promoted “Zootopia” with “Officer Judy Hopps.”20
+Universal promoted “Unfriended” with “Laura Barnes.”
+Activision promoted “Call of  Duty” with “Lt. Reyes.”
+Some virtual assistants are marketing bots  in disguise. Consider Amazon Alexa and
+Google Assistant. Though they claim to assi st you with things such as adding remind-
+ers and searching the web, they invariably pr ioritize responses about products or busi-
+nesses over responses with ge neric or free information. These companies are in the
+business of selling stuff—directly in the ca s e  o f  A m a z o n ,  i n d i r e c t l y  i n  t h e  c a s e  o f
+Google. Their virtual assistants are designed  to assist their corporate parents (Amazon
+and Google) in making money. Of course, th ey also want to assist users in getting
+things done, so we’ll keep using them. Bu t the objective functions for these bots are
+designed to steer users toward pur chases, not happiness or well-being.
+ Most marketing chatbots ar e conversational, to entertai n users and mask their ulte-
+rior motives. They can also employ questi on answering skills, grounded in a knowl-
+edge base about the products they sell. To mimic characters in a movie, show, or video
+game, chatbots will use text retrieval to find  snippets of things to say from the script.
+And sometimes even generative models are trained directly on a collection of scripts.So marketing bots often employ all four of the techniques you’ll learn about in
+this chapter. 
+COMMUNITY  MANAGEMENT
+Community management is a particularly im portant application of chatbots because it
+influences how society evolves. A good chatbot “shepherd” can steer a video game
+community away from chaos and help it gr ow into an inclusive, cooperative world
+where everyone has fun, not just the bullies and trolls. A bad chatbot, such as the Twit-
+ter bot Tay, can quickly create an en vironment of prejud ice and ignorance.21
+ When chatbots go “off the rails,” some pe ople claim they are merely mirrors or mag-
+nifiers of society. And there are often un intended consequences of any complicated
+17Justin Clegg lists additional ones in his LinkedIn post: https:/ /www.linkedin.com/pulse/how-smart-brands-
+using-chatbots-justin-clegg/ .
+18Sep 2016, Entertainment Weekly: https:/ /www.yahoo.com/entertainmen t/westworld-launches-sex-touting-
+online-181918383.html .
+19Jan 2017, IPG Media Lab: https:/ /www.ipglab.com/2017/01/18/sony-p ictures-launches-ai-powered-chatbot-
+to-promote-resident-evil-movie/ .
+20Jun 2016, Venture Beat: https:/ /venturebeat.com/2016/06/01/imp erson-launches-zootopias-officer-judy-
+hopps-bot-on-facebook-messenger/ .
+21Wikipedia article about the brief “life” of Microsoft’s Tay chatbot, https:/ /en.wikipedia.org/wiki/Tay_(bot) .
+ 
+
+372 CHAPTER  12 Getting chatty (dialog engines)
+system interacting with the real world. Bu t because chatbots are active participants,
+imbued with motivations by developers like  you, you shouldn’t dismiss them as merely
+“mirrors of society.” Chatbots seem to do more than merely reflect and amplify the best
+and the worst of us. They’re an active force,  partially under the influence of their devel-
+opers and trainers, for either good or evil. Because supervisors and managers cannot
+perfectly enforce any policy that ensures chatbot s “do no evil,” it’s up to you, the devel-
+oper, to strive to build chatbots that are ki nd, sensitive, and pro-social. Asimov’s “Three
+Laws of Robotics” aren’t enough.22 Only you can influence the evolution of bots, using
+smart software and cleverly constructed datasets.
+ Some smart people at Arizona Universi ty are considering using their chatbot-
+building skills to save humanity, not from Evil Superintelligent AI, but from ourselves.
+Researchers are trying to mimic the behavior of potentia l ISIS terrorist recruits to dis-
+tract and misinform ISIS recruiters. This may one day mean that chatbots are saving
+human lives, simply by chatting it up with people that intend to bring harm to the
+world.23 Chatbot trolls can be a good thing if they  troll the right people or organizations. 
+CUSTOMER  SERVICE
+Customer service chatbots are often the on ly “person” available when you visit an
+online store. IBM’s Watson, Amazon’s Lex,  and other chatbot services are often used
+behind the scenes to power these customer  assistants. They often combine both ques-
+tion answering skills (remember Watson’s Je opardy training?) with virtual assistance
+skills. But unlike marketing bots, customer service chat bots must be well-grounded.
+And the knowledge base used to “ground” th eir answers to reality must be kept cur-
+rent, enabling customer service chatbots to  answer questions abou t orders or products
+as well as initiate actions such  as placing or canceling orders.
+ In 2016, Facebook Messenger released an API for businesses to build customer ser-
+vice chatbots. And Google recently purchase d API.ai to create their Dialogflow frame-
+work, which is often used to build customer  service chatbots. Similarly, Amazon Lex is
+often used to build customer service dial og engines for retailers and wholesalers of
+products sold on Amazon. Chatbots are quic kly becoming a signif icant sales channel
+in industries from fashion (Botty Hilfiger) to fast food (TacoBot) to flowers.24
+THERAPY
+Modern therapy chatbot s, such as Wysa and YourDOST, have been built to help dis-
+placed tech workers adju st to their new lives.25 Therapy chatbots must be entertaining
+like a conversational chatbot. They must be informative like a question answering
+22March 2014, George Dvorski, “Why Asimov’s Three Laws of Robotics Can’t Protect Us,” Gizmodo, https:/ /
+io9.gizmodo.com/why-asimovs-three-laws -of-robotics-cant-protect-us-1553665410 .
+23Oct 2015, Slate, http:/ /www.slate.com/articles/technology /future_tense/2015/10/using_chatbots_to
+_distract_isis_recruiters_on_social_media.html .
+241-800-flowers: 1-800-Flowers.com , Tommy Hilfiger: https:/ /techcrunch.com/2016/09/09/botty-hilfiger/ ,
+TacoBot: http:/ /www.businessinsider.com/taco-bells-tacobot-orders-food-for-you-2016-4 .
+25Dec 2017, Bloomberg: https:/ /www.bloomberg.com/news/article s/2017-12-10/fired-indian-tech-workers
+-turn-to-chatbots-for-counseling .
+ 
+
+373 Pattern-matching approach
+chatbot. And they must be persuasive li ke a marketing chatbot. And if they’re
+imbued with self-interest to augment th eir altruism, these chatbots may be “goal-
+seeking” and use their marketin g and influence skill to get you to come back for addi-
+tional sessions.
+ You might not think of Siri, Alexa, and Allo as therapists, but they can help you get
+through a rough day. Ask them about the mean ing of life and you’ll be sure to get a
+philosophical or humorous response. And if you’re feeling down, ask them to tell you
+a joke or play some upbeat music. And be yond these parlor tricks, you can bet that
+developers of these sophisticated chatbots we re guided by psychologists to help craft
+an experience intended to increase your happiness and sense of well-being.
+ As you might expect, these therapy bots employ a hybrid approach that combines
+all four of the basic approaches liste d at the beginning of this chapter. 
+12.1.2 A hybrid approach
+So what does this hybrid approach look like?
+ The four basic chatbot approaches can be combined in a variety of ways to pro-
+duce useful chatbots. And many different ap plications use all four basic techniques.
+The main difference between hybrid chatbots  is how they combine these four skills,
+and how much “weight” or “power” is given to each technique.
+ In this chapter, we show you how to balance these approaches explicitly in code to
+help you build a chatbot that meets your ne eds. The hybrid approa ch we use here will
+allow you to build features of all these real world systems into your bot. And you’ll
+build an “objective function” that’ll take into account the goals of your chatbot when
+it’s choosing between the four approaches , or merely choosing among all the possible
+responses generated by each approach.
+ So let’s dive into each of these four approaches, one at a time. For each one, we
+build a chatbot that uses only the techni que we’re learning. But in the end we show
+you how to combine them all together. 
+12.2 Pattern-matching approach
+The earliest chatbots used pattern matching  to trigger responses. In addition to
+detecting statements that your bot can respon d to, patterns can also be used to extract
+information from the incoming text. You lear ned several ways to define patterns for
+information extracti on in chapter 11.
+ The information extracted from your user s’ statements can be used to populate a
+database of knowledge about the users, or about the world in general. And it can be
+used even more directly to populate an immediate response to some statements. In
+chapter 1, we showed a simple  pattern-based chatbot that used a regular expression to
+detect greetings. You can also use regular expressions to extract the name of the per-
+son being greeted by the human user. This he lps give the bot “context” for the conver-
+sation. This context can be used to populate a response.
+ ELIZA, developed in the late 1970s, was surprisingly effective at this, convincing
+many users that “she” was capable of helpin g them with their psychological challenges.
+ 
+
+374 CHAPTER  12 Getting chatty (dialog engines)
+ELIZA was programmed with a li mited set of words to look for in user statements. The
+algorithm would rank any of those words that it saw in order to find a single word that
+seemed like the most important word in a user’s statement. That would then trigger
+selection of a canned response template asso ciated with that word. These response tem-
+plates were carefully designed to emulate the empathy and open-mindedness of a ther-
+apist, using reflexive psychology. The key word that had triggered the response was
+often reused in the response to make it sound like ELIZA understood what the user wastalking about. By replying in a user’s ow n language, the bot helped build rapport and
+helped users believe that it was listening.
+ ELIZA taught us a lot about what it takes to interact with humans in natural lan-
+guage. Perhaps the most important revelati on was that listening well, or at least
+appearing to listen well, is the key to chatbot success.
+ In 1995, Richard Wallace began building  a general chatbot framework that used
+the pattern-matching approach. Between 1995 and 2002, his community of develop-
+ers built the Artificial Inte lligence Markup Language (AIML) to specify the patterns
+and responses of a chatbot. A.L.I.C.E. wa s the open source reference implementation
+of a chatbot that utilized this markup langua ge to define its behavior. AIML has since
+become the de facto open standard for defi ning chatbot and virt ual assistant configu-
+ration APIs for services such as Pandorabots. Microsoft’s Bo t framework is also able to
+load AIML files to define chatbot behavior s. Other frameworks like Google’s Dialog-
+Flow and Amazon Lex don’t support import or export of AIML.
+ AIML is an open standard, meaning the language is documented and it doesn’t
+have hidden proprietary features locked to any particular co mpany. Open source
+Python packages are available for parsin g and executing AIML for your chatbot.
+26 But
+AIML limits the types of patterns and logica l structures you can define. And it’s XML,
+which means chatbot frameworks built in Python (such as Will  and ChatterBot )
+are usually a better foundation for building your chatbot.
+ Because you have a lot of your NLP tools in Python packages already, you can often
+build much more complex pattern-matching ch atbots just by building up the logic for
+your bot directly in Python and regular expressions or glob patterns.27 At Aira, we
+developed a simple glob pattern language similar to AIML to define our patterns. We
+have a translator that converts this glob pa ttern language into regular expressions that
+can be run on any platform with a regular expression parser.
+ And Aira uses {{handlebars}}  for our template specifications in this aichat  bot
+framework ( http:/ /github.com/aira/aichat ). The handlebars temp lating language has
+interpreters for Java and Python, so Aira uses it on a variety of mobile and server plat-
+forms. And handlebars expressions can incl ude filters and conditionals that can be
+26pip install aiml https:/ /github.com/creatorrr/pyAIML .
+27Glob patterns and globstar patterns are the simplified re gular expressions you use to find files in DOS or Bash
+or pretty much any other shell. In a glob pattern, the asterisk or star ( *) is used to represent any number of
+any characters. So *.txt  will match any filenames that have “.txt” at the end ( https:/ /en.wikipedia.org/wiki/
+Glob_%28programming%29 ).
+ 
+
+375 Pattern-matching approach
+used to create complex chatbot behavior. If  you want something even more straightfor-
+ward and Pythonic for your chatbot template s, you can use Python 3.6 f-strings. And if
+you’re not yet using Python 3.6, you can use str.format(template, **locals())
+to render your templates just like f-strings do.
+12.2.1 A pattern-matching chatbot with AIML
+In AIML (v2.0), here’s how you might defi ne your greeting chatbot from chapter 1.28
+<?xml version="1.0" encoding="UTF-8"?><aiml version="2.0">
+<category>
+<pattern>HI</pattern>
+<template>Hi!</template></category><category>
+<pattern>[HELLO HI YO YOH YO'] [ROSA ROSE CHATTY CHATBOT BOT CHATTERBOT]<
+/pattern>
+<template>Hi , How are you?</template>
+</category><category>
+<pattern>[HELLO HI YO YOH YO' 'SUP SUP OK HEY] [HAL YOU U YALL Y'ALL YOUS
+YOUSE]</pattern>
+<template>Good one.</template>
+</category></aiml>
+We used some of the new features of AIML 2.0 (by Bot Libre) to make the XML a little
+more compact and readable. The square bracke ts allow you to defi ne alternative spell-
+ings of the same word in one line.
+ Unfortunately, the Python interpreters for AIML ( PyAiml , aiml , and aiml_bot )
+don’t support version 2 of the AIML spec. The Python 3 AIML interpreter that works
+with the original AIML 1.0 specification is aiml_bot . In aiml_bot , the parser is
+embedded within a Bot()  class, designed to hold the “brain” in RAM that helps a
+chatbot respond quickly. The brain, or kernel , contains all the AIML patterns and tem-
+plates in a single data structure, similar to a Python dictionary, mapping patterns to
+response templates. 
+AIML 1.0
+AIML is a declarative language built on the XML standard, which limits the program-
+ming constructs and data structures you can use in your bot. But don’t think of your
+AIML chatbot as being a complete system. You’ll augment the AIML chatbot with all
+the other tools you learned about earlier.Listing 12.1 nlpia/book/examples/greeting.v2.aiml
+28“AI Chat Bot in Python with AIML,” by NanoDano Aug 2015, https:/ /www.devdungeon.com/content/ai-chat-
+bot-python-aiml#what-is-aiml .
+ 
+
+376 CHAPTER  12 Getting chatty (dialog engines)
+ One limitation of AIML is the kinds of patterns you can match and respond to. An
+AIML kernel (pattern matcher) only respon ds when input text matches a pattern hard-
+coded by a developer. One nice thing is that  AIML patterns can include wild cards, sym-
+bols that match any sequence of words. Bu t the words that you do include in your
+pattern must match precisely.  No fuzzy matches, emoticons,  internal punctuation char-
+acters, typos, or misspellings can be matche d automatically. In AIML, you have to man-
+ually define synonyms with an </srai> , one at a time. Think of all the stemming and
+lemmatization you did programmatically in ch apter 2. That would be tedious to imple-
+ment in AIML. Though we show you how to  implement synonym and typo matchers in
+AIML here, the hybrid chatbot you build at the end of the chapter will sidestep this
+tedium by processing all text coming into your chatbot.
+ Another fundamental li mitation of an AIML <pattern>  you need to be aware of is
+that it can only have a single wild card character. A more expr essive pattern-matching
+language such as regular expressions can gi ve you more power to create interesting
+chatbots.29 For now, with AIML, we only use patterns such as “HELLO ROSA *” to
+match input text such as “Hel lo Rosa, you wonderful chatbot!”
+NOTE The readability of a language is critic al to your productivity as a devel-
+oper. A good language can make a huge  difference, whether you’re building
+a chatbot or a web app.
+We don’t spend too much time helping you understand and write AIML. But we want
+you to be able to import and customize some of the available (and free) open sourceAIML scripts out there.
+30 You can use AIML scripts, as-is,  to give some basic functional-
+ity for your chatbot, wi th little up front work.
+ In the next section, we show you how to create and load an AIML file into your
+chatbot and generate responses with it. 
+PYTHON  AIML INTERPRETER
+Let’s build up that complicate d AIML script from listing 12 .1 one step at a time, and
+show you how to load and run it within a Python program. The following listing is asimple AIML file that can recognize two se quences of words: “Hello Rosa” and “Hello
+Troll,” and your chatbot will respond to each differently, like in earlier chapters.
+<?xml version="1.0" encoding="UTF-8"?><aiml version="1.0.1">
+<category>
+<pattern>HELLO ROSA </pattern>
+29It’s hard to compete with modern languages such as Python on expressiveness ( https:/ /en.wikipedia.org/
+wiki/Comparison_of_programming_languages#Expressiveness  and http:/ /redmonk.com/dberkholz/2013/
+03/25/programming-languages-ranked-by-expressiveness ).
+30Google for “AIML 1.0 files” or “AIML brain dumps” an d check out AIML resources such as Chatterbots and
+Pandorabots: http:/ /www.chatterbotcollection.com /category_contents.php?id_cat=20 .Listing 12.2 nlpia/nlpia/data/greeting_step1.aiml
+ 
+
+377 Pattern-matching approach
+<template>Hi Human!</template>
+</category>
+<category>
+<pattern>HELLO TROLL </pattern>
+<template>Good one, human.</template>
+</category>
+</aiml>
+NOTE In AIML 1.0, all patterns must  be specified in ALL CAPS.
+You’ve set your bot up to respond differentl y to two different kinds of greetings: polite
+and impolite. Now let’s use the aiml_bot  package to interpret AIML 1.0 files in
+Python. If you’ve installed the nlpia  package, you can load these examples from there
+using the code in the following listing. If you want to experiment with the AIML files
+you typed up yourself, you’ll need to adjust the path learn=path  to point to your file.
+>>> import os
+>>> from nlpia.constants import DATA_PATH>>> import aiml_bot
+>>> bot = aiml_bot.Bot(
+... learn=os.path.join(DATA_PATH, 'greeting_step1.aiml'))
+Loading /Users/hobs/src/nlpia/nlpia/data/greeting_step1.aiml...done (0.00 seconds)
+>>> bot.respond("Hello Rosa,")
+'Hi there!'>>> bot.respond("hello !!!troll!!!")
+'Good one, human.'
+That looks good. The AIML sp ecification cleverly ignores punctuation and capitaliza-
+tion when looking for pattern matches.
+ But the AIML 1.0 specification only norm alizes your patterns for punctuation and
+whitespace between words, not within wo rds. It can’t handle synonyms, spelling
+errors, hyphenated words, or compou nd words. See the following listing.
+>>> bot.respond("Helo Rosa")
+WARNING: No match found for input: Helo Rosa
+''
+>>> bot.respond("Hello Ro-sa")WARNING: No match found for input: Hello Ro-sa
+''
+You can fix most mismatches like this using the <srai>  tag and a star (*) symbol in
+your template to link multiple patterns ba ck to the same respon se template. Think of
+these as synonyms for the word “Hello,” ev en though they might be misspellings or
+completely different words. See the following listing.Listing 12.3 nlpia/book/examples/ch12.py
+Listing 12.4 nlpia/nlpia/book/examples/ch12.py
+ 
+
+378 CHAPTER  12 Getting chatty (dialog engines)
+ 
+<category><pattern>HELO * </pattern><template><srai>HELLO <star/>
+</srai></template></category>
+<category><pattern>HI * </pattern><template><srai>HELLO <star/>
+</srai></template></category><category><pattern>HIYA * </pattern><template><srai>HELLO <star/>
+</srai></template></category>
+<category><pattern>HYA * </pattern><template><srai>HELLO <star/></srai></template></category><category><pattern>HY * </pattern><template><srai>HELLO <star/>
+</srai></template></category>
+<category><pattern>HEY * </pattern><template><srai>HELLO <star/></srai></template></category>
+<category><pattern>WHATS UP * </pattern><template><srai>HELLO <star/>
+</srai></template></category><category><pattern>WHAT IS UP * </pattern><template><srai>HELLO <star/>
+</srai></template></category>
+NOTE If you are writing your own AIML files, don’t forget to include the
+<aiml> tags at the beginning and end. We omitted them in example AIMLcode here to keep things brief.
+Once you load that additional AIML, your bot can recognize a few different ways of
+saying and misspelling “H ello,” as shown in the following listing. 
+>>> bot.learn(os.path.join(DATA_PATH, 'greeting_step2.aiml'))
+>>> bot.respond("Hey Rosa")
+'Hi there!'
+>>> bot.respond("Hi Rosa")'Hi there!'
+>>> bot.respond("Helo Rosa")
+'Hi there!'>>> bot.respond("hello **troll** !!!")  
+'Good one, human.'
+In AIML 2.0, you can specify alternative random response templates with square-
+bracketed lists. In AIML 1.0 you use the <li>  tag to do that. The <li>  tag works only
+within a <condition>  or <random>  tag. You’ll use a <random>  tag to help your bot be
+a little more creative in how it responds  to greetings. See the following listing.
+<category><pattern>HELLO ROSA </pattern><template>
+<random>
+<li>Hi Human!</li>
+<li>Hello friend</li><li>Hi pal</li>
+<li>Hi!</li>
+<li>Hello!</li>Listing 12.5 nlpia/data/greeting_step2.aiml
+Listing 12.6 nlpia/nlpia/book/examples/ch12.py
+Listing 12.7 nlpia/nlpia/data/greeting_step3.aiml
+ 
+
+379 Pattern-matching approach
+<li>Hello to you too!</li>
+<li>Greetings Earthling ;)</li>
+<li>Hey you :)</li><li>Hey you!</li>
+</random></template>
+</category><category><pattern>HELLO TROLL </pattern><template>
+<random>
+<li>Good one, Human.</li><li>Good one.</li>
+<li>Nice one, Human.</li>
+<li>Nice one.</li><li>Clever.</li>
+<li>:)</li>
+</random></template>
+</category>
+Now your chatbot doesn’t sound nearly as me chanical (at least at  the beginning of a
+conversation). See the following listing.
+>>> bot.learn(os.path.join(DATA_PATH, 'greeting_step3.aiml'))
+>>> bot.respond("Hey Rosa")
+'Hello friend'>>> bot.respond("Hey Rosa")
+'Hey you :)'
+>>> bot.respond("Hey Rosa")'Hi Human!'
+NOTE You likely didn’t get the same respon ses in the same order that we did
+when we ran this code. That’s the point of the <random>  tag. It’ll choose a
+random response from the list each ti me the pattern is matched. There’s no
+way to set a random seed within aiml_bot , but this would help with testing
+(pull request anyone?).
+You can define synonyms for yo ur own alternative spellings of “Hi” and “Rosa” in sep-
+arate <category>  tags. You could define different groups of synonyms for your tem-
+plates and separate lists of responses depe nding on the kind of greeting. For example,
+you could define patterns for greetings such as “SUP” and “WUSSUP BRO,” and thenrespond in a similar dialect or simila r level of familiarity and informality.
+ AIML even has tags for capturing string s into named variables (similar to named
+groups in a regular expression). States in AIML are called 
+topics . And AIML defines
+ways of defining conditionals using any of  the variables you’ve defined in your AIML
+file. Try them out if you’re having fun with  AIML. It’s a great exercise in understand-
+ing how grammars and pattern-matching chat bots work. But we’re going to move on
+to more expressive languages such as re gular expressions and Python to build your
+chatbot. This will allow you to use more of  the tools you learned in earlier chapters,
+such as stemmers and lemmati zers, to handle synonyms and misspellings (see chapterListing 12.8 nlpia/nlpia/book/examples/ch12.py
+ 
+
+380 CHAPTER  12 Getting chatty (dialog engines)
+2). If you use AIML in your chatbot, and yo u have preprocessing stages such as lem-
+matization or stemming, you’ll probably need to modify your AIML templates to catch
+these stems and lemmas.
+ If you think AIML seems a bit complicated for what it does, yo u’re not alone. Ama-
+zon Lex uses a simplified version of AIML that can be exported to and imported from
+a JSON file. The startup API.ai  developed a dialog specific ation that was so intuitive
+that Google bought them out,  integrated it with Google Cloud Services, and renamed
+it Dialogflow. Dialogflow specifications ca n also be exported to JSON and imported
+from JSON, but these files aren’t compat ible with AIML or Amazon Lex format.
+ If you think all these inco mpatible APIs should  be consolidated into a single open
+specification such as AIML, you might want to contribute to the aichat  project and
+the AIRS (AI Response Specif ication) language development. Aira and the Do More
+Foundation are supporting AIRS to make it easier for our users to share their content
+(dialog for interactive fiction, inspiration, training courses, virt ual tours, and so on)
+with each other . The aichat  application is a reference implementation of the AIRS
+interpreter in Python, with a web UX.
+ Here’s what a typical AIRS specification looks like. It define s the four pieces of
+information that the chatbot needs to react to  a user command in a single row of a flat
+table. This table can be exported/imported to/from CSV or JSON or a plain Pythonlist of lists:
+>>> airas_spec = [
+... ["Hi {name}","Hi {username} how are you?","ROOT","GREETING"],
+... ["What is your name?",... "Hi {username} how are you?","ROOT","GREETING"],
+... ]
+The first column in an AIRS specification defines the pattern and any parameters you
+want to extract from the user utterance or  text message. The se cond column defines
+the response you want the chatbot to say (o r text), usually in the form of a template
+that can be populated with variables from the data context for the chatbot. And it can
+also contain special keywords to trigger bot actions other than just saying something.
+ The last two columns are used to maintain the state or context of the chatbot.
+Whenever the chatbot is triggered by a patter n match, it can transition to a new state if
+it wants to have different behavior within that state to, say, fo llow up with additional
+questions or information. So the two column s at the end of a row just tell the chatbot
+what state it should be listening for these patterns in and which state it should transi-
+tion to after it has accomplished the utte rance or action specified in the template.
+These source and destination state names define  a graph, like in fi gure 12.2, that gov-
+erns the chatbot behavior.
+ Google’s Dialogflow and Amazon’s Lex are more scalable versions of aichat ’s
+pattern-matching chatbot specification ap proach. But for many use cases they seem
+more complicated than they need to be. The open source project aichat ( http:/ /
+github.com/totalgood/aichat ) is attempting to provide a more intuitive way to
+ 
+
+381 Pattern-matching approach
+design, visualize, and test ch atbots. Check out the aichat or  the hybrid chatbot in nlpia
+(http:/ /github.com/ totalgood/nlpia ) if you want to learn more about this pattern-
+matching approach to chatbots. And if yo u want to implement a large-scale chatbot
+using this approach for a production app lication, Google’s Dialogflow (formerly
+app.ai ) and Amazon’s Lex frameworks have extensive documentation on examples
+you can build on. Though both systems make it possible to deploy a free chatbotwithin these systems, you’ll qu ickly get locked into their way of doing things, so you
+may be better off helping us build aichat. 
+12.2.2 A network view of pattern matching
+As Aira built out its chatbot for assisting th ose with blindness, we developed some visu-
+alization tools to analyze and design that user experience. A network view of the con-
+nections between states and the patterns  that create those connections revealed
+opportunities for new patterns and states. A network view allowed us to “run” the dia-
+log in our heads, like running a few lines of Python in your head. And the network
+view let us navigate the maze of the dialog  tree (actually a netw ork or graph) from a
+birds-eye view, to avoid di alog dead ends and loops.
+ If you think about it, the patterns and responses of a pattern-matching chatbot
+define a network (graph). Nodes in this network represent the states. Edges in the
+network represent the pattern matching triggers that cause the chatbot to say some-
+thing before transitioning to the next state (node). If you draw the state transitions for
+a few AIRS patterns and re sponses you might get something like in figure 12.2.
+ This can help you discover dead ends or loops in your dialog that you may want to
+address by refining or adding patterns to yo ur dialog specification. Aira is working on
+visualization tools to turn AIRS specs into  these graph diagrams (see figure 12.2) with
+Bot action
+User actionUser action
+STATE-NAME
+ROOTUSER–
+NAME“What is 
+your name?”“Could you repeat that?”
+“What is your
+name?”<power_on>
+“Cancel”
+LY F T“Hi {user_reply}!
+What can I do for
+you?”“Cool”
+TASK
+{turn_down_te mp}
+“{request_lyft}
+Y our Lyft driver,{lyft_na me}, should
+be here by{lyft_eta} ”“I need a Lyft”“Koul”
+“{cancel_lyft}  OK, canceling your Lyft driver request.”
+Figure 12.2 Managing state (context)
+ 
+
+382 CHAPTER  12 Getting chatty (dialog engines)
+the aichat  project ( http:/ /github.com/aira/aichat ). If Javascript and D3 is your
+thing, they could use your help.
+ Now it’s time to learn about an other chatbot approach: grounding. 
+12.3 Grounding
+A.L.I.C.E. and other AIML chatbots rely en tirely on pattern-matching. And the first
+popular chatbot, ELIZA, used pattern-matc hing and templates as well, before AIML
+was even conceived. But these chatbot developers hardcoded the logic of theresponses in patterns and templates. Hardco ding doesn’t “scale” well, not in the pro-
+cessing performance sense, bu t in the human effort sense. The sophistication of a
+chatbot built this way grows linearly with th e human effort put into it. In fact, as the
+complexity of this chatbot grows, you begin to see diminishing returns on your effort,
+because the interactions between all the “m oving parts” grow and the chatbot behav-
+ior becomes harder and harder to predict and debug.
+ Data-driven programming is the modern approach to most complex programming
+challenges these days. How can you use data to program your chatbot? In the lastchapter, you learned how to create struct ured knowledge from natural language text
+(unstructured data) using information extrac tion. You can build up a network of rela-
+tionships or facts just based on reading text , such as Wikipedia, or even your own per-
+sonal journal. In this section, you’ll le arn how to incorporate this knowledge about
+the world (or your life) into your chatbot’s bag of tricks. This network of logical rela-
+tionships between things is a knowledge gr aph or knowledge base that can drive your
+chatbot’s responses.
+ This knowledge graph can be processed wi th logical inference to answer questions
+about the world of knowledge contained in  the knowledge base. The logical answers
+can then be used to fill in variables with in templated responses to create natural lan-
+guage answers. Question answering systems,  such as IBM’s Jeopardy-winning Watson,
+were originally built this way, though more  recent versions almo st surely also employ
+search or information retrieval technology. A knowledge graph is said to “ground” the
+chatbot to the real world.
+ This knowledge-base approach isn’t limi ted to answering questions just about the
+world. Y our knowledge base can also be populated in real time with facts about anongoing dialog. This can keep your chat bot up-to-speed on who your conversation
+partner is, and what they’re like.
+ If you take this knowledge modeling on e step deeper, you can build subgraphs of
+knowledge about what the chatbot’s dialog pa rtners believe about the world. If you’re
+familiar with database design you can think of this as a partial mirror of external data-
+bases—knowledge bases in this case. This ca n be a temporary “cache” of only the most
+recent knowledge, or it can be a permanent rolling log of all the knowledge your chat-bot has learned (and unlearned) about the other dialog particip ants. Each statement
+by dialog participants can be used to po pulate a “theory of mind,” a knowledge base
+about what each speaker believes about the wo rld. This could be as simple as building
+ 
+
+383 Grounding
+patterns to extract the nicknames that dialog participants use when addressing each
+other or the chatbot, like we did in chapter 1.
+ If you think about it, humans seem to part icipate in dialog in a more sophisticated
+way than merely regurgitating canned respon ses, such as the AIML chatbot you just
+built. Your human brain enables you to thin k about the logic of what your conversa-
+tion partner said and attempt to infer some thing from what you remember about real-
+world logic and each other. You may have to  make several inferences and assumptions
+to understand and respond to a single st atement. So this addition of logic and
+grounding to your chatbot may make it be more human-like, or at  least more logical.
+ This grounding approach to chatbots wo rks well for question answering chatbots,
+when the knowledge required to answer the question is within some broad knowledge
+base that you can obtain from an open source database. Some examples of open
+knowledge bases you can use to ground your chatbot include
+Wikidata (includes Freebase)31
+Open Mind Common Sense (ConceptNet)32
+Cyc33
+YAGO34
+DBpedia35
+So all you need is a way to query the knowledge base to extract the facts you need topopulate a response to a user’s statement. And if the user is asking a factual question
+that your database might contain, you coul d translate their natural language question
+(such as “Who are you?” or “What is the 50th state of the United States?”) into a
+knowledge base query to directly retrieve th e answer they’re looking for. This is what
+Google search does using Freebase an d other knowledge bases they combined
+together to create their knowledge graph.
+ You could use your word pattern matching  skills from chapter 11 to extract the
+critical parts of a question from the user’s statement, such as the named entities or the
+relationship information sought by the question. You’d check for key question wordssuch as “who,” “what,” “when, ” “where,” “why,” and “is” at  the beginning of a sentence
+to classify the type of question. This wo uld help your chatbot determine the kind of
+knowledge (node or named entity type) to  retrieve from your knowledge graph.
+ 
+Quepy36 is a natural language query compiler that can produce knowledge base
+and database queries using these techniqu es. The SQL-equivalent for a knowledge
+graph of RDF triples is called SPARQL.37
+31See the web page titled “Welcome to Wikidata” ( https:/ /www.wikidata.org ).
+32See the web page titled “API : commo nsense/conceptnet5 Wiki : GitHub” ( https:/ /github.com/common-
+sense/conceptnet5/wiki/API ).
+33See the web page titled “Cyc” ( https:/ /en.wikipedia.org/wiki/Cyc ).
+34See the Wikipedia article “YAGO (database)” ( https:/ /en.wikipedia.org/wiki/YAGO_(database) ).
+35See the web page titled “DBpedia” ( https:/ /en.wikipedia.org/wiki/DBpedia ).
+36See the web page titled “Welcome to Quepy’s documentation! — Quepy 0.1 documentation” ( http:/ /quepy
+.readthedocs.io/en/latest/ ).
+37See the web page titled “SPARQL Query Language for RDF” ( https:/ /www.w3.org/TR/rdf-sparql-query/ ).
+ 
+
+384 CHAPTER  12 Getting chatty (dialog engines)
+12.4 Retrieval (search)
+Another more data-driven approach to “listeni ng” to your user is to search for previous
+statements in your logs of previous conver sations. This is analogous to a human lis-
+tener trying to recall where they’ve heard a question or statement or word before. A
+bot can search not only its own conversation logs, but also any transcript of human-to-
+human conversations, bot-to-human conversa tions, or even bot-to-bot conversations.
+But, as usual, garbage in me ans garbage out. So you should clean and curate your data-
+base of previous conversations to ensure that your bot is searching (and mimicking)
+high-quality dialog. You would like humans to enjoy the conversation with your bot.
+ A search-based chatbot should ensure that  its dialog database contains conversa-
+tions that were enjoyable or useful. And they should probably be on some theme thatthe bot personality is expected to converse in. Some examples of good sources of dia-
+log for a search-based bot include movie dial og scripts, customer service logs on IRC
+channels (where the users were satisfied wi th the outcome), and direct-message inter-
+actions between humans (when those humans  are willing to share them with you).
+Don’t do this on your own email or SMS message logs without getting the writtenagreement of all humans involved in the conversations you want to use.
+ If you decide to incorporate bot dialog in to your corpus, be careful. You only want
+statements in your database that have had at least one human appear to be satisfied
+with the interaction, if only by continuing the conversation. And bot-to-bot dialogshould rarely be used, un less you have access to a really  smart chatbot.
+ Your search-based chatbot can use a log of  past conversations to find examples of
+statements similar to what the bot’s conversa tion partner just said. To facilitate this
+search, the dialog corpus sh ould be organized in statem ent-response pairs. If a
+response is responded to then  it should appear twice in your database, once as the
+response and then again as the statement that is prompting a response. The response
+column in your database tabl e can then be used as the basis for your bot’s response to
+the statements in the “statements” (or prompt) column.
+12.4.1 The context challenge
+The simplest approach is to reuse the re sponse verbatim, with out any adjustment.
+This is often an OK approach if the stat ement is a good semantic (meaning) match
+for the statement your bot is responding to. But even if all the statements your users
+ever made could be found in your database , your bot would take on the personality of
+all the humans that uttered the responses in  your dialog database. This can be a good
+thing, if you have a consistent set of respon ses by a variety of humans. But it can be a
+problem if the statement you are trying to reply to is dependent on the longer-term
+context of a conversation or some real-w orld situation that has changed since your
+dialog corpus was assembled.
+ For example, what if someone asked your chatbot “What time is it?” Your chatbot
+shouldn’t reuse the reply of the human who replied to the best-matched statement in
+your database. That would work only if the question’s time corresponded to the time
+ 
+
+385 Retrieval (search)
+the matching dialog statemen t was recorded. This time information is called context,
+or state, and should be recorded and matc hed along with the statement’s natural lan-
+guage text. This is especially important wh en the statement’s semantics point to some
+evolving state that is recorded in your context, or the chatbot’s knowledge base.
+ Some other examples of how real-world knowledge or context should influence a
+chatbot’s reply are the questions “Who are you?” or “Where are you from?” The con-
+text in this case is the identity and background of the person being addressed by thequestion. Fortunately, this is context that you can generate and store quite easily in a
+knowledge base or database containing fact s about the profile or back-story for your
+bot. You’d want to craft your chatbot profil e to include information such as a persona
+that roughly reflects the aver age or median profile of the humans who made the state-
+ments in your database. To compute this, you can use the profiles of the users thatmade statements in your dialog database.
+ Your chatbot’s personality profile informatio n could be used to resolve “ties” in the
+search for matching statements in your database. And if you want to be super
+sophisticated, you can boost the rank of search  results for replies from humans that are
+similar to your bot persona. For example, imagine you know the gender of the peoplewhose statements and responses you recorded  in your dialog database. You’d include
+the nominal gender of the chatbot as anothe r “word” or dimension or database field
+you’re searching for among the genders of the respondents in your database. If this
+respondent gender dimension matched yo ur chatbot’s gender, and the prompting
+statement words or semantic vector were a close match for the corresponding vector
+from your user’s statement, that would be a great match at the top of your search results.
+The best way to do this matching is to co mpute a scoring function  each time a reply is
+retrieved and include in this score some profile match information.
+ Alternatively, you could solve this context challenge by building up a background
+profile for your bot and storing it in a kn owledge base manually. You’d just make sure
+to only include replies in your chatbot ’s database that matched this profile.
+ No matter how you use this profile to give your chatbot a consistent personality, you’ll
+need to deal with questions about that pers onality profile as special cases. You need to
+use one of the other chatbot techniques rather  than retrieval if your database of state-
+ments and replies doesn’t contain a lot of an swers to questions such as “Who are you?”
+“Where are you from?” and “What’s your favori te color?” If you don’t have a lot of profile
+statement-reply pairs, you’d need to detect any questions about the bot and use a knowl-edge base to “infer” an appr opriate answer for that elemen t of the statement. Alterna-
+tively, you could use the grammar-based approach to populate a templated response,using information retrieved from a structured dataset for the chatbot profile.
+ To incorporate state or co ntext into a retrieval-based chatbot, you can do some-
+thing similar to what you did for the patter n-matching chatbot. If you think about it,
+listing a bunch of user statements is just another way of specifying a pattern. In fact,
+that’s exactly the approach that Amazon Le x and Google Dialogflow take. Rather than
+defining a rigid pattern to capture the user command, you can just provide the dialog
+ 
+
+386 CHAPTER  12 Getting chatty (dialog engines)
+engine with a few examples. So  just as you associated a state with each pattern in your
+pattern-matching chatbot, you just need to tag your stat ement-response example pairs
+with a named state as well.
+ This tagging can be difficult if your example state-response pairs are from an
+unstructured, unfiltered data source such as the Ubuntu Dialog Corpus or Reddit. But
+with dialog training sets such  as Reddit, you can often find some small portions of the
+massive dataset that can be automatically labeled based on their channel and reply
+thread. You can use the tools of semantic se arch and pattern matching to cluster the
+initial comment that preceded a particular  thread or discussion. And these clusters
+can then become your states. Detecting tran sitions from one topic or state to another
+can be difficult, however. And the states th at you can produce this way aren’t nearly as
+precise and accurate as those you can generate by hand.
+ This approach to state (context) manageme nt can be a viable option, if your bot
+just needs to be entertaining  and conversational. But if you need your chatbot to have
+predictable and reliable behaviors, you prob ably want to stick to the pattern-matching
+approach or hand-craft yo ur state transitions. 
+12.4.2 Example retrieval-based chatbot
+You’re going to be following along with the ODSC 2017 tutorial on building a
+retrieval-based chatbot. If yo u want to view the video or the original notebook for this
+tutorial, check out the github repository for it at https:/ /github.com/totalgood/
+prosocial-chatbot .
+ Our chatbot is going to use the Ubuntu Dialog Corpus, a set of statements and
+replies recorded on the Ubuntu IRC channe l, where humans are helping each other
+solve technical problems. It contains more than seven million utterances and more
+than one million dialog sessions, each wi th multiple turns and many utterances.38 This
+large number of statement-response pairs ma kes it a popular dataset that researchers
+use to check the accuracy of their retrieval-based chatbots.
+ These are the sort of statement-response pairings you need to “train” a retrieval-
+based chatbot. But don’t worry, you’re not going to use all seven million utterances.
+You’ll just use about 150 thousand turns and see if that’s enough to give your chatbot
+the answers to some common Ubuntu questi ons. To get started, download the bite-
+sized Ubuntu corpus shown in the following listing.
+>>> from nlpia.data.loaders import get_data
+>>> df = get_data('ubuntu_dialog')
+Downloading ubuntu_dialogrequesting URL:
+https://www.dropbox.com/s/krvi79fbsryytc2/ubuntu_dialog.csv.gz?dl=1
+remote size: 296098788
+38“The Ubuntu Dialogue Corpus: A Larg e Dataset for Research in Unstruct ured Multi-Turn Dialogue Systems”
+by Lowe et al., 2015 https:/ /arxiv.org/abs/1506.08909 .Listing 12.9 ch12_retrieval.py
+ 
+
+387 Retrieval (search)
+Downloading to /Users/hobs/src/nlpia/nlpia/bigdata/ubuntu_dialog.csv.gz
+39421it [00:39, 998.09it/s]
+You may get warning messages about the /bigdata/  path not existing if you haven’t
+used nlpia.data.loaders.get_data()  on a big dataset yet. But the downloader
+will create one for you when you run it for the first time.
+NOTE The scripts here will work if you have 8 GB of free RAM to work with. If
+you run out of memory, try reducing the dataset size—slice out a smallernumber of rows in 
+df. In the next chapter, we use gensim  to process data in
+batches “out of core” so that yo u can work with larger datasets.
+What this corpus looks like can be seen in the following listing.
+>>> df.head(4)
+Context Utterance
+0 i think we could import the old comments via r... basically each xfree86
+upload will NOT force u...
+1 I'm not suggesting all -
+only the ones you mod... oh? oops. __eou__
+2 afternoon all __eou__ not entirely related to ... we'll have a BOF about
+this __eou__ so you're ...
+3 interesting __eou__ grub-install worked with /
+... i fully endorse this suggestion </quimby> __eo...
+Notice the “__eou__” tokens? This looks like  it might be a pretty challenging dataset
+to work with. But it’ll give you practice  with some common pr eprocessing challenges
+in NLP . Those tokens mark the “end of ut terance,” the point at which the “speaker”
+hit [RETURN]  or [Send]  on their IRC client. If you print out some example Context
+fields, you’ll notice that there are also “_ _eot__” (“end of turn”) markers to indicate
+when someone concluded their thou ght and was waiting for a reply.
+ But if you look inside a context document (row in the table), you’ll see there are mul-
+tiple “__eot__” (turn) markers. These mark ers help more sophisticated chatbots test
+how they handle the context problem we ta lked about in the previous section. But
+you’re going to ignore the extra turns in the corpus and focus only on the last one, the
+one that the utterance was a reply to. First, let’s create a function to split on those
+“__eot__” symbols and clean up those “__eou__” markers, as seen in the following listing.
+>>> import re
+>>> def split_turns(s, splitter=re.compile('__eot__')):
+... for utterance in splitter.split(s):
+... utterance = utterance.replace('__eou__', '\n')... utterance = utterance.replace('__eot__', '').strip()
+... if len(utterance):
+... yield utteranceListing 12.10 ch12_retrieval.py
+Listing 12.11 ch12_retrieval.py
+ 
+
+388 CHAPTER  12 Getting chatty (dialog engines)
+Let’s run that split_turns  function on a few rows in the DataFrame  to see if it makes
+sense. You’ll retrieve only the last turn from both the context and the utterance and see
+if that’ll be enough to train a retrieva l-based chatbot. See the following listing.
+>>> for i, record in df.head(3).iterrows():
+... statement = list(split_turns(record.Context))[-1]... reply = list(split_turns(record.Utterance))[-1]
+... print('Statement: {}'.format(statement))
+... print()... print('Reply: {}'.format(reply))
+This should print out something like this:
+Statement: I would prefer to avoid it at this stage. this is something that
+has gone into XSF svn, I assume?
+Reply: each xfree86 upload will NOT force users to upgrade 100Mb of fonts
+for nothing
+no something i did in my spare time.
+Statement: ok, it sounds like you're agreeing with me, then
+though rather than "the ones we modify", my idea is "the ones we need to
+merge"
+Reply: oh? oops.
+Statement: should g2 in ubuntu do the magic dont-focus-window tricks?
+join the gang, get an x-series thinkpad
+sj has hung on my box, again.
+what is monday mornings discussion actually about?
+Reply: we'll have a BOF about this
+so you're coming tomorrow ?
+Excellent! It looks like it has statements and replies that  contain multiple statements
+(utterances). So your script is doing what you want, and you can use it to populate a
+statement-response mapping table, as shown in the following listing.
+>>> from tqdm import tqdm
+>>> def preprocess_ubuntu_corpus(df):
+... """... Split all strings in df.Context and df.Utterance on
+... __eot__ (turn) markers
+... """... statements = []
+... replies = []
+... for i, record in tqdm(df.iterrows()):... turns = list(split_turns(record.Context))
+... statement = turns[-1] if len(turns) else '\n'
+... statements.append(statement)... turns = list(split_turns(record.Utterance))Listing 12.12 ch12_retrieval.py
+Listing 12.13 ch12_retrieval.py
+You need an if because some of
+the statements and replies
+contained only whitespace.
+ 
+
+389 Retrieval (search)
+... reply = turns[-1] if len(turns) else '\n'
+... replies.append(reply)
+... df['statement'] = statements... df['reply'] = replies
+... return df
+Now you need to retrieve the closest match to a user statement in the statement col-
+umn, and reply with the corresponding reply from the reply column. Do you remem-ber how you found similar natural language  documents using word frequency vectors
+and TF-IDF vectors in chapter 3? See the following listing.
+>>> from sklearn.feature_extraction.text import TfidfVectorizer
+>>> df = preprocess_ubuntu_corpus(df)>>> tfidf = TfidfVectorizer(min_df=8, max_df=.3, max_features=50000)
+>>> tfidf.fit(df.statement)
+Let’s create a DataFrame  called X to hold all these TF-IDF vectors for each of the 150
+thousand statements, as shown in the following listing.
+>>> X = tfidf.transform(df.statement)
+>>> X = pd.DataFrame(X.todense(), columns=tfidf.get_feature_names())
+One way to find the closest statement is to compute the cosine distance from the query
+statement to all the statemen ts in your X matrix, as shown in the following listing.
+>>> x = tfidf.transform(['This is an example statement that\
+... we want to retrieve the best reply for.'])
+>>> cosine_similarities = x.dot(X.T)>>> reply = df.loc[cosine_similarities.argmax()]
+That took a long time (more than a minute on my MacBook). And you didn’t even
+compute a confidence value or get a list of  possible replies that you might be able to
+combine with other metrics. 
+12.4.3 A search-based chatbot
+What if the patterns you wanted to match were the exact things people have said inprevious conversations? That’s what a sear ch-based chatbot (or retrieval-based chat-
+bot) does. A search-based chatbot indexes a dial og corpus so that it  can easily retrieve
+previous statements similar to the one it’s being asked to reply to. It can then replyListing 12.14 ch12_retrieval.py
+Listing 12.15 ch12_retrieval.py
+Listing 12.16 ch12_retrieval.pyNotice you only need to compute the 
+statement (not reply) TF-IDFs, because 
+those are the things you want to search.
+ 
+
+390 CHAPTER  12 Getting chatty (dialog engines)
+with one of the replies associated with that  statement in the corpus that it has “memo-
+rized” and indexed for quick retrieval.
+ If you’d like to quickly get going with a search-based chatbot, ChatterBot by Gun-
+ther Cox is a pretty good framework to cut your teeth on. It’s easy to install (just pip
+install ChatterBot ), and it comes with several co nversation corpora that you can
+use to “train” your chatbot to carry on ba sic conversations. Ch atterBot has corpora
+that allow it to talk about th ings such as sports trivia, wax philosophical about AI sen-
+tience, or just shoot the breeze with smal l talk. ChatterBot can be “trained” on any
+conversation sequence (dialog corpus). Don’ t think of this as machine learning train-
+ing, but rather just indexing a set of documents for search.
+ By default ChatterBot will use both hu mans’ statements as material for its own
+statements during training. If you want to be more precise with the personality of your
+chatbot, you’ll need to create your own corpus in the ChatterBot “.yml” format. T oensure that only one personality is mimicked  by your bot, make sure your corpus con-
+tains conversations of only two statements each, one prompt and one reply; the reply
+being from the personality you want to imitat e. Incidentally, this format is similar to
+the AIML format, which has a pattern (the prompting 
+statement  in ChatterBot) and
+a template (the response  in ChatterBot).
+ Of course, a search-based ch atbot built this way is quit e limited. It’s never going to
+come up with new statements. And the more data you have, the harder it is to bruteforce the search of all the previous statements. So the smarter and more refined yourbot is, the slower it’ll be. This architectu re doesn’t scale well. Nonetheless, we show
+you some advanced techniques for scalin g any search or index-based chatbot with
+indexing tools such as locality sensitive hashes (
+pip install  lshash3 ) and approxi-
+mate near neighbors ( pip install  annoy ).
+ Out of the box, ChatterBot uses SQLite as  its database, which highlights these scal-
+ing issues as soon as you exceed about 10k st atements in your corpus. If you try to train
+a SQLite-based ChatterBot on the Ubuntu Di alog Corpus you’ll be waiting around for
+days… literally. It took me more than a day on a MacBook to ingest only 100k statement-
+response pairs. Nonetheless, this ChatterBot code is quite useful for downloading and
+processing this motherlode of technical di alog about Ubuntu. Chat terBot takes care of
+all the bookkeeping for you, downloading an d decompressing the tarball automatically
+before walking the “leafy” file system tree to retrieve each conversation.
+ How ChatterBot’s “training” data (actually just a dialog corpus) is stored in a rela-
+tional database is shown in the following listing.
+sqlite> .tables
+conversation response tagconversation_association statement tag_association
+sqlite> .width 5 25 10 5 40
+sqlite> .mode columnsListing 12.17 ch12_chatterbot.sql
+ 
+
+391 Generative models
+sqlite> .mode column
+sqlite> .headers on
+sqlite> SELECT id, text, occur FROM response LIMIT 9;id text occur statement_text
+----- ------------------- ----- ----------------------------------------
+1 What is AI? 2 Artificial Intelligence is the branch of2 What is AI? 2 AI is the field of science which concern
+3 Are you sentient? 2 Sort of.
+4 Are you sentient? 2 By the strictest dictionary definition o5 Are you sentient? 2 Even though I'm a construct I do have a
+6 Are you sapient? 2 In all probability, I am not. I'm not t
+7 Are you sapient? 2 Do you think I am?8 Are you sapient? 2 How would you feel about me if I told yo
+9 Are you sapient? 24 No.
+Notice that some statements have many di fferent replies associated with them, which
+allows the chatbot to choose among the possible replies based on mood, context, orrandom chance. ChatterBot just chooses a response at random, but yours could be
+more sophisticated if you inco rporate some other objective or loss function or heuris-
+tic to influence the choice. Also, notice that the 
+created_at  dates are all the same.
+T h a t  h a p p e n s  t o  b e  t h e  d a t e  w h e n  w e  r a n the ChatterBot “training” script, which
+downloaded the dialog corpora and loaded them into the database.
+ Search-based chatbots can also be impr oved by reducing the statement strings
+down to topic vectors of fixed dimensio nality, using something such as Word2vec
+(summing all the word vectors for a short st atement), or Doc2vec (chapter 6) or LSA
+(chapter 4). Dimension reduction will help  your bot generalize from the examples
+you train it with. This helps it respond ap propriately when the meaning of the query
+statement (the most recent st atement by your bot’s conversa tion partner) is similar in
+meaning to one of your corpus statements, ev en if it uses different words. This will
+work even if the spelling or characters in st atements are very different. Essentially, this
+semantic search-based chatbo t is automating the programming of the templates you
+programmed in AIML earlier in this chapte r. This dimension re duction also makes
+search-based chatbots smarter using machin e learning (data-dr iven) than would be
+possible with a hardcoded approach to ma chine intelligence. Machine learning is
+preferable to hardcoding whenever you have a lot of labeled data, and not a lot oftime (to code up intricate logic and patter ns to trigger responses). For search-based
+chatbots, the only “label” needed is an ex ample response for each example statement
+in the dialog. 
+12.5 Generative models
+We promised a generative model in this ch apter. But if you recall the sequence-to-
+sequence models you built in  chapter 10, you may recognize them as generative chat-
+bots. They’re machine learning translation algorithms that “translate” statements by
+your user into replies by your chatbot. So we don’t go into generative models in any
+more detail here, but know that many more kinds of generative models are out there.
+ 
+
+392 CHAPTER  12 Getting chatty (dialog engines)
+If you want to build a creative chatbot that says things that have never been said
+before, generative models such as these may be what you need:
+Sequence-to-sequence —Sequence models trained to  generate replies based on
+their input sequences 39
+Restricted Boltzmann machines (RBMs) —Markov chains trai ned to minimize an
+“energy” function 40
+Generative adversarial networks (GANs) —Statistical models trained to fool a
+“judge” of good conversation 41
+We talked about attention ne tworks (enhanced LSTMs) in  chapter 10, and we showed
+the kinds of novel statements your chatbot  can spontaneously generate. In the next
+section, we take that appr oach in another direction.
+12.5.1 Chat about NLPIA
+Finally, the moment you’ve been waiting for… a chatbot that can help write a book
+about NLP. We’ve finally written (and you’ve read) enough text for the chatbot tohave some seed material to work with. In th is section, we show you how to use transfer
+learning to build a generative NLP pipeli ne to produce some of the sentences you
+may have already skimmed ri ght by without noticing.
+ Why transfer learning? In addition to so me seed text about the specific topic you
+want your chatbot to understand, generative  models need an even bigger corpus of
+more general text to learn a language mode l from. Your chatbot needs to be able to
+do a lot of reading before it can recognize all the ways words are put together to formgrammatically correct and meaningful sent ences. And that corpus has to be seg-
+mented into grammatically correct sentence s. So the project Gutenberg corpus isn’t
+the ideal place for this model.
+ Think of how many books you had to read as a child before you built a decent
+vocabulary and a sense for the correct way to  put words together into sentences. And
+your teachers probably gave you a lot of clue s, like context, whil e you were practicing
+that reading.
+42 Plus, humans are much better than machines at learning.43
+ This data-intensive language model lear ning is a particularly big challenge for
+character-based models. In character sequen ce language models, your chatbot needs
+to learn how to put characters together to form properly spelled and meaningful
+39Explanation of sequence-to-sequence models and links to several papers: https:/ /suriyadeepan.github.io/
+2016-06-28-easy-seq2seq/ .
+40Hinton lecture at Coursera: https:/ /youtu.be/EZOpZzUKl48 .
+41Ian Goodfellow’s GAN tutorial, NIPS 2016: https:/ /arxiv.org /pdf/1701.00160.pdf  and Lantau Yu’s adapta-
+tion to text sequences: https:/ /arxiv.org/pdf/1609.05473.pdf .
+42“On the role of context in first- and second-language vocabulary learning” ( https:/ /www.ideals.illinois.edu/
+bitstream/handle/2142/31277/TR-627.pdf ).
+43See “One-shot and Few-shot Learning of Word Embeddings” ( https:/ /openreview.net/pdf?id=rkYgAJWCZ )
+and “One-shot learning by inverting a compositional causal process” ( http:/ /www.cs.toronto.edu/~rsalakhu/
+papers/lake_nips2013.pdf ).
+ 
+
+393 Generative models
+words, in addition to learning how to put those new words together to make sen-
+tences. So you’ll want to reuse an existing  language model trained on a large body of
+text in the language and style you’d like to  imitate with your bot. If you think about
+this for a moment, you can probably see why data limitations have limited how far cur-
+rent NLP researchers have been able to cl imb up the complexity  curve from charac-
+ters to words to sentences. Composing pa ragraphs, chapters, and novels is still an
+active area of research. So we stop our climb there and show you how to generate a
+few sentences like those generated for the “about this book” front matter for NLPIA.
+ The DeepMind folks have provided TensorFlow char acter sequence-to-sequence
+language models pretrained on more than  500MB of sentences from CNN and Daily
+Mail news feeds.44 And if you want to build your own language model, they’ve pro-
+vided all the sentences in two large datasets  as part of their “reading comprehension”
+(Q&A) challenge.45 We reused the pretrained text summarization model directly to
+generate sentences for the “about this book” NLPIA front matter. You can also use
+these models to augment your own machine learning pipeline with an approach
+called “transfer learning,” like we did with word vectors in Chapter 6.
+ Here’s the algorithm:
+1Download a pretrained sequence-to- sequence text summarization model
+(https:/ /github.com/total good/pointer-generator#looking-for-pretrained-
+model ).
+2Parse and segment asciidoc text to ex tract natural language sentences with
+nlpia.book_parser ( https:/ /github.com/totalgood/nlpia/blob/master/src/
+nlpia/.py ).
+3Use the text summarization model to summ arize the first 30 or so lines of text
+in each asciidoc file (typically a chapter): https:/ /github.com/totalgood/nlpia/
+blob/master/src/nlpia/book/examp les/ch12_chat_about_nlpia.py .
+4Filter the generated sentences for novelty to avoid regurgitation of existing sen-
+tences from the book: https:/ /github.com/totalgood/nlpia/blob/master/src/
+nlpia/book_parser.py .
+Here are the only two well-formed and ma rginally original sentences that our
+@ChattyAboutNLPIA bot came up with. This  is @Chatty’s attempt to summarize the
+first 30 lines of chapter 5:
+Convolutional neural nets make an attemp t to capture that ordering relationship by
+capturing localize d relationships.
+44Pretrained TensorFlow text  summarization model: TextSum from Google Brain ( https:/ /github.com/total-
+good/pointer-generator#looking-for-pretrained-model ) and a paper describing the model https:/ /arxiv.org/
+abs/1704.04368 .
+45The dataset includes reading comprehension questions and answers as well as the sentences from news arti-
+cles that you need to answer thos e questions: DeepMind Q&A Dataset ( https:/ /cs.nyu.edu/%7Ekcho/
+DMQA/ ).
+ 
+
+394 CHAPTER  12 Getting chatty (dialog engines)
+This is @Chatty’s summary of chapter 8:
+Language’s true power is not necessarily in the words, but in the intent and emotion
+that formed that particular combination of words.
+These sentences were among the 25 outputs ( https:/ /github.com/totalgood/nlpia/
+blob/master/src/nlpia/d ata/nlpia_summaries.md ) for this hacky pipeline. In the
+coming months, we’ll modify the pipeline  in nlpia.book.examples.ch12_chat_about
+_nlpia to provide more useful results. On e enhancement will be to process the entire
+book with TextSum so it has mo re material to work with. We ’ll also need to apply some
+more filtering:
+1Filter the generated sent ences for well-formedness.46
+2Filter generated sentences for yo ur style and sentiment objectives.
+3Automatically detokenize and unfold case (capitalization), if necessary. 
+12.5.2 Pros and cons of each approach
+Now that you know all about the four ma jor chatbot approaches, can you think how
+you might combine them to get the best out of your bot? Figure 12.3 lists the advan-
+tages and disadvantages of each approach.
+ 
+Figure 12.3 Advantages and disadvantages of four chatbot approaches
+46Thank you Kyle Gorman @wellformedness ( https:/ /twitter.com/wellformedness ) for your 100+ suggestions
+and bits of clever content for this book. See also https:/ /en.wikipedia.org/wiki/Well-formedness .Approach
+Grammar
+Grounding
+GenerativeRetrievalAdvantages
+Answers logical questions well
+Easily controlled/restrained
+Simple
+Easy to “train”
+Can mimic human dialog
+New, creative ways of talking
+Less human effortDomain limited only by dataContext awareEasy to get started
+Training easy to reuse
+Modular
+Easily controlled/restrainedDisadvantages
+Sounds artificial, mechanical
+Difficulty with ambiguityDifficulty with common senseLimited by structured dataRequires large scale information extractionRequires human curation
+Difficult to scale
+Incoherent personality
+Ignorant of context
+Can’t answer factual questions
+Difficult to “steer”
+Difficult to trainRequires more data (dialog)Requires more processing to trainLimited “domain”
+Capability limited by human effort
+Difficult to debug
+Rigid, brittle rules
+ 
+
+395 Four-wheel drive
+12.6 Four-wheel drive
+As we promised at the beginni ng of this chapter, we now show you how to combine all
+four approaches to get tracti on with your users. To do this, you need a modern chat-
+bot framework that’s easy to extend and modify and can efficiently run each of these
+algorithm types in parallel.47 You’re going to add a response generator for each of the
+four approaches using the Python examples  from earlier in th e chapter. And then
+you’re going to add the logic to decide what to say by choosing one of the four (or
+many) responses. You’re going to have your  chatbot think before it speaks, say things
+several different ways to itself first, and rank or merge some of  these alternatives to
+produce a response. And maybe you can even try to be prosocial with your replies by
+checking their sentiment before  “hitting the send button.”
+12.6.1 The Will to succeed
+Will is a modern programmer-friendly chatbo t framework by Steven Skoczen that can
+participate in your HipChat and Sl ack channels as well as others.48 Python developers
+will enjoy the modular architecture. Howe ver it’s pretty heavyweight in terms of
+requirements and installation. Fortunately, it comes with a Dockerized container you
+can use to spin up your own chatbot server.
+ Will uses regular expressions to make ma tches. Python itself can be used for any
+logical conditions you need to evaluate. And the jinja2 library is used for templating.
+Each one of these portions of the pipeline add versatility and flexibility to the kinds of
+behaviors you can build into yo ur chatbot. As a result, Will is much more flexible than
+AIML-based frameworks. But Will still suffers from the same limitations that hold back
+all pattern-based chatbots (including AIML )--it can’t learn from data; it must be
+“taught” by the developer writing code for each and every branch in the logic tree.
+INSTALLING  WILL
+The installation documentation for Will has a couple small gaps. By the time this goes
+to print, we hope to have them fixed, so you can likely just read the high-quality docs.49
+On Mac OS X, you can install and launch a redis server () brew  install  redis . 
+HELLO WILL
+Heres’s what a conversation with an untraine d Will looks like, if you ignore the trace-
+backs about port 80 permissions, or you can figure out how to avoid these errors:
+You: Hey
+Will: hello!
+You: What's up?
+Will: I heard you, but I'm not sure what to do.You: How are you?
+47We’re building an open source chatbot framework at Aira called aichat  to help our users and their friends
+contribute “content” to our library of dialog to help  and entertain people with blindness and low vision:
+ http:/ /github.com/aira/aichat .
+48GitHub Repository: https:/ /github.com/skoczen/will .
+49Will documentation: http:/ /skoczen.github.io/will/ .
+ 
+
+396 CHAPTER  12 Getting chatty (dialog engines)
+Will: Doing alright. How are you?
+You: What are you?
+Will: Hmm. I'm not sure what to say.You: Are you a bot?
+Will: I didn't understand that.
+As you can see, out of the box, Will is polite but doesn’t understand much. You can eas-
+ily change Will for Rosa (or any other na me). And you can use your natural language
+processing skills to beef up  some of his patterns and expand his literary power. 
+12.7 Design process
+To create a useful app, product managers and developers compose user stories. A user
+story describes a sequence of actions performe d by a user in interacting with your app
+and how your app should respond. These ca n be imagined based on similar experi-
+ences in the real world with similar products , or they can be translated from user fea-
+ture requests or feedback. Software features  are tied to a user story to improve the
+likelihood that the development effort is focused on something that’ll add usefulness
+to your product.
+ User stories for a chatbot can often be  composed as statements (text messages)
+that a user might communicate to the bot. Those user statements are then paired with
+the appropriate response or action by the ch atbot or virtual assist ant. For a retrieval-
+based chatbot, this table of user stories is all that’s required to “train” a chatbot for
+these particular response s and stories. It’s up to you, th e developer, to identify stories
+that can be generalized so that your desi gn team doesn’t have to specify everything
+your bot must understand and all the differ ent things it can say. Can you tell which of
+the four chatbot techniques would be ap propriate for each of these questions?
+“Hello!” => “Hello!”
+“Hi” => “Hi!”
+“How are you?” => “I’m fine. How are you?”
+“How are you?” => “I’m a stateless bot, so I don’t ha ve an emotional state.”
+“Who won the 2016 World Series?” => “Chicago Cubs”
+“Who won the 2016 World Series?” => “T he Chicago Cubs beat the Cleveland
+Indians 4 to 3”
+“What time is it” => “2:55 pm”
+“When is my next appointment?” => “At 3 pm you have a meeting with the sub-
+ject 'Springboard call'”
+“When is my next appointment?” => “At 3 pm you need to help Les with her
+Data Science course on Springboard”
+“Who is the President? ” => “Sauli Niinistö”
+“Who is the Presiden t?” => “Barack Obama”
+Several valid responses may be  possible for any given statement, even for the exact same
+user and context. And it’s also common fo r multiple different pr ompting statements to
+ 
+
+397 Design process
+elicit the same exact chatbot response (or set of possible responses). The many-to-many
+mapping between statements and responses wo rks both ways, just as it does for human
+dialog. So the number of po ssible combinations of valid statement => response  mappings
+can be enormous—seemingly infi nite (but technically finite).
+ And you must also expand the combinatio ns of statement-response pairs in your
+user stories using named variables for context elements that change often:
+Date
+Time
+Location: country, state, county, an d city, or latitude and longitude
+Locale: US or Finland formatting for date, time, currency, and numbers
+Interface type: mobile or laptop
+Interface modality: voice or text
+Previous interactions: whether user asked for details about baseball stats
+recently
+Streaming audio, video, and sensor da ta from a mobile device (Aira.io)
+IBM Watson and Amazon Lex chatbot APIs rely  on knowledge bases that aren’t easy to
+evolve quickly and keep up-to -speed with these evolving context variables. The “write
+rate” for these databases of knowledge are t oo slow to handle many of these evolving
+facts about the world that the chatbot  and the user are interacting with.
+ The list of possible user st ories for even the simplest of chatbots is technically
+finite, but it’s quite large for even the si mplest real-world chatbot. One way to deal
+with this explosion of combinations is to combine many user interactions into a single
+pattern or template. For the statement side of the mapping, this template approach is
+equivalent to creating a regular expression  (or finite state machine) to represent
+some group of statements th at should cause a particular pattern response. For the
+response side of the mapping, th is approach is equivalent to Jinja2  or Django  or
+Python  f-string templates. 
+ Thinking back to your first chatbot in  chapter 1, we can represent statement =>
+response mappings that map re gular expressions for the statement to a Python f-string
+for the response:
+>>> pattern_response = {
+... r"[Hh]ello|[Hh]i[!]*":
+... r"Hello {user_nickname}, would you like to play a game?",
+... r"[Hh]ow[\s]*('s|are|'re)?[\s]*[Yy]ou([\s]*doin['g]?)?":... r"I'm {bot_mood}, how are you?",
+... }
+But this doesn’t allow for complex logic. And it requires hand coding rather than
+machine learning. So each mapping doesn’t capture a broad range of statements and
+responses. You’d like a machin e learning model to be able  to handle a wide range of
+sports questions, or help a user manage their calendar.
+ 
+
+398 CHAPTER  12 Getting chatty (dialog engines)
+IMPORTANT Don’t change those raw string templates to f-strings with f" or
+they’ll be rendered at the time of instantiation. Your bot may not know
+much about the world at the time you create the pattern_response
+dictionary.
+Here are some example chatbot user stories that don’t lend themselves well to the
+template approach:
+“Where is my home” => “Your home is 5 minutes away by foot, would you like
+directions?”
+“Where am I” => “You are in SW Portla nd near Goose Hollow Inn” or “You are
+at 2004 SW Jefferson Street”
+“Who is the President?” => “Sauli Niinis tö” or “Barack Obama” or “What coun-
+try or company …”
+“Who won the 2016 World Series?” => “Chicago Cubs” or “The Chicago Cubsbeat the Cleveland Indians 4 to 3”
+“What time is it” => “2:55 pm” or “2:55 pm, time for your meeting with Joe” or …
+And here are some general IQ test questions that are too specific to warrant a pattern-
+response pair for each variation. A knowledge base is usually the answer for generalintelligence questions. None theless, that’s probably how the Mitsuku chatbot was able
+to get close to the right answer in a recent test by Byron Reese:
+“Which is larger, a nickel or a dime?” => “Physically or monetarily?” or “A nickel
+is physically larger and heavier but less valuable monetarily.”
+“Which is larger, the Sun or a nickel?” => “The Sun, obviously.”50
+“What’s a good strategy at Monopoly?” => “Buy everything you can, and get lucky.”
+“How should I navigate a corn-row maze?” => “Keep your hand against one wall
+of corn and follow it until it be comes an outside wall of the maze.”
+“Where does sea glass co me from?” => “Garbage… fortunately the polishing of
+sand and time can someti mes turn human refuse, like broken bottles, into
+beautiful gemstones.”
+Even though these cannot be easily translat e d  d i r e c t l y  i n t o  c o d e ,  t h e y  d o  t r a n s l a t e
+directly into an automated test set for your NLP pipeline. Tests like these can be usedto evaluate a new chatbot approach or feat ure or just to trac k progress over time.
+51 If
+you can think of some more chatbot IQ qu estions, add them to the growing list at
+nlpia/data/iq_test.csv  (https:/ /github.com/totalgo od/nlpia/blob/master/src
+/nlpia/data/iq_test.csv ). And certainly include them in automated testing of your
+own chatbot. You never know when your bot is going to surprise you. 
+50Byron Reese, “AI Minute” podcast.
+512017 Andrew Ng lecture to Stan ford Business School students: https:/ /youtu.be/21EiKfQYZXc?t=48m6s .
+ 
+
+399 Trickery
+12.8 Trickery
+You’ll want to have a few specific tricks up your sleeve when building a chatbot. These
+tricks will help you ensure that your chatbot doesn’t go off the rails too often.
+12.8.1 Ask questions with predictable answers
+When asked a question that you don’t know  the answer to, the chatbot can respond
+with a clarifying question. And if this clarif ying question is well  within the knowledge
+domain or personality profile of the chatbot,  it’s possible to predict the form of the
+answer that a human would make. Then the chatbot can use the user’s response toregain control of the conversation and steer it back toward topics that it knows some-
+thing about. To avoid frustration, try to make the clarifying question humorous, or
+positive and flattering, or in some way pleasing to the user:
+Human: "Where were you born?"
+Sports Bot: "I don't know, but how about those Mets?"
+Therapist Bot: "I don't know, but are you close to your mother?"
+Ubuntu Assistant Bot: "I don't know, but how do you shut down your Ubuntu PC
+at night?"
+You can often use semantic search to find qu estion-answer pairs, jo kes, or interesting
+trivia in the chatbot’s knowledge base that ar e at least tangentially related to what the
+user is asking about. 
+12.8.2 Be entertaining
+Sometimes your generative proc ess may take too long to converge to a high-quality mes-
+sage. And your chatbot may not fi nd a reasonable clarifying qu estion to ask. In that sit-
+uation your chatbot has two choices: 1. admi t ignorance, or 2. make up a non sequitur.
+ A non sequitur is a statement that has nothing to do with what the user asked
+about. Such statements are generally cons idered antisoci al, and sometimes manipula-
+tive. Honesty is the best policy for your prosocial chatbot. And the more open youare, the more likely you are to build trust with your user. Your user might enjoy learn-ing a bit about the “core” of your chatbot if  you reveal the size of your database of
+responses or actions you can handle. You can also sh are some of the garbled res-
+ponses that didn’t make it through your grammar and style checker. The more honest
+you are the more likely the user is to be kind in return and try to help your chatbotget back on track. Cole Howard found that  users would often coax his MNIST-trained
+handwriting recognizer toward the right an swer by redrawing the digits in a more
+clear way.
+ So for a commercial chatbot, you may want this useless response to be sensational,
+distracting, flattering, or humorous. And you’ ll probably also want to ensure that your
+responses are randomly selected in a way that a human would consider random. For
+ 
+
+400 CHAPTER  12 Getting chatty (dialog engines)
+example, don’t repeat yourself very often.52 And use varying sentence structure, form,
+and style over time. That way you can moni tor your customers’ responses and measure
+their sentiment to determine which of your  non sequiturs were the least annoying. 
+12.8.3 When all else fails, search
+If your bot can’t think of anything to say, tr y acting like a search engine or search bar.
+Search for webpages or internal database records that might be relevant to any ques-
+tion you might receive. But be sure to ask the user whether the page titles might helpthe user before spitting out all the inform ation they contain. Stack Overflow, Wikipe-
+dia, and Wolfram Alpha are good resource s at the ready for many bots (because
+Google does that and users expect it). 
+12.8.4 Being popular
+If you have a few jokes or links to resource s or responses that ar e favorably received by
+your audience, in general, then respond with  those rather than the best match for the
+question asked, especially if the match is  low. And these jokes or resources may help
+bring your human back into a conversation pa th that you’re familiar with and have a
+lot of training set data for. 
+12.8.5 Be a connector
+Chatbots that can be the hub of a social network will quickly be appreciated by their
+users. Introduce the human to other humans on the chat forum or people who’ve
+written about things the user has written ab out. Or point the user to a blog post,
+meme, chat channel, or other website that’s relevant to something they might be
+interested in. A good bot will have a handy list of popular links to hand out when the
+conversation starts to get repetitive.
+ Bot: You might like to meet @SuzyQ, sh e’s asked that question a lot lately. She
+might be able to help you figure it out. 
+12.8.6 Getting emotional
+Google’s Inbox email responder is similar to the conversational chatbot problem we
+want to solve. The auto-respo nder must suggest a reply to the emails you receive based
+on their semantic content. But a long chai n of replies is less likely for an email
+exchange. And the prompting text is gene rally much longer for an email auto-
+responder than it is for a conversation al chatbot. Nonethele ss, the problems both
+involve generating text replies to incoming  text prompts. So many of the techniques
+for one may be applicable to the other.
+ Even though Google had access to billion s of emails, the paired replies in the
+Gmail Inbox “Smart Reply” feature tend to  funnel you toward short, generic, bland
+52Humans underestimate the number of repetitions there should be in a random sequence: https:/ /mindmod-
+eling.org/cogsci2014/papers/530/paper530.pdf .
+ 
+
+401 In the real world
+replies. A semantic search approach is li kely to produce relatively generic, bland
+replies if you’re trying to maximize corre ctness for the average email user. The aver-
+age reply isn’t likely to have much person ality or emotion. So Google tapped an
+unlikely corpus to add a bit of emotion to  their suggested rep lies… romance novels.
+ It turns out that romance novels tend to follow predictable plots and have sappy
+dialog that can be easily dissected and imit ated. And it contains a lot of emotion. Now
+I’m not sure how Google gleaned phrases like “That’s awesome! Count me in!” or
+“How cool! I’ll be there.” from  romance novels, but they claim that’s the source of the
+emotional exclamations that they suggest with Smart Reply. 
+12.9 In the real world
+The hybrid chatbot you’ve assembled here ha s the flexibility to be used for the most
+common real-world applications. In fact, you’ ve probably interacted with such a chat-
+bot sometime this week:
+Customer service assistants
+Sales assistants
+Marketing (spam) bots
+Toy or companion bots
+Video game AI
+Mobile assistants
+Home automation assistants
+Visual interpreters
+Therapist bots
+Automated email reply suggestions
+And you’re likely to run across chatbots like the ones you built in this chapter more and
+more. User interfaces are migrating away fr om designs constrained by the rigid logic
+and data structures of machines. More an d more machines are being taught how to
+interact with us in natural, fluid conversation. The “voice first” design pattern is becom-ing more popular as chatbots  become more useful and less frustrating. And these dia-
+log system approaches promise a richer and more complex user experience than
+clicking buttons and swiping left. And with chatbots interacting with us behind the cur-
+tains, they are becoming more deeply embedded in the collective consciousness.
+ So now you’ve learned all about buildi ng chatbots for fun and for profit. And
+you’ve learned how to combine generative  dialog models, semantic search, pattern
+matching, and information extraction (kno wledge bases) to pr oduce a chatbot that
+sounds surprising ly intelligent.
+ You’ve mastered all the key NLP componen ts of an intelligent chatbot. Your only
+remaining challenge is to give it a person ality of your own design. And then you’ll
+probably want to “scale it up” so it can co ntinue to learn, long after you’ve exhausted
+the RAM, hard drive, and CPU in your lapt op. And we show you how to do that in
+chapter 13.
+ 
+
+402 CHAPTER  12 Getting chatty (dialog engines)
+Summary
+By combining multiple proven approaches, you can build an intelligent dialog
+engine.
+Breaking “ties” between the replies generated by the four main chatbot
+approaches is one key to intelligence.
+You can teach machines a lifetime of knowledge without spending a lifetime
+programming them.
+ 
+

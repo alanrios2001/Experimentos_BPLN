@@ -1,0 +1,499 @@
+17
+Statistical Machine
+Translation
+Abraham Ittycheriah
+IBMCorporation17.1 Introduction ..........................................................40917.2 Approaches ...........................................................41017.3 LanguageModels.....................................................41117.4 ParallelCorpora ......................................................41217.5 WordAlignment .....................................................41217.6 PhraseLibrary ........................................................41317.7 TranslationModels ..................................................413
+IBMModels •Phrase-BasedSystems •Syntax-BasedSystemsforMachine
+Translation •DirectTranslationModels
+17.8 SearchStrategies......................................................41917.9 ResearchAreas........................................................420Acknowledgment ...........................................................420References....................................................................421
+17.1 Introduction
+Human languages have evolved over a signiﬁcant period of time and although initially in our journeyas a species it may have been suﬃcient to know the local language (“mother tongue”) and perhaps thelanguageofneighboringpeoples,currenttrendsdictatethatweareabletoprocessmaterialproducedinmany languages. The Web and global access allows for access of content; however, comprehending thecontentrequiresamultilingualpersonorforthemajorityofpeople, anautomatedwayofrenderingthecontentintotheuser’spreferredlanguageisrequired.MachineTranslation(MT)technologyfulﬁllsthisrequirement.Statisticaltechniques(Brownetal.,1993)forMTarenowpervasive.
+Statistical machine translation (SMT) takes a source sequence, S=[s
+1s2...sK], and generates a
+targetsequence, T∗=[t1t2...tL],byﬁndingthemostlikelytranslationgivenby
+T∗=argmax
+T∈Tp(T|S). (17.1)
+SMTisthenconcernedwithmakingmodelsfor p(T|S)andsubsequentlysearchingthespaceofalltarget
+strings to ﬁnd the optimal string given the source and the model. This approach shares much withspeech recognition. Both are sequence prediction problems and many of the tools developed for speech
+409
+
+410 HandbookofNaturalLanguageProcessing
+Source Target
+Syntactic transferSemantic
+transfer
+Lexical transferInterlingua
+FIGURE 17.1 Machine transla-
+tiontransferpyramid.recognitioncanbeappliedinSMTalso.InbuildingMTmodels,there
+aretwomajorproblemsthatneedtobeaddressed:
+•Word Order: Translation is normally done at the sentence-
+level∗anditmightverywellbethatthelasttokeninthesource
+sentence is the key informant to the ﬁrst token in the target
+sentence.
+•Word Choice: Each source token can be represented in the
+targetlanguageinavarietyofways.
+These two problems are not independent and the order in which we
+translatethesourcetokensdirectlyaﬀectswhichwordsmightbeused
+in the output sentence. As an example from an Arabic–English MT
+test(NIST,2003),
+Arabic:EzpAbrAhymystqblms&wlAAqtSAdyAsEwdyAfybgdAd
+English1:IzzetIbrahimMeetsSaudiTradeOﬃcialinBaghdad
+English2:IzzatIbrahimWelcomesaSaudiEconomicOﬃcialtoBaghdad
+English3:ASaudiArabianEconomicOﬃcialiswelcomedbyIzzatIbrahimtoBaghdad
+WhiletheﬁrsttwotranslationsinEnglishareoﬃcialtranslations,thelastoneisrewrittenasanexample;
+here, the Romanized Arabic word “ystqbl” gives rise to the passive construction “is welcomed by.” All
+threereferencesessentiallycapturethemeaningofthesentenceinArabicandtheorderofthetranslation
+leadstodiﬀerentchoicesforthetargetwords.
+MachineTranslationcanbeviewedastakingthesourcesequence Sandperformingincreasingamounts
+of analysis as suggested by the pyramid (Vauquois, 1968) shown in Figure 17.1. At the base of the
+pyramid, words can be transferred from the source to target language. As we go up the pyramid, the
+level of sophistication increases and at the very top, we have some representation of the meaning and
+themeaningcanbecastaswordsineitherlanguage.Inthischapter,wedealonlywiththeﬁrstfewsteps
+and the focus will be how to represent some of the higher level analysis as features in our translation
+systems.
+17.2 Approaches
+WarrenWeaver’smemorandum(Weaver,1955)clearlyinitiatedideasinthestatisticalapproachtoMT;
+however, itwasthepioneeringworkoftheIBMgroup(Brownetal., 1993)intheearly1990sthatledto
+the renewed and sustained interest in the statistical approach to MT. While initial eﬀorts in SMT were
+mostlyword-based,asofthewritingofthischapteralmostallapproachesusephrasesastheirbasicunit
+oftranslation.InAddition,naturallanguageparsershavebeendevelopedandthishasledtobothSyntax-
+andHierarchical-basedapproaches.
+TheearlymeasuresofMTincluded‘Adequacy’and‘Fluency’andtheseutilizedhumanevaluatorsand
+maybedeﬁnedasfollows.
+Adequacy . Does the translation capture an adequate amount of the meaning of the sentence in
+thesourcelanguage?
+Fluency.IsthetranslationﬂuentinEnglish?
+AmoredetailedanalysisoftheevaluationofMTcanbefoundinHovy(1999).Theﬁrstautomaticmetric
+to be adopted widely is BLEU (Papineni et al., 2002), which provides a score that correlates well with
+∗Document-level and more general features are being investigated, but have not been susccessfully applied to machine
+translation yet.
+
+StatisticalMachineTranslation 411
+these two measures. For a test set, a few references are developed by asking independent translators toprovide translations. BLEU then computes the precision of various length strings and the ﬁnal score isweightedsumwithapenaltyifthesystemproducesaveryshorttranslation.Thispenaltyactsasameasureof the recall of a system. BLEU revolutionized the rate of progress of statistical systems since it madepossible to run many evaluations automatically. The list of MT metrics utilized currently is quite longandentireconferencesandworkshopsarededicatedtoﬁndingbettermetrics;themajoralternativesarenow: (a) Translation Error Rate (TER) (Snover et al., 2006), (b) METEOR (Banerjee and Lavie, 2005).Most major MT evaluations in addition to automatic methods, utilize human editors to edit the systemoutputsandcomputeTERofthesystemoutputrelativetotheeditedstring,whichistermedHuman-TERorHTER.Forthepurposeofthischapter,automaticmethodsofmeasuringMTperformancegivesustheabilitytoevaluatevariousfeaturesandpresentobjectiveresultswithoutworryingaboutagreementratesofhumans.Theproblemofhumanagreementhasbeenshiftedtothesetofreferencesthataredevelopedfor a set of documents and each test system can then be evaluated objectively since the set of referencesarecommontoallsystems.
+InBrownetal.(1993),Equation17.1isexpandedbyapplyingBayesRuleandstatedastheFundamental
+TheoremofMT:
+T
+∗=argmax
+T∈Tp(T|S)=argmax
+T∈Tp(S|T)p(T). (17.2)
+The motivation presented in Brown et al. (1993) was that the Sat decoding time was observed and thus
+well-formed.Thisformulationallowedadecompositionintoatranslationmodel, p(S|T),andalanguage
+model,p(T).Morerecenteﬀortsutilizealog-linearapproachandmodeldirectly p(T|S):
+p(T|S)=1
+Z(S,T)e∑
+iλiφi(S,T)(17.3)
+where
+φiareasetoffeaturefunctionscomputedoverthistranslation
+Zisthenormalizingconstant
+Theλiare computed by a minimum error-rate training (Och and Ney, 2003) in systems with a few
+features. These features (see (Och et al., 2004) for a more complete list of features) include a languagemodel, phrase unigram probability, Model 1 scores, etc. Note that Equation 17.2 is a just special caseof Equation 17.3. These features are functions of the source sequence and the target sequence in thetranslation units and their context. State-of-the-art systems now employ millions of features (binaryindicatorfunctions)trainedutilizingmachinelearningmethods.
+17.3 Language Models
+MonolingualdatacollectedfromtheInternetandothersourcesareavailableofteninlargerquantitiesthanparalleldata.N-gramlanguagemodels(LM)trainedonsuchmonolingualdatacapturethepreferenceofwhichwordsfollowgivensomecontext.Forexample,inasentencelike“Itwasasunny_,”thereareveryfewwordsthatcanﬁllintheblank.IntermsoftheabovenotationforMT,theLMcomputes
+p(T)=
+|T|∏
+i=0p(ti|ti−1,ti−2,...) (17.4)
+
+412 HandbookofNaturalLanguageProcessing
+wheretiis the current word being generated. If the model is a trigram model, and we use a maximum
+likelihoodestimate,
+p(ti|ti−1,ti−2)=Ctiti−1ti−2
+Cti−1ti−2(17.5)
+where
+Cti−1ti−2isthecountofthebigram ti−1ti−2occurringinthemonolingualdata
+Ctiti−1ti−2thecountofthetri-gram titi−1ti−2
+Suchestimatesaretoosharpandaretypicallysmoothed(Chen,1998).InEnglish,theamountofdata
+utilizedinsuchmodelshasgrowntooveronetrillionwords(BrantsandFranz,2006).Thesemodelstend
+tobeveryimportantinMTsystemsbuttheyareinasensenottheessenceofthesubjectandwewillfocus
+onthetranslationmodelinwhatfollows.
+17.4 Parallel Corpora
+In previous chapters, methods have been presented to do sentence alignment and the output of such a
+process is a sentence aligned parallel corpus. For some language pairs in addition to the automatically
+aligned corpora, there are manually created translations of sentences. This type of data is often much
+better in quality and leads to better MT output though the cost is signiﬁcantly higher and therefore in
+limitedinquantity.
+17.5 Word Alignment
+Givena pairof sentences, word alignment produces a correspondence attheword level. Algorithms for
+wordalignmenthavebeendiscussedinpreviouschapters.AnexamplealignmentforanArabic–English
+sentence pair is shown in Figure 17.2 where the Arabic has been Romanized. In this example, English
+wordsarebeingalignedtotheirArabicinformants.TheArabicsentencehasbeensegmentedfollowingthe
+styleoftheArabicTreebank(availablefromtheLinguisticDataConsortiumasCatalogIdLDC2007E65).
+S
+VP
+NP SBJ NOUN
+NOUN DET
+DET
+DET NPPPNPNP NP NPNPNPNPNP
+OBJ
+ADV
+DETNOUN
+NOUNPOSS@PRON
+NOUN
+NOUNPREPNUM
+ADJ
+PUNCPVCONJ 1w #
+ftHt
+mrAkz
+AlAqtrAE
+AbwAb
++hA
+End
+AlsAEp
+$num_(00,06)
+b#
+Altwqyt
+AlmHly
+.extra
+g
+g
+g
+g
+g
+g
+g
+g
+extra
+g
+g
+g2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13the
+voting
+centers
+opened
+their
+doors
+at
+00,06
+local
+time
+.g
+g
+g
+g
+g
+g
+g
+g
+g
+g
+g1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+FIGURE17.2 Arabicparseexample.
+
+StatisticalMachineTranslation 413
+TABLE17.1 PhraseLibrary
+forExampleofFigure17.2
+SourcePhrase TargetPhrase
+w# e_0
+ftHt opened
+mrAkz theXcenters
+AlAqtrAE votingAbwAb doors
++hA their
+End at
+AlsAEp$num $numb# e_0
+AltwqytAlmHly localtime..The ﬁrst Arabic word, “w#,” has no English informant and is alignedto thenull-cept (we utilize the string “e_0” to represent the null-cept),
+whichisanimaginaryEnglishwordthatgivesrisetospontaneousArabicwords. Multi-word Arabic alignments, such as those at positions 8 and9, are done after the alignment process (Ge, 2004). The Arabic word,“mrAkz”isanexampleofasplitalignment.Numbersarereplacedbyaclasslabel(inourexample,weuse‘$num’).
+17.6 Phrase Library
+Once a sentence pair has been aligned at the word level, phrase pairscan be extracted and a simple set is shown in Table 17.1. Phrase pairsare extracted following the inverse projection constraint (Block, 2000), which enforces that regions arecontiguousinbothlanguages.Mostphrase-basedtranslationsystemswillalsoextractlongerphrasepairsin order to capture word-reorder. For example, in addition to the phrases shown in the Table 17.1,we could add the phrase for “AbwAb +hA” and the translation “their doors.” This allows a system to
+minimize the amount of reorder that is required in the search process to produce good translations.However, extracting such a phrase pair comes with the cost of estimating parameters for such phrasepairs. As the phrase size grows, the number of instances of such phrase pairs obeys Zipf’s Law (see, e.g.,(LeQuanHaetal.,2002)whoshowsthebehavioroflongern-grams).
+17.7 Translation Models
+In the original formulation of Brown et al. (1993), the source-channel model of Equation 17.2 has acomponent, p(s|t),whichinvolvesboththesourceandthetargetlanguagesandisnamedthe“translation”
+model.Wewillcontinuetousethisnamebutinterchangeablyforboththatdistributionaswellas, p(t|s).
+Aconditionalprobabilitymodelcanbeexpandedusingthenormalchainruleas,
+p(S|T)=p([s
+0s1...sk]|[t0t1...tl])
+=p(s0|[t0t1...tl])p(s1|s0,[t0t1...tl])...
+=k∏
+i=0p(
+si|si−1
+0,tl
+0)
+(17.6)
+where we have used the notation si−1
+0=[s0s1...si−1]. The form of the model in the last step
+seemstoindicatethatthesourceword, si,isdependentontheentiretargetsequence.Formostsentences
+inhumanlanguages,thisiscertainlynottrueandonlyafewofthetargetwordschangetheprobabilityofobserving the i-th source word. This is captured in the model by introducing an alignment between the
+elementsofthesequence(Brownetal.,1993)
+p(S|T)=∑
+A∈Ap(S,A|T)
+=∑
+A∈Ap(k|T)k∏
+i=0p(
+ai|ai−1
+1,si−1
+0,k,T)
+p(
+si|ai1,si−1
+1,k,T)
+(17.7)
+
+414 HandbookofNaturalLanguageProcessing
+where
+Aisthesetofallvalidalignmentconﬁgurations
+aiis an element of the conﬁguration and its value is the target position where this source word is
+alignedto
+Each of the models below makes some assumptions that allows a tractable solution. Although the
+equations are symmetric and certainly translation is often desired in both directions, alignment has apreferred direction. The language selected to be the “state” of the algorithms (such as Hidden MarkovModels (HMM) (Vogel et al., 1996) or Maximum Entropy (MaxEnt) (Ittycheriah and Roukos, 2005))belowisusuallytheshorterofthetwolanguagessincethisconﬁgurationallowsthemanytoonealignmentsthatarerequiredbythelanguagepairassumingthatonlyasmallportionofthewordsareunaligned.
+17.7.1 IBM Models
+The IBM models are a series of increasingly complex models that use EM to estimate the parameters ofEquation 17.7. In Model 1, p(
+a
+i|ai−1
+1,si−1
+0,k,T)
+is assumed to depend only on the length of the target
+sequence, l,andthatthe p(k|T)=ε,yielding
+p(S|T)=ε
+(l+1)kl∑
+a0=0l∑
+a2=0...l∑
+ak=0k∏
+i=1p(si|tai). (17.8)
+AsshowninBrownetal.(1993),somealgebraicmanipulationyields
+p(S|T)=ε
+(l+1)kk∏
+i=1l∑
+j=0p(si|tj) (17.9)
+UsingaLagrangemultipliertoexpresstheconstraintthattheparametersmustyieldaprobabilitydistri-butionandthensolvingthisunconstrainedoptimizationproblemgivesustheModel1estimatefor p(s|t).
+Model1assumesthatallalignmentswereequallylikelyandthustheorderoftheelementsinthesourceandtargetsentenceisirrelevant. Models2improvesonthisassumptionbymaking p(a
+i|ai−1
+1,si−1
+0,k,T)
+dependonthecurrentpositionbeingalignedandthelengthsofthesourceandtargetsequences.Models3,4,and5modelthe“fertility”ofthegenerationprocesswithincreasingcomplexity.
+While Model 4 is currently still popular as a word alignment technique due to its incorporation in
+theGIZA ++toolkit(OchandNey,2003),signiﬁcantimprovementshavebeenmadeoversuchmodels.
+Nevertheless, the scoring function of Equation 17.9 is one of many features used in many phrase-basedsystems (Och et al., 2004). If we compare Equations 17.9 and 17.6, we see that the Model 1 score treatssource words as being independent and it sums over the contributions of the targetwords. If the sum isreplacedwitha“max,”wecallthatscorethe ViterbiModel1score,
+p(S|T)=ε
+(l+1)kk∏
+i=1max
+jp(si|tj). (17.10)
+17.7.2 Phrase-Based Systems
+The Alignment Template (AT) approach for MT (Och and Ney, 2004) was a departure from the styleof theword-based generativemodels of IBM, and together with a training method (Ochand Ney, 2002;Och, 2003) is the basis for most of the phrase-based MT systems used today. In terms of our notationfromabove,asentencecanbesegmentedintophrasesas
+[s
+0s1...sk]=sk0=˜sm0
+
+StatisticalMachineTranslation 415
+where ˜sm0is a contiguous segmentation of the source into mphrases, and clearly k≥m. Similarly the
+targetsentencecanbesegmentedintoasequenceofphrases,
+[t0t1...tl]=tl
+0=˜tn
+0
+andthenthealignmenttemplatecanbedeﬁnedas
+zi=(˜si,˜tj,a(˜si,˜tj)).
+Theorderofapplyingthesealignmenttemplatescanberepresentedusingahiddenvariable, πm
+0.Inthis
+approachthen,thehiddenvariablesintheprocessare(a)theoptimalsegmentationofthesource,(b)theorderofapplyingthealignmenttemplates.Thesearchprocessyieldstheoptimalvaluesforthesevariablessubjecttothelimitsofthesearch.
+Thealignmenttemplaterememberstheinternalalignmentofthewordsandthisisusedinthecontext
+featuresusedinthatsystem. Otherphrase-basedapproachesoftendropthealignmentandcomputethefeaturesforthephrase-pairwhenthephrase-pairiscreated.Thetypicalfeaturesinaphrase-basedsystemhavesigniﬁcantoverlapwithOchetal.(2004)andtheywillbeusedinsubsequentsystemsdescribedherealso.PerhapsthemostattractivefeatureoftheATapproachistheextensibilityofthefeaturesetandtheabilitytotrainparametersforarbitraryfeatures. Themaximumentropyformulation(DellaPietraetal.,1995) was suggested in Papineni et al. (1997, 1998) as a model for natural language understanding. InMT,OchandNey(2002)utilizetheGISalgorithmfortrainingtheparametersoftheAT.TheformofthemodelisgiveninEquation17.3andthetrainingisdoneoversentencepairsinthetrainingcorpus.Threeissuesariseinthetrainingofthismodel(OchandNey,2002):
+•Normalization:Thenormalization Zoftheexponentialmodelrequiresthesumovermanytarget
+sequences.Obviously,someapproximationisrequiredandintheATsystemthesentencesbeingsummedoverinthedenominatoraretheveryprobablysentencesderivedfromann-bestalgorithm.
+•Multiple-references: Unlike speech recognition and indeed many pattern recognition problems,thetranslationofasourcesentenceisambiguousandtherearemanywaystorenderthemeaningin the target language. In the AT system, the optimization criterion is modiﬁed to reﬂect manyreferences.
+•Reachability: Occasionally, the n-best is insuﬃcient and the references are not in the n-best list.Thisproblemissolvedbyselectingasthereferencetranslationthosethathavetheminimalnumberofworderrorsgiventhereferencetranslations.
+Despitetheseproblems,phrase-basedsystemsaretheworkhorseofSMTsystemsduetotheirsimpleandrelatively straight forward method of extracting phrase libraries and training weights. Systems for newlanguage pairs that have parallel corpora can be built by utilizing the GIZA ++toolkit for generating
+word-alignmentsandtheopensourcephrasedecoderssuchasMoses(Koehnetal.,2007).
+17.7.3 Syntax-Based Systems for Machine Translation
+Syntaxisthestudyofthegrammarofalanguageandinparticularhowphrasesandclausesareputtogether.Syntax-basedapproachesrelyonparsingthesource, orthetarget, orinsomecasesbothlanguages. OurearlierexamplesentencepairwithbothparsesisshowninFigure17.3,wherethewordsofthesentencesare shown across the bottom and the parse structure is shown as a directed graph. These parses areobtained from a statistical parser trained for each language; for English, the parser is trained on thePennTreebank(Marcusetal.,1993)andtheArabicparserontheArabicTreebank(BiesandMaamouri,2008). Parsing output can be either as a Constituent Parse or a Dependency Parse. A constituent parseis a rooted tree whose leaves are the original words of the sentence. The internal nodes of the tree covera contiguous sequence of the words in the sentence (usually called a span) and to each of these internal
+
+416 HandbookofNaturalLanguageProcessing
+w#CONJ
+ftHtPV
+mrAkzNOUN
+AlAqtrAEDET + NOUNNPNP-SBJ
+AbwAbNOUN
++hAPOSS@PRONNPNP-OBJ
+EndNOUN
+AlsAEpDET + NOUNNP
+00,06NUMNPNP
+b#PREP
+AltwqytDET + NOUN
+AlmHlyDET + ADJNPPPNPNP-ADVVP PUNCS
+TheDT
+VotingNN
+CentersNNSNP
+OpenedVBD
+TheirPRP$
+DoorsNNSNP
+AtIN
+00.06DT
+LocalJJ
+TimeNNNPPPVPS
+FIGURE17.3 Sourceandtargetparsetrees.
+nodes is associated a label that describes the syntactic role of the words under this node. A dependency
+parseshowsforeachwordinthesentencethe“parent”or“headword.”
+Consider the English phrase “local time” and its Arabic translation “Altwqyt AlmHly”; in both lan-
+guages, they have a NP node that spans just these phrases. Syntax-based systems could learn to reorder
+thewordsforthetranslationprocessbycollectingthesetreefragmentswithrespecttothealignments.In
+YamadaandKnight(2001), adecompositionsimilartotheIBMmodelsisdevelopedforasyntax-based
+approachthattransformsthetargetparsetreeusingtheoperationsofinsertion,reorder,andtranslation.
+An eﬃcient graph representation of these operations allows the model to compute the required param-
+eters. Translations often have to break the parse structure and this has been studied in Fox (2002) and
+a better method of obtaining rules is discussed in Galley et al. (2004). From the original MT pyramid,
+wemightexpectthatsyntax-basedsystemsshouldbemoregeneraloratleastlesssusceptibletosparsity
+caused by ﬁnite training data; however, the challenge seems to be in reducing the errors in the parses
+andpart-of-speechtaggers.Sourcesentencesthatarediﬃculttotranslateseemtoalsobeachallengefor
+parsers.
+17.7.3.1 Hiero
+Inasigniﬁcantgeneralizationofthetraditionalphrase-basedsystems, Chiang(2005)describesasystem
+(Hiero) to handle longer range word reordering. Hiero utilizes a weighted synchronous context-free
+grammar(CFG)extractedautomaticallyfromaword-alignedcorpus,whichhasrulesoftheform
+X→(γ,α,∼) (17.11)
+
+StatisticalMachineTranslation 417
+where
+γcorrespondtosourcestringsincludingnonterminals, αtotargetstringsandnon-terminals
+∼indicatesthatanynonterminalsinthestringsarealigned
+These nonterminals generalize the phrases used in standard phrase-based decoders. The grammar
+consistsoftwoadditionalgluerules:
+S→(S1X2,S1X2)
+S→(X1,X1)
+where Sstandsforthesentenceandtheserulesconstrainthesystemtoapplyingtherulesmonotonically.
+The rewrite rules, X, are constrained in this work: (a) to contain at least one lexical item, (b) to have
+no sequences of non-terminals, (c) at most two non-terminals. Once the set of rules are obtained, thefollowingsetoffeaturesareextracted:
+1. Relativefrequencies P(γ|α)andP(α|γ)
+2. Lexicalweights P
+w(γ|α)andPw(α|γ)
+3. Phrasepenalty(word-countpenalty)thatallowsthesystemtocorrectforlengthpreferences4. Gluerulecostthatallowsthesystemtolearnaweightforthepreferenceofnormalphrasesversus
+hierarchicalphrases
+Weightsforthesefeaturesaresetusingaminimumerrorratetrainingalgorithm(Och,2003).ThedecoderisaCKYparserutilizingabeamsearchstrategy.Thefeaturesarepartofstandardphrase-baseddecodersand only the language model feature is more involved due to search strategy which produces the targetstring in an arbitrary order. The language model is evaluated in an on-demand fashion as the historyinformationbecomesavailableforthepath.
+Hiero provides an architecture to evaluate further reﬁnements such as syntactic categorizations of
+the nonterminals and although initial experimentation with syntatic categorizations did not improveautomaticmetrics,theplatformcontinuestobeextendedandisthesubjectofmuchongoingresearch.
+17.7.4 Direct Translation Models
+Thenoisy-channelmodelwasmotivatedinBrownetal.(1993)ontheobservationthatthesourcesentenceiswell-formedandthattheMThypothesescangeneratearbitrarystringswhichareoftennotwell-formed.As stated before, an equivalent approach for SMT is the direct model where we combine log-linearlyvarious models.
+∗The AT approach described above is the ﬁrst example of a direct translation model
+(DTM).InIttycheriahandRoukos(2007),asecondapproach(DTM2)atdirectmodelsfortranslationisdiscussed.TheATapproachutilizeslongerphrasestocapturewordreorderinganddeletioneﬀects.Theinventory of phrases in such systems is highly redundant as shown in the example in Table 17.2, whichshows a set of phrases that cover the two-word Arabic fragment “mrAkz AlAqtrAE” from our earlierexample in Figure 17.2. It is rather obvious that the unigram count of a word is greater than or equal toany bigram count that involves the same word. Counts are equal only in the rare case of a completelystickypair(perhaps“HumptyDumpty”inEnglish)orwithwordsthatoccurveryfewtimesduetodatasparseness.
+InDTM2,aminimalistsetofphrasesareusedthatareprescribedbythewordalignments.Incontrast,
+Blunsom et al. (2008) discusses a global method that allows overlapping phrases. Models and methodsfortrainingsuchglobalmodelshavebeencoveredinChapter9;here,wewillfocusonthesetupandthe
+∗The SMT problem can be stated as searching for the target string that maximizes the joint model, p(T,S), and either the
+Bayesexpansionisequivalent.
+
+418 HandbookofNaturalLanguageProcessing
+TABLE17.2 ExampleofArabic–English
+BlocksShowingPossible1-nand2-nBlocksRankedbyFrequency.PhraseCountsAreGivenin()
+mrAkz AlAqtrAE
+centers(905) voting(476)
+centres(361) ballot(336)
+stations(284) polling(251)
+theHOLE_1centers(73) vote(216)positions(71) theballot(92)
+dutystations(38) thevoting(88)
+centers,(36) polls(68)
+... ...
+votingcenters(109)
+pollingstations(84)
+thevotingcenters(70)
+votecenters(34)
+thepollingstations(34)
+ballotcenters(28)
+theballotcenters(23)
+thevotecenters(16)
+...
+featuresusedinDTM2models.WeexpandEquation17.1aswedidfortheIBMtranslationmodels,
+p(T|S)=∑
+a∈Ap(T,a|S)≈p(T,a†|S) (17.12)
+whereaigivesthesourcepositiongeneratingtarget tiandthetargetsequencealignment a†isselectedto
+beclosetothemaximumprobabilitypath.Thisalignmentistypicallythebestpaththatisprovidedbyawordalignmentalgorithmoralternatively,thisalignmentcouldbeahumanalignmentforsomeportionofthecorpus.Wethenexpandthisintermsofthetargetwordsas
+p(T,a
+†|S)=p(L|S)L∏
+i=1p(ti,ai|ti−1
+0,ai−1
+0,sK0) (17.13)
+andbydeﬁning j=ai−ai−1andlimitingthehistoryofthetargetsequence,
+p(T,a†|S)=p(L|S)L∏
+i=1p(ti,j|ti−1
+i−2,ai−1
+1,sK0) (17.14)
+Themodelispostulatedasanexponentialmodel:
+p(ti,j|ti−1
+i−2,ai−1
+1,sK0)=p0(ti,j|s)
+Zexp∑
+iλiφi(ti,j,ti−1
+i−2,ai−1
+1,sK0) (17.15)
+where
+p0isapriordistribution
+Zisanormalizingterm
+φi(t,j,ti−1
+i−2,ai−1
+1,sk0)arethefeaturesofthemodel
+Note that Zis a simple partition function here since the model is about the local production, ti.T h e
+burdenofproducingthewordsinthecorrectorderhasbeenshiftedtothemodelincontrasttothephraselibraryanditsthefeaturesofthismodelthatallowsthesystemtoattaingoodperformance.
+
+StatisticalMachineTranslation 419
+TABLE17.3 SomeFeaturesUsedintheDTM2System
+FeatureName Function Description
+Source–Target φ(si,tj) A Model 1 type of feature; examines
+thelexicalidentitesofthewords.
+Source–TargetBigram φ(si,tj,si−1,tj−1) Looksattheleftbigramcontextofthe
+currentproduction.
+Source–Target
+Trigramφ(si,tj,si−1,tj−1,si−2,tj−2) Looksatthelefttrigramcontextofthe
+currentproduction.
+Source–Segmentation
+Targetφ(seg(si),tj) Looksatpreﬁx,suﬃx,andsteminfor-
+mation for Arabic; Characters forChineseandthecurrenttargetword.
+SourcePartofspeechTargetPartofspeechφ(pos(s
+i),pos(tj)) Looksatthepart-of-speechtagsofthe
+sourceandtargetword.
+Target Part-of-speech
+Trigramφ(pos(tj),pos(tj−1),pos(tj−2)) Looksatthepart-of-speechhistoryof
+thetargetproduction.
+Left and Right Source
+NodeCoverageφ(cov(si−1),tj),φ(cov(si+1),tj) Looks at whether the neighboring
+sourcewordshavealreadyproducedsometargetwords.
+ParseSiblingFeature φ(s
+i,tj,SibNode,Cov,Orient ) Looksatthesiblingparsenodesinthe
+sourceparsetree.Ifthesiblingnodeis covered, then Cov =1 else it is 0.
+Orientationindicateswhetheritstherightsiblingortheleftsibling.
+17.7.4.1 FeaturesThe direct model approach shares the advantage of an extensible feature set with the AT approach.The form of the model in Equation 17.15 lends itself to solutions using a variety of machine learningtechniques: Generalized Iterative Scaling (Darroch and Ratcliﬀ, 1972), Improved Iterative Scaling (IIS)(DellaPietraetal.,1995),andavarietyofconjugategradientmethods.InIttycheriahandRoukos(2007),theIISalgorithmisutilized.
+Some features utilized in the model are shown in Table 17.3. In general, the features are language
+neutral and the only exception is the segmentation feature that varies from characters for Chinese topreﬁx,suﬃx,andstemsformostotherlanguages.
+17.8 Search Strategies
+WehavediscussedabovemethodstoincorporatelinguisticnotionsasfeaturesandtrainingstrategiesforMT. One ﬁnal issue that remains is the argmaxfrom Equation 17.1, which represents the search for the
+optimal string under the model p(T|S). The search problem has been addressed for speech recognition
+(see(Jelinek,1999)foracomprehensivesummary);forphrase-basedMTwasdevelopedinTillmannandNey(2003),showntobeNP-completeforModel1typedecoders(Knight,1999),andan A
+∗algorithmfor
+theATapproachforMTinOchandNey(2004).Syntax-basedapproaches(e.g.,Chiang,2005;Zollmannand Venugopal, 2006) utilize CKY parser (Earley, 1970) and extensions for MT. For brevity, we willsketchoutthedecodingstrategyusedintheDTMapproachabovebutrecognizethatheuristicsearchisthesubjectofmuchongoingresearch.
+In DTM, a beam-search algorithm is employed that is quite similar to the AT approach. The search
+processproceedsfromlefttorightinasourcesentenceconsideringa windowofsourcepositionsateach
+time. Asecondparameter, skip, controlshowmanysourcepositionsinthewindowcanbeinan“open”
+state.DTMallowstranslationsthatcontainavariableandthisrequiresthestateofasourcepositiontobe
+
+420 HandbookofNaturalLanguageProcessing
+inoneofthreeconditions: {open, partiallycovered, covered}. Theoutputofthebeamsearchisalattice,which has all the hypotheses that have been explored during the search. The best hypothesis at the endcanthenbeback-trackedtoproducethetranslationoutput.Eachhypothesiscapturesthefollowing:
+•t
+i,thetargetproductionatthisstep.
+•lmi,thelanguagemodelstate.
+•Ci,thecoveragestatus(implementedastwobinarycoveragevectorstocapturepartialandcovered
+notions).
+•partiali,thedatarequiredtocompleteastatethatisinpartialstate:(a)anindextothenexttargetto
+beproducedforthepartialphrase,(b)thesourcepositionthatisinpartialstate.Thisinformationcanberecoveredfromtheabovecoveragestatusbutforeﬃciencywestoretheextradata.
+•score
+i,thescoreofthishypothesis.
+•Back-pointertodotheﬁnaltracebackthroughthelattice.
+Ateachextensionthefollowingstepsarecarriedout:
+•ComputeSourcePositions: This function returns a vector of source positions that should beconsideredforgeneratingatthispoint.
+•Extend: This function generates a set of hypothesis from the phrase pairs aligned to the sourcepositionsobtainedintheabovestep.Thisstepalsocomputestheweightedcombinationofscoresfrom(a)thetranslationmodels,(b)thelanguagemodels,(c)aword-countscore.Thetranslationmodelsincludethedirectmodelandthemodel1score(Equation17.10)foreachdirection.Sincethe language model cost increases with the number of words produced, the word-count scoreencouragesthesystemtoproducelongerphrases.
+•Merge: Paths are merged and the best one is kept when the language model state, the coveragestatus,andthecurrentproductionareidentical.
+•Prune:Pathsareprunedtokeep, k,hypothesisforeachcoveragepattern.
+When all alive hypotheses have no more open source positions, the search is terminated and the bestsequenceisoutput.
+17.9 Research Areas
+Machine translation remains the subject of many papers at conferences in natural language processing.Intermsofresearch, theMTpyramidseemstooﬀerthebestroadmapandmethodsarebeingsoughttoinject more complex information into the translation systems. Constituent and dependency parsers aswell as Named Entity taggers for various languages are now available and translation systems should beabletoimprovetheirperformancebyincorporatingthesetypesofinformationintothesystems.Currentsystems are sentence oriented and this focus has left many document-level eﬀects unattended including(certainly not an exhaustive list): (a) pronouns (when to use them, which one to use, etc.), (b) articles(e.g.,inEnglishtodeterminethedeﬁnitenessofanounwouldrequiredocument-levelanalysis),and(c)tense. Algorithms and methods for more robust estimation of translation models from parallel corporathatareautomaticallycollectedisbeingactivelypursued.
+Acknowledgment
+This work was partially supported by the Department of the Interior, National Business Center undercontract No. NBCH2030001 and Defense Advanced Research Projects Agency under contract No.HR0011-08-C-0110. The views and ﬁndings contained in this material are those of the authors and
+

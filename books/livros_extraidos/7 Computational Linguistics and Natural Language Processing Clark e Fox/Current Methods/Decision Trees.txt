@@ -1,0 +1,446 @@
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 180 — #1
+7 Decision Trees
+HELMUT SCHMID
+1 NLP and Classiﬁcation
+Many natural language processing (NLP) tasks require the annotation of linguisticentities with class labels: A part-of-speech tagger, for instance, assigns a part ofspeech to each word. Word-sense disambiguation chooses the correct reading ofa word from a set of possible readings, and anaphora resolution decides whethertwo nominal expressions are coreferent or not.
+Decision trees are one of the techniques for solving classiﬁcation problems of this
+kind. Figure 7.1 shows a simple decision tree for the disambiguation of periods(‘.’), which is a subtask of word segmentation. A period is in English either a fullstop marking the end of the sentence (‘He snored.’) , or part of an abbreviation (‘Mrs.
+Jones’), or both at the same time (‘This was proposed by Mr. Smith et al.’) . Correspond-
+ingly, the decision tree in Figure 7.1 assigns periods to one of the three classes part
+of a token, punctuation,o r both.
+A decision tree is applied as follows: We start at the top node and ﬁnd the
+answer to the test question of this node. Depending on the test result, we branch tothe‘yes’ or‘no’subnode and repeat this process until a terminal node is reached,
+whose label is returned as the result class. In order to disambiguate the periodin the question ‘You like London, Mr. Klipstein?’ with the decision tree shown in
+Figure 7.1, we ﬁrst check whether the period is followed by whitespace, which isthe case. We follow the ‘yes’ link, examine the preceding word, and ﬁnd that it is
+a known abbreviation. Finally, we check whether the following word is a capital-ized word which would normally be written in lowercase (such as ‘The’). This is
+not the case. We conclude that the period is part of a token, and not a punctuationmark.
+Decision trees are easy to create (with one of the many available tools), to
+understand, and to apply, and they are quite accurate, but they are, of course,not the only classiﬁcation method applied in NLP . Other important methods aremaximum entropy models (see Chapter 5 of this book) memory-based learn-ing (see Chapter 6 of this book), neural networks (see Chapter 9 of this book),
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 181 — #2
+Decision Trees 181
+punctuationyes
+yes
+yesno
+nononono yes
+yes
+part of a token bothIs the period followed bywhitespace, a parenthesisor a quotation symbol?
+Is the period preceded bya known abbreviation?part of a token
+Is the period followed by acapitalized regular word?Is the period precededby a regular word?
+Is the period followedby a lowercase word?
+punctuation part of a token
+Figure 7.1 A simple decision tree for period disambiguation.
+support vector machines (Joachims 2001), and transformation-based learning(Brill 1992).
+The remainder of this chapter is organized as follows. Section 2 describes how
+decision trees are induced from training data. Section 3 presents NLP applicationsof decision trees. Section 4 discusses the advantages and disadvantages of decisiontrees, and lists available software packages. Section 5 concludes this chapter withsuggestions for further reading.
+2 Induction of Decision Trees
+Decision trees are learned from training data. Each data item consists of a set offeatures describing an object and the class of the object. Table 7.1 shows a toyexample with seven data items.
+Decision trees are recursively built beginning with the topmost node by (1)
+computing the best test for the current node according to some splitting criterion,
+(2) creating a subnode for each possible outcome of the test, and (3) recursivelyexpanding each subnode in the same way until a given stopping criterion is satis-
+ﬁed. Usually, the decision tree is afterwards simpliﬁed ( pruned) in order to avoid
+overﬁtting of the training data (see Section 2.4 below.)
+The test of the topmost node divides the training data into two subsets. One
+subset contains the elements which pass the test, the other contains the elementswhich fail the test. During the induction of the tree, the two subsets are passedon to the ‘yes’ and ‘no’ subnodes respectively. The feature tests of the subnodes
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 182 — #3
+182 Helmut Schmid
+Table 7.1 Training data consisting of seven
+objects which are characterized by the features‘size,’ ‘color,’ and ‘shape.’ The ﬁrst four items
+belong to class ‘+,’ the others to class ‘−.’
+Size Color Shape Class
+medium blue circle +
+small red square +
+large green trapezoid +
+large green square +
+small red triangle −
+large red triangle −
+large red trapezoid −
+further subdivide the data subsets, and so on. The majority class of the data whichreaches a terminal node becomes the result class of that node.
+2.1 The splitting criterion
+The best test for a node is selected according to the splitting criterion . A frequently
+used splitting criterion is the information gain. It is the difference between the
+entropy of the data set at the current node and the entropy in the two subsets
+induced by the test. The entropy of a data set measures to which degree the datais scattered over several classes. If a data set is pure, i.e., if all elements belong to
+the same class, the entropy is 0. If half of the data belongs to class A and half ofthe data to class B, the entropy is 1. The entropy is deﬁned by the formula(1) H(p)=−∑
+cp(c) log2p(c)
+where p(c) is the relative frequency (= empirical probability) of class cin the data
+set, i.e., the frequency of class cdivided by the size of the data set.
+The information gain is deﬁned as follows:
+(2) G=H(p)−w1H(p1)−w2H(p2)
+where p(c) is the relative frequency of class c in the current data set, p1(c)and p2(c)
+are the relative frequencies of class c in the two subsets, and w1and w2are the
+proportions of data in the ﬁrst and second subset.
+Consider the data in Table 7.1. The relative frequency of class ‘+’ is 4/7 in this
+sample, and the relative frequency of class ‘−’ is 3/7. The entropy at the top nodeis therefore:(3)−(4
+7log24
+7+3
+7log23
+7)
+≈0.985
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 183 — #4
+Decision Trees 183
+yes no4 +, 3 −
+color = red?
+1 +, 3 − 3 +, 0 −
+Figure 7.2 State of the decision tree after the expansion of the root node. Each box shows
+the number of objects of each class in the corresponding data subset and the feature test(if available).
+no
+no yesyes4 +, 3 −
+color = red?
+1 +, 3 −
+shape = square?3 +, 0 −
+class +
+1 +, 0 −
+class +0 +, 3 −
+class −
+Figure 7.3 Decision tree learned from the example data. The number of objects of each
+class in the respective subset of the training data is given for each node.
+Now we compute the information gain of the feature test ‘color=red?’ The data
+subset with the test result ‘yes’ contains the four red training objects, three of class
+‘+’a n do n eo fc l a s s‘ −.’ The entropy in this subset is:
+(4)−(1
+4log21
+4+3
+4log23
+4)
+≈0.811
+The entropy in the other subset with non-red objects is 0 because all the green
+and blue objects belong to the class ‘ +.’ The information gain of the test ‘color=red?’
+is therefore:(5) 0.985 −4/7×0.811−3/7×0=0.521
+The information gain of any other test is lower. Thus the most informative test
+f o rt h et o pn o d ei s ‘color=red?’ Figure 7.2 shows the state of the decision tree after
+the top node was expanded.
+The three non-red objects in the data subset of the right subnode all belong to the
+class ‘+.’ Hence we can stop here and create a terminal node with the class ‘+.’ Thedata subset of the left subnode with four red elements still contains objects of bothclasses. We compute the best test for this subset which is the test ‘shape=square?’
+It divides the data into two pure subsets. After creating a terminal node for eachoutcome of the test, the induction of the decision tree is ﬁnished. Figure 7.3 showsthe result.
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 184 — #5
+184 Helmut Schmid
+−−square
+circle +++
+−+ trapezoidtriangleblue green red
+−−−
++++ +blue green red
+−−−
++++ +blue green red
+Figure 7.4 Partitions of the two-dimensional feature subspace spanned by the features
+‘color’ and ‘shape.’ The leftmost partition is induced by the decision tree of Figure 7.3.
+This decision tree divides the feature space into three regions. Each region cor-
+responds to one leaf node of the decision tree and contains training objects of onlyone class. The ﬁrst table of Figure 7.4 shows this partition for the two-dimensionalspace spanned by the features ‘color’ and ‘shape.’ Objects in regions which are
+enclosed by bold lines are assigned to the class ‘+,’ the others to the class ‘ −.’
+The second table shows another partition which results in the same classiﬁca-tion. It corresponds to a decision tree which examines the ‘shape’ feature prior
+to the ‘color’ feature. The partition of the last table deﬁnes a different classiﬁca-
+tion because objects with the feature combination ‘red’ and ‘circle’ are assigned
+to the class ‘+’ rather than ‘ −.’ This partition is induced by a decision tree with
+four test nodes. This example shows that the classiﬁcation problem is in generalunderdetermined and that several solutions exist.
+The larger the number of terminal nodes of a decision tree, the smaller the aver-
+age number of data items reaching a terminal node. And the smaller the numberof data items at a node, the less reliable the classiﬁcation at that node because theinﬂuence of incidental properties of the training data increases. A decision treelearning algorithm should therefore choose the simplest (i.e., smallest) decisiontree which accurately describes the training data.
+The number of possible decision trees for a given data set is usually too large to
+compare all of them against each other in order to ﬁnd the simplest tree. Thisis the reason why most decision tree learning algorithms apply the ‘greedy’
+1
+search strategy based on the information gain (or a similar criterion) which wasdescribed in this section. It quickly ﬁnds a decision tree whose size is close – butnot necessarily equal – to the optimum.
+Another popular splitting criterion uses the Gini index which measures the
+impurity of a data set. It is the sum of products of all pairs of class probabilities.(6) Gini(p)=∑
+c̸=c′p(c)p(c′)=∑
+cp(c)(1 −p(c))=1−∑
+cp(c)2
+The Gini index reaches its maximum when all class frequencies are equal. It is
+zero if all data elements belong to the same class. The splitting criterion based onthe Gini index selects the test for which the sum of the weighted Gini indices of
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 185 — #6
+Decision Trees 185
+the data subsets is minimal. For binary splits, the following expression is to beminimized:(7) w
+1Gini(p1)+w2Gini(p2)
+where w1and w2are the proportions of data in the two subsets.
+2.2 Stopping criterion
+The recursive expansion of the decision tree is stopped if either the data subsetis pure or if all data items have the same feature representation. The latter caseoccurs when the data contains objects with identical feature values, but differentclasses. When such contradictory class assignments exist, there is no decision treewhich correctly classiﬁes all the training data.
+Sometimes these stopping criteria are augmented by other criteria which may
+terminate the induction process earlier, such as:(1) the size of the data set being below a certain threshold;(2) the value of the splitting criterion for the best test being below a threshold.
+2.3 Feature tests
+Until now, we only considered feature tests which check whether some featurehas a certain value or not, such as ‘color=red?’ If the feature values are numeric –
+and in particular if they are real-valued – such equality tests often produce highlyunbalanced data partitions with a very large subset and a very small subset. Testswhich compare the feature value with some threshold (such as ‘height >1.75m?’ )
+create more balanced splits and are better suited for numeric features.
+Many decision tree learning algorithms also allow multi-valued tests such as
+‘color=?’ with the possible outcomes ‘red,’ ‘green,’ and ‘blue.’ The information
+gain criterion is not a good measure for the comparison of multi-valued testsbecause it strongly prefers tests with a large number of different outcomes, andcreates decision trees which are overly complex and fragment the training dataunnecessarily.
+Why are tests with many outcomes preferred? The information gain of a binary-
+valued test is limited to 1. This is the information gain obtained when a data setwith 50 percent positive and 50 percent negative examples is split into two puresubsets. A test with four possible outcomes is able to separate objects from fourdifferent classes. The maximal information gain is here −4(
+1
+4log21
+4)
+=2. To give
+an extreme example, assume that some test assigns each data item to a separatesubset. The information gain criterion will always select this test because it reducesthe entropy to 0. The resulting classiﬁer, however, will perform poorly because itfails to generalize to new data with unseen values of the test feature.
+The information gain of a multi-valued test whose outcome thas the prob-
+ability p(t) could approach but never exceed the entropy of the test split
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 186 — #7
+186 Helmut Schmid
+−−
+−−−
+−
+−−
+−−+
++++−
+bacd
+e+−+−+
++++
+++++
++−−
+Figure 7.5 Data with overlapping classes and the class boundaries found by a decision
+tree.
+−∑
+tp(t)log2p(t). By dividing the information gain with this test entropy, we get
+thegain ratio criterion proposed by Quinlan (1986) which penalizes multi-valued
+tests with many possible outcomes. Other splitting criteria for multi-valued testswere introduced, e.g., in Breiman et al. (1984) and in Mántaras (1991). A goodsplitting criterion tends to create smaller decision trees, but the effect on the clas-siﬁcation accuracy is usually small. Therefore the choice of the splitting criterionis not so important if only the accuracy counts.
+2.4 Pruning
+Decision trees which are grown to their maximal size as described above tend tooverﬁt the training data. Overﬁtting occurs when the classiﬁcation of the decision
+tree depends on accidental properties of the training data. Overﬁtting is a problembecause it leads to errors on new data. In order to avoid overﬁtting, most decisiontree learning algorithms add another step which simpliﬁes the decision tree withpruning. Pruning identiﬁes irrelevant feature tests and replaces the correspondingnon-terminal nodes with terminal nodes.
+Consider Figure 7.5 which shows a data sample with two classes and two real-
+valued features. A decision tree which is trained on this data ﬁrst splits the two-dimensional feature space along the solid line. Then it adds four more boundaries(dotted lines) in order to isolate the negative training item from the surroundingpositive items. The resulting decision tree is shown in the left side of Figure 7.6. Ifthe negative item within the cloud of positive items is just a random outlier, theclassiﬁcation performance of the full decision tree on new data will be worse thanthe performance of the simpler tree shown on the right side in Figure 7.6. Thus theleft tree should be pruned back to the tree on the right side.
+Many different pruning methods have been proposed. Critical-value pruning
+(CVP) (Mingers 1987) prunes at a node if the score of the splitting criterion (infor-mation gain, gain ratio, or other) is below a given threshold. The pruning proceedsbottom-up, and it only considers nodes whose subnodes are terminal nodes orpruned nodes. Let us take the decision tree in Figure 7.7 as an example. With athreshold of 4, CVP replaces the whole subtree headed by node N2 with a ter-minal node. With a threshold of 3, only N4 is pruned because N2 dominates theunpruned node N5 whose score exceeds the threshold.
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 187 — #8
+Decision Trees 187
+yes no
+yes
+yesno
+no
+yes noyes no
+yes noPruning
+class +
+class + x<b ?
+y<e ?
+y<d ?class +
+class +
+class + class −x<c ?
+x<a ? class −x<c ?
+class− 
+Figure 7.6 Decision tree induced from the data in Figure 7.5 before and after pruning.
+N15.3
+N34.7N22.7
+N41.5N53.5
+Figure 7.7 Decision tree with node numbers and information gain scores.
+The size of the pruned tree depends on the threshold. Higher thresholds lead
+to smaller trees. In order to determine the optimal threshold, the decision tree ispruned with different thresholds. The pruned trees are evaluated on test data bycomputing the classiﬁcation accuracy , which is the proportion of correctly clas-
+siﬁed test items. The tree with the highest accuracy is selected. It is importantthat the data used for this evaluation is fresh data which was not used to inducethe tree. Otherwise, the tree will not be pruned because the full tree achieves thehighest accuracy on the training data. If only a ﬁxed amount of training data isavailable for tree induction and pruning, part of the data has to be set aside forpruning before the tree is induced.
+The reduced error pruning (REP) method invented by Quinlan (1987) also requires
+separate data for pruning, which is here directly used to decide which nodesto prune. A node is pruned if the number of errors on the pruning data is notincreased by the pruning, i.e., if the total classiﬁcatioln error of the subnodes is atleast as high as the classiﬁcation error of the node after pruning. Again, nodes areonly pruned if all non-terminal subnodes have been pruned before.
+Figure 7.8 shows a decision tree in which each node is annotated with the
+respective number of classiﬁcation errors on the pruning data. Node N4 is pruned
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 188 — #9
+188 Helmut Schmid
+N2
+9
+N4
+4N5
+3N3
+10N1
+18
+32 135
+2
+Figure 7.8 Decision tree with classiﬁcation error counts.
+because the number of errors at the subnodes (2+3 errors) is higher than the num-ber of errors at N4 (4 errors). Similarly, N5 is pruned since the number of errors isunchanged (1+2 vs. 3). Pruning at N2 or N3 would increase the number of errors.N1 is not considered for pruning because of its unpruned non-terminal subnodes.
+Breiman et al. (1984) developed another important pruning strategy called cost-
+complexity pruning (CCP) which attempts to ﬁnd a balance between the complexity
+of the decision tree and the number of classiﬁcation errors on the training data.CCP computes the pruned tree Twhich minimizes the expression
+(8) R
+α(T)=R(T)+α|T|
+where R(T)is the number of training items which are incorrectly classiﬁed by T,
+|T|is the number of terminal nodes in T,a n dαis a balancing factor.
+For a given factor α, there is a unique pruned subtree that minimizes the cost-
+complexity measure Rα(T). Furthermore, for α1>α 2, the optimally pruned subtree
+corresponding to α1is a subtree of the one corresponding to α2. By steadily increas-
+ing the complexity parameter, a ﬁnite sequence of pruned subtrees is generated.The best pruned tree from this sequence is selected by evaluating the accuracy ofthe different trees on separate test data and choosing the one with the smallestclassiﬁcation error.
+2.5 Bagging, boosting, and random forests
+Decision tree induction is often unstable in the sense that a small change in the
+training data leads to a rather large change in the resulting decision tree, and itsperformance. Such classiﬁers are also said to have a high variance. Instability is
+undesirable because the classiﬁcation accuracy depends on accidental propertiesof the data, and is therefore often suboptimal. Pruning increases the stability ofdecision-tree induction and partially solves the problem. Further improvementsare possible with the three methods presented next.2.5.1 Bagging Breiman (1996) proposed a method (called bagging) which com-
+bines a set of decision trees in order to obtain a more reliable classiﬁer. The
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 189 — #10
+Decision Trees 189
+individual trees are induced from bootstrap samples of the original training set.
+A bootstrap sample has the same size as the original data set, and is created by draw-ing a random sample with replacement from the original set. The classiﬁcations ofthe different trees are combined by choosing the most frequently predicted class.
+Assume that the training data is the set {a,b,c,c,d}. Possible bootstrap samples
+obtained from this set are {a,a,b,c,d} and {a,c,c,c,d}, for instance.
+Bagged decision trees are less likely to reﬂect accidental properties of the train-
+ing data. Bagging therefore often increases the accuracy of decision trees if theinduction of a single tree is unstable. On the other hand, bagging can also slightlydegrade the performance if the tree induction is stable.2.5.2 Boosting Freund and Schapire (1995) also create multiple classiﬁers with
+bootstrap sampling, and combine their votes, but they use different sampling andvoting methods. The bootstrap sampling method of bagging selects each data ele-ment with the same probability, whereas boosting chooses data elements whichare hard to classify with a higher probability, thereby focusing the learning algo-rithm on the difﬁcult cases. The weight of a data element is proportional to the
+probability that the sampling algorithm chooses this element.
+The induction of boosted decision trees starts with an initial decision tree which
+is induced from the original data set (without resampling). The data weights areinitialized to 1 /N(where Nis the size of the training data). The training data is
+then reclassiﬁed with the decision tree, and the weight of misclassiﬁed elementsis increased. Now a random bootstrap sample is drawn, a new decision tree isinduced from this sample, and the votes of the two decision trees are combined.The algorithm continues until a predeﬁned number of trees (e.g., 50) has beengenerated. In each step i, a decision tree t
+iis induced, the data is reclassiﬁed, an
+update factor βiis computed, the weights are adjusted, and a new bootstrap sam-
+ple is drawn. The update factor is given by βi=(1−ϵ)/ϵ, where ϵis the sum of
+the weights of the misclassiﬁed data. The weights of the misclassiﬁed elements aremultiplied by this factor. All weights are renormalized (i.e., divided by the sum ofweights) in order to obtain a probability distribution for sampling.
+Assume that the training data contains 10 elements and that the initial decision
+tree induced from this data correctly classiﬁes eight elements, and gets two ele-ments wrong. The total weight of the misclassiﬁed elements is 0.2 (because theinitial weight of each element is 0.1). β
+1is therefore 0.8/0.2 =4.0. After the renor-
+malization, the weight of the correctly classiﬁed elements is 1 /16=0.0625 and the
+weight of the misclassiﬁed elements is 4/16 =0.25.
+The boosting algorithm combines the different decision trees by weighting the
+vote of each tree tiwith the factor log βiand returning the majority vote.
+2.5.3 Random forests The random forest method (Breiman 2001a) is very sim-
+ilar to bagging. The only difference is that the feature set from which the besttest (according to the splitting criterion) is chosen is restricted to a small randomsubset of the available features. Surprisingly, this modiﬁcation often improves the
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 190 — #11
+190 Helmut Schmid
+no yes
+p(+) = 1p(−) = 0p(+) = 0
+p(−) = 1
+p(+) = 6/7p(−) = 1/7x<a ?x<c ?
+Figure 7.9 Probabilistic decision tree induced from the data in Figure 7.5.
+classiﬁcation performance considerably. A possible explanation is that the boot-strap samples of the bagging method are often very similar and the decision treesare therefore highly correlated. The restriction on the feature selection enforcesmore diversity in the decision trees. Random forests have a similar performanceas boosted decision trees, but the training is more efﬁcient because only a subset ofthe features is considered at each node. Furthermore, the induction of the differenttrees can be performed in parallel. This is not possible with boosting where eachnew tree depends on the previous trees.
+No decision tree variant consistently outperforms the others. Which method
+is best depends on the problem and the training data. The same holds forclassiﬁcation methods in general.
+2.6 Decision trees for probability estimation
+The result class which is assigned to a terminal node of a decision tree is the mostprobable class in the data subset of this node, but not necessarily the only possibleclass. The higher the fraction of items from other classes in the data set, the higherthe probability of a classiﬁcation error at that node. In order to provide some infor-mation about the reliability of the decisions, it is useful to store the probability ofthe different classes together with the result class. The (empirical) probability isestimated by dividing the frequency of the class by the size of the data subset.Figure 7.9 shows an example.
+Decision trees which are extended in this way can also be used to estimate the
+conditional probabilities of the different classes given the feature representation ofan object. Figure 7.9 shows a decision tree which returns, for an arbitrary objectfrom the feature space displayed in Figure 7.5, the estimated probability that itbelongs to class ‘ +’o r‘ −.’
+Provost and Domingos (2003) observed that frequently used tree induction algo-
+rithms such as CART (Breiman et al., 1984) or C4.5 (Quinlan 1993) often performpoorly when they are used to estimate probabilities. They attributed this to thefollowing factors:(1) Pruning eliminates nodes which are relevant for probability estimation, but
+have no effect on the classiﬁcation accuracy. (The second split in Figure 7.5 is
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 191 — #12
+Decision Trees 191
+a good example. It is probably irrelevant for the classiﬁcation performance,but might provide better probability estimates because it distinguishes theborderline region between a and c from the rest.)
+(2) The data subsets at the leaf nodes are often too small to obtain reliable
+probability estimates, in particular for infrequent classes.
+(3) Because decision trees divide the feature space into disjoint regions, the prob-
+ability estimates are constant within a region and jump at the boundaries. Asmoother distribution is often desirable.
+Provost and Domingos modiﬁed the widely used C4.5 tree induction algorithmin order to obtain better probability estimates. They turned off pruning, andthey smoothed the probability estimates with the ‘Laplace correction’ (see, e.g.,Manning & Schütze 1999). The Laplace correction is a very simple smoothingtechnique which adds 1 to each frequency count and computes the probabilityestimates from the modiﬁed counts.
+Liang et al. (2006a) evaluated Provost and Domingos’ method and observed
+that the probability estimates were better than those of the competing methods.They also noted that bagging did not increase the accuracy of the probability esti-mates. Bagging was superior, however, when only the ranking
+2was evaluated. It
+seems that bagging increases the accuracy of the probability estimates relative toeach other, but decreases the match with the actual probabilities by ﬂattening theprobability distributions.
+The Laplace correction used by Provost and Domingos is too simple a smooth-
+ing method. Ferri et al. (2003) proposed a better method where the probabilitydistribution of each node is recursively smoothed with the distribution of theparent node, similar to the back-off smoothing strategies applied in languagemodeling (see Chapter 3 of this book).
+3 NLP Applications
+Decision trees have been applied to a wide range of NLP problems includinggrapheme-to-phoneme conversion (Black et al., 1998a; Suontausta & Hakkinenen2000; Kienappel & Kneser 2001), part-of-speech tagging (Black et al., 1992; Schmid1994; Màrquez & Padró 1997; Schmid & Laws 2008), tokenization (Palmer &Hearst 1997), parsing (Magerman 1994; Haruno et al., 1998), language modeling(Bahl et al., 1989; Xu & Jelinek 2006), classiﬁcation of unknown proper names(Béchet et al., 2000), phrase-break prediction (Kim & Lee 2000; Sun & Applebaum2001), coreference resolution (McCarthy & Lehnert 1995), and spam detection(Rios & Zha 2004).
+Many of these methods directly apply decision trees as classiﬁers. Others (Bahl
+et al., 1989; Black et al., 1992; Schmid 1994; Haruno et al., 1998; Màrquez 1999;Béchet et al., 2000; Sun & Applebaum 2001; Xu & Jelinek 2006; Schmid & Laws
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 192 — #13
+192 Helmut Schmid
+2008) use the decision trees to estimate the conditional probabilities of a statisticalmodel. The next two sections describe a typical representative of each class.
+3.1 Grapheme-to-phone conversion with decision trees
+General-purpose speech synthesizers need a component which predicts thepronunciation of unknown words from their orthographic form. Such a grapheme-to-phone converter may be implemented with manually written rules. A betterapproach, however, is to learn the conversion rules from data.
+Such a data-driven system is described in Black et al. (1998a). It uses decision
+trees to map each letter of an unknown word to zero, one, or two phones. Thephone sequences are concatenated to obtain the pronunciation of the word. Thedecision trees are trained on data from a pronunciation dictionary. The dictio-nary data is initially pre-processed by semi-automatically aligning the letters andphones of each word as exempliﬁed here:
+d e p a rtm e nt
+Di hpa artma hntBlack et al. create a separate decision tree for each letter which predicts its pro-
+nunciation based on the surrounding letters. The training data for the decisiontree of a given letter is extracted from the aligned dictionary data by ﬁnding alloccurrences of that letter and taking the three preceding and three following let-ters as features and the phone sequence aligned with the target letter as the class.For the conversion of the letter ‘a’ of the word ‘department,’ for instance, the letters‘d,’‘e,’‘p,’ and ‘r,’‘t,’‘m’ are used as context. The non-terminal nodes of the decisiontrees are decorated with questions such as ‘l
+−2=‘e’?’ (or more verbosely: ‘Is the let-
+ter two positions to the left of the target letter the letter ‘b’?’ ). The terminal nodes of the
+decision trees are labeled with the resulting phone sequence (such as ‘aa’).
+This grapheme-to-phone converter was successfully applied in the Festival
+speech synthesizer (Black et al., 1998b).
+3.2 Using decision trees to estimate the contextual
+probabilities of a POS tagger
+The application presented next is a part-of-speech (POS) tagger which uses deci-sion trees to obtain more reliable estimates of conditional probabilities, instead ofdirectly classifying the data as in the previous example. Before explaining how thedecision trees are used here, I will brieﬂy summarize what POS tagging is, howPOS tagging with hidden Markov models works, and why the probability param-eters need to be smoothed. Then I will explain how decision trees help to obtainbetter probability estimates.3.2.1 Part-of-speech tagging A part-of-speech (POS) tagger assigns a POS label
+to each word of an input text. The tagger ﬁrst obtains the set of possible POS tags
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 193 — #14
+Decision Trees 193
+for each word from a lexicon and then disambiguates between them based onthe word context. Here is an example sentence from the Penn Treebank corpus(Marcus et al., 1993) with the possible POS tags
+3of each word. The correct tags are
+underlined.
+Put NN VB VBD VBN
+down IN JJ NN RB RP
+that DT IN RB WDT
+phone NN VB VBP
+3.2.2 Hidden Markov models A hidden Markov model tagger (Manning &
+Schütze 1999) computes the POS tag sequence t1,t2,...,tnwhose joint probabil-
+ity with the input word sequence w1,w2,...,wnis maximal. In a hidden Markov
+model (HMM), the joint probability is decomposed into a product of the contex-
+tual probabilities p(t i|ti−2ti−1)– such as p(NN|IN,DT) – and the lexical probabilities
+p(w i|ti)– such as p(phone|NN) – of all input words wi:
+(9) p(w 1,t1,w2,t2,...,wn,tn)=n∏
+i=1p(ti|ti−2ti−1) 
+contextual prob.p(w i|ti)
+lexical prob.
+3.2.3 Parameter estimation The lexical and contextual probabilities of the
+HMM are estimated from training data. The larger the number of different POStags is, and the more preceding POS tags a POS tag depends on, the more difﬁcultit is to estimate the contextual probabilities because many possible combinationsof POS tags do not appear in the training data (sparse data problem).
+The German Tiger treebank (Brants et al., 2002) contains about 700 different
+POS tags encoding information about number, gender, case, and other morpho-syntactic features. A simple trigram POS tagger needs to estimate 343 millionparameters from about 900,000 tokens contained in the Tiger treebank.
+The POS tagger described in Schmid & Laws (2008) approaches this sparse data
+problem as follows:(1) The POS tags t
+i(e.g., ‘ART.Def.Nom.Sg.Neut’) are split into feature vectors
+ti,1,...,ti,K, and the contextual probability p(ti|ti−k,...,ti−1)is replaced by
+the product(10)
+K∏
+l=1p(ti,l|ti−k,...,ti−1,ti,1,...,ti,l−1)
+(2) The conditioning contexts are simpliﬁed by choosing the most informative
+context features for the prediction of the new feature.
+The probability p(ADJA.Pos.Nom.Sg.Neut|ART.Def.Nom.Sg.Neut, PART.Zu),
+for instance, is replaced by the product
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 194 — #15
+194 Helmut Schmid
+p(ADJA |ART.Def.Nom.Sg.Neut, PART.Zu)
+×p(Pos |ART.Def.Nom.Sg.Neut, PART.Zu, ADJA)
+×p(Nom |ART.Def.Nom.Sg.Neut, PART.Zu, ADJA.Pos)
+×p(Sg|ART.Def.Nom.Sg.Neut, PART.Zu, ADJA.Pos.Nom)
+×p(Neut |ART.Def.Nom.Sg.Neut, PART.Zu, ADJA.Pos.Nom.Sg)
+and then simpliﬁed to
+p(ADJA |ART, PART.Zu)
+×p(Pos |ART, PART, ADJA)
+×p(Nom |ART.Nom, PART, ADJA)
+×p(Sg|ART.Sg, PART, ADJA)
+×p(Neut |ART.Neut, PART, ADJA)
+These parameters can be reliably estimated from the treebank, and they capture
+all the information needed for disambiguation.3.2.4 Estimation of contextual probabilities with decision trees How are the
+relevant context attributes determined? The tagger has to ﬁnd those combina-tions of context attributes which provide most information about the predictedattribute. This is exactly what a decision tree learning algorithm does.
+The tagger described in Schmid & Laws (2008) therefore uses decision trees to
+estimate the conditional probabilities of the predicted attributes given the contextattributes. One option would be to create one decision tree for each feature (e.g.,‘Gender’) which provides probability estimates for the probabilities of all featurevalues ( ‘Masc,’ ‘Fem,’ ‘Neut’).
+Schmid & Laws instead create a separate decision tree for each feature value
+(such as ‘Masc’). Figure 7.10 shows an example tree. The advantage of this
+approach is that each decision tree is more focused, and that the training data isnot fragmented by splits needed to discriminate between the other possible featurevalues. A drawback is that the probabilities of ‘Masc,’ ‘Fem,’ and ‘Neut’ usually do
+2:N.Reg
+p = 0.571 p = 0.938p = 0.9990:N.Name1:ART.Nom
+0:N.Name 0:N.Name
+....1:ADJA.Nomyes
+yes
+no yes noyes nono
+yes
+p = 0.948 p = 0.998no
+Figure 7.10 Part of a probabilistic decision tree for the nominative case of nouns.
+The test ‘1:ART.Nom’ checks if the preceding word (position 1) is a nominative article. All
+features are word-class dependent: the case features of nouns and adjectives for exampleare considered as different features.
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 195 — #16
+Decision Trees 195
+not exactly sum to 1 because the three decision trees use different tests and there-fore produce different splits of the training data from which the probabilities areestimated. In order to obtain a well-deﬁned probability distribution, the probabil-ity of ‘Masc,’ for instance, is renormalized by a division with the total probability
+of‘Masc,’ ‘Fem,’ and ‘Neut.’
+The tagger uses binary tests as shown in Figure 7.10 and applies pre-pruning
+with the critical-value pruning strategy, i.e., the recursive expansion of the deci-sion tree stops if the information gain of the best test is below a given threshold.The probabilities at the terminal nodes of the decision trees are recursivelysmoothed with the parent node probabilities.
+The new parameter estimation technique for the contextual probabilities was
+integrated into an HMM POS tagger. In an evaluation (Schmid & Laws 2008) ontwo treebanks with very ﬁne-grained tagsets – the German Tiger treebank and theCzech Academic corpus (Hladká et al., 2007) – this tagger outperformed state-of-the-art taggers.
+4 Advantages and Disadvantages of Decision Trees
+Decision trees are a fast classiﬁcation method in terms of both training time andprocessing time. They are easy to interpret and require no parameter tweaking toobtain good results. Furthermore, they work with large data sets, large numbersof features, and mixtures of nominal and numeric features.
+For many classiﬁcation problems, the performance of simple decision trees is
+not state-of-the-art, but boosted trees and random forests are reported to be com-petitive with advanced methods such as support vector machines (Rios & Zha2004; Bruce et al., 2007; Coussement & Var den Poel 2008), although there are alsocontradictory results (Statnikov & Aliferis 2007).
+An advantage of decision trees is also the availability of mature software pack-
+ages. The most widely used tools are probably C4.5 (Quinlan 1993), and CART(Breiman et al., 1984). Wagon is a reimplementation of CART which is part of thefree Edinburgh Speech Tools Library (available at www.cstr.ed.ac.uk/projects/speech_tools). DTREG (www.dtreg.com) is a commercial software for boostedtrees. A Fortran implementation of random forests is available from Leo Breiman’shomepage at the University of Berkeley (www.stat.berkeley.edu/users/breiman).There are also open source implementations of decision trees in the IND packageavailable from the NASA, in the WEKA collection of machine learning algorithms(http:/ /sourceforge .net/projects/weka), and in the CRAN archive of the R project(http:/ /cran.r-project.org).
+5 Further Reading
+The books written by Quinlan (1993) and Breiman et al. (1984) are good startingpoints to learn more about decision trees. Breiman et al. (1984) also discuss the
+
+“9781405155816_4_007” — 2010/5/8 — 11:47 — page 196 — #17
+196 Helmut Schmid
+application of decision trees to regression problems which is not covered in thischapter. The book by Manning and Schütze (1999) includes a section on decisiontrees from the perspective of statistical NLP . The website
+4of the AAAI organiza-
+tion includes a collection of pointers to online literature on decision trees. Furtherliterature on more speciﬁc topics can be found via the references in the respectivesections.
+NOTES
+1 A greedy search strategy makes locally optimal decisions which may be suboptimal in
+a broader global context.
+2 A and B are ranked correctly if the one with the higher probability according to the
+decision tree is in fact more likely.
+3 The meaning of the tags is as follows: NN =regular noun, DT=determiner,
+IN=preposition, JJ=adjective, RB=adverb, RP=particle, VB=base verb, VBP=ﬁniteverb, VBN =past participle, WDT=relative pronoun.
+4 www.aaai.org/aitopics/pmwiki/pmwiki.php/AITopics/DecisionTrees
+

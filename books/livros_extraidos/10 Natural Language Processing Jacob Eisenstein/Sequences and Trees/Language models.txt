@@ -1,0 +1,646 @@
+Chapter 6 3024
+Language models 3025
+In probabilistic classiﬁcation, the problem is to compute the probability of a label, condi- 3026
+tioned on the text. Let’s now consider the inverse problem: computing the probability of 3027
+text itself. Speciﬁcally, we will consider models that assign probability to a sequence of 3028
+word tokens, p (w1,w2,...,wM), withwm∈V. The setVis a discrete vocabulary, 3029
+V={aardvark,abacus,..., zither}. [6.1]
+Why would you want to compute the probability of a word sequence? In many appli- 3030
+cations, the goal is to produce word sequences as output: 3031
+•Inmachine translation (chapter 18), we convert from text in a source language to 3032
+text in a target language. 3033
+•Inspeech recognition , we convert from audio signal to text. 3034
+•Insummarization (§16.3.4.1;§19.2), we convert from long texts into short texts. 3035
+•Indialogue systems (§19.3), we convert from the user’s input (and perhaps an 3036
+external knowledge base) into a text response. 3037
+In many of the systems for performing these tasks, there is a subcomponent that com- 3038
+putes the probability of the output text. The purpose of this component is to generate 3039
+texts that are more ﬂuent . For example, suppose we want to translate a sentence from 3040
+Spanish to English. 3041
+(6.1) El cafe negro me gusta mucho. 3042
+Here is a literal word-for-word translation (a gloss ): 3043
+(6.2) The coffee black me pleases much. 3044
+137
+
+138 CHAPTER 6. LANGUAGE MODELS
+A good language model of English will tell us that the probability of this translation is 3045
+low, in comparison with more grammatical alternatives, 3046
+p(The coffee black me pleases much )<p(I love dark coffee ). [6.2]
+How can we use this fact? Warren Weaver, one of the early leaders in machine trans- 3047
+lation, viewed it as a problem of breaking a secret code (Weaver, 1955): 3048
+When I look at an article in Russian, I say: ’This is really written in English, 3049
+but it has been coded in some strange symbols. I will now proceed to decode.’ 3050
+This observation motivates a generative model (like Na ¨ıve Bayes): 3051
+•The English sentence w(e)is generated from a language model , pe(w(e)). 3052
+•The Spanish sentence w(s)is then generated from a translation model , ps|e(w(s)|w(e)). 3053
+Given these two distributions, we can then perform translation by Bayes rule:
+pe|s(w(e)|w(s))∝pe,s(w(e),w(s)) [6.3]
+=ps|e(w(s)|w(e))×pe(w(e)). [6.4]
+This is sometimes called the noisy channel model , because it envisions English text 3054
+turning into Spanish by passing through a noisy channel, ps|e. What is the advantage of 3055
+modeling translation this way, as opposed to modeling pe|sdirectly? The crucial point is 3056
+that the two distributions ps|e(the translation model) and pe(the language model) can be 3057
+estimated from separate data. The translation model requires examples of correct trans- 3058
+lations, but the language model requires only text in English. Such monolingual data is 3059
+much more widely available. Furthermore, once estimated, the language model pecan be 3060
+reused in any application that involves generating English text, from summarization to 3061
+speech recognition. 3062
+6.1N-gram language models 3063
+A simple approach to computing the probability of a sequence of tokens is to use a relative
+frequency estimate . For example, consider the quote, attributed to Picasso, “ computers are
+useless, they can only give you answers. ” We can estimate the probability of this sentence,
+p(Computers are useless, they can only give you answers )
+=count (Computers are useless, they can only give you answers )
+count (all sentences ever spoken )[6.5]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+6.1.N-GRAM LANGUAGE MODELS 139
+This estimator is unbiased : in the theoretical limit of inﬁnite data, the estimate will 3064
+be correct. But in practice, we are asking for accurate counts over an inﬁnite number of 3065
+events, since sequences of words can be arbitrarily long. Even with an aggressive upper 3066
+bound of, say, M= 20 tokens in the sequence, the number of possible sequences is V20. A 3067
+small vocabularly for English would have V= 104, so there are 1080possible sequences. 3068
+Clearly, this estimator is very data-hungry, and suffers from high variance: even gram- 3069
+matical sentences will have probability zero if have not occurred in the training data.1We 3070
+therefore need to introduce bias to have a chance of making reliable estimates from ﬁnite 3071
+training data. The language models that follow in this chapter introduce bias in various 3072
+ways. 3073
+We begin with n-gram language models, which compute the probability of a sequence
+as the product of probabilities of subsequences. The probability of a sequence p (w) =
+p(w1,w2,...,wM)can be refactored using the chain rule (see §A.2):
+p(w) =p(w1,w2,...,wM) [6.6]
+=p(w1)×p(w2|w1)×p(w3|w2,w1)×...×p(wM|wM−1,...,w 1) [6.7]
+Each element in the product is the probability of a word given all its predecessors. We
+can think of this as a word prediction task: given the context Computers are , we want to com-
+pute a probability over the next token. The relative frequency estimate of the probability
+of the word useless in this context is,
+p(useless|computers are ) =count (computers are useless )∑
+x∈Vcount (computers are x)
+=count (computers are useless )
+count (computers are ).
+We haven’t made any approximations yet, and we could have just as well applied the 3074
+chain rule in reverse order, 3075
+p(w) =p(wM)×p(wM−1|wM)×...×p(w1|w2,...,wM), [6.8]
+or in any other order. But this means that we also haven’t really made any progress: 3076
+to compute the conditional probability p (wM|wM−1,wM−2,...,w 1), we would need to 3077
+modelVM−1contexts. Such a distribution cannot be estimated from any realistic sample 3078
+of text. 3079
+1Chomsky has famously argued that this is evidence against the very concept of probabilistic language
+models: no such model could distinguish the grammatical sentence colorless green ideas sleep furiously from
+the ungrammatical permutation furiously sleep ideas green colorless . Indeed, even the bigrams in these two
+examples are unlikely to occur — at least, not in texts written before Chomsky proposed this example.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+140 CHAPTER 6. LANGUAGE MODELS
+To solve this problem, n-gram models make a crucial simplifying approximation: con-
+dition on only the past n−1words.
+p(wm|wm−1...w 1)≈p(wm|wm−1,...,wm−n+1) [6.9]
+This means that the probability of a sentence wcan be approximated as
+p(w1,...,wM)≈M∏
+mp(wm|wm−1,...,wm−n+1) [6.10]
+To compute the probability of an entire sentence, it is convenient to pad the beginning
+and end with special symbols □and■. Then the bigram ( n= 2) approximation to the
+probability of I like black coffee is:
+p(I like black coffee ) =p(I|□)×p(like|I)×p(black|like)×p(coffee|black)×p(■|coffee ).
+[6.11]
+This model requires estimating and storing the probability of only Vnevents, which is 3080
+exponential in the order of the n-gram, and not VM, which is exponential in the length of 3081
+the sentence. The n-gram probabilities can be computed by relative frequency estimation, 3082
+p(wm|wm−1,wm−2) =count (wm−2,wm−1,wm)∑
+w′count (wm−2,wm−1,w′)[6.12]
+The hyperparameter ncontrols the size of the context used in each conditional proba- 3083
+bility. If this is misspeciﬁed, the language model will perform poorly. Let’s consider the 3084
+potential problems concretely. 3085
+Whennis too small. Consider the following sentences: 3086
+(6.3) Gorillas always like to groom their friends. 3087
+(6.4) The computer that’s on the 3rd ﬂoor of our ofﬁce building crashed . 3088
+In each example, the bolded words depend on each other: the likelihood of their 3089
+depends on knowing that gorillas is plural, and the likelihood of crashed depends on 3090
+knowing that the subject is a computer . If then-grams are not big enough to capture 3091
+this context, then the resulting language model would offer probabilities that are too 3092
+low for these sentences, and too high for sentences that fail basic linguistic tests like 3093
+number agreement. 3094
+Whennis too big. In this case, it is hard good estimates of the n-gram parameters from 3095
+our dataset, because of data sparsity. To handle the gorilla example, it is necessary to 3096
+model 6-grams, which means accounting for V6events. Under a very small vocab- 3097
+ulary ofV= 104, this means estimating the probability of 1024distinct events. 3098
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+6.2. SMOOTHING AND DISCOUNTING 141
+These two problems point to another bias-variance tradeoff (see§2.1.4). A small n- 3099
+gram size introduces high bias, and a large n-gram size introduces high variance. But 3100
+in reality we often have both problems at the same time! Language is full of long-range 3101
+dependencies that we cannot capture because nis too small; at the same time, language 3102
+datasets are full of rare phenomena, whose probabilities we fail to estimate accurately 3103
+becausenis too large. One solution is to try to keep nlarge, while still making low- 3104
+variance estimates of the underlying parameters. To do this, we will introduce a different 3105
+sort of bias: smoothing . 3106
+6.2 Smoothing and discounting 3107
+Limited data is a persistent problem in estimating language models. In §6.1, we presented 3108
+n-grams as a partial solution. sparse data can be a problem even for low-order n-grams; 3109
+at the same time, many linguistic phenomena, like subject-verb agreement, cannot be in- 3110
+corporated into language models without high-order n-grams. It is therefore necessary to 3111
+add additional inductive biases to n-gram language models. This section covers some of 3112
+the most intuitive and common approaches, but there are many more (Chen and Good- 3113
+man, 1999). 3114
+6.2.1 Smoothing 3115
+A major concern in language modeling is to avoid the situation p (w) = 0 , which could 3116
+arise as a result of a single unseen n-gram. A similar problem arose in Na ¨ıve Bayes, and 3117
+the solution was smoothing : adding imaginary “pseudo” counts. The same idea can be 3118
+applied ton-gram language models, as shown here in the bigram case, 3119
+psmooth(wm|wm−1) =count (wm−1,wm) +α∑
+w′∈Vcount (wm−1,w′) +Vα. [6.13]
+This basic framework is called Lidstone smoothing , but special cases have other names: 3120
+•Laplace smoothing corresponds to the case α= 1. 3121
+•Jeffreys-Perks law corresponds to the case α= 0.5. Manning and Sch ¨utze (1999) 3122
+offer more insight on the justiﬁcations for this setting. 3123
+To maintain normalization, anything that we add to the numerator ( α) must also ap- 3124
+pear in the denominator ( Vα). This idea is reﬂected in the concept of effective counts : 3125
+c∗
+i= (ci+α)M
+M+Vα, [6.14]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+142 CHAPTER 6. LANGUAGE MODELS
+Lidstone smoothing, α= 0.1Discounting, d= 0.1
+countsunsmoothed
+probabilityeffective
+countssmoothed
+probabilityeffective
+countssmoothed
+probability
+impropriety 8 0.4 7.826 0.391 7.9 0.395
+offense 5 0.25 4.928 0.246 4.9 0.245
+damage 4 0.2 3.961 0.198 3.9 0.195
+deﬁciencies 2 0.1 2.029 0.101 1.9 0.095
+outbreak 1 0.05 1.063 0.053 0.9 0.045
+inﬁrmity 0 0 0.097 0.005 0.25 0.013
+cephalopods 0 0 0.097 0.005 0.25 0.013
+Table 6.1: Example of Lidstone smoothing and absolute discounting in a bigram language
+model, for the context (alleged,), for a toy corpus with a total of twenty counts over the
+seven words shown. Note that discounting decreases the probability for all but the un-
+seen words, while Lidstone smoothing increases the effective counts and probabilities for
+deﬁciencies and outbreak .
+whereciis the count of event i,c∗
+iis the effective count, and M=∑V
+i=1ciis the total num-
+ber of tokens in the dataset (w1,w2,...,wM). This term ensures that∑V
+i=1c∗
+i=∑V
+i=1ci=M.
+The discount for each n-gram is then computed as,
+di=c∗
+i
+ci=(ci+α)
+ciM
+(M+Vα).
+6.2.2 Discounting and backoff 3126
+Discounting “borrows” probability mass from observed n-grams and redistributes it. In 3127
+Lidstone smoothing, the borrowing is done by increasing the denominator of the relative 3128
+frequency estimates. The borrowed probability mass is then redistributed by increasing 3129
+the numerator for all n-grams. Another approach would be to borrow the same amount 3130
+of probability mass from all observed n-grams, and redistribute it among only the unob- 3131
+servedn-grams. This is called absolute discounting . For example, suppose we set an 3132
+absolute discount d= 0.1in a bigram model, and then redistribute this probability mass 3133
+equally over the unseen words. The resulting probabilities are shown in Table 6.1. 3134
+Discounting reserves some probability mass from the observed data, and we need not
+redistribute this probability mass equally. Instead, we can backoff to a lower-order lan-
+guage model: if you have trigrams, use trigrams; if you don’t have trigrams, use bigrams;
+if you don’t even have bigrams, use unigrams. This is called Katz backoff . In the simple
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+6.2. SMOOTHING AND DISCOUNTING 143
+case of backing off from bigrams to unigrams, the bigram probabilities are computed as,
+c∗(i,j) =c(i,j)−d [6.15]
+pKatz(i|j) =
+
+c∗(i,j)
+c(j)ifc(i,j)>0
+α(j)×punigram(i)∑
+i′:c(i′,j)=0punigram(i′)ifc(i,j) = 0.[6.16]
+The termα(j)indicates the amount of probability mass that has been discounted for 3135
+contextj. This probability mass is then divided across all the unseen events, {i′:c(i′,j) = 3136
+0}, proportional to the unigram probability of each word i′. The discount parameter dcan 3137
+be optimized to maximize performance (typically held-out log-likelihood) on a develop- 3138
+ment set. 3139
+6.2.3 *Interpolation 3140
+Backoff is one way to combine different order n-gram models. An alternative approach 3141
+isinterpolation : setting the probability of a word in context to a weighted sum of its 3142
+probabilities across progressively shorter contexts. 3143
+Instead of choosing a single nfor the size of the n-gram, we can take the weighted
+average across several n-gram probabilities. For example, for an interpolated trigram
+model,
+pInterpolation(wm|wm−1,wm−2) =λ3p∗
+3(wm|wm−1,wm−2)
++λ2p∗
+2(wm|wm−1)
++λ1p∗
+1(wm).
+In this equation, p∗
+nis the unsmoothed empirical probability given by an n-gram lan- 3144
+guage model, and λnis the weight assigned to this model. To ensure that the interpolated 3145
+p(w)is still a valid probability distribution, the values of λmust obey the constraint, 3146∑nmax
+n=1λn= 1. But how to ﬁnd the speciﬁc values? 3147
+An elegant solution is expectation maximization . Recall from chapter 5 that we can 3148
+think about EM as learning with missing data : we just need to choose missing data such 3149
+that learning would be easy if it weren’t missing. What’s missing in this case? Think of 3150
+each word wmas drawn from an n-gram of unknown size, zm∈{1...n max}. Thiszmis 3151
+the missing data that we are looking for. Therefore, the application of EM to this problem 3152
+involves the following generative process : 3153
+forEach token wm,m= 1,2,...,M do: 3154
+draw then-gram sizezm∼Categorical (λ); 3155
+drawwm∼p∗
+zm(wm|wm−1,...,wm−zm). 31563157
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+144 CHAPTER 6. LANGUAGE MODELS
+If the missing data {Zm}were known, then λcould be estimated as the relative fre-
+quency,
+λz=count (Zm=z)
+M[6.17]
+∝M∑
+m=1δ(Zm=z). [6.18]
+But since we do not know the values of the latent variables Zm, we impute a distribution
+qmin the E-step, which represents the degree of belief that word token wmwas generated
+from an-gram of order zm,
+qm(z)≜Pr(Zm=z|w1:m;λ) [6.19]
+=p(wm|w1:m−1,Zm=z)×p(z)∑
+z′p(wm|w1:m−1,Zm=z′)×p(z′)[6.20]
+∝p∗
+z(wm|w1:m−1)×λz. [6.21]
+In the M-step, λis computed by summing the expected counts under q,
+λz∝M∑
+m=1qm(z). [6.22]
+A solution is obtained by iterating between updates to qandλ. The complete algorithm 3158
+is shown in Algorithm 10. 3159
+Algorithm 10 Expectation-maximization for interpolated language modeling
+1:procedure ESTIMATE INTERPOLATED n-GRAM (w1:M,{p∗
+n}n∈1:nmax)
+2: forz∈{1,2,...,n max}do ⊿Initialization
+3:λz←1
+nmax
+4: repeat
+5: form∈{1,2,...,M}do ⊿E-step
+6: forz∈{1,2,...,n max}do
+7: qm(z)←p∗
+z(wm|w1:m−)×λz
+8:qm←Normalize (qm)
+9: forz∈{1,2,...,n max}do ⊿M-step
+10: λz←1
+M∑M
+m=1qm(z)
+11: until tired
+12: returnλ
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+6.2. SMOOTHING AND DISCOUNTING 145
+6.2.4 *Kneser-Ney smoothing 3160
+Kneser-Ney smoothing is based on absolute discounting, but it redistributes the result- 3161
+ing probability mass in a different way from Katz backoff. Empirical evidence points 3162
+to Kneser-Ney smoothing as the state-of-art for n-gram language modeling (Goodman, 3163
+2001). To motivate Kneser-Ney smoothing, consider the example: I recently visited . 3164
+Which of the following is more likely? 3165
+•Francisco 3166
+•Duluth 3167
+Now suppose that both bigrams visited Duluth and visited Francisco are unobserved in 3168
+the training data, and furthermore, the unigram probability p∗
+1(Francisco )is greater than 3169
+p∗(Duluth ). Nonetheless we would still guess that p (visited Duluth )>p(visited Francisco ), 3170
+because Duluth is a more “versatile” word: it can occur in many contexts, while Francisco 3171
+usually occurs in a single context, following the word San. This notion of versatility is the 3172
+key to Kneser-Ney smoothing. 3173
+Writingufor a context of undeﬁned length, and count (w,u)as the count of word win
+contextu, we deﬁne the Kneser-Ney bigram probability as
+pKN(w|u) ={count (w,u)−d
+count (u), count (w,u)>0
+α(u)×pcontinuation(w),otherwise[6.23]
+pcontinuation(w) =|u:count (w,u)>0|∑
+w′∈V|u′:count (w′,u′)>0|. [6.24]
+First, note that we reserve probability mass using absolute discounting d, which is
+taken from all unobserved n-grams. The total amount of discounting in context uis
+d×|w:count (w,u)>0|, and we divide this probability mass equally among the unseen
+n-grams,
+α(u) =|w:count (w,u)>0|×d
+count (u). [6.25]
+This is the amount of probability mass left to account for versatility, which we deﬁne via 3174
+thecontinuation probability pcontinuation(w)as proportional to the number of observed con- 3175
+texts in which wappears. The numerator of the continuation probability is the number of 3176
+contextsuin whichwappears; the denominator normalizes the probability by summing 3177
+the same quantity over all words w′. 3178
+The idea of modeling versatility by counting contexts may seem heuristic, but there is 3179
+an elegant theoretical justiﬁcation from Bayesian nonparametrics (Teh, 2006). Kneser-Ney 3180
+smoothing on n-grams was the dominant language modeling technique before the arrival 3181
+of neural language models. 3182
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+146 CHAPTER 6. LANGUAGE MODELS
+h0 h1 h2 h3 · · ·
+x1 x2 x3 · · ·
+w1 w2 w3 · · ·
+Figure 6.1: The recurrent neural network language model, viewed as an “unrolled” com-
+putation graph. Solid lines indicate direct computation, dotted blue lines indicate proba-
+bilistic dependencies, circles indicate random variables, and squares indicate computation
+nodes.
+6.3 Recurrent neural network language models 3183
+N-gram language models have been largely supplanted by neural networks . These mod- 3184
+els do not make the n-gram assumption of restricted context; indeed, they can incorporate 3185
+arbitrarily distant contextual information, while remaining computationally and statisti- 3186
+cally tractable. 3187
+The ﬁrst insight behind neural language models is to treat word prediction as a dis- 3188
+criminative learning task.2The goal is to compute the probability p (w|u), wherew∈V is 3189
+a word, and uis the context, which depends on the previous words. Rather than directly 3190
+estimating the word probabilities from (smoothed) relative frequencies, we can treat treat 3191
+language modeling as a machine learning problem, and estimate parameters that maxi- 3192
+mize the log conditional probability of a corpus. 3193
+The second insight is to reparametrize the probability distribution p (w|u)as a func- 3194
+tion of two dense K-dimensional numerical vectors, βw∈RK, andvu∈RK, 3195
+p(w|u) =exp(βw·vu)∑
+w′∈Vexp(βw′·vu), [6.26]
+whereβw·vurepresents a dot product. As usual, the denominator ensures that the prob- 3196
+ability distribution is properly normalized. This vector of probabilities is equivalent to 3197
+applying the softmax transformation (see §3.1) to the vector of dot-products, 3198
+p(·|u) =SoftMax ([β1·vu,β2·vu,...,βV·vu]). [6.27]
+The word vectors βware parameters of the model, and are estimated directly. The
+context vectors vucan be computed in various ways, depending on the model. A simple
+2This idea predates neural language models (e.g., Rosenfeld, 1996; Roark et al., 2007).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+6.3. RECURRENT NEURAL NETWORK LANGUAGE MODELS 147
+but effective neural language model can be built from a recurrent neural network (RNN;
+Mikolov et al., 2010). The basic idea is to recurrently update the context vectors while
+moving through the sequence. Let hmrepresent the contextual information at position m
+in the sequence. RNN language models are deﬁned,
+xm≜φwm [6.28]
+hm=RNN (xm,hm−1) [6.29]
+p(wm+1|w1,w2,...,wm) =exp(βwm+1·hm)∑
+w′∈Vexp(βw′·hm), [6.30]
+whereφis a matrix of input word embeddings , andxmdenotes the embedding for word 3199
+wm. The conversion of wmtoxmis sometimes known as a lookup layer , because we 3200
+simply lookup the embeddings for each word in a table; see §3.2.4. 3201
+The Elman unit deﬁnes a simple recurrent operation (Elman, 1990), 3202
+RNN (xm,hm−1)≜g(Θhm−1+xm), [6.31]
+where Θ∈RK×Kis the recurrence matrix and gis a non-linear transformation function, 3203
+often deﬁned as the elementwise hyperbolic tangent tanh (see§3.1).3Thetanh acts as a 3204
+squashing function , ensuring that each element of hmis constrained to the range [−1,1]. 3205
+Although each wmdepends on only the context vector hm−1, this vector is in turn 3206
+inﬂuenced by allprevious tokens, w1,w2,...wm−1, through the recurrence operation: w1 3207
+affectsh1, which affects h2, and so on, until the information is propagated all the way to 3208
+hm−1, and then on to wm(see Figure 6.1). This is an important distinction from n-gram 3209
+language models, where any information outside the n-word window is ignored. In prin- 3210
+ciple, the RNN language model can handle long-range dependencies, such as number 3211
+agreement over long spans of text — although it would be difﬁcult to know where exactly 3212
+in the vector hmthis information is represented. The main limitation is that informa- 3213
+tion is attenuated by repeated application of the squashing function g.Long short-term 3214
+memories (LSTMs), described below, are a variant of RNNs that address this issue, us- 3215
+ing memory cells to propagate information through the sequence without applying non- 3216
+linearities (Hochreiter and Schmidhuber, 1997). 3217
+The denominator in Equation 6.30 is a computational bottleneck, because it involves 3218
+a sum over the entire vocabulary. One solution is to use a hierarchical softmax function, 3219
+which computes the sum more efﬁciently by organizing the vocabulary into a tree (Mikolov 3220
+et al., 2011). Another strategy is to optimize an alternative metric, such as noise-contrastive 3221
+estimation (Gutmann and Hyv ¨arinen, 2012), which learns by distinguishing observed in- 3222
+stances from artiﬁcial instances generated from a noise distribution (Mnih and Teh, 2012). 3223
+Both of these strategies are described in §14.5.3. 3224
+3In the original Elman network, the sigmoid function was used in place of tanh . For an illuminating
+mathematical discussion of the advantages and disadvantages of various nonlinearities in recurrent neural
+networks, see the lecture notes from Cho (2015).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+148 CHAPTER 6. LANGUAGE MODELS
+6.3.1 Backpropagation through time 3225
+The recurrent neural network language model has the following parameters: 3226
+•φi∈RK, the “input” word vectors (these are sometimes called word embeddings , 3227
+since each word is embedded in a K-dimensional space); 3228
+•βi∈RK, the “output” word vectors; 3229
+•Θ∈RK×K, the recurrence operator; 3230
+•h0, the initial state. 3231
+Each of these parameters can be estimated by formulating an objective function over the 3232
+training corpus, L(w), and then applying backpropagation to obtain gradients on the 3233
+parameters from a minibatch of training examples (see §3.3.1). Gradient-based updates 3234
+can be computed from an online learning algorithm such as stochastic gradient descent 3235
+(see§2.5.2). 3236
+The application of backpropagation to recurrent neural networks is known as back- 3237
+propagation through time , because the gradients on units at time mdepend in turn on the 3238
+gradients of units at earlier times n < m . Letℓm+1represent the negative log-likelihood 3239
+of wordm+ 1, 3240
+ℓm+1=−logp(wm+1|w1,w2,...,wm). [6.32]
+We require the gradient of this loss with respect to each parameter, such as θk,k′, an indi-
+vidual element in the recurrence matrix Θ. Since the loss depends on the parameters only
+throughhm, we can apply the chain rule of differentiation,
+∂ℓm+1
+∂θk,k′=∂ℓm+1
+∂hm∂hm
+∂θk,k′. [6.33]
+The vectorhmdepends on Θin several ways. First, hmis computed by multiplying Θby
+the previous state hm−1. But the previous state hm−1also depends on Θ:
+hm=g(xm,hm−1) [6.34]
+∂hm,k
+∂θk,k′=g′(xm,k+θk·hm−1)(hm−1,k′+θk·∂hm−1
+∂θk,k′), [6.35]
+whereg′is the local derivative of the nonlinear function g. The key point in this equation 3241
+is that the derivative∂hm
+∂θk,k′depends on∂hm−1
+∂θk,k′, which will depend in turn on∂hm−2
+∂θk,k′, and 3242
+so on, until reaching the initial state h0. 3243
+Each derivative∂hm
+∂θk,k′will be reused many times: it appears in backpropagation from 3244
+the lossℓm, but also in all subsequent losses ℓn>m. Neural network toolkits such as 3245
+Torch (Collobert et al., 2011) and DyNet (Neubig et al., 2017) compute the necessary 3246
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+6.3. RECURRENT NEURAL NETWORK LANGUAGE MODELS 149
+derivatives automatically, and cache them for future use. An important distinction from 3247
+the feedforward neural networks considered in chapter 3 is that the size of the computa- 3248
+tion graph is not ﬁxed, but varies with the length of the input. This poses difﬁculties for 3249
+toolkits that are designed around static computation graphs, such as TensorFlow (Abadi 3250
+et al., 2016).43251
+6.3.2 Hyperparameters 3252
+The RNN language model has several hyperparameters that must be tuned to ensure good 3253
+performance. The model capacity is controlled by the size of the word and context vectors 3254
+K, which play a role that is somewhat analogous to the size of the n-gram context. For 3255
+datasets that are large with respect to the vocabulary (i.e., there is a large token-to-type 3256
+ratio), we can afford to estimate a model with a large K, which enables more subtle dis- 3257
+tinctions between words and contexts. When the dataset is relatively small, then Kmust 3258
+be smaller too, or else the model may “memorize” the training data, and fail to generalize. 3259
+Unfortunately, this general advice has not yet been formalized into any concrete formula 3260
+for choosing K, and trial-and-error is still necessary. Overﬁtting can also be prevented by 3261
+dropout , which involves randomly setting some elements of the computation to zero (Sri- 3262
+vastava et al., 2014), forcing the learner not to rely too much on any particular dimension 3263
+of the word or context vectors. The dropout rate must also be tuned on development data. 3264
+6.3.3 Gated recurrent neural networks 3265
+In principle, recurrent neural networks can propagate information across inﬁnitely long 3266
+sequences. But in practice, repeated applications of the nonlinear recurrence function 3267
+causes this information to be quickly attenuated. The same problem affects learning: back- 3268
+propagation can lead to vanishing gradients that decay to zero, or exploding gradients 3269
+that increase towards inﬁnity (Bengio et al., 1994). The exploding gradient problem can 3270
+be addressed by clipping gradients at some maximum value (Pascanu et al., 2013). The 3271
+other issues must be addressed by altering the model itself. 3272
+The long short-term memory (LSTM ; Hochreiter and Schmidhuber, 1997) is a popular 3273
+variant of RNNs that is more robust to these problems. This model augments the hidden 3274
+statehmwith a memory cell cm. The value of the memory cell at each time mis a gated 3275
+sum of two quantities: its previous value cm−1, and an “update” ˜cm, which is computed 3276
+from the current input xmand the previous hidden state hm−1. The next state hmis then 3277
+computed from the memory cell. Because the memory cell is not passed through a non- 3278
+linear squashing function during the update, it is possible for information to propagate 3279
+through the network over long distances. 3280
+4Seehttps://www.tensorflow.org/tutorials/recurrent (retrieved Feb 8, 2018).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+150 CHAPTER 6. LANGUAGE MODELS
+hm hm+1
+om om+1
+cm fm+1 cm+1
+im im+1
+˜cm ˜cm+1
+xm xm+1
+Figure 6.2: The long short-term memory (LSTM) architecture. Gates are shown in boxes
+with dotted edges. In an LSTM language model, each hmwould be used to predict the
+next wordwm+1.
+The gates are functions of the input and previous hidden state. They are computed
+from elementwise sigmoid activations, σ(x) = (1+exp(−x))−1, ensuring that their values
+will be in the range [0,1]. They can therefore be viewed as soft, differentiable logic gates.
+The LSTM architecture is shown in Figure 6.2, and the complete update equations are:
+fm+1=σ(Θ(h→f)hm+Θ(x→f)xm+1+bf) forget gate [6.36]
+im+1=σ(Θ(h→i)hm+Θ(x→i)xm+1+bi) input gate [6.37]
+˜cm+1= tanh( Θ(h→c)hm+Θ(w→c)xm+1) update candidate [6.38]
+cm+1=fm+1⊙cm+im+1⊙˜cm+1 memory cell update [6.39]
+om+1=σ(Θ(h→o)hm+Θ(x→o)xm+1+bo) output gate [6.40]
+hm+1=om+1⊙tanh(cm+1) output. [6.41]
+The operator⊙is an elementwise (Hadamard) product. Each gate is controlled by a vec- 3281
+tor of weights, which parametrize the previous hidden state (e.g., Θ(h→f)) and the current 3282
+input (e.g., Θ(x→f)), plus a vector offset (e.g., bf). The overall operation can be infor- 3283
+mally summarized as (hm,cm) = LSTM (xm,(hm−1,cm−1)), with (hm,cm)representing 3284
+the LSTM state after reading token m. 3285
+The LSTM outperforms standard recurrent neural networks across a wide range of 3286
+problems. It was ﬁrst used for language modeling by Sundermeyer et al. (2012), but can 3287
+be applied more generally: the vector hmcan be treated as a complete representation of 3288
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+6.4. EVALUATING LANGUAGE MODELS 151
+the input sequence up to position m, and can be used for any labeling task on a sequence 3289
+of tokens, as we will see in the next chapter. 3290
+There are several LSTM variants, of which the Gated Recurrent Unit (Cho et al., 2014) 3291
+is one of the more well known. Many software packages implement a variety of RNN 3292
+architectures, so choosing between them is simple from a user’s perspective. Jozefowicz 3293
+et al. (2015) provide an empirical comparison of various modeling choices circa 2015. 3294
+6.4 Evaluating language models 3295
+Language modeling is not usually an application in itself: language models are typically 3296
+components of larger systems, and they would ideally be evaluated extrinisically . This 3297
+means evaluating whether the language model improves performance on the application 3298
+task, such as machine translation or speech recognition. But this is often hard to do, and 3299
+depends on details of the overall system which may be irrelevant to language modeling. 3300
+In contrast, intrinsic evaluation is task-neutral. Better performance on intrinsic metrics 3301
+may be expected to improve extrinsic metrics across a variety of tasks, but there is always 3302
+the risk of over-optimizing the intrinsic metric. This section discusses some intrinsic met- 3303
+rics, but keep in mind the importance of performing extrinsic evaluations to ensure that 3304
+intrinsic performance gains carry over to the applications that we care about. 3305
+6.4.1 Held-out likelihood 3306
+The goal of probabilistic language models is to accurately measure the probability of se-
+quences of word tokens. Therefore, an intrinsic evaluation metric is the likelihood that the
+language model assigns to held-out data , which is not used during training. Speciﬁcally,
+we compute,
+ℓ(w) =M∑
+m=1logp(wm|wm−1,...,w 1), [6.42]
+treating the entire held-out corpus as a single stream of tokens. 3307
+Typically, unknown words are mapped to the ⟨UNK⟩token. This means that we have 3308
+to estimate some probability for ⟨UNK⟩on the training data. One way to do this is to ﬁx 3309
+the vocabularyVto theV−1words with the highest counts in the training data, and then 3310
+convert all other tokens to ⟨UNK⟩. Other strategies for dealing with out-of-vocabulary 3311
+terms are discussed in §6.5. 3312
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+152 CHAPTER 6. LANGUAGE MODELS
+6.4.2 Perplexity 3313
+Held-out likelihood is usually presented as perplexity , which is a deterministic transfor-
+mation of the log-likelihood into an information-theoretic quantity,
+Perplex (w) = 2−ℓ(w)
+M,[6.43]
+whereMis the total number of tokens in the held-out corpus. 3314
+Lower perplexities correspond to higher likelihoods, so lower scores are better on this 3315
+metric — it is better to be less perplexed. Here are some special cases: 3316
+•In the limit of a perfect language model, probability 1is assigned to the held-out 3317
+corpus, with Perplex (w) = 2−1
+Mlog21= 20= 1. 3318
+•In the opposite limit, probability zero is assigned to the held-out corpus, which cor- 3319
+responds to an inﬁnite perplexity, Perplex (w) = 2−1
+Mlog20= 2∞=∞. 3320
+•Assume a uniform, unigram model in which p (wi) =1
+Vfor all words in the vocab-
+ulary. Then,
+log2(w) =M∑
+m=1log21
+V=−M∑
+m=1log2V=−Mlog2V
+Perplex (w) =21
+MMlog2V
+=2log2V
+=V.
+This is the “worst reasonable case” scenario, since you could build such a language 3321
+model without even looking at the data. 3322
+In practice, language models tend to give perplexities in the range between 1andV. 3323
+A small benchmark dataset is the Penn Treebank , which contains roughly a million to- 3324
+kens; its vocabulary is limited to 10,000 words, with all other tokens mapped a special 3325
+⟨UNK⟩symbol. On this dataset, a well-smoothed 5-gram model achieves a perplexity of 3326
+141 (Mikolov and Zweig, Mikolov and Zweig), and an LSTM language model achieves 3327
+perplexity of roughly 80 (Zaremba, Sutskever, and Vinyals, Zaremba et al.). Various en- 3328
+hancements to the LSTM architecture can bring the perplexity below 60 (Merity et al., 3329
+2018). A larger-scale language modeling dataset is the 1B Word Benchmark (Chelba et al., 3330
+2013), which contains text from Wikipedia. On this dataset, a perplexities of around 25 3331
+can be obtained by averaging together multiple LSTM language models (Jozefowicz et al., 3332
+2016). 3333
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+6.5. OUT-OF-VOCABULARY WORDS 153
+6.5 Out-of-vocabulary words 3334
+So far, we have assumed a closed-vocabulary setting — the vocabulary Vis assumed to be 3335
+a ﬁnite set. In realistic application scenarios, this assumption may not hold. Consider, for 3336
+example, the problem of translating newspaper articles. The following sentence appeared 3337
+in a Reuters article on January 6, 2017:53338
+The report said U.S. intelligence agencies believe Russian military intelligence, 3339
+theGRU , used intermediaries such as WikiLeaks ,DCLeaks.com and the Guc- 3340
+cifer 2.0 ”persona” to release emails... 3341
+Suppose that you trained a language model on the Gigaword corpus,6which was released 3342
+in 2003. The bolded terms either did not exist at this date, or were not widely known; they 3343
+are unlikely to be in the vocabulary. The same problem can occur for a variety of other 3344
+terms: new technologies, previously unknown individuals, new words (e.g., hashtag ), and 3345
+numbers. 3346
+One solution is to simply mark all such terms with a special token, ⟨UNK⟩. While 3347
+training the language model, we decide in advance on the vocabulary (often the Kmost 3348
+common terms), and mark all other terms in the training data as ⟨UNK⟩. If we do not want 3349
+to determine the vocabulary size in advance, an alternative approach is to simply mark 3350
+the ﬁrst occurrence of each word type as ⟨UNK⟩. 3351
+But is often better to make distinctions about the likelihood of various unknown words. 3352
+This is particularly important in languages that have rich morphological systems, with 3353
+many inﬂections for each word. For example, Portuguese is only moderately complex 3354
+from a morphological perspective, yet each verb has dozens of inﬂected forms (see Fig- 3355
+ure 4.3b). In such languages, there will be many word types that we do not encounter in a 3356
+corpus, which are nonetheless predictable from the morphological rules of the language. 3357
+To use a somewhat contrived English example, if transfenestrate is in the vocabulary, our 3358
+language model should assign a non-zero probability to the past tense transfenestrated , 3359
+even if it does not appear in the training data. 3360
+One way to accomplish this is to supplement word-level language models with character- 3361
+level language models . Such models can use n-grams or RNNs, but with a ﬁxed vocab- 3362
+ulary equal to the set of ASCII or Unicode characters. For example Ling et al. (2015) 3363
+propose an LSTM model over characters, and Kim (2014) employ a convolutional neural 3364
+network (LeCun and Bengio, 1995). A more linguistically motivated approach is to seg- 3365
+ment words into meaningful subword units, known as morphemes (see chapter 9). For 3366
+5Bayoumy, Y. and Strobel, W. (2017, January 6). U.S. intel report: Putin directed cy-
+ber campaign to help Trump. Reuters . Retrieved from http://www.reuters.com/article/
+us-usa-russia-cyber-idUSKBN14Q1T8 on January 7, 2017.
+6https://catalog.ldc.upenn.edu/LDC2003T05
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+154 CHAPTER 6. LANGUAGE MODELS
+example, Botha and Blunsom (2014) induce vector representations for morphemes, which 3367
+they build into a log-bilinear language model; Bhatia et al. (2016) incorporate morpheme 3368
+vectors into an LSTM. 3369
+Additional resources 3370
+A variety of neural network architectures have been applied to language modeling. No- 3371
+table earlier non-recurrent architectures include the neural probabilistic language model (Ben- 3372
+gio et al., 2003) and the log-bilinear language model (Mnih and Hinton, 2007). Much more 3373
+detail on these models can be found in the text by Goodfellow et al. (2016). 3374
+Exercises 3375
+1. exercises tk 3376
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+

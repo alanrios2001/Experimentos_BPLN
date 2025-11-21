@@ -1,0 +1,562 @@
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum66
+For example, in the legal domain, NER can help in identifying important entities such as case
+names, statutes, and dates. In ﬁnance, token classiﬁcation models can extract company names, ﬁ-
+nancial terms, and other key information from documents.
+/four.pnum./one.pnum/two.pnum./one.pnum/two.pnum Conclusion
+Token classiﬁcation is a foundational task in NLP, applicab le to various use cases from extracting
+key entities in text to syntactic analysis. Hugging Face’s ‘ transformers‘ library, along with pre-trained
+models, makesit incredibly easy to implementtoken classiﬁ cation with minimalcode. In this section,
+we demonstrated how to perform Named Entity Recognition (NE R) using a pre-trained BERT model
+andwalked throughkeyconsiderations suchashandlingsubw ords,addressingimbalanceddatasets,
+and evaluating model performance.
+In the next section, we will explore another important NLP ta sk:Text Classiﬁcation , where we will
+focus on assigning a single label to an entire text sequence r ather than individual tokens.
+/four.pnum./one.pnum/two.pnum./one.pnum/three.pnum masked language model
+/four.pnum./one.pnum/three.pnum Masked Language Model
+The Masked Language Model (MLM) is one of the core pre-traini ng tasks used in natural language
+processing (NLP), particularly in models such as BERT (Bidi rectional Encoder Representations from
+Transformers). In this section, we will explore what MLM is, how it works, and how to implement it
+using the Hugging Face transformers library.
+/four.pnum./one.pnum/three.pnum./one.pnum What is a Masked Language Model?
+The key idea behind the MLM task is to train the model to predic t missing words in a given sentence.
+Speciﬁcally, acertainpercentageoftheinputtokens(typi cally /one.pnum/five.pnum%)are replacedwithaspecial [MASK]
+token, and the model’s job is to predict the original token th at corresponds to each [MASK].
+For example, given the sentence:
+The dog is chasing the cat.
+If the word "dog" is masked, the model input becomes:
+The[MASK]is chasing the cat.
+The model is then trained to predict that the masked word is "d og."
+/four.pnum./one.pnum/three.pnum./two.pnum Why Use MLM?
+MLM allows a model to build bidirectional representations o f text, which means the model can learn
+to use context from both the left and right sides of the masked token. This is an improvement over
+earliermodelslikeGPT,whichcanonlygeneratetextfromle fttoright. Inthisway, MLMallowsmodels
+like BERT to better understand the context in which a word is u sed.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum6/seven.pnum
+/four.pnum./one.pnum/three.pnum./three.pnum MLM with Hugging Face Transformers
+Now, let’s look at how we can implementMLM using the HuggingF acetransformers library. Hugging
+Face provides pre-trained models like BERT, which have been trained on the MLM task.
+/four.pnum./one.pnum/three.pnum./four.pnum Step-by-StepExample
+WewillusetheHuggingFace transformers librarytodemonstrateasimpleexampleofMLMinaction.
+In this example, we will:
+/one.pnum. Load a pre-trained BERT model.
+/two.pnum. Prepare a sentence and mask a word.
+/three.pnum. Use the model to predict the masked word.
+/four.pnum./one.pnum/three.pnum./four.pnum./one.pnum /one.pnum. Installing Hugging Face Transformers
+First, you need to install the transformers library if you haven’t already. You can do this using the
+following command:
+pip install transformers
+/four.pnum./one.pnum/three.pnum./four.pnum./two.pnum /two.pnum. Loading the Pre-trained Model and Tokenizer
+Next, we load a pre-trained BERT model and its associated tok enizer. The tokenizer is responsible for
+converting the input text into tokens that the model can proc ess.
+/one.pnumfrom transformers import BertTokenizer, BertForMaskedLM
+/two.pnumimport torch
+/three.pnum
+/four.pnum# Load pre-trained BERT tokenizer and model
+/five.pnumtokenizer = BertTokenizer.from_pretrained( ’bert-base-uncased’ )
+6model = BertForMaskedLM.from_pretrained( ’bert-base-uncased’ )
+/four.pnum./one.pnum/three.pnum./four.pnum./three.pnum /three.pnum. Tokenizing the Input Sentence
+Wewill now prepareasentenceandmaskoneof thewords. In thi sexample,we masktheword "man"
+from the sentence "The man is playing soccer."
+/one.pnum# Input sentence with a masked token
+/two.pnumsentence = "The man is playing soccer."
+/three.pnum
+/four.pnum# Tokenize input sentence, using [MASK] for the token to be pr edicted
+/five.pnuminputs = tokenizer( "The [MASK] is playing soccer." , return_tensors= "pt")
+The special [MASK]token is used to replace the word we want the model to predict. In this case,
+we are asking the model to predict the word "man."
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum68
+/four.pnum./one.pnum/three.pnum./four.pnum./four.pnum /four.pnum. Predicting the Masked Token
+Once the input sentence is tokenized, we can pass it to the mod el for prediction. The model will
+return logits (unnormalized predictions) for each token, w hich we can convert into probabilities using
+softmax and select the highest probability token for the [MASK]position.
+/one.pnum# Get model predictions
+/two.pnumwith torch.no_grad():
+/three.pnumoutputs = model(**inputs)
+/four.pnumpredictions = outputs.logits
+/five.pnum
+6# Identify the predicted token for [MASK]
+/seven.pnummasked_index = torch.where(inputs[ "input_ids" ] == tokenizer.mask_token_id)[1]
+8predicted_token_id = predictions[0, masked_index].argm ax(axis=-1)
+/nine.pnum
+/one.pnum/zero.pnum# Decode predicted token back to a word
+/one.pnum/one.pnumpredicted_token = tokenizer.decode(predicted_token_id )
+/one.pnum/two.pnumprint(f"Predicted word: {predicted_token}" )
+/four.pnum./one.pnum/three.pnum./four.pnum./five.pnum /five.pnum. Output
+The output will show the word predicted by the model to replac e the[MASK]token. For this example,
+the output would be:
+Predicted word: man
+This shows that the model correctly predicted the masked wor d as "man," basedon the context of
+the surrounding words.
+/four.pnum./one.pnum/three.pnum./five.pnum Conclusion
+In this section, we demonstrated how the Masked Language Mod el works and how to implement it
+usingtheHuggingFace transformers library. BytrainingontheMLMtask,modelslikeBERTcanlea rn
+bidirectional context, enabling them to understand and gen erate natural language more effectively.
+The MLM task is a crucial component in modern NLP pipelines an d is used in the pre-training of
+many state-of-the-art models. By predicting missing words in sentences, models can learn to better
+represent language, making them powerful tools for a wide ra nge of NLP applications.
+/four.pnum./one.pnum/three.pnum.6 Fine-Tuning on Custom Data with MLM
+While using pre-trained models like BERT is useful, there ar e many cases where you might want to
+ﬁne-tune the model on your own dataset. For instance, ﬁne-tu ning the MLM on domain-speciﬁc data
+can lead to better performance on tasks within that domain.
+Inthissection,wewillwalkthroughhowtoﬁne-tuneapre-tr ainedBERTmodelonacustomdataset
+using the MLM task.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum6/nine.pnum
+/four.pnum./one.pnum/three.pnum.6./one.pnum /one.pnum. Preparing the Dataset
+To ﬁne-tunethemodel, weneedatext corpus. Let’sassumeweh aveasimpledatasetwithsentences
+related to a speciﬁc domain, such as medical or legal text. Hu gging Face’s datasets library can be
+used to load and process data, but for simplicity, let’s crea te a small example manually.
+Here’s an example dataset consisting of three sentences:
+/one.pnum# Example dataset (a list of sentences)
+/two.pnumdataset = [
+/three.pnum"The patient was diagnosed with pneumonia." ,
+/four.pnum"The court ruled in favor of the defendant." ,
+/five.pnum"The vaccine showed promising results in the trial."
+6]
+In a real-world scenario, you might load a much larger datase t from a ﬁle or API.
+/four.pnum./one.pnum/three.pnum.6./two.pnum /two.pnum. Tokenizing and Masking the Dataset
+Wenowtokenizeourdatasetandapplymaskingtoapercentage ofthetokens. HuggingFaceprovides
+utility functions that allow us to mask a portion of the token s automatically.
+/one.pnumfrom transformers import DataCollatorForLanguageModeli ng
+/two.pnum
+/three.pnum# Tokenize the dataset
+/four.pnumtokenized_inputs = tokenizer(dataset, padding=True, tru ncation=True, return_tensors= "pt")
+/five.pnum
+6# Create a data collator that will dynamically mask tokens
+/seven.pnumdata_collator = DataCollatorForLanguageModeling(
+8tokenizer=tokenizer,
+/nine.pnummlm=True,
+/one.pnum/zero.pnummlm_probability=0.15 # Masking 15% of the tokens
+/one.pnum/one.pnum)
+TheDataCollatorForLanguageModeling utilityautomaticallyadds [MASK]tokensto/one.pnum/five.pnum%oftheinput
+tokens. This is important because the model will be trained t o predict these masked tokens.
+/four.pnum./one.pnum/three.pnum.6./three.pnum /three.pnum. Setting Up the Trainer
+Hugging Face’s Trainer class provides a convenient API for training models. We will use this class
+to set up the training loop. First, we need to specify the trai ning arguments, such as the number of
+epochs and batch size.
+/one.pnumfrom transformers import Trainer, TrainingArguments
+/two.pnum
+/three.pnum# Define training arguments
+/four.pnumtraining_args = TrainingArguments(
+/five.pnumoutput_dir= "./results" ,# Output directory for model checkpoints
+6overwrite_output_dir=True, # Overwrite output if the directory exists
+/seven.pnumnum_train_epochs=3, # Number of training epochs
+8per_device_train_batch_size=8, # Batch size
+/nine.pnumsave_steps=10_000, # Save checkpoint every 10k steps
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/seven.pnum/zero.pnum
+/one.pnum/zero.pnumsave_total_limit=2, # Only keep the last 2 checkpoints
+/one.pnum/one.pnum)
+/one.pnum/two.pnum
+/one.pnum/three.pnum# Create the Trainer instance
+/one.pnum/four.pnumtrainer = Trainer(
+/one.pnum/five.pnummodel=model,
+/one.pnum6args=training_args,
+/one.pnum/seven.pnumdata_collator=data_collator,
+/one.pnum8train_dataset=tokenized_inputs[ "input_ids" ]# Use the tokenized dataset
+/one.pnum/nine.pnum)
+/four.pnum./one.pnum/three.pnum.6./four.pnum /four.pnum. Training the Model
+Now thateverythingis setup,wecan startﬁne-tuningthemod el. Thiswill adjustthepre-trainedBERT
+model’s weights based on our custom data.
+/one.pnum# Fine-tune the model
+/two.pnumtrainer.train()
+During training, the model will be presented with sentences from our dataset, where some words
+are masked. The model will learn to predict the masked tokens , adapting to the speciﬁc patterns and
+vocabulary of our custom dataset.
+/four.pnum./one.pnum/three.pnum.6./five.pnum /five.pnum. Saving and Loading the Fine-Tuned Model
+Once training is complete, it’s a good practice to save the ﬁn e-tuned model so it can be reused later.
+Hugging Face makes this easy with built-in functions to save and load models.
+/one.pnum# Save the fine-tuned model and tokenizer
+/two.pnummodel.save_pretrained( "./fine_tuned_bert" )
+/three.pnumtokenizer.save_pretrained( "./fine_tuned_bert" )
+/four.pnum
+/five.pnum# Load the fine-tuned model
+6from transformers import BertForMaskedLM
+/seven.pnum
+8fine_tuned_model = BertForMaskedLM.from_pretrained( "./fine_tuned_bert" )
+/nine.pnumfine_tuned_tokenizer = BertTokenizer.from_pretrained( "./fine_tuned_bert" )
+/four.pnum./one.pnum/three.pnum.6.6 6. Inference with the Fine-Tuned Model
+After ﬁne-tuning, you can use your custom model to predict ma sked words, just as we demonstrated
+earlier. The ﬁne-tunedmodel will now be more specialized in predicting masked tokens in the context
+of your speciﬁc domain.
+Let’s test it on a sentence from the domain-speciﬁc dataset w e used for training:
+/one.pnum# Tokenize an example sentence with a [MASK] token
+/two.pnuminputs = fine_tuned_tokenizer( "The patient was diagnosed with [MASK]." , return_tensors= "pt")
+/three.pnum
+/four.pnum# Get model predictions
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/seven.pnum/one.pnum
+/five.pnumwith torch.no_grad():
+6outputs = fine_tuned_model(**inputs)
+/seven.pnumpredictions = outputs.logits
+8
+/nine.pnum# Identify the predicted token for [MASK]
+/one.pnum/zero.pnummasked_index = torch.where(inputs[ "input_ids" ] == fine_tuned_tokenizer.mask_token_id)[1]
+/one.pnum/one.pnumpredicted_token_id = predictions[0, masked_index].argm ax(axis=-1)
+/one.pnum/two.pnum
+/one.pnum/three.pnum# Decode predicted token back to a word
+/one.pnum/four.pnumpredicted_token = fine_tuned_tokenizer.decode(predict ed_token_id)
+/one.pnum/five.pnumprint(f"Predicted word: {predicted_token}" )
+The ﬁne-tuned model is expected to predict a domain-speciﬁc word such as “pneumonia” in this
+context, showing that it has adapted to the medical terminol ogy from our custom dataset.
+/four.pnum./one.pnum/three.pnum./seven.pnum Beneﬁts of Fine-Tuning
+Fine-tuning a pre-trained language model like BERT on your s peciﬁc domain can greatly enhance the
+model’s ability to understand and generate text that ﬁts you r particular use case. Some key beneﬁts
+include:
+•Improved Performance: The model can better predict masked tokens in domain-speciﬁ c con-
+texts, leading to more accurate language understanding.
+•Customization: You can ﬁne-tune the model on datasets that include rare voca bulary or jar-
+gonrelevanttoyour domain,which mightnotbewellrepresen tedingeneral-purposepre-trained
+models.
+•Transfer Learning: By ﬁne-tuning on a small amount of data, you can leverage the k nowledge
+the model has already learned from vast general-purpose cor pora.
+/four.pnum./one.pnum/three.pnum.8 Conclusion
+In thissection, we extendedtheconcept of Masked LanguageM odeling to include ﬁne-tuningon cus-
+tom datasets. Fine-tuning allows you to adapt a powerful pre -trained model like BERT to perform
+betteronspeciﬁcdomainssuchasmedical, legal, orscienti ﬁctext. Wewalked throughastep-by-step
+example that included tokenization, masking, and training using Hugging Face’s Trainer API. After
+ﬁne-tuning, the model can provide more accurate prediction s within the specialized context of your
+data.
+Fine-tuningisacrucial stepforapplyingpre-trainedmode lsto real-worldtaskswherethetextdata
+is domain-speciﬁc or different from the general-purpose co rpora used in pre-training. With modern
+NLPtoolslikeHuggingFace,thisprocessisbothefﬁcientan dﬂexible,makingitaccessibleforvarious
+applications.
+/four.pnum./one.pnum/four.pnum Evaluation of Masked Language Models
+In this section, we will explore how to evaluate the performa nce of a Masked LanguageModel (MLM)
+suchasBERT.Evaluationiscrucialforunderstandinghowwe llamodelhaslearnedtopredictmasked
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/seven.pnum/two.pnum
+tokens, especially after ﬁne-tuning on a custom dataset. We will discuss common evaluation metrics
+and provide an example of how to evaluate an MLM using Hugging Face’stransformers library.
+/four.pnum./one.pnum/four.pnum./one.pnum Evaluation Metrics for MLM
+Evaluating a Masked Language Model typically involves meas uring how accurately the model can
+predict the masked tokens in a sentence. [ 88] Below are some common evaluation metrics for MLM
+tasks:
+/four.pnum./one.pnum/four.pnum./one.pnum./one.pnum /one.pnum. Perplexity
+Perplexity is one of the most common metrics used to evaluate language models. It measures how
+well a probability model predicts a sample and is a measure of how "surprised" the model is by the
+true outcome. A lower perplexity indicates that the model is more conﬁdent in its predictions, while a
+higher perplexity means the model is uncertain.
+Perplexity is deﬁned as the exponential of the average cross -entropy loss:
+PPL= exp(
+−1
+NN∑
+i=1logP(wi|wi−1,wi−2,...,w1))
+Where:
+•Nis the number of tokens in the sequence.
+•P(wi)is the probability assigned by the model to the true word wi.
+/four.pnum./one.pnum/four.pnum./one.pnum./two.pnum /two.pnum. Accuracy
+For the MLM task, accuracy can bemeasuredas the proportion o f correctly predicted maskedtokens
+out of all masked tokens. This metric is intuitive and easy to compute, but it might not fully capture
+how well the model understands the language.
+/four.pnum./one.pnum/four.pnum./one.pnum./three.pnum /three.pnum. F/one.pnum Score
+The F/one.pnum score is the harmonic mean of precision and recall. Whi le it is less common for evaluating
+MLMs, it can still provide useful insights, particularly wh en evaluating models in domain-speciﬁc set-
+tings where false positives and false negatives carry diffe rent weights.
+/four.pnum./one.pnum/four.pnum./two.pnum Evaluating an MLM Using Hugging Face
+Now, let’s go through an example of how to evaluate a ﬁne-tune d MLM using Hugging Face’s Trainer
+andtransformers library. In this example, we will compute both the perplexit y and accuracy of the
+model.
+/four.pnum./one.pnum/four.pnum./two.pnum./one.pnum /one.pnum. Evaluating Accuracy
+To evaluate the accuracy of the model, we need to compare the p redicted token for each [MASK]with
+the true token in the original sentence. Hugging Face provid es easy-to-use tools to facilitate this pro-
+cess.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/seven.pnum/three.pnum
+First,weneedtocreateanevaluationdataset. Thisdataset shouldcontainsentenceswithmasked
+tokens, and for each masked token, we will compare the model’ s prediction with the true word.
+/one.pnumfrom datasets import Dataset
+/two.pnum
+/three.pnum# Example evaluation dataset
+/four.pnumevaluation_data = {
+/five.pnum’text’: [
+6 "The doctor prescribed [MASK] for the infection." ,
+/seven.pnum "The judge sentenced the [MASK] to five years in prison."
+8]
+/nine.pnum}
+/one.pnum/zero.pnum
+/one.pnum/one.pnum# Convert the dictionary to a Hugging Face Dataset object
+/one.pnum/two.pnumeval_dataset = Dataset.from_dict(evaluation_data)
+Now that we have an evaluation dataset, we need to write a func tion to compute the accuracy of
+the model’s predictions.
+/one.pnumfrom transformers import pipeline
+/two.pnum
+/three.pnum# Create a fill-mask pipeline using the fine-tuned model
+/four.pnumfill_mask = pipeline( "fill-mask" , model=fine_tuned_model, tokenizer=fine_tuned_tokeni zer)
+/five.pnum
+6# Function to evaluate accuracy
+/seven.pnumdef evaluate_accuracy(dataset):
+8correct = 0
+/nine.pnumtotal = 0
+/one.pnum/zero.pnum
+/one.pnum/one.pnumfor example in dataset[ ’text’]:
+/one.pnum/two.pnum # Get model predictions for masked tokens
+/one.pnum/three.pnum outputs = fill_mask(example)
+/one.pnum/four.pnum
+/one.pnum/five.pnum # The first result is usually the most confident prediction
+/one.pnum6 predicted_token = outputs[0][ ’token_str’ ]
+/one.pnum/seven.pnum
+/one.pnum8 # Extract the true word (this should be known in real evaluati on)
+/one.pnum/nine.pnum true_word = example.split( ’[MASK]’ )[1].strip().split( ’ ’)[0]# Simplified for demo
+/two.pnum/zero.pnum
+/two.pnum/one.pnum # Check if the prediction matches the true word
+/two.pnum/two.pnum if predicted_token == true_word:
+/two.pnum/three.pnum correct += 1
+/two.pnum/four.pnum total += 1
+/two.pnum/five.pnum
+/two.pnum6return correct / total
+We can now run the evaluation on our dataset and compute the ac curacy:
+/one.pnum# Compute accuracy
+/two.pnumaccuracy = evaluate_accuracy(eval_dataset)
+/three.pnumprint(f"Accuracy: {accuracy * 100:.2f}%" )
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/seven.pnum/four.pnum
+/four.pnum./one.pnum/four.pnum./two.pnum./two.pnum /two.pnum. Evaluating Perplexity
+Tocomputetheperplexityofthemodel,weﬁrstneedtocalcul atethecross-entropylossforeachtoken
+in the evaluation dataset, including the masked tokens. Hug ging Face’s Trainer class automatically
+computes the loss during training, but we can also use it for e valuation.
+/one.pnum# Define evaluation arguments
+/two.pnumeval_args = TrainingArguments(
+/three.pnumoutput_dir= "./results_eval" ,
+/four.pnumper_device_eval_batch_size=8,
+/five.pnumeval_accumulation_steps=10,
+6)
+/seven.pnum
+8# Create a Trainer instance for evaluation
+/nine.pnumeval_trainer = Trainer(
+/one.pnum/zero.pnummodel=fine_tuned_model,
+/one.pnum/one.pnumargs=eval_args,
+/one.pnum/two.pnumeval_dataset=tokenized_inputs # Using tokenized evaluation dataset
+/one.pnum/three.pnum)
+/one.pnum/four.pnum
+/one.pnum/five.pnum# Evaluate the model
+/one.pnum6eval_results = eval_trainer.evaluate()
+/one.pnum/seven.pnum
+/one.pnum8# Compute perplexity
+/one.pnum/nine.pnumimport math
+/two.pnum/zero.pnumperplexity = math.exp(eval_results[ ’eval_loss’ ])
+/two.pnum/one.pnumprint(f"Perplexity: {perplexity:.2f}" )
+The model’s perplexity score provides insight into how well it predicts masked tokens, with lower
+perplexity indicating better performance.
+/four.pnum./one.pnum/four.pnum./three.pnum Conclusion
+Evaluating the performance of a Masked Language Model is ess ential to understanding its effective-
+nessinpredictingmaskedtokensandhowwellitgeneralizes tonewdata. Inthissection, weexplored
+two common evaluation metrics: accuracy and perplexity. We demonstrated how to compute these
+metrics using Hugging Face’s transformers library.
+Perplexity is a valuable metric for understanding the model ’s uncertainty, while accuracy provides
+a straightforward measure of how many predictions are corre ct. Fine-tuned MLMs can be evaluated
+on both general-purpose and domain-speciﬁc datasets to ens ure they perform well in their intended
+applications.
+/four.pnum./one.pnum/five.pnum Applications of Masked Language Models
+Masked LanguageModels like BERT have a wide range of applica tions in NLP, ranging from text clas-
+siﬁcationto questionanswering. Inthissection, we willex plore severalkeyapplicationsofMLMs and
+demonstrate how MLMs can be adapted to different tasks.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/seven.pnum/five.pnum
+/four.pnum./one.pnum/five.pnum./one.pnum Text Classiﬁcation
+In text classiﬁcation, the goalis to assignpredeﬁnedlabel sto inputtexts. MLMs can be ﬁne-tunedon
+classiﬁcation tasks by adding a classiﬁer layer on top of the transformer model. The most common
+approach is to use the representation of the special [CLS]token, which is added to the beginning of
+every input sequence in BERT models.
+/one.pnumfrom transformers import BertForSequenceClassification
+/two.pnum
+/three.pnum# Load pre-trained BERT model with a classification head
+/four.pnummodel = BertForSequenceClassification.from_pretrained ("bert-base-uncased" , num_labels=2)
+/five.pnum
+6# Fine-tuning setup would follow, similar to MLM fine-tunin g
+/four.pnum./one.pnum/five.pnum./two.pnum Question Answering
+Question answering (QA) is another important NLP task where MLMs excel. In QA tasks, the model
+is provided with a context (a passage of text) and a question, and the goal is to ﬁnd the answer in the
+context. Models like BERT can be ﬁne-tuned for QA tasks by fra ming it as a span prediction problem,
+where the model is trained to predict the start and end positi ons of the answer span in the context.
+Here’s an example using Hugging Face’s pipeline for QA:
+/one.pnumfrom transformers import pipeline
+/two.pnum
+/three.pnum# Load a question-answering pipeline
+/four.pnumqa_pipeline = pipeline( "question-answering" , model= "bert-large-uncased-whole-word-masking-
+finetuned-squad" )
+/five.pnum
+6# Example context and question
+/seven.pnumcontext = "BERT was created by Google. It stands for Bidirectional Enc oder Representations from
+Transformers."
+8question = "What does BERT stand for?"
+/nine.pnum
+/one.pnum/zero.pnum# Get the answer
+/one.pnum/one.pnumresult = qa_pipeline(question=question, context=contex t)
+/one.pnum/two.pnumprint(f"Answer: {result[’answer’]}" )
+/four.pnum./one.pnum/five.pnum./three.pnum Named Entity Recognition (NER)
+NER is the task of identifying named entities such as people, organizations, and locations in text.
+MLMscanbeﬁne-tunedforNER tasksbytreating themassequen celabelingtasks,whereeachtoken
+is assigned a label indicating whether it is part of an entity .
+Fine-tuninganMLMforNERfollowsasimilarapproachtoothe rtoken-leveltasks,wherethemodel
+predicts labels for each token in the input sequence.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/seven.pnum6
+/four.pnum./one.pnum/five.pnum./four.pnum Conclusion
+Masked Language Models like BERT can be adapted to a variety o f NLP tasks beyond masked token
+prediction. By ﬁne-tuning MLMs, we can achieve state-of-th e-art performance on tasks like text clas-
+siﬁcation, question answering, and named entity recogniti on. Hugging Face’s transformers library
+provides easy-to-use APIs for applying MLMs to different ta sks, making it a powerful tool for both
+research and production applications.
+/four.pnum./one.pnum6 Training a Masked Language Model from Scratch
+While pre-trained models like BERT provide an excellent sta rting point for many NLP tasks, there are
+situations where training a Masked Language Model (MLM) fro m scratch may be necessary. This
+couldbethecasewhenworkingwithhighlyspecializeddata( e.g.,domain-speciﬁclanguagelikelegal,
+medical, or scientiﬁc texts) where no suitable pre-trained model exists.
+Inthissection,wewillexplorehowtotrainanMLMfromscrat chusingHuggingFace’s transformers
+library. We will cover data preparation, model conﬁguratio n, and training.
+/four.pnum./one.pnum6./one.pnum Why Train from Scratch?
+Training a model from scratch can be more resource-intensiv e than ﬁne-tuning a pre-trained model,
+but it has several advantages in speciﬁc scenarios:
+•SpecializedLanguage: Ifyourdataishighlydomain-speciﬁc(e.g.,clinicaltext, legaldocuments),
+a pre-trained model may not have been exposed to the necessar y vocabulary or linguistic struc-
+tures.
+•Low Resource Languages: For some languages, there may not be robust pre-trained mode ls
+available. Training from scratch allows you to create a mode l tailored to these languages.
+•Customization: You have full control over the model’s architecture, vocabu lary, and data, allow-
+ing you to tailor the training process to your speciﬁc requir ements.
+/four.pnum./one.pnum6./two.pnum Preparing Data for MLM Training
+The ﬁrst step in training an MLM from scratch is preparing the training data. Ideally, you should have
+a large corpus of text from the domain or language you’re work ing with.
+For MLM training, sentences are tokenized and randomly mask ed, and the model learns to predict
+the masked tokens. Let’s prepare a simple example dataset.
+/one.pnum# Example corpus for training
+/two.pnumtraining_corpus = [
+/three.pnum"The heart pumps blood throughout the body." ,
+/four.pnum"Legal documents must be signed by both parties." ,
+/five.pnum"Vaccines are essential for preventing diseases." ,
+6]
+For large-scale training, you would use a much larger and mor e diverse dataset, but this small
+corpus will sufﬁce for demonstration purposes.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/seven.pnum/seven.pnum
+/four.pnum./one.pnum6./three.pnum Tokenization and Vocabulary Creation
+When training from scratch, you need to create a tokenizer an d vocabulary tailored to your corpus.
+Hugging Face provides a simple API for building a custom toke nizer from your dataset.
+/one.pnumfrom transformers import BertTokenizerFast
+/two.pnum
+/three.pnum# Training the tokenizer on the custom dataset
+/four.pnumtokenizer = BertTokenizerFast.from_pretrained( ’bert-base-uncased’ )
+/five.pnum
+6# Save the tokenizer for future use
+/seven.pnumtokenizer.save_pretrained( "./custom_tokenizer" )
+Forlargercorpora, youcancustomize thetokenizerto suity our needs,includingsettingthevocab-
+ularysize, deﬁningspecial tokens, andmore. In thisexampl e,we usethedefaultsettingsfrom BERT’s
+base tokenizer.
+/four.pnum./one.pnum6./four.pnum Deﬁning the Model Conﬁguration
+Once the tokenizer is ready, the next step is to deﬁne the conﬁ guration of the BERT model. This in-
+cludesparameterssuchasthenumberoflayers(transformer blocks),hiddensize,numberofattention
+heads, and more. Hugging Face’s BertConfig allows you to deﬁne these parameters.
+/one.pnumfrom transformers import BertConfig, BertForMaskedLM
+/two.pnum
+/three.pnum# Define a custom BERT configuration
+/four.pnumconfig = BertConfig(
+/five.pnumvocab_size=tokenizer.vocab_size,
+6hidden_size=256, # Smaller hidden size for demonstration
+/seven.pnumnum_hidden_layers=4, # Fewer layers for faster training
+8num_attention_heads=4,
+/nine.pnummax_position_embeddings=512
+/one.pnum/zero.pnum)
+/one.pnum/one.pnum
+/one.pnum/two.pnum# Initialize the model using the configuration
+/one.pnum/three.pnummodel = BertForMaskedLM(config=config)
+Inthisexample,weuseasmallermodelconﬁgurationtoreduc etrainingtime, butformoreserious
+applications, you would want to use a larger model with more h idden layers and attention heads to
+capture more complex patterns in the data.
+/four.pnum./one.pnum6./five.pnum Training the MLM Model from Scratch
+Now that we have the tokenizer, data, and model conﬁguration , we are ready to train the model. The
+Trainer class in Hugging Face can be used to manage the training loop, including loading data, opti-
+mizing the model, and saving checkpoints.
+Beforetraining,weneedtotokenizetheinputdatasetandap plyrandommaskingtocreatetraining
+examples for the MLM task.
+/one.pnumfrom transformers import DataCollatorForLanguageModeli ng
+/two.pnum
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/seven.pnum8
+/three.pnum# Tokenize the training corpus
+/four.pnumtokenized_inputs = tokenizer(training_corpus, padding= True, truncation=True, return_tensors= "pt")
+/five.pnum
+6# Create a data collator that dynamically masks tokens
+/seven.pnumdata_collator = DataCollatorForLanguageModeling(
+8tokenizer=tokenizer,
+/nine.pnummlm=True,
+/one.pnum/zero.pnummlm_probability=0.15 # Mask 15% of tokens
+/one.pnum/one.pnum)
+TheDataCollatorForLanguageModeling automatically applies masking to /one.pnum/five.pnum% of the input tokens,
+which is a typical setting for MLM training.
+Next, we deﬁne the training arguments and initialize the Trainer .
+/one.pnumfrom transformers import Trainer, TrainingArguments
+/two.pnum
+/three.pnum# Define training arguments
+/four.pnumtraining_args = TrainingArguments(
+/five.pnumoutput_dir= "./bert_from_scratch" ,
+6overwrite_output_dir=True,
+/seven.pnumnum_train_epochs=5,
+8per_device_train_batch_size=8,
+/nine.pnumsave_steps=1000,
+/one.pnum/zero.pnumsave_total_limit=2,
+/one.pnum/one.pnum)
+/one.pnum/two.pnum
+/one.pnum/three.pnum# Initialize the Trainer
+/one.pnum/four.pnumtrainer = Trainer(
+/one.pnum/five.pnummodel=model,
+/one.pnum6args=training_args,
+/one.pnum/seven.pnumdata_collator=data_collator,
+/one.pnum8train_dataset=tokenized_inputs[ "input_ids" ]
+/one.pnum/nine.pnum)
+/two.pnum/zero.pnum
+/two.pnum/one.pnum# Start training
+/two.pnum/two.pnumtrainer.train()
+During training, the model will learn to predict the masked t okens based on the context of the
+surrounding tokens. The number of epochs, batch size, and ot her parameters can be adjusted to suit
+the complexity of your dataset and model conﬁguration.
+/four.pnum./one.pnum6.6 Evaluating the Trained Model
+Oncethemodelhasbeentrained,it’simportanttoevaluatei tsperformance. Theevaluationprocessis
+similar to what was described earlier in this chapter. You ca n compute metrics like accuracy and per-
+plexity on a held-out validation set to measure how well the m odel has learned the language patterns
+in the corpus.
+For instance, here’s a simple accuracy evaluation on a maske d sentence:
+/one.pnum# Example sentence for evaluation
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/seven.pnum/nine.pnum
+/two.pnumeval_sentence = "Vaccines are [MASK] for preventing diseases."
+/three.pnum
+/four.pnum# Tokenize the evaluation sentence
+/five.pnuminputs = tokenizer(eval_sentence, return_tensors= "pt")
+6
+/seven.pnum# Get model predictions
+8with torch.no_grad():
+/nine.pnumoutputs = model(**inputs)
+/one.pnum/zero.pnumpredictions = outputs.logits
+/one.pnum/one.pnum
+/one.pnum/two.pnum# Identify the predicted token for [MASK]
+/one.pnum/three.pnummasked_index = torch.where(inputs[ "input_ids" ] == tokenizer.mask_token_id)[1]
+/one.pnum/four.pnumpredicted_token_id = predictions[0, masked_index].argm ax(axis=-1)
+/one.pnum/five.pnum
+/one.pnum6# Decode predicted token
+/one.pnum/seven.pnumpredicted_token = tokenizer.decode(predicted_token_id )
+/one.pnum8print(f"Predicted word: {predicted_token}" )
+/four.pnum./one.pnum6./seven.pnum Scaling Training for Large Corpora
+Whentrainingfromscratchonlargerdatasets,severaltech niquescanbeusedtoscaleupthetraining
+process:
+•Distributed Training: Training can be parallelized across multiple GPUs or even ac ross multiple
+machines to reduce training time.
+•Mixed Precision Training: This technique allows for faster training by using /one.pnum6-bit ﬂo ating point
+numbers (instead of /three.pnum/two.pnum-bit) without sacriﬁcing much accura cy.
+•Large Batch Sizes: When using distributed training, larger batch sizes can be u sed, which can
+help models converge faster.
+Hugging Face’s transformers library supportsthesetechniques out-of-the-box, making it easier to
+scale MLM training for larger datasets and more complex mode ls.
+/four.pnum./one.pnum6.8 Conclusion
+Training a Masked Language Model from scratch allows you to c reate a model tailored to your spe-
+ciﬁc domain or language. In this section, we walked through t he process of preparing data, deﬁning
+a custom model conﬁguration, and training a BERT-based MLM u sing Hugging Face’s transformers
+library. Although pre-trained models are often sufﬁcient f or many tasks, training from scratch offers
+the ﬂexibility to address unique challenges, especially wh en dealing with specialized vocabularies or
+less-resourced languages.
+As computing resources continue to grow, training custom ML Ms will become increasingly ac-
+cessible, opening up opportunities for more specialized an d high-performing models across diverse
+domains.
+

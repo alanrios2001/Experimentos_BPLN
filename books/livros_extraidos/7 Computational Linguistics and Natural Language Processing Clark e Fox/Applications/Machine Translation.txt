@@ -1,0 +1,1081 @@
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 531 — #1
+19 Machine Translation
+ANDY WAY
+This chapter has two main aims: (1) to present the state of the art in machinetranslation (MT), namely phrase-based statistical MT, together with the majorcompeting paradigms used in MT research and development today; and (2) toprovide an overview of the MT research carried out by my team at Dublin CityUniversity (DCU), characterized here in terms of ‘hybrid MT.’ In addition, we pro-vide our views on the directions that MT research might take in the near future,and conclude the chapter with lists of further reading for the interested reader.
+1 Introduction
+There are many other overviews of machine translation (MT) available (e.g.,Somers 2000; Hutchins 2003; Somers 2003a; Jurafsky & Martin 2009). In thischapter, we plan to inform the reader as to the state of the art in MT now, rather
+than giving a detailed history of the ﬁeld, much of which has been written before.
+It is clear to all who are active in the area of MT today that the leading paradigm,
+especially in the research ﬁeld, is phrase-based statistical machine translation (PB-SMT) (Marcu & Wong 2002; Koehn et al., 2003). Until such papers appeared, SMTmodels of translation were based on the simple word alignment models of Brownet al. (1990; 1993). Now that SMT systems learn phrasal as well as lexical align-ments, this has led to an unsurprising increase in translation quality comparedto the IBM word-based models. In addition, it has become harder to describethe differences between statistical models of translation and example-based MT(EBMT), though the latter still accesses the corpus of source-to-target examples atrun-time.
+1
+When it comes to which commercial systems are available, however, the
+balance is tipped in completely the opposite direction, for the vast majority of suchmodels are rule-based MT (RBMT) systems. Research systems such as Apertium(Armentano-Oller et al., 2006) are also prominent, and we give some attention tosuch models later in the chapter.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 532 — #2
+532 Andy Way
+The remainder of the chapter is organized as follows. In Section 2, we present a
+thorough overview of the leading paradigm in MT today, namely PB-SMT. We givean end-to-end description of all tasks involved, from pre-processing, to decoding,and thence to postprocessing and evaluation. In Section 3, we describe alternativeapproaches to this mainstream model, each of which has attracted a strong follow-ing. These include hierarchical and tree-based models of MT, EBMT, RBMT, andhybrid combinations of these approaches. In Section 4, we describe a number ofMT applications, including online MT, undoubtedly thebiggest growth area for
+MT in the last few years. In addition, we describe translation memories, spokenlanguage translation, and MT for non-spoken languages. Section 5 then focuses onour own MT research and development at DCU, presented in the form of hybridsystems. In Section 6 we summarize the state of affairs in MT today, and provideour view on the directions that MT research might take in the next few years.Finally, we provide a list of further reading for the interested reader to follow upon any of the core sections.
+2 The State of the Art: Phrase-Based Statistical MT
+Phrase-based statistical machine translation (PB-SMT) (Marcu & Wong 2002;Koehn et al., 2003) is clearly the dominant paradigm in MT today. In this section,we take the reader through all the steps involved in developing a PB-SMT system,from gathering training resources, through pre-processing, run-time application,and postprocessing.
+2.1 Pre-processing
+Notwithstanding the particulars of the approach taken, the developer of anycorpus-based system will be confronted with the following stages of developmentprior to running the system: corpus collection and clean-up, and system train-ing (i.e., word and phrase alignment, and parameter tuning). We describe each ofthese steps in the following sections.2.1.1 Data A prerequisite for the training of a data-driven MT system is a
+parallel corpus of sentences and their translations aligned at sentence level. Inthe simplest case, the ‘source’ side of the bitext consists of the original sentences,and the ‘target’ side consists of the translations of those sentences. However, it isquite often the case that either some texts may have been translated from languageA to language B and others the other way round, or more than two languages areinvolved and both parts were translated from one or several other languages (cf.Ozdowska and Way (2009) for an interesting investigation of the effect on trans-lation quality of training SMT systems with such more or less appropriate sets oftraining data).
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 533 — #3
+Machine Translation 533
+E1: Often, in the textile industry, businesses close their plant in Montreal to move to the Eastern
+townships.
+F1: Dans le domaine du textile souvent, dans Montréal, on ferme et on va s’installer dans les Cantons
+de l’Est.
+E2: There is no legislation to prevent them from doing so, for it is a matter of internal economy.
+F2: Il n’y a aucune loi pour empêcher cela, c’est de la régie interne.
+E3: That is serious.
+F3: C’est grave.
+Figure 19.1 A sentence-aligned corpus.
+E1: Hon. members opposite scoff at the freeze suggested by this party; to them it is laughable.
+F1: Les deputés d’en face se moquent du gel qu’a proposé notre parti.
+F2: Pour eux, c’est une mesure risible.
+Figure 19.2 A non-exact alignment.
+Of course, even in the simplest scenario above, the bitext can be used just as eas-
+ily for translation from ‘target’ into the ‘source’ language; the system itself does notcare. Given a text in language A, its translated counterpart version B and an SMTsystem translating from A to B, SMT training assumes A to be the source languageand B to be the target language irrespective of the original translation directionor languages involved. Moreover, given that the parallel corpus is assumed to bealigned at sentence level, sentence alignment is usually performed automaticallyprior to training. Examples of 1:1 and 1:2 alignments from the Canadian Hansards
+2
+are given in Figures 19.1 and 19.2 (adapted from Arnold et al., 1994: 203).
+Creating and promoting resources (corpora and tools) is now a well-established
+tradition in the area of NLP in general, and in SMT in particular. This is donethrough linguistic data centers such as the Linguistic Data Consortium (LDC)
+3
+or the Evaluations and Language resources Distribution Agency (ELDA),4which
+allow broad access to resources of various kinds (parallel and monolingualcorpora, tokenizers, segmentation tools, aligners, etc.) for a wide range of lan-guages, in some cases in return for a license. For example, the LDC providesdata for two of the major MT evaluation shared tasks (cf. Section 2.5): NIST
+5
+and IWSLT.6On the other hand, some resources are also made freely available
+within MT-related projects such as EuroMatrix,7or certain MT shared tasks such
+as WMT.8WMT makes available to all participants a complete set of resources for
+the state of the art as well as advanced experiments in MT allowing for comparableresults within a common framework.
+SMT quality is strongly conditioned by the size of the training corpora, and
+further by the type and amount of resources used (linguistic tools, dictionaries,etc.). Systems are usually trained on several million words of data in order toachieve good translation quality. In this respect, the availability of corpora suitablefor SMT mainly depends on two criteria: language pair, and domain (or genre) oftexts. Large parallel corpora exist only for a limited number of language pairs.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 534 — #4
+534 Andy Way
+The richest languages in terms of corpora are those in which international insti-tutions or governments are required to produce translations. Texts coming fromsuch organizations are amongst the largest and most widely used corpora in MT,especially for European languages; this is the case for the Europarl corpus (Koehn2005),
+9the JRC-Acquis,10and Canadian Hansards as far as number of covered lan-
+guages and size are concerned. Parallel and monolingual corpora of variable yetsufﬁcient size for MT also exist for languages of a particular political/economicinterest such as Chinese, Arabic, or Indian languages in combination with English,mostly consisting of news agency material.
+Although the number and/or size of available parallel corpora is increasing,
+the scope remains somewhat limited in terms of languages and domains cov-ered. Apart from the languages mentioned above, recent MT-related shared tasksfeatured language pairs with less abundant resources such as Japanese-to-English,
+11English-to-Inuktitut,12or Romanian-to-English.13As these corpora
+mainly come from governments, international institutions, or news agencies, theyare rather open/general in terms of domain, even for Europarl, which is often con-sidered to be a ‘sublanguage,’ but is in fact extremely heterogeneous. By contrast,large specialized corpora suitable for MT remain rare.2.1.2 Corpus clean-up, segmentation, and tokenization Corpora are usually
+not created with MT in mind, and so a number of issues need to be borne in mindbefore using them ‘as is’ for MT training.
+The ﬁrst thing to check is whether a special character encoding (e.g., UTF-8,
+the Unicode (Unicode Consortium 2006) attempt to encode characters from all
+languages, as opposed to those supported only in ASCII (American NationalStandards Institute 1986) is required for the translator output or by the linguis-tic tools used. In this case, if the encoding does not match that used in a particularcorpus, an encoding conversion solves the problem (assuming the corpus is cor-rectly encoded). Some characters reserved by the tools used must be protected. Forexample, the Moses decoder (Koehn et al., 2007) stumbles over vertical bars (‘ |’) in
+the input. Filtering multiple and initial or ending white spaces makes the corpuscleaner and avoids processing errors at later stages.
+The main issue of corpus pre-processing – tokenization – is the division of the
+sentences into tokens separated by a white space. In some languages (Latin scriptlanguages, Arabic, etc.) this division exists naturally in the form of words. In oth-ers, like Chinese or Japanese, word boundaries are not orthographically markedand the tokenization problem is distinct and more difﬁcult (it is often called‘segmentation’). When word boundaries are orthographically marked, the prob-lem is reduced to determining when special signs such as punctuation marksshould be considered as part of the word or not. This is the case, for example,in abbreviations or acronyms, but not when acting as a punctuation mark(‘Mr. Obama was elected President of the U.S.A.’). Most tokenizers are based onmachine learning approaches, or use dictionaries of abbreviations and acronyms,for example.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 535 — #5
+Machine Translation 535
+Because the execution time of the training algorithms used in MT grows very
+fast as the input increases, very long sentences are often removed from the corpora.Sentence pairs having a very different number of source and target tokens usuallycorrespond to an incorrect source-to-target mapping and may also be ﬁltered.
+Finally, for some languages, special pre-processing is appropriate. Examples
+include the separation of clitics in Spanish, and preﬁxes and sufﬁxes in Arabic,which allows for a reduction in data sparseness. Grouping compound words (suchas the head verb and its particle with German compound verbs) can help to makesource- and target-language word order more similar, which facilitates subsequentprocessing.2.1.3 Word alignment Word alignment, which determines the translational
+correspondences at word level given a bilingual corpus such as those justdescribed, is a fundamental component in all SMT variants. A set of high-qualityword alignments is essential for phrase-based SMT systems since the phraseextraction normally relies on word alignment.
+The most common approach to word alignment is generative models, which view
+the translation (or alignment) process as the generation of a sentence (or word) inone language from another. Here we assume the generation of a target-languagesentence t
+I1from a source sentence sJ
+1.14The transformation from source to tar-
+get language in the generative model may include word insertion or deletion,word reordering (‘distortion’), 1-to-n alignments (‘fertility’), and so on (cf. the ‘IBM
+models’ of Brown et al., 1993). Depending on whether fertility is explicitly mod-eled or not, these generative models can be broadly classiﬁed into fertility-basedversus non-fertility models.
+The most widely used non-fertility models are HMM-based models. IBM model
+1 and 2 are zero-order HMM models where a source position is ﬁrst selected foreach position in the target sentence, and a target word is produced as the transla-tion of the selected source word. In IBM model 1, the source position is selecteduniformly, while in IBM model 2 the selection depends on the target position in
+question. The ﬁrst-order HMM model of Vogel et al. (1996) reﬁnes the genera-tive story by further assuming that the selection of a source position depends onthe previously selected source position. In the context of SMT, the search for the
+best target translation t
+I1given a source sentence sJ
+1is achieved in the noisy chan-
+nel model by maximizing the conditional probability P(
+tI1⏐⏐sJ
+1)
+. Using a Bayesian
+transformation, this maximization criterion can be reformulated as in (1):(1) P(
+s
+J
+1⏐⏐⏐t
+I1)
+P(
+tI1)
+where P(
+sJ
+1⏐⏐tI1)
+is the translation model and P(
+tI1)
+is the language model .
+The alignment aJ
+1, which describes the mapping from a source-word position jto
+a target position aj, is introduced as a hidden variable in modeling the translation
+probability, as in (2):
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 536 — #6
+536 Andy Way
+(2) P(
+sJ
+1⏐⏐⏐t
+I1)
+=∑
+aJ
+1P(
+sJ
+1,aJ
+1⏐⏐⏐t
+I1)
+where the alignment model P(
+sJ
+1,aJ
+1⏐⏐tI1)
+can be decomposed in different ways to
+model the transformation from the source to the target language. However, non-fertility models are generally considered to be relatively weak models, mainlybecause of the simplicity of the generation process.
+Fertility-based alignment models, most notably IBM models 3 and 4, are much
+more complicated, as they introduce fertility into the alignment model. Thesemodels ﬁrst determine the source-word fertility, i.e., how many target words eachsource-word should generate, e.g., not−→ ne...paswould mean that nothas a
+fertility of 2 (French words). For each source word, that many target words willbe preferred as the translation of the source word. The model then arranges thehypothesized target words to produce a target string according to the distortion
+models. IBM model 3 utilizes a zero-order distortion model, i.e., each target posi-tion is chosen independently for the target words generated by each source word,whereas IBM model 4 utilizes a simpliﬁed ﬁrst-order dependence (i.e., a context ofthe neighboring previous word) in positioning the target words. However, bothdistortion models assign some probability to invalid target strings in order toachieve a more simpliﬁed approximation, resulting in the problem of ‘deﬁciency,’which is resolved in IBM model 5.
+The generative models described above consist of a large number of parameters
+which are normally estimated in an unsupervised manner (given that annotateddata is difﬁcult to obtain) using the expectation-maximization (EM) algorithm(Dempster et al., 1977; cf. also Manning & Schütze 1999: 518f.) on a large bilingualcorpus. There exist efﬁcient training and searching algorithms for HMM models;however, we are unaware of any efﬁcient algorithm for fertility-based IBM mod-els. Consequently, such an approach can only be implemented by approximatehill-climbing methods, and parameter estimation can be very slow, memory-intensive and difﬁcult to parallelize. Given this, Deng and Byrne (2005) proposedan HMM-based word-to-phrase alignment model which explores the desirablefeatures in IBM fertility-based models while keeping the parameter estimationstep tractable. Furthermore, previous generative models have also faced the crit-icism that they make unreasonable assumptions about word alignment structure,i.e., the 1-to- nassumption, meaning that each target word can be aligned to
+zero or more source words, but not vice versa. Such an asymmetric alignmentstructure cannot capture the pervasive m-to-n alignments in real-world alignment
+tasks. Consequently, heuristics are needed to derive alignments from bidirectionalword alignments in order to produce high-quality phrase pairs for phrase-basedSMT (cf. Section 2.1.4) or translation rules for syntax-based SMT (cf. Section 3.1).Fraser and Marcu (2007a) attempted to address such a problem by proposing anew generative model capturing m-to-n alignment structures. In general, gener-
+ative models have been shown to have powerful modeling capabilities and canproduce high-quality alignments with successful application to various types of
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 537 — #7
+Machine Translation 537
+statistical (and other data-driven) MT systems. The most often used implementa-tion of HMM models and IBM models 3, 4, and 5 is G
+IZA++15(Och 2003), and
+the MTTK16(Deng & Byrne 2006) implementation models HMM word-to-phrase
+alignments.
+Discriminative word alignment models were developed with the speciﬁc intention
+of overcoming the shortcomings faced by generative models. First, such modelscan incorporate various features encoded in the input data. Second, these mod-els require only a relatively small amount of annotated word alignment data fortraining. Formally, an estimate ˆaof the optimal (‘arg max’ in (3), i.e., the highest
+score) alignment ais searched for by maximizing a log-linear combination of a set
+ofifeatures h
+i,a si n( 3 ) :
+(3)ˆa=arg max
+a∑
+iλihi(s,a,t)
+The parameters (or ‘weights’) λican be learned in a supervised manner using
+various machine learning techniques, including perceptron (Moore 2005), max-imum entropy (Ittycheriah & Roukos 2005; Liu et al., 2005), support vectormachines (Taskar et al., 2005; Cherry & Lin 2006), and conditional random ﬁelds(Blunsom & Cohn 2006). Despite having the ﬂexibility to incorporate various fea-tures, the need for a certain amount of annotated word alignment data is oftenput forward as a criticism of such approaches, given that the annotation of wordalignments is a highly subjective task. Moreover, parameters optimized on man-ually annotated data are not necessarily optimal for MT tasks. Fraser and Marcu(2007b) showed that alignment error rate (AER) (Och & Ney 2000), the widelyused metric to measure word alignment quality against manually annotated data,has a weak correlation with MT quality in terms of B
+LEU (Papineni et al., 2002)
+in a PB-SMT system. Therefore, some approaches have been proposed to opti-mize the parameters according to the MT task rather than on annotated data(Lambert et al., 2007). Some semi-supervised approaches have also been used totake advantage of both generative and discriminative approaches (Fraser & Marcu2006; Wu et al., 2006). However, we have not yet seen a consistent discrimina-tive word alignment model that can outperform generative models when usedfor SMT.
+Another class of approaches to word alignment are heuristics-based methods,
+which obtain word alignment using similarity functions (Smadja et al., 1996; Ker& Chang 1997; Melamed 2000). Such approaches are extremely simple comparedto both generative and discriminative models. However, the use of similarity func-tions can be somewhat arbitrary and the performance of such methods is inferiorcompared to the above-mentioned statistical approaches (Och & Ney 2003).2.1.4 Phrase alignment and translation models2.1.4.1 Motivation for phrase-based models Word-based SMT systems (e.g.,
+Germann 2003) learn lexical translation models describing one-to-one mappingsbetween a given language pair. However, words are not the best atomic units of
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 538 — #8
+538 Andy Way
+la
+the witch greenverde la bruja verde
+green witch thebruja
+Figure 19.3 In the word-based translation on the left we see that the noun–adjective
+reordering into English is missed. On the right, the noun and adjective are translated as asingle phrase and the correct ordering is modeled in the phrase-based translation.
+translation because we can have one-to-many mappings between languages. Fur-thermore, by translating word for word, no contextual information is made useof during the translation process. To attempt to overcome some of these issues,sequences of words can be translated together. By using these sequences of words,so-called ‘phrases’ (but not in the linguistic, ‘constituent’ sense of the word; a‘phrase’ in SMT is any sequence of length nof contiguous words, hence ‘ n-grams’),
+it is possible to avoid many cases of translational ambiguity and better captureinstances of local reordering. An example of this is illustrated in Figure 19.3.
+The set of phrase pairs extracted from the bilingual parallel corpus constitutes
+the core translation model ( phrase table,o r t(ranslation)-table) of the phrase-based
+SMT system.2.1.4.2 Learning phrase-based translation models There are a number of ways to
+extract a phrase table from a parallel corpus. We will describe the most com-mon method here and refer the reader to Section 7 for alternative approaches. Tolearn the phrase translation model we ﬁrst induce a word alignment between thesentence pairs in the parallel corpus, as described in Section 2.1.3. Then for eachword-aligned sentence pair we extract the set of phrase pairs consistent with theword alignment.
+A more formal deﬁnition of consistency is as follows: a phrase pair ( ˜s|˜t) is consis-
+tent with an alignment A,i fa l lw o r d s s
+1,...,snin˜sthat have alignment points in
+A have these with words t1,...,tnin˜tand vice versa (Koehn 2010).
+We then estimate a probability distribution over the set of phrase pairs where
+the probability of a phrase pair P(˜s|˜t) is its relative frequency in the entire set of
+phrase pairs:(4) P(˜s|˜t)=count( ˜t,˜s)
+∑
+˜sicount( ˜t,˜si)
+This model is then included as a core factor in the log-linear model (cf. (3)
+and (10)).2.1.4.3 Reﬁned word alignments for phrase extraction Both the quality and the
+quantity of the word alignments have a signiﬁcant effect on the extracted phrasetranslation model. One might think that the better the word alignments the betterthe subsequently extracted phrases should be, but many studies have shown that
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 539 — #9
+Machine Translation 539
+an expected correlation between an intrinsic improvement in word and phrasealignment quality (as measured by AER, or precision, recall, and F-score) and anincrease in performance on the extrinsic MT task (as calculated by B
+LEU, say) is
+by no means guaranteed (Liang et al., 2006b; Ma et al., 2008). Vilar et al. (2006)show similar ﬁndings by optimizing word alignment on B
+LEU, and reporting MT
+scores using F-score (i.e., the other way round, compared to Liang et al., 2006b; Maet al., 2008). Zhang et al. (2008) and Ma et al. (2009) also show that the correlationis weak when the intrinsic quality is measured with F-score.
+As mentioned in Section 2.1.3, word alignment is a directional task, so when we
+align a source sentence to a target sentence, each target word can be aligned to onesource word at most. This is undesirable as it may be correct in many instancesto have a target word map to multiple source words. In order to overcome thisproblem we carry out symmetrization of the word alignments.
+This process involves running the word alignment in both directions: source
+to target and target to source. We can then merge the two sets of alignments bytaking their union or the intersection. This process is illustrated in Figure 19.4.These alignments can be further reﬁned by ‘growing’ additional alignment points(Och & Ney 2003). For SMT a higher-recall word alignment is preferred as it leadsto fewer spurious additions to the phrase translation model. For this reason, theunion of the two sets of alignments along with additional reﬁnements is generallypreferred. For other precision-based tasks, however, this may not be the case, andthe union of word alignments will be chosen instead.
+2.2 Reordering models
+Another important feature of phrase-based systems that we only mention brieﬂyhere is the reordering model . The problems posed by differences in the word order of
+languages naturally depends on the language pair at hand. For instance, betweenEnglish and French, modeling short local movements (adjective–noun reordering,say) may sufﬁce. However, for English and German, where long-range movementof verbs is common, such a model would be inadequate.
+Many state-of-the-art systems (e.g., Tillmann 2004; Koehn et al., 2007) employ
+lexicalized reordering models in which the reorderings are conditioned directlyon the phrases (or ‘blocks’). These models are learned synchronously with thephrase translation model. Each phrase pair in the lexicalized reordering model isassigned one of three orientations: monotone (m), swap (s), or discontinuous (d).
+The orientation is assigned based on the position of the phrase relative to otherword alignments for the sentence pair. For example, in Figure 19.4, the phrase pair⟨he,er⟩ has an alignment pointing to the top left, i.e., to the phrase pair ⟨that,dass⟩.
+Accordingly, this means that the orientation type of the phrase pair ⟨he,er⟩ is
+monotone, as the preceding English word aligns to the preceding German word.For an English-to-French phrase pair ⟨wine,vin⟩ in a translation white wine −→ vin
+blanc, there would be an alignment pointing to the top right, i.e., to the phrase pair⟨white,blanc ⟩. This indicates that there is evidence for a swap with the previous
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 540 — #10
+540 Andy Way
+michael
+michael
+michaelgeht
+gehtdavon
+davonaus
+aus,
+,
+,dass
+dasser
+erim
+imhaus
+hausbleibtmichaelgehtdavonausdasserimhausbleibt
+bleibt michael
+assumes
+that
+he
+will
+stay
+in
+the
+house
+michael
+assumes
+that
+he
+will
+stay
+in
+the
+houseassumes
+that
+he
+will
+stay
+in
+the
+house
+English to German German to English
+Intersection / union
+Figure 19.4 Merging source-to-target and target-to-source alignments (from Koehn 2010).
+pair, indicating that by and large English adjective–noun sequences like white wine
+are mapped to noun–adjective sequences like vin blanc in French.
+When a phrase pair is extracted for the translation model, its orientation for the
+reordering model is also extracted. A probability distribution pofor the reordering
+model is then estimated based on the counts of how often speciﬁc phrase pairsoccur with each of the three orientation types using the maximum likelihood (ML)principle (Manning & Schütze 1999: 197), as in (5):(5) p
+o(orientation| ˜f,˜e)=count(orientation| ˜e,˜f)
+∑
+ocount(o, ˜e,˜f)
+where an orientation ∈{m,s,d}is predicted for each source-to-target phrase pair for
+all possible orientations o.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 541 — #11
+Machine Translation 541
+2.2.1 Language models In the noisy channel model of SMT (cf. (1)), P(t) refers
+to the language model (LM), which is a probability distribution over target stringstthat attempts to reﬂect the frequency with which each string toccurs as a sentence
+in text or speech. Especially in SMT, it can smooth and adjust the word orders tosome extent by providing contextual information. In this section, we mainly focuson the n-gram LM which is used in most state-of-the-art SMT systems, as well as
+other data-driven models.2.2.1.1 n-gram language model In an n-gram LM, the probability P(t) of a string
+tis expressed as the product of the probabilities of the words or tokens in t,w i t h
+each word probability conditioned on a number of previous words. That is, ift={w
+1,w2,...,wl}we have (6):
+(6) P(t)=P(w 1)P(w 2|w1)P(w 3|w1,w2)···P(w l|w1,...,wl−1)
+In typical usage, given the string t, the LM estimation using the above chain rule
+and an order-3 (i.e., trigram) or higher-order Markov assumption leads to (7):(7) P(t)=
+l∏
+i=1P(
+wi|wi−11)
+≈l∏
+i=1P(
+wi|wi−1i−n+1)
+where wj
+idenotes the words wi,...,wj.
+Consider the case n=3. To estimate the probabilities P(w i|wi−2,wi−1)in (7),
+a simple ML algorithm, as in (9), can estimate the approximate probabilities fromthe training data:
+P(w
+i|wi−2,wi−1)=P(w i−2,wi−1,wi)
+P(w i−2,wi−1)(8)
+=count(w i−2,wi−1,wi)
+(wi−2,wi−1)(9)2.2.1.2 Language model smoothing Given the training data, it is easy to build
+ann-gram LM, because all we need to do is count the occurrences of the word
+n-gram events from the training data. However, the ML estimate does not per-form well when the amount of training data is small or sparse compared to thesize of the model being built. From the statistical point of view, if the training datacannot cover the test data (i.e., if a string αdoes not occur in the training data,
+butαoccurs in the test data), then a problem arises that a zero probability is gen-
+erated, which is clearly inaccurate as this probability should be larger than zero.Accordingly, we need to estimate or predict the probability of events which werenot seen in the training data.
+ML estimates are based on the observations from the training data so, according
+to (9), unseen word n-grams will obtain a zero probability. Furthermore, according
+to (7), the sentence twill also receive a zero probability because of the products,
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 542 — #12
+542 Andy Way
+which indicates that the sentence is not possible at all. Therefore, every sentencewhich contains n-grams which do not occur in the training data will be deemed
+impossible. As we pointed out in Section 2.1.1, in practice, the amount of trainingdata available is limited, so data sparseness is often a real issue. Thus if we areunable to estimate the unseen n-gram sequences and give them an appropriate
+probability, it will have a fatal inﬂuence on many practical applications. Improv-ing the model in (9) so that no word sequence receives zero probability is calledsmoothing (Jelinek 1977). This process involves techniques for adjusting the ML
+estimate to hopefully produce more accurate probabilities.
+The basic idea of smoothing techniques is to reserve some small probability
+mass from the relative frequency estimates (cf. (9)) of the probabilities of seenevents, and to redistribute this probability to unseen events. There are severalsmoothing techniques which work fairly well for SMT and other applications.The main differences relate to how much probability mass is subtracted out(‘discounting’) and how it is redistributed (‘back-off’). The most popular methodis Kneser–Ney smoothing (Kneser & Ney 1995).
+2.3 Log-linear representation
+As described in the previous sections, PB-SMT consists of three probabilisticcomponents: a phrase translation model (TM), a reordering (distortion) model,and the language model (LM). Och and Ney (2002) represent these probabilisticcomponents as a log-linear model interpolating a set of feature functions as in (10):(10) t
+∗=arg max
+t∏
+f∈FHf(s,t)λf
+The set Fis a ﬁnite set of features and λfare the interpolation weights over
+feature functions Hfof the aligned source-to-target sentence pairs sand t.T h es e t
+of different features consists of the following:
+(1) an n-gram LM over target sequences;
+(2) a source-to-target t-table;(3) a target-to-source t-table (the reverse of the previous table);(4) lexical translation probabilities in both directions;(5) a phrase reordering model;(6) the standard word/phrase penalty which allows for control over the length
+of the target sentence.
+2.3.1 Minimum error rate training The parameters of each component of
+the log-linear model components are estimated independently. For example, thephrase translation probabilities are estimated from a bilingual corpus while thelanguage model probabilities are estimated usually from a much larger monolin-gual corpus. The various components are interpolated in the log-linear framework
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 543 — #13
+Machine Translation 543
+by a set of parameters following the maximum entropy (MaxEnt) approach asshown in (10).
+In the MaxEnt framework, each feature is associated with a weight. These
+weights can be estimated using iterative search methods to ﬁnd a single optimalsolution under the MaxEnt principle, but this is a computationally expensive pro-cess. Therefore, Och (2003) proposed an approximation technique called minimumerror rate training (MERT) to estimate the model parameters for a small number offeatures, discussed in Section 2.4. An error function that corresponds to the trans-lation accuracy (Section 2.5) is deﬁned and MERT estimates the log-linear modelparameters such that this error function is minimized using the n-best output of
+the MT system. MERT proceeds as follows:
+(1) Initialize all parameters with random values.(2) Produce the n-best translations using the current parameter set.
+(3) Compute the error function using the reference translations.(4) Optimize each parameter to minimize the error function while ﬁxing all other
+parameters.
+(5) Iterate over all parameters.
+MERT provides a simple and efﬁcient method to estimate the model parameters;
+however, it can only handle a small number of parameters, and when the numberof parameters increases there is no guarantee that MERT will ﬁnd the most suitablecombination (Chiang et al., 2008).
+2.4 Decoding
+At present, the state-of-the-art implementation of decoding for PB-SMT is a beamsearch decoder (Koehn et al., 2003). The decoder uses a log-linear model which isa MaxEnt ( Jelinek 1977) direct translation model. The decoding process includes(1) the selection of translation options, (2) future cost estimation, (3) beam search,and (4) n-best list generation, all of which are explained in the following sections.
+2.4.1 Translation options selection Given an input string of words and a
+phrase table, only a certain number of phrases in the table are related to the inputstring, so we just need to collect these related phrases before decoding. This notonly lowers the amount of memory required, but also increases decoding speed.During the selection, typically the following information is stored:
+(1) ﬁrst and last source word covered;(2) corresponding target-phrase translation;(3) phrase translation probability.
+Given an input string of source words, all possible phrases with a limited span
+are found which are in accordance with the maximum length of the extracted
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 544 — #14
+544 Andy Way
+no daba una bofetada a la bruja verde Maria
+Mary give a slap to the witch green not
+did not
+no slap to the
+to
+the
+slap the witchdid not givea slap by green witch
+Figure 19.5 All possible source segmentations with all possible target translations (from
+Koehn 2004; reproduced with permission from Springer).
+phrase table. Then, for each source phrase, the phrase table is searched and thematching target phrases stored.2.4.2 Future cost estimation In the decoding process, the target output
+sentence is generated left to right in the form of hypotheses which store the tar-get phrase, translation cost and other related information. Each hypothesis isthen stored in a stack which has the same source words covered. As shown inFigure 19.5, many possible segmentations for the source sentence along with manypossible translations are available from the phrase table.
+In order to reduce the search space (cf. Section 2.4.3 below), a breadth-ﬁrst beam
+search is used in decoding so that pruning is applied in a stack. In the pruningphase, not only the current translation cost but also the future cost is consid-ered. The future cost is tied to the source words that have not yet been translated.Thus, we are looking for the cheapest cost (or the maximum probability) for thesource words that are not yet covered. This future cost estimation should favorhypotheses that have already covered difﬁcult parts of the sentence and have onlyeasy parts left, while discounting hypotheses that have covered the easy partsﬁrst.
+17
+For the translation options in Section 2.4.1, each source phrase ˜sj
+ihas one or
+more target-phrase candidates ˜t, so the maximum probability for a source phrase
+˜sj
+iconsisting of words itojcan be obtained by (11):
+(11) P(
+ˆt|˜sj
+i)
+=arg max∑
+mλmlog(pm(˜t,˜s))
+where pm(˜t,˜s)is a product of the bidirectional phrase probabilities, bidirectional
+lexicalized probabilities, phrase length penalty, and LM probability. Since we donot know the preceding target words for a translation operation, we approxi-mate the LM cost by computing the LM score for the generated target wordsalone.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 545 — #15
+Machine Translation 545
+The future cost score for a source phrase can be efﬁciently estimated a priori by
+dynamic programming (Koehn 2010), and simply looking up the score for thishypothesis in the cache. The lowest cost for any particular phrase will be thecheapest cost of a particular translation option, or the cheapest sum of costs fromtwo smaller phrases that completely cover the phrase.2.4.3 Beam search Typical phrase-based decoders like Moses (Koehn et al.,
+2007) employ a beam search algorithm. Starting from the initial hypothesis whereno source input words have yet been translated, source words are then expandedin a monotone or non-monotone manner, i.e., following the source-word/phraseorder or not. New hypotheses can be generated from the expanded hypotheseswith a phrasal translation that covers some of the source input words which havenot yet been translated.
+Each hypothesis is added into a beam stack as a new node, which is repre-
+sented by:
+(1) a link back to the best previous state (needed for tracing the best translation
+of the sentence by backtracking through the search states);
+(2) the source words covered so far;(3) the last n-1 target words generated (if an n-gram-based LM is used);
+(4) the end of the last source phrase covered (needed for computing future
+distortion costs);
+(5) the most recently added target phrase;(6) the cost so far;(7) an estimate of the future cost;(8) feature functions (cf. Section 2.3);(9) additional arcs (needed for generating the n-best list).
+The ﬁnal states in the search are hypotheses that cover all source words. Among
+these hypotheses, the one with the lowest cost (highest probability) is selectedas the best translation. If we want to output an n-best list, we can generate the
+translations with a ranked cost during the backtracking process. The hypothesisexpansion process in a beam search decoder is illustrated in Figure 19.6.
+In Figure 19.6, each stack is marked by the covered source words during expan-
+sion. A newly created hypothesis will be placed in a new stack further down, e.g.,the top phrase in stack 2 (comprising two words, the man, say) is linked to various
+hypotheses in stacks 3 ( goes, i.e., three words are now covered), 4 (does go, four
+words), and 5 (might be going, ﬁve words).
+In order to improve decoding speed and to reduce the search space, pruning
+techniques (such as recombining hypotheses, or histogram pruning; Koehn 2010)are employed to optimize the search by discarding hypotheses that cannot be partof the path to the best translation (i.e., they have a low score).2.4.4 n-best list generation After the expansion process, the ﬁnal translation
+can be generated by backtracking. Generally, we just need one translation with
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 546 — #16
+546 Andy Way
+123456
+Figure 19.6 Hypothesis expansion via stack decoding (from Koehn 2004; reproduced
+with permission from Springer).
+the maximum highest probability as the ﬁnal output, but in some cases such asMERT (Och 2003; cf. Section 2.3.1) or re-ranking (cf. Section 2.6), the n-best list will
+be needed. In typical approaches to phrase-based decoding, the A* algorithm isused to generate n-best lists (Koehn 2010).
+2.5 MT evaluation
+The constant development of MT systems using test sets of hundreds or thou-sands of sentences has meant that automatic MT evaluation metrics have becomeindispensable for quickly and cost-effectively rating candidate translations, andby extension the MT engines themselves. Some of the more widely used metricsinclude:•B
+LEU (Papineni et al., 2002): a precision-based metric that compares a sys-
+tem’s translation output against reference translations by summing over the4-grams, trigrams, bigrams, and unigram matches found, divided by the sumof those found in the reference translation set. It produces a score for the out-put translation of between 0 and 1. A higher score indicates a more accuratetranslation.
+•Sentence error rate (SER): computes the percentage of incorrect full sentence
+matches by comparing the system’s candidate translations against the refer-ence translations. With all error rates, a lower percentage score indicates bettercandidate translations.
+•Word error rate (WER) (Levenshtein 1966): computes the distance between
+the reference and candidate translations based on the number of insertions,substitutions, and deletions in the words of the candidate translations dividedby the number of correct reference words.
+•Position-independent word error rate (PER) (Tillmann et al., 1997): computes
+the same distance as the WER but without taking word order into account.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 547 — #17
+Machine Translation 547
+•METEOR (Banerjee & Lavie 2005): performs two stages of comparative match-
+ing for candidate and reference translations: (1) exact matching of unigrams,and (2) stemmed matching, where remaining unmatched words are decom-posed into stems using the Porter stemmer and subsequently form matches.Stem matching and synonym matching are based on WordNet models (Milleret al., 1990). Scores are obtained by calculating the sum of n-gram matches.
+•General text matcher (GTM) (Turian et al., 2003): bases its evaluations on
+accuracy measures such as recall, precision, and F-score.
+•Dependency-based evaluation (Owczarzak et al., 2007b): employs lexical
+functional grammar (LFG) (Kaplan & Bresnan 1982; Bresnan 2001) dependencytriples using paraphrases derived from the test set through word/phrase align-ment with B
+LEU and NIST (Doddington 2002). It evaluates translations on a
+structural rather than string level and allows for lexical variance.
+Automatic evaluation metrics are designed to assess linear text output, requir-
+ing the provision of at least one ‘gold standard’ version of the testing data as areference for comparison. The majority, including B
+LEU, are string-based matching
+algorithms that do not take syntactic or lexical variation into account and penalizeany divergence from the reference sentence(s). This can mean that candidate sen-tences which translate the source sentence both ﬂuently and accurately, but havedifferent lexical or syntactic choices to the reference sentence(s), may be given alow score. More recent developments, such as dependency-based evaluation, doallow for variance in lexical items (such as paraphrasing or synonyms), increasingthe likelihood of a candidate sentence getting a good score.
+While automatic evaluation best facilitates MT in terms of speed, human eval-
+uation is often used as well. A panel of human evaluators with native knowledgeof the target language can be asked to assess the output translations based on aprescribed set of criteria noting scales of ﬁdelity and intelligibility, such as thoseoutlined by Pierce et al. (1966).
+In summary, both methodologies have their advantages, depending on whether
+the aim is speed of evaluation or a broader assessment of intelligibility and ﬁdelity.
+2.6 Re-ranking
+SMT decoders may not ﬁnd the best translation from the large number of candi-date translation hypotheses. Re-ranking MT output is performed by obtaining then-best translation candidates for each sentence using a baseline translation system.The candidates are re-ranked using features extracted from these n-best candidates
+to obtain a better translation than the one proposed by the decoder.
+Generally, SMT re-rankers train a discriminative model that can use fea-
+tures from the proposed n-best candidates to discriminate between the different
+translation candidates.
+Och et al. (2004) used a large number of POS tags and syntactic features for
+re-ranking the n-best output of the baseline system using the log-linear model.
+Shen and Joshi (2005) used the best features from Och et al. (2004) to train a
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 548 — #18
+548 Andy Way
+perceptron classiﬁer for re-ranking the n-best list of candidate translations. Unlike
+these last two approaches, Yamada and Muslea (2006) trained the re-ranker on theentire corpus, not only on the test set.
+In general, the improvements provided by re-ranking the SMT output are
+modest due to the fact that the number of translation candidate variations, evenwith a very large n-best list, is not enough to guarantee that a better translation
+will be obtained.
+3 Other Approaches to MT
+3.1 Hierarchical models
+In contrast to Koehn et al. (2003), who demonstrated that using syntax to constraintheir phrase-based system actually harmed its quality, a number of researchershave, to different degrees, reported improvements when grammatical informationis incorporated into their models of translation. We focus in the next few sectionson perhaps the most popular alternative to the pure phrase-based approach,namely the hierarchical phrase-based model proposed by Chiang (2005).3.1.1 Model In general, given a source sentence s,a synchronous CFG
+18will
+have many source-side derivations that yield (i.e., produce the sentence) s,a n d
+therefore many possible translations ton the target side. In hierarchical phrase-
+based MT, the model over derivations D(of the form X→⟨γ,α⟩, w i t hXa
+non-terminal, γstrings of terminals, and αstrings of non-terminals) is also deﬁned
+as a log-linear model, as in (12):(12) P(D)∝∏
+iφi(D)λi
+where φiare features deﬁned on derivations and λiare feature weights. In Chiang
+(2005), typical features used are P(γ|α),P(α|γ), lexical weights Pw(γ|α)
+and Pw(α|γ)(derived via word alignments), and a phrase penalty exp(1), where
+the system can learn preferences for longer or shorter derivations (cf. the phrasepenalty in PB-SMT of Koehn et al. (2003) in Section 2.3).
+For hierarchical phrase-based decoding, the integration of the LM is quite differ-
+ent compared to phrase-based decoding (cf. Section 3.1.3), so the LM is regardedas a special feature P
+LM(t)in the log-linear model, while the remainder of the
+features are deﬁned as products of functions on the rules used in the derivation, asin (13):(13) φ
+i(D)=∏
+(X→⟨γ ,α⟩)∈Dφi(X→⟨γ,α⟩)
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 549 — #19
+Machine Translation 549
+By merging (12) and (13), we end up with (14) as the model:(14) P(D)∝P
+LM(t)λLM×∏
+i̸=LM∏
+(X→⟨γ ,α⟩)∈Dφi(X→⟨γ,α⟩)
+That is, the weight of Dis the product of the weights of the rules used in trans-
+lation (X →⟨γ,α⟩)∈D), the language model PLM(t)λLM, and any other functions
+φisuch as the phrase penalty.
+As Chiang (2005) notes, it is perhaps more convenient from a notational point
+of view to factor out the LM and word penalty probability models, althoughit is cleaner (and ensures polynomial-time complexity in decoding) to integratethem into the rule weights, in order to maintain the whole model as a weightedsynchronous CFG.3.1.2 Features The basic features used in a hierarchical phrase-based system are
+analogous to the default feature set of Pharaoh (Koehn 2004; cf. Section 2.3). Therules extracted from the training bitext have the following features:
+(1) P(γ|α)and P(α|γ), the bidirectional phrase/rule probabilities which are
+estimated by counting the frequency of rules;
+(2) the lexical weights P
+w(γ|α)and Pw(α|γ), which estimate how well the
+words in αtranslate the words in γ(Koehn et al., 2003);
+(3) a penalty exp−1for hierarchical rules, similar to the phrase penalty of Koehn
+(2003), which allows the model to learn a preference for longer or shorterderivations;
+(4) exp
+−1for the ‘glue rule,’ so that the model can learn a preference for
+hierarchical phrases over serial combination of phrases;
+(5) exp−1for each of the four types of rules (numbers, dates, names, bylines);
+(6) a word penalty exp−count (T(α)), where count(T )is a count of terminals in the
+target sentence t.
+3.1.3 Decoding The decoder is a CKY parser (Younger 1967) with beam search
+together with a postprocessor for mapping source derivations to target deriva-tions. The parsing process starts with the axioms, and proceeds by applyinginference rules to prove more items until a goal is proven. We refer the interestedreader to Chiang (2007) for more details.3.1.3.1 Incorporating the language model For hierarchical phrase-based MT, incor-
+porating the LM is a challenging problem. Chiang proposed three solutions: ﬁrst,using the above-mentioned parser to obtain an n-best list of translations and
+rescoring it with the LM; second, incorporating the LM directly into the grammarin a construction reminiscent of intersection of a CFG with a ﬁnite-state automa-ton; third, a hybrid method called cube pruning. In his experiments, the third
+method proved to be the most practical one which is a compromise and balances
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 550 — #20
+550 Andy Way
+speed and accuracy. Again, we invite the reader to consult the primary sources formore on these possible solutions.
+3.2 Tree-based models
+Recently in the MT community many researchers have come to the realizationthat, in order to build good quality MT systems, new translation models needto be developed that are capable of handling complex source language syntac-tic and semantic representations, as well as their correspondences in the targetlanguage. This has led to the emergence of several models that employ syntac-tically parsed data to varying extents. In this section we will outline the mostprominent developments.3.2.1 Tree-to-string models Yamada and Knight (2001) present a tree-to-string
+model that adheres largely to the standard noisy channel model of MT; thetarget-language sentence is produced after applying certain operations to thesource-language sentence. Its main difference to the standard PB-SMT modelsis that it uses parsed data on the source-language side. The operations that thismodel encodes are the following:•reorder: where the children of a node in the source-side parse-tree may bereordered arbitrarily;
+•insert: where a target-language word may be inserted at any position in thesource-side tree; and
+•translate : where the surface string of the source-side tree is translated word for
+word to obtain the target-language sentence. The tree structure is discardedafter the translate operation.
+The parameters of this model are the channel operations that can be performed
+and their probabilities for all available contexts. The values for these parametersare estimated automatically using the EM algorithm (Dempster et al., 1977). Due tothe vast number of possible contexts, the computation of all possible combinationsof parameters is very expensive. Nevertheless, Yamada and Knight (2001) presentan efﬁcient algorithm that estimates the probabilities in polynomial time. Evalua-tion results are presented on automatic word alignments in which improvementsin alignment average score are seen over a baseline IBM model 5 system.3.2.2 Unsupervised tree-to-tree models Nesson et al. (2006) strive to develop
+an expressive and ﬂexible formalism for MT that at the same time allows forefﬁcient parsing. Thus they introduce probabilistic synchronous tree-insertiongrammar, which is an unsupervised tree-to-tree translation model.
+The basis for their formalism lies with tree insertion grammars (TIGs) (Schabes
+& Waters 1995). TIGs are a computationally attractive alternative to tree adjoining
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 551 — #21
+Machine Translation 551
+grammars (TAGs) (Joshi 1985) while continuing to use the same operations of sub-stitution and adjunction. The main difference lies in additional restrictions on theform of elementary trees that TIG imposes. The restrictions limit the formalismto context-free expressivity and O(n
+3)parsability (Chapter 2, COMPUTATIONAL
+COMPLEXITY IN NATURAL LANGUAGE ).
+Synchronous TIG (STIG) extends the TIG formalism by using elementary struc-
+tures consisting of pairs of TIG trees with links between particular nodes in thosetrees. Derivation for STIG proceeds as for TIG with the requirement that all opera-tions have to be paired. A STIG can express lexically based dependencies and cangenerally be parsed in O(n
+6)time (Chapter 2, COMPUTATIONAL COMPLEXITY IN
+NATURAL LANGUAGE ).
+Translation is performed using slightly modiﬁed inference rules that account
+for not having the target sentence during parsing. Having produced the possiblederivation trees in this way it is trivial to generate the target-language sentences.
+The full model presented in Nesson et al. (2006) learns a probability for every
+combination of tree pairs in the training corpus. Thus, in a corpus with highword co-occurrence the number of free parameters will be of the order of O(n)
+4,
+where nis the size of the largest monolingual vocabulary (Chapter 2, COMPUTA -
+TIONAL COMPLEXITY IN NATURAL LANGUAGE ). This slows the model and may
+lead to overﬁtting of the training data. Therefore the authors propose to pre-process the word co-occurence data to eliminate word pairs that are unlikely toencode true relationships. This introduces another possible problem, however,where too many word pairs could be pruned, thus rendering the model unableto parse some training sentence pairs.
+By evaluating the model on a translation task, Nesson et al. (2006) show
+an improvement in B
+LEU and ﬂuency scores over Pharaoh (Koehn 2004) and
+GIZA++ (Och 2003) systems trained on the same data, while achieving compa-
+rable adequacy scores.3.2.3 Supervised tree-to-tree models Data-oriented translation (DOT) is a
+hybrid model of translation which combines examples, linguistic information anda statistical translation model. The DOT model is speciﬁed in terms of (1) thetype of representation expected in the example base; (2) how fragments are to beextracted from these representations; (3) how extracted fragments are to be recom-bined when analyzing and translating input sentences; and (4) how the resultingtranslations are to be ranked.
+Tree-DOT (Hearne 2005; Hearne & Way 2006; cf. also Section 5.2.4) was
+designed to utilize parallel treebanks, i.e., bilingual corpora annotated with syn-tactic structures for both the source and the target side and with links betweencorresponding constituents in corresponding sentence pairs. From such a paral-lel treebank, linked subtree pairs can be extracted with associated probabilities.These subtree pairs can be used to analyze source-side sentences and constructcompositionally corresponding target-side translations. An example is given inFigure 19.7.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 552 — #22
+552 Andy Way
+SS
+NP VP NP VP
+he V NP il AUX V NP
+chose D NPzero a choisi D NPpp
+the N N la N PP
+ink cartridge cartouche P N
+de encre
+Figure 19.7 An aligned tree pair in DOT for the sentence pair: he chose the ink cartridge,
+il a choisi la cartouche d’encre .
+Tree-DOT standardly uses phrase-structure trees as training data. Links
+between the constituents of two trees represent semantic/translational equiva-lence between these constituents. The translational equivalence relation is reﬂex-ive, symmetric, and transitive. For training, from all tree pairs in a paralleltreebank a bag of all possible linked subtree pairs is created, where linkedsubtree pairs occur exactly as often as they can be identiﬁed in the paralleltreebank. These subtree pairs can be composed together to produce analyses ofcomplete sentence pairs.
+For translation, the source-language sentence is analyzed, whereby all possible
+derivations for the sentence are generated using linked subtree pairs. The corre-spondences in the subtree pair fragments can be used to generate target-languagetranslations.3.2.4 Supervised tree-to-tree and tree-to-string model Hanneman et al. (2008)
+present a general framework for the development of search-based syntax-drivenmachine translation systems: Stat-XFER. This framework uses a declarative for-malism for symbolic transfer grammars which consist of syncronous context-freerules that can additionally be augmented by uniﬁcation-style feature constraints.These transfer rules specify the correspondences between phrase structures in thesource and target languages.
+The transfer formalism was designed considering the fact that the rules have to
+be simple enough so that they can be learned automatically, but also expressiveenough to allow for manually crafted rule additions and changes. The rules incor-porate the following components (Hanneman et al. (2008) use ‘ x-side’ to refer to
+the source language, and ‘ y-side’ for the target language):
+•Type information: identiﬁes the type of transfer rule and generally corre-sponds to a syntactic constituent type. The formalism allows for the x-a n d
+y- s i d et y p ei n f o r m a t i o nt ob ed i f f e r e n t .
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 553 — #23
+Machine Translation 553
+•POS/constituent information: represents a linear sequence of components thatconstitute an instance of the rule type. These correspond logically to the right-hand sides of CFG rules for the x-a n dy-sides.
+•Alignments : explicitly describe how the set of source-language components
+in a rule align and transfer to the set of target-language components. Theformalism allows for both no and many-to-many alignments.
+•x-side constraints: apply to the source language and determine at run-timewhether a transfer rule applies to a given sentence.
+•y-side constraints: apply to the target language and guide the generation ofthe target-language sentence.
+•xy-constraints : provide information about the feature values that transfer from
+the source to the target language.
+The transfer engine uses lexical transfer rules from a bilingual lexicon, while
+the higher-level structural rules can be either manually developed or automati-cally acquired. This engine fully integrates parsing, transfer, and generation ina bottom-up ‘parse-and-transfer’ algorithm that is essentially an extended chartparser (Kaplan 1973; Kay 1973). Parsing is performed using the source grammar,where x-side constraints are applied. Then the transfer rules are used to gener-
+ate the target language side, constrained by the target grammar (where y-side
+and xyconstraints are enforced). See Chapter 4,
+THEORY OF PARSING , for more
+information on parsing.
+3.3 Example-based machine translation
+Especially since the introduction of PB-SMT (Marcu & Wong 2002; Koehn et al.,2003), there has been a strong convergence between the leading corpus-basedapproaches to MT. As we stated in Way and Gough (2005a), before PB-SMT wasintroduced, describing the differences used to be easy, as since its inception (Nagao1984) EBMT has sought to translate new texts by means of a range of subsenten-tial data – both phrasal and lexical – stored in the system’s memory. Until quiterecently, by contrast, SMT models of translation were based on the simple wordalignment models of Brown et al. (1993). Now that SMT systems learn phrasal aswell as lexical alignments, this has led to an unsurprising increase in translationquality compared to the IBM word-based models (Brown et al., 1993; cf. Section2.1.3 above).
+A very wide array of techniques are used in EBMT today (cf. Carl & Way 2003).
+Nonetheless, it is widely accepted that there are three main stages in translatingwith an example-based model, namely:•matching: searching for fragments of the source text in the reference corpus;
+•alignment : identifying the corresponding translation fragments;
+•recombination: composing these translation fragments into the appropriatetarget text.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 554 — #24
+554 Andy Way
+Just like PB-SMT, EBMT is a dynamic, fully automatic translation process. All
+three of the above stages depend very heavily on the nature of the training exam-ples in the system’s database. The initial matching process uses a distance-based
+metric to compare the input string against examples from the source side of thereference corpus. In EBMT, the ‘classical’ similarity measure is the use of a the-saurus to compute word similarity on the basis of meaning or usage (Nagao 1984;Sato & Nagao 1990; Sumita et al., 1990; Furuse & Iida 1992; Nomiyama 1992;Matsumoto & Kitamura 2005). Other approaches calculate similarity based on therelative length and content of strings (Way & Gough 2003). ‘Similar’ examplesare searched for, and a cost is calculated taking into account deletions, insertions,and substitutions, e.g., a missing comma would be penalized less than a missingadjective.
+19
+Probably the biggest divergence in approach among different types of EBMT
+systems can be seen in the second alignment (oradaptation) phase, which again
+depends largely on the nature of the examples used in the EBMT system. A richdiversity of models can be seen, for example:
+(1) pure string-pairs with no additional information (e.g., Nagao 1984; Somers
+et al., 1994; Lepage & Denoual 2005);
+(2) annotated constituency tree (from context-free phrase-structure grammars;
+Chomsky 1957) pairs (e.g., Hearne 2005; Hearne & Way 2006, cf. Sections3.2.3 and 5.2.4);
+(3) dependency tree pairs (e.g., Watanabe 1992; Menezes & Richardson 2003);(4) LFG f-structure pairs (e.g., Way 2003);(5) tree-to-string systems (e.g., Langlais & Gotti 2006; Liu et al., 2006);(6) generalized examples (e.g., Brown 1999; Cicekli & Güvenir 2003; Way &
+Gough 2003).
+Particularly in relation to generalized examples, EBMT has successfully inte-
+grated translation templates into its models, in a similar manner to rule-basedapproaches. It is fair to state that the use of generalized templates has not caughton anywhere near as much in PB-SMT as it has in EBMT, despite the well-received‘alignment template’ approach in PB-SMT (Och & Ney 2004), which mirrors quiteclosely the method of generalization most widely used in EBMT.
+While the third recombination stage also differs according to the nature of the
+examples used in the appropriate EBMT model, it is broadly similar to the decod-
+ingstage in SMT (cf. Germann 2003 for word-based models, and Koehn 2004;
+Koehn et al., 2007 for phrase-based approaches, cf. Section 2.4). Indeed, many sys-tems which are called ‘example-based’ currently use Moses as their decoder, andmore and more the term ‘recombination’ is being replaced by the PB-SMT term‘decoding.’
+3.4 Rule-based machine translation
+As mentioned in the introduction, the leading paradigm in published MT researchis PB-SMT; however, most available commercial systems are rule-based MT
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 555 — #25
+Machine Translation 555
+(RBMT) systems. The main reason why RBMT systems are still being developed isthat the vast bilingual and monolingual training corpora needed to build PB-SMTsystems are not available for all language pairs. Furthermore, the translation errorsproduced by RBMT systems tend to have a more repetitive nature than those of aPB-SMT system,
+20which may render RBMT systems more predictable and easier
+for human translators to post-edit.
+It may be useful to offer a contrast between RBMT and corpus-based systems
+such as PB-SMT and EBMT. RBMT systems are deductive: they use rules, dic-tionaries, etc., explicitly coded in a computer-readable form by experts usingknowledge deduced or derived from their linguistic knowledge. This process may
+involve elicitation, that is, making explicit the implicit knowledge of translators
+and linguists. In contrast, PB-SMT and EBMT systems are inductive ; they use
+information inferred from sentence-aligned parallel texts.
+However, this deductive RBMT knowledge is somewhat hidden in commer-
+cial products. As we said earlier, commercial MT is overwhelmingly dominatedby the rule-based paradigm. Most commercial MT companies tend to withholdinformation about the inner workings of their products, to avoid compromisingtheir competitiveness in a license-based closed-software business model; there-fore, papers describing real RBMT systems are somewhat scarce (cf. Section 7 forsome examples). However, a moderate effort of reverse engineering (Forcada 2001)
+using carefully prepared test sets may be easily used to reveal the strategies andrules used by these systems, with ‘incorrect’ translations playing an important rolein the extraction of this information.
+While it may take some effort to see what ‘rules’ might be underpinning existing
+commercial systems, it is important to note that not all RBMT systems are closed.For example, the Logos system has been released as free/open source softwareas ‘OpenLogos,’
+21and there is also very active development around a free/open
+source MT platform called Apertium (Armentano-Oller et al., 2006),22mainly by
+private companies.
+Despite such shifts, it remains the case that these open source systems use tech-
+nologies that have been around for decades: Apertium uses a classical partialsyntactic-transfer architecture (also known as a ‘transformer’ architecture; Arnoldet al., 1994, chapter 4). The indirect strategy used by Logos is harder to characterizein terms of a standard architecture (Scott 2003).
+With respect to closed source systems, one of the leaders is the Barcelona-based
+Translendium,
+23which may be seen as a modern version of Siemens-Nixdorf’s
+full syntactic-transfer METAL system (White 1985). Systems such as Softissimo’sReverso
+24use a partial syntactic-transfer strategy, able to translate correctly The
+senior expert’s large desk orThe computer expert’s desk but failing to translate a slightly
+more complex phrase such as The senior computer expert’s large desk because of lack
+of a suitable pattern to detect and translate it, revealing the application of shorterpatterns.
+RBMT systems (of the transformer and transfer kind) were designed in the 1970s
+and 1980s to run on mainframe computers. They were then ported to becomeslow desktop applications for personal computers in the 1990s, and subsequently
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 556 — #26
+556 Andy Way
+they have been run on high-performance web-based systems without changesin their basic design. The commercial nature of these products and the appar-ent lack of innovation may explain why it is hard to ﬁnd papers describing newdevelopments in RBMT, as compared to those in corpus-based MT.
+3.5 Hybrid methods
+While we feel it is appropriate here to feature systems which espouse to exhibitsome degree of hybridity, we should perhaps begin with a word of caution:
+Much current research in MT is neither based purely on linguistic knowledge nor on
+statistics, but includes some degree of hybridization. At AMTA 2004 and MT Summit2005 just about all commercial MT developers also claimed to have hybrid systems.But is this mostly a good way to allow painting oneself into whatever paradigm thatcurrent ‘fashion’ suggests one should be? (Cavalli-Sforza & Lavie 2006)
+Accordingly, we make a distinction in what follows between serial system
+combination (or ‘multi-engine MT’) and truly integrated systems. In what fol-lows, we assume that only the latter qualify for the label ‘hybrid.’ Nonetheless,ROVER-like system combinations (Fiscus 1997) are increasingly to be seen, espe-cially in large-scale open MT evaluations, and we feature some examples below. InSection 5, we discuss the contributions of our own work in the context of hybridityin translation, so the interested reader should also look there for comparisons withthe work cited in the current section.3.5.1 Multi-engine MT The term ‘multi-engine machine translation’ (MEMT)
+was ﬁrst introduced by Frederking and Nirenburg (1994) in their Pangloss system.Broadly speaking, MEMT systems try to select the best output from a numberof MT hypotheses generated by different systems, while leaving the individualhypotheses intact.
+Alegria et al. (2008) report a hierarchical strategy to select the best output from
+three MT engines for Spanish-to-Basque translation. First they apply EBMT (if itcovers the input), then SMT (if the conﬁdence score is higher than a given thresh-old), and then RBMT. The best results were obtained by the combination of EBMTand SMT.
+Mellebeek et al. (2006) report a technique in which they recursively decom-
+pose the input sentence into smaller chunks and produce a consensus translationby combining the best chunk translations, selected through majority voting, atrigram LM score, and a conﬁdence score assigned to each MT engine. This is aquite different approach to all the other methods presented here, which operateon the MT outputs for complete sentences.
+Van Zaanen and Somers (2005) report a language-independent ‘plug-and-play’
+MEMT system that constructs a consensus translation from the outputs of off-the-shelf MT systems, relying solely on a simple edit-distance-based alignment of thetranslation hypotheses, with no training required.
+The work of Paul et al. (2005a; 2005b) presents a multi-engine hybrid approach
+to MT, making use of statistical models to generate the best possible output from
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 557 — #27
+Machine Translation 557
+various MT systems. When using an SMT model to select the best output frommultiple initial hypotheses produced by a number of SMT and EBMT systems,Paul et al. (2005a) found that a PB-SMT system modeled on HMMs provided thebest results.3.5.2 Integrated systems Rosti et al. (2007) look at sentence-, phrase-, and
+word-level system combinations exploiting information from n-best lists, system
+scores, and target-to-source phrase alignments. Accordingly, it could be describedas either MEMT or integrated, but we choose to discuss it here rather than in theprevious section.
+Chen et al. (2007) describe an architecture that allows combining SMT with one
+or more RBMT systems in a multi-engine setup. It uses a variant of standardSMT technology to align translations from RBMT systems with the source textand incorporates phrases extracted from these alignments into the phrase tableof the SMT system. In related work, Eisele et al. (2008) report on two hybridarchitectures combining RBMT with SMT. In the ﬁrst architecture, several exist-ing RBMT engines are used in a multi-engine setup to enrich the lexical resources(phrase table) available to the SMT decoder, which combines the best expressionsproposed by different engines. The modiﬁed phrase table combines statisti-cally extracted phrase pairs with phrase pairs generated by linguistic rules. Thesecond architecture uses lexical entries found using a combination of SMT technol-ogy together with shallow linguistic processing and manual validation, to extendthe lexicon of the RBMT engine.
+Seneff et al. (2006) exploit techniques to combine an interlingual MT system with
+phrase-based statistical methods, for translation from Chinese into English.
+Bangalore et al. (2001) also use insights from post-editing to compute a consen-
+sus translation via majority voting from several translation hypotheses encodedin a confusion network. However, since edit-distance only focuses on insertions,deletions, and substitutions, the model is unable to handle translation hypothe-ses with signiﬁcantly different word orders. Jayaraman and Lavie (2005) try toovercome this problem by allowing non-monotone alignments of words in differ-ent translation hypotheses for the same sentence. They use a basic edit-distance(Levenshtein 1966) that ignores case and which uses a stemmer to increase thenumber of matches.
+Matusov et al. (2006) compute the consensus translation by voting on a confu-
+sion network (Mangu et al., 2000; Hakkani-Tür & Riccardi 2003) constructed frompair-wise word alignments of the multiple hypotheses to explicitly capture wordreordering.
+4 MT Applications
+Advances in MT have meant that translation quality is now good enough tofacilitate the needs of the general public with online MT systems (Section 4.1),assist human translators through the development of translation memory systems
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 558 — #28
+558 Andy Way
+(Section 4.2), and help address speciﬁc problems such as intercultural commu-nication (Section 4.4). It can also be combined with other NLP technologies(Section 4.3).
+4.1 Online MT systems
+Consistent development of MT technology and the increasing need for translationat great speed with little cost has fueled the proliferation of online MT systemssuch as Systran,
+25Google Translate,26Babelﬁsh,27and Windows Live Transla-
+tor.28These systems predominantly offer their services free of charge as part of a
+web-based platform. They provide real-time translation to the general publicthrough web-based platforms that allow users to type sentences, paragraphs oftext, or URLs for almost instantaneous translation into their chosen language.Although online MT systems may not be the best choice for highly accurate,large-scale, domain-speciﬁc translation, they adequately serve the small-scale,open-domain translation needs of the general public – as can be seen by the mil-lions of hits per day that such sites receive – where the need for gisting (i.e.,
+access to the basic information contained in the document) is greater than a perfecttranslation.
+4.2 Translation memory tools
+Translation memories (Garcia 2007; Biçici & Dymetman 2008) comprise bilin-gual corpora of previously translated phrases usually within a particular domain.Translation memory tools are used to assist human translators and, as well asthe memories themselves, they contain glossary and terminology managementcomponents, alignment technology, pre-translate functions, etc. Input phrases, orphrases selected using a computer-assisted translation tool, are compared againstthe corpus, and a set of relevant target-language sentences are produced for thetranslator to select appropriate parts from each to combine together to producethe output translation (cf. Section 3.3 for a comparison with EBMT).
+4.3 Spoken language translation
+As MT technology has developed, the range of use scenarios has increased par-ticularly with respect to combining approaches with other NLP technologies.Coupling MT and speech technology, for example, particularly facilitates commu-nication when text input is not convenient or where literacy skills impede suchusage. For instance, the ‘Phraselator’
+29used by the US military is a handheld
+speech-to-speech translation system that aids communication where one partydoes not speak English, without the need for an interpreter or literacy skills.Such technology also bypasses the need for both parties to be able to operate thedevice, which may speed up the language exchange in time-critical situations. Afurther example of this is the role of MT in healthcare for patients with limited
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 559 — #29
+Machine Translation 559
+English (Somers 2007). MT combined with speech recognition and synthesis canplay an important role in safety-critical situations such as doctor–patient commu-nication where patients are vulnerable, and may have little English or few literacyskills.
+4.4 Sign languages
+MT can also be a valuable tool to bridge the cross-modal communication gapbetween spoken and signed languages. Although research in this area is still rela-tively novel compared to mainstream spoken language MT, it has gained groundover the decade of its development with work in both rule-based (e.g., Veale et al.,1998) and more recently data-driven approaches (Morrissey et al., 2007). Wherelanguage barriers exist, person-to-person communication usually requires one orthe other party to break from using their native language, something which maynot be possible for either party in the context of deaf–hearing communication. Inthis context MT can act as a useful substitute, and help maintain conﬁdentiality insituations such as doctor–patient scenarios which are currently compromised bythe use of teletype phones and human interpreters.
+5 Machine Translation at DCU
+The MT group30at DCU initially carried out research on EBMT (Carl & Way 2003),
+and especially marker-based approaches (Way & Gough 2003; Gough & Way 2004;Gough 2005; Way & Gough 2005a). However, in the intervening period, we haveworked on a very wide range of other areas of MT research and development,including:
+(1) syntax-driven statistical machine translation (Hassan et al., 2006; 2007b; 2008;
+van den Bosch et al., 2007b; Stroppa et al., 2007; Haque et al., 2009);
+(2) hybrid statistical and example-based machine translation (Way & Gough
+2005a; Groves & Way 2005a; 2005b; Groves 2007);
+(3) tree-based machine translation (Hearne & Way 2003; Hearne 2005; Hearne &
+Way 2006);
+(4) word alignment (Ma et al., 2007a; 2007b; 2008; 2009);(5) subsentential alignment for machine translation (Tinsley et al., 2007a; 2007b;
+Hearne et al., 2008; Zhechev & Way 2008);
+(6) improvement of rule-based machine translation (Mellebeek et al., 2006);(7) evaluation in machine translation (Owczarzak et al., 2007a; 2007b; He & Way
+2009);
+(8) controlled language and machine translation (Way & Gough 2004; 2005b);(9) human factors in machine translation (Morrissey et al., 2007).
+We will outline some of this work in the following sections.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 560 — #30
+560 Andy Way
+5.1 Hybridity on the source side
+5.1.1 Adding source-language context into PB-SMT The DCU M ATREXsys-
+tem (Stroppa & Way 2006; Hassan et al., 2007a; Tinsley et al., 2008) uses Moses(Koehn et al., 2007) as a backbone. In a different strand of work, a novel (albeituncompetitive) decoder based on a memory-based classiﬁer smoothed with atrigram LM is presented in van den Bosch et al. (2007b). Contrast this with thework of Carpuat and Wu (2007), who use a pre-existing word-sense disambigua-tion tool to demonstrate improvements over an SMT baseline. Later work (Stroppaet al., 2007) improves on the method of van den Bosch et al. (2007b) by inte-grating a memory-based classiﬁer as a kind of ‘pre-decoder.’ It is demonstratedthat a PB-SMT system using Moses improves signiﬁcantly when context-informedfeatures from the source language are used. We are able to (1) introduce context-informed features directly in the original log-linear framework (cf. (10) above), and
+(2) still beneﬁt from the existing training and optimization procedures of standardPB-SMT.
+Essentially, we use two sets of context-informed features: word-based features
+and class-based features. As far as the former are concerned, we can use a fea-ture that includes the direct left- ( s
+bk−1) and right-context ( sjk+1) words of a given
+source phrase ˜sk=sbk...sjkderived from a particular sentence pair sK1(consisting
+of words 1 ...K), as in (15):
+(15) hm(
+sJ
+1,tI1,sK1)
+=K∑
+k=1˜hm(˜sk,sbk−1,sjk+1,˜tk,sk)
+Here, the context is a window of size 3 (focus phrase +left-context word +right-
+context word), centered on the source phrase ˜sk. As in (10), ˜hmare the weights of
+the various features. Larger contexts may also be considered, so more generally,we have (16):(16) h
+m(
+sJ
+1,tI1,sK1)
+=K∑
+k=1˜hm(˜sk,CI(˜sk),˜tk,sk)
+where CI(˜sk)denotes some contextual information (neighboring words, phrases,
+part-of-speech (POS) tags, etc.) about ˜sk.
+In addition to the context words themselves, it is possible to exploit several
+knowledge sources characterizing the context. For example, we can consider thePOS of the focus phrase and of the context words. In our model, the POS of a multi-word focus phrase is the concatenation of the POS tags of the words composingthat phrase. Here, the context for a window of size 3 looks as in (17):(17) CI(˜s
+k)=⟨POS( ˜sk),POS(s bk−1),POS(s jk+1)⟩
+We can, of course, combine the class-based and the word-based information
+together if it leads to further improvements.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 561 — #31
+Machine Translation 561
+Essentially, the source context (words and/or POS tag sequences) suggest
+target-language sequences for incorporation into the log-linear PB-SMT model.When testing on the Italian-to-English and Chinese-to-English IWSLT 06 data(Stroppa et al., 2007), we found a consistent improvement for all metrics, for eachtype of contextual information: words only, POS only, and (for one of the languagepairs) words+POS. Compared to the baseline PB-SMT system, the signiﬁcanceof the improvements depended on the metric. Interestingly, the words+POScombination leads to a slight improvement for Italian-to-English, but not forChinese-to-English (due to the poor quality of the Chinese POS tagging).
+This work is extended in Haque et al. (2009) to include supertags (cf. Section
+5.3.1 below) as an additional, beneﬁcial source-language contextual feature.
+5.2 Hybridity in the translation phase
+5.2.1 Comparing EBMT and word-based SMT Rather surprisingly, until our
+work in Way and Gough (2005a), there had been nopublished comparative
+research between the respective merits of SMT and EBMT, largely due to (1) therelative unavailability of EBMT systems; (2) the lack of participation of EBMTresearchers in competitive evaluations; and (3) the clear dominance of SMT.
+In Way and Gough (2005a), on a 203,000 sentence pair translation memory from
+Sun Microsystems , and on a 4,000 test set (average sentence length 13.1 words
+for English, 15.2 words for French) taken from the same collection, our EBMTsystem in Gough and Way (2004) outperformed a baseline word-based SMTsystem (Giza++ (Och 2003), CMU-Cambridge statistical toolkit (Clarkson &
+Rosenfeld 1997), ISI ReWrite Decoder (Germann et al., 2001; Germann 2003) forFrench to English and especially English to French, according to B
+LEU (Papineni
+et al., 2002).5.2.2 Combining EBMT and PB-SMT chunks However, as PB-SMT had
+already been developed in Marcu and Wong (2002), it was clear that, despite beingof interest, the research in Way and Gough (2005a) was not an entirely fair com-parison. Accordingly, in a range of papers, we conducted a variety of experimentsto compare EBMT and PB-SMT, including:
+(1) comparing EBMT and PB-SMT on Sun Microsystems translation memory data
+(Groves & Way 2005a; 2005b);
+(2) combining EBMT and PB-SMT chunks (Groves & Way 2005a; 2005b);(3) changing domain to Europarl (322,000 sentences) (Groves & Way 2005a;
+2005b);
+(4) different language pairs (Spanish to English) and more data (958,000 sen-
+tences) (Armstrong et al., 2006);
+(5) quite different language pairs (Basque to English, 273,000 sentences) (Stroppa
+et al., 2006).
+On the Sun Microsystems translation memory, our EBMT system outperformed
+the PB-SMT system. However, one interesting ﬁnding was that the PB-SMT
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 562 — #32
+562 Andy Way
+system, seeded in the usual way with Giza data (cf. Section 2.1.4), outperformsa PB-SMT system built with EBMT data. We also built a ‘semi-hybrid’ system con-sisting of EBMT phrases and Giza++ words, as well as a ‘fully hybrid’ system
+comprising Giza++ words and phrases and EBMT words and phrases.
+Using the Sun Microsystems translation memory, we observed that the ‘semi-
+hybrid’ system (with a total of 430,000 entries in the t-table) performed signiﬁ-cantly better than the same system seeded with EBMT data (403,000 entries) alone.This showed us that the Giza++ word lexicon was much better than the EBMT
+system’s, and henceforth we abandoned our EBMT word-level lexicon. Usingall(i.e., Giza++ words and phrases and EBMT words and phrases) data (2.05
+million entries) improves the PB-SMT system, i.e., EBMT data improves the PB-SMT system, and for French to English, the fully hybrid ‘example-based PB-SMT’system improves over the EBMT system, i.e., combining chunks from both systemsimproves over both the SMT and EBMT baselines.
+On the Europarl data (Koehn 2005), we observed, unsurprisingly, that doubling
+training data (78,000, 156,000, 322,000) improves both EBMT and PB-SMT systems.This time, however, the PB-SMT system signiﬁcantly outperforms our EBMT sys-tem. We put this down to the relative homogeneity (i.e., consistency of domain)of the Sun Microsystems translation memory compared to the heterogeneity of
+Europarl. Adding the Giza ++ word lexicon improves the EBMT system a little,
+and the hybrid ‘statistical EBMT’ system seeded with all PB-SMT and EBMT dataimproves over the EBMT baseline. Adding the EBMT data to the hybrid ‘example-based PB-SMT’ system beats the baseline PB-SMT system, even when trainedusing only half the amount of data (156,000 vs. 322,000) for French to English.For English to French, the hybrid PB-SMT system using 78,000 sentences of train-ing data has almost the same performance as the baseline PB-SMT system trainedon four times as much data (322,000).
+On other language pairs and corpora, we found that adding EBMT chunks to
+a baseline Pharaoh system (Koehn 2004) adds four B
+LEU points for Spanish to
+English (Armstrong et al., 2006) trained on nearly 1 million sentences of Europarldata. Furthermore, we showed that adding EBMT chunks to a baseline Pharaohsystem adds ﬁve B
+LEU points for Basque to English (Stroppa et al., 2006).
+5.2.3 Adding statistical language models to EBMT Groves and Way (2005a;
+2005b) showed that adding a statistical LM to their EBMT helps improve trans-lation performance. However, unlike in PB-SMT, we did not integrate the targetLM (cf. Section 2.2.1) directly into the EBMT system, but rather used it only for
+EBMT re-ranking (cf. Section 2.6). Adding the target LM improves both the base-line and the hybrid ‘statistical EBMT’ systems (10 percent and 6–7 percent relativeimprovement in B
+LEU respectively).
+5.2.4 Tree-based translation We have already described in Section 3.2.3 the
+basic system architecture of our DOT tree-to-tree MT system. One might be ableto claim with some conviction that tree-to-tree translation (e.g., Hearne 2005;
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 563 — #33
+Machine Translation 563
+S
+NP VP
+VN P
+likesS
+NP VP
+VP P
+plaît P NP
+à◦NP
+CleopatraNP
+Cléopâtre◦NP
+AnthonyNP
+Antoine
+Figure 19.8 Composition in tree-DOT.
+Hearne & Way 2006) ishybrid MT, seeing as the DOT model includes examples
+(trees, in tree-DOT), source and target syntax (in the trees), rules (how the treesrelate), and statistics (in the probability model) (see Figure 19.7).
+There are two fragmentation operations in DOT which allow smaller, more
+general aligned tree pairs to be extracted from larger aligned tree pairs. The root
+operation selects a linked node pair to be root nodes and deletes all except thesenodes, the subtrees they dominate, and the links between them. The frontier oper-
+ation selects a set of linked node pairs to be frontier nodes and deletes the subtreesthey dominate.
+The tree-DOT composition operation ( ◦) requires that tree fragments be com-
+posed at the leftmost site on the fragment’s source side, and at the target site linked
+tothe leftmost source site. This ensures that each derivation is unique, and that
+translational equivalences encoded in the example base are respected (Way 2003).An example derivation is given in Figure 19.8.
+The probability model in DOT is a sum-of-products model, consisting of the
+probability of a fragment <s
+x,tx>(comprising a source fragment sxand its trans-
+lation tx), the probability of a derivation Dx, the probability of a parse <Sx,Tx>,
+and the probability of a source-to-target sentence pair s,t. Combined together, we
+derive the probability model in (18):(18)∑
+<Sx,Tx>yields s,t∑
+Dxyields <Sx,Tx>∏
+<sx,tx>∈Dx|<sx,tx>|∑
+root(s)=root (sx)∧root (t)=root (tx)|<s,t>|
+As for disambiguation strategies, in Hearne and Way (2006) we compared a
+range of different techniques, including:•most probable translation (MPT): the most probable sequence of target terminals
+given the input string;
+•most probable parse (MPP): the sequence of target terminals read from the
+most probable bilingual representation for the input string;
+•most probable derivation (MPD): the sequence of target terminals read from
+themost probable derivation of a bilingual representation for the input string;
+•shortest derivation (SDER): the sequence of target terminals read from the
+shortest derivation of a bilingual representation for the input string.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 564 — #34
+564 Andy Way
+Table 19.1 Number of fragments for English-to-French and French-to-
+English HomeCentre experiments
+link depth =1d e p t h ≤2 depth≤3 depth≤4
+English to French: 6,140 29,081 148,165 1,956,786French to English: 6,197 29,355 150,460 2,012,632
+The ﬁrst two of these were computed using Monte Carlo Sampling (Bod 1998),
+while the latter two were calculated using the Viterbi algorithm (Viterbi 1967).
+Using the English-to-French section of the HomeCentre corpus, we split 810
+parsed, subsententially aligned translation pairs into 12 training/test sets, six forEnglish to French, and six for French to English. The splits were randomly pro-duced such that all test words occurred in the training set, i.e., there were no OOVitems.
+One problematic issue with DOT models is grammar size. For our experiments,
+the grammar sizes are given in Table 19.1 (using the notion of ‘link depth’ fromHearne & Way 2003).
+The full results for English to French and French to English in terms of exact
+match, B
+LEU, and F-score, averaged over the splits, are given in Hearne and Way
+(2006). In sum, the DOP hypothesis (Bod 1998) is conﬁrmed for both languagedirections, i.e., as fragment depth increases, accuracy increases. For English toFrench, for all metrics and depths bar MPP at link depth 2, either MPD or SDERis preferred. Interestingly, MPT does not achieve highest accuracy at any depthfor any metric and, overall, the highest performance is at link depth 4 using MPDor SDER. For French to English, except for the B
+LEU score at link depth 3, the
+MPT scores best for both B LEU and F-score, whereas for exact match there are no
+signiﬁcant trends to report.
+As might be expected, execution time increases as link depth increases. How-
+ever, the extra time required is spent building the translation space rather thandisambiguating, and we note that translating from French takes longer because theaverage sentence length is longer. For English to French, we see that SDER =MPD
+<MPP<MPT, while for French to English, MPT <SDER =MPD <MPP . Inter-
+estingly, ranking with Monte Carlo sampling does not take longer than rankingwith the Viterbi algorithm for this data set.
+One of the major remaining issues for us is scaling DOT to training sizes of at
+least two orders of magnitude larger than those used to date. Data acquisitionhas been a problem, which resulted in our building an automatic subtree aligner,described in Tinsley et al. (2007b). See also Galron et al. (2009) for a novel methodof rescoring the DOT fragments with the evaluation metrics (see Section 2.5 above)used to measure the performance with the MT end task in mind.5.2.5 Augmenting PB-SMT with subtree pairs Once we had developed
+our automatic subtree aligner (Tinsley et al., 2007b), we incorporated subtree
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 565 — #35
+Machine Translation 565
+alignments into PB-SMT systems (Tinsley et al., 2007a; Hearne et al., 2008). Themotivation for this work was the observation that most state-of-the-art MT sys-tems (1) are not syntax-aware, (2) use models which are based on n-grams, and (3)
+incorporate only a limited amount of linguistic information.
+Parallel treebanks are not widely used in MT, if at all. However, we believe that
+the data encoded within parallel treebanks could be useful in MT.
+31In order to
+conﬁrm this view, we built large parallel treebanks automatically, using off-the-shelf parsers and our subtree aligner, and then used these parallel treebanks totrain a range of PB-SMT systems.
+In Tinsley et al. (2007a), we used two data sets for two different language pairs.
+For English to German we used a small subset of Europarl data (Koehn 2005),with a 9,000:1,000 sentence split for training and testing. The monolingual parsersused were Bikel (2002) for English, and BitPar (Schmid 2004) for German (trainedon the Tiger treebank). For English to Spanish we used a 4,500:500 sentence splitof Europarl data for training and testing. The parser of Bikel (2002) was againused for English, with a version of the same parser adapted by Chrupała and vanGenabith (2006) (trained on the Cast3LB treebank; Civit & Martí 2004) used forSpanish.
+There were three main ﬁndings: (1) the parallel treebank word and phrase pairs
+improve translation quality when combined with traditional corpus-based extrac-tion; (2) the parallel treebank word pairs are better for translation than those givenby traditional word alignment; but also (3) that the parallel treebank phrase pairsare too few in number to be used alone for translation.
+Nonetheless, just like the work of Groves and Way (2005a; 2005b), this strand
+of work clearly demonstrates that restricting word and phrase extraction to oneparticular method will lead to suboptimal performance.
+In Hearne et al. (2008), the authors demonstrate that the subtree aligner of
+Tinsley et al. (2007b) can also be used to extract word and phrase pairs from depen-dency parses. In brief, the authors demonstrate that while both constituency- anddependency-based sets of alignments improved a baseline PB-SMT system, thecombination caused system performance to deteriorate. Working out preciselywhy this is the case is the subject of ongoing work.
+5.3 Hybridity on the target side
+5.3.1 Incorporating supertags into PB-SMT In Hassan et al. (2006; 2007b;
+2008), we have shown that supertags (both CCG and LTAG) improve the perfor-mance of a state-of-the-art PB-SMT system on large data sets: for Arabic to English,on the NIST’05 data,
+32and for German to English, on the ACL 2007 MT Workshop
+shared task (WMT 2007) (Callison-Burch et al., 2007).
+Our approach can be described with respect to the noisy channel model (cf.
+(1)) as well as the log-linear model (cf. (3)). The noisy channel formulation wouldextend equation (1) as in (19):
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 566 — #36
+566 Andy Way
+arg max
+t∑
+STP(s|t,ST)PST(t,ST)≈
+arg max
+t,STP(s|t,ST)PST(t,ST)≈
+(19) arg max
+σ,t,STP(φ s|φt,ST)P(O s|Ot)λoPST(t,ST)
+where P(φ s|φt,ST)is the translation model containing supertags on the target side,
+P(O s|Ot)λois the distortion model, and PST(t,ST)is the target-language model
+containing supertags. STis the supertag sequence for the target string t.W eu s e
+σto indicate a segmentation into supertagged phrase pairs, just as in the baseline
+model.
+We can also formalize our approach in terms of the log-linear model, as in (20):
+(20) t∗=arg max
+t,σ,ST∏
+f∈F′Hf(s,t,σ,ST)λf
+Our model interpolates (log-linearly) a novel set of supertagged features f with
+the features of the baseline model F′. These include Hlm.st(s,t,σ,ST)=P(ST),
+a Markov supertagging language model (hence lm) over sequences of supertags
+(hence st), as in (21):
+(21) P(ST)=n∏
+i=1p(
+sti⏐⏐⏐st
+i−1i−4)
+We also use two weight functions Hφ.st(s,t,σ,ST)=P(φ s|φt,ST)and its reverse
+Hrφ.st(s,t,σ,ST)=P(φ t,ST|φs). The supertagged phrase translation probability is
+approximated in the usual (i.e., bidirectional) way:
+P(φ s|φt,ST)≈∏
+⟨si,tiSTi⟩∈(φs×φt,ST)p(si|ti,STi) (22)
+P(φ t,ST|φs)≈∏
+⟨si,tiSTi⟩∈(φs×φt,ST)p(ti,STi|si) (23)
+In both (22) and (23), ⟨si,ti,STi⟩is a supertagged phrase pair consisting of the
+phrases ⟨si,ti⟩where tiis supertagged with STi. As usual, the parameters p(s|t,ST)
+and p(t,ST|s)are estimated with the relative frequency in the multiset of all
+supertagged phrase pairs extracted from the parallel corpus, as in (24):
+P(s|t,ST)=count(s, t,ST)∑
+scount(s, t,ST)
+P(t,ST|s)=count(s, t,ST)∑
+t,STcount(s, t,ST)(24)
+Finally, we employ two more feature functions (x.φ .stand x.rφ.st) capturing the
+statistics p(si|STi)and P(ST i|si), which in effect smooth the feature functions φ.st
+and rφ.st.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 567 — #37
+Machine Translation 567
+In sum, incorporating supertags into PB-SMT demonstrates clearly that lexical
+syntax helps, for a number of reasons: (1) supertags ﬁt seamlessly with PB-SMT asthey are lexical, linguistically rich and can be used in efﬁcient HMMs; (2) supertagsdo not admit (much) redundant ambiguity into the phrase translation tables; (3)the huge amount of baseline PB-SMT phrases are constrained using bona ﬁde syn-
+tactic constraints; (4) more informed decisions regarding the best candidate can betaken; and (5) there is no need for full parsing or treebanking.
+If the reader needs any further persuasion that adding lexical syntax really
+helps, our Arabic-to-English system (Hassan et al., 2007a) was ranked ﬁrst atIWSLT-07 (Fordyce 2007) according to human judges.
+5.4 What works?
+Given all the above, it might be useful to summarize what we have found to workwell in practice.
+As far as incorporating hybridity into EBMT is concerned, adding Giza++ lex-
+ical and phrasal chunks, and using target LMs for re-ranking have proven veryeffective.
+Regarding the incorporation of hybridity into PB-SMT, adding EBMT lexical and
+phrasal chunks improves translation quality, and reduces the t-table size for thehybrid system while continuing to compare favorably with much larger baselinePB-SMT systems. This may be important for language pairs with scarce resources,as well as situations where systems with a much smaller footprint are required.In addition, factoring in parallel treebank word and phrase pairs improves trans-lation quality, as does incorporating supertags into the target LMs and the targetside of the TM. Finally, adding source-language features directly into the log-linearmodel improves translation quality quite considerably.
+5.5 Future research directions
+Much of the above research is work in progress, and the intention is to continue toimprove on the steps taken so far. Some of the issues to be tackled include:
+(1) combining the content-word generalized templates ( CMU, in (25)) of Brown
+(1999) with our own marker-based generalized templates ( DCU, in (26)):
+(25) CMU :Flights from <PLACE> to<PLACE>
+(26) DCU :Flights <PREP> New York <PREP> Denver
+(2) incorporating a target LM directly into our EBMT system;
+(3) combining all source, target, and translational improvements in onesystem.
+In the context of the Centre for Next Generation Localisation (CNGL),
+33there
+are a number of open research avenues, including many of the issues raised here.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 568 — #38
+568 Andy Way
+However, other work packages address the development of probabilistic transferengines, the tuning of MT systems to text type and genre, the development of gen-eral alignment models capable of inducing subsentential alignments for any typeof annotated data, the incorporation of controlled language guidelines into therange of MT systems being developed in our team, and the development of intel-ligent engines for speech-to-speech translation. We continue to extend the rangeof language pairs that our systems can cope with (cf. English to Hindi; Srivastavaet al., 2008), as well as participate in large-scale MT evaluation competitions.
+6 Concluding Remarks and Future Directions
+For a number of reasons, it can be said with some conviction that the ﬁeld of MTcurrently ﬁnds itself in a quite good state of health:
+(1) there is evidence of increased levels of funding (especially in the US, Europe,
+and Asia);
+(2) MT is being used more widely than ever before;(3) more free and open source tools are available to MT developers;(4) large-scale MT evaluation competitions are attracting more and more sys-
+tems, for an ever widening array of language pairs.
+There exists, therefore, a real opportunity for our community to drive forward
+MT research and development to demonstrate clearly that good quality output canbe achieved, which is useful to a wide array of potential users, both in industryand in the wider public.
+Failure to do so may result in a return to the post-ALPAC report
+34(Pierce et al.,
+1966) state of affairs where funding is cut – especially given the current economicenvironment – in favor of more fundamental requirements. Despite the wide vari-ety of tools and techniques featured in this chapter, it remains the case that mostMT research and development today is rather monolithic in the approaches taken,largely due to the availability of tools for PB-SMT. When it comes to purchasingMT systems, customers do not know what to buy. While MT evaluation metricssuch as B
+LEU are well understood by the research community, they do not provide
+any insight to potential users as to the effectiveness of such solutions, and bearlittle relation to the translation memory notion of ‘fuzzy match score’ widely usedin industry. When B
+LEU appeared in 2002, it was clear that it was more than capa-
+ble of informing developers whether their systems had improved incrementally.Now, however, research systems have overtaken the ability of the available MTevaluation metrics to discern the quality of the output translations. Accordingly,better MT evaluation metrics are needed, not just for MT developers, but also forpotential users of our systems.
+As well as improvements in MT evaluation, it is widely agreed that more
+linguistic knowledge can indeed play a role in improving today’s statistical sys-tems, in all phases of the process. Syntax isof use in PB-SMT in the source,
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 569 — #39
+Machine Translation 569
+translation, and target phases, as has been acknowledged for some time in RBMTand EBMT. Furthermore, it is recognized in the tree-to-string and string-to-treemodels that having structure on one side helps, and in the near future we canexpect to see large-scale, robust systems with trees on both sides.
+While there has clearly been a movement away from RBMT to statistical meth-
+ods, now the pendulum is swinging back (slowly) in the opposite direction. Wepredict that, just like in the old rule-based times, the community will move furtherup the ‘Vauquois Pyramid’ (Vauquois 1968) and avail itself of more diverse sourcesof linguistic information; while syntax is useful, a new ceiling will be approachedwhere further improvements will only be brought about by the use of semantic
+knowledge. As a ﬁnal remark, note that this is not at all contrary to the originalIBM models (Brown et al., 1993), a fact that most of the MT community seems tohave overlooked, if not forgotten entirely.
+7 Further Reading
+For sentential alignment (cf. Section 2.1.1), consult Brown et al. (1991); Gale and
+Church (1993) for length-based algorithms (words and characters, respectively)and Kay and Röscheisen (1993) for a dictionary-based solution using ‘anchors.’
+The primary sources on word alignment (cf. Section 2.1.3) are Brown et al. (1993)
+and Och (2003). For improvements to IBM model 1, consult Moore (2004), andToutanova et al. (2002); Lopez and Resnik (2005); Liang et al. (2006b) for extensionsto the ﬁrst-order HMM models. Other approaches include inversion transductiongrammar (Wu 1997), which performs synchronous parsing on bilingual sentencepairs to establish translational correspondences, and the tree-to-string alignmentmodel of Yamada and Knight (2001), which aligns a source tree to a target string.For an approach which bootstraps word alignments via optimizing word segmen-tations, consult Ma et al. (2007b). With respect to investigations into the effect ofbalancing precision and recall on MT performance, Mariño et al. (2006) observedthat an alignment with higher recall improved the performance of an n-gram-
+based SMT system, while Ayan and Dorr (2006) observed that higher precisionalignments are more useful in phrase-based SMT systems, although this ﬁnding isnot conﬁrmed by Fraser and Marcu (2007b).
+Regarding other methods of phrase extraction (cf. Section 2.1.4), Marcu and
+Wong (2002) describe a joint phrase model by which phrase pairs are estimateddirectly from the parallel corpus using the expectation-maximization (EM) algo-rithm (Dempster et al., 1977). Other proposed methods can be found in Tillmannand Xia (2003), Ortiz-Martínez et al. (2005), and Zhang and Vogel (2005), amongstothers.
+As for reordering (cf. Section 2.2), the method of Galley and Manning (2008)
+differs from those of Tillmann (2004) and Koehn et al. (2007) by estimatingsequences of orientations directly from data, and by dynamically updating thesegmentation of the source and target sentences with hierarchical phrases.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 570 — #40
+570 Andy Way
+With respect to language modeling (cf. Section 2.2.1), the main sources are Jelinek
+(1977) and Kneser and Ney (1995), with more details to be found in Chen andGoodman (1998), especially for ‘modiﬁed’ Kneser–Ney smoothing, and Kim et al.(2001), on lowering the perplexity of the structured language model of Chelba andJelinek (2000).
+As far as minimum error rate training (MERT) is concerned (cf. Section 2.3.1), two
+novel papers which will beneﬁt the reader are those of Moore and Quirk (2008),where trade-offs in terms of decoding and MERT time are considered, and Chianget al. (2008), where alternative models are given in which a much larger numberof features can be integrated.
+Fordecoding (cf. Section 2.4), the reader is directed towards the primary sources,
+namely Koehn (2004) and Koehn et al. (2007).
+With respect to re-ranking (cf. Section 2.6), useful sources include Och et al.
+(2004), Shen and Joshi (2005) (who use the best subset of features tested by Ochet al. (2004)), and Yamada and Muslea (2006), who train their re-ranker on thewhole training corpus, as opposed to just re-ranking on the test set.
+If interested in MT evaluation (cf. Section 2.5), consult the primary sources given
+in Section 2.5. A nice recent paper which we recommend is that of Hwa andAlbrecht (2008).
+For two quite different overview papers on statistical MT (SMT), we recommend
+Way (2009a) for a critique of the paradigm, and Hearne and Way (2009), whichexplains phrase-based SMT (PB-SMT) for the non-expert.
+The primary sources on hierarchical phrase-based models (cf. Section 3.1) are
+Chiang (2005; 2007). Huang and Chiang (2005) provides a valuable explanationofcube pruning (cf. Section 3.1.3).
+For good summaries of example-based MT (EBMT) (cf. Section 3.3), we encour-
+age the reader to consult Somers (1999; 2003b) and Way (2009b). The monographby Carl and Way (2003) provides a representative sample of the myriad array oftechniques used in EBMT.
+Some examples of current research in rule-based MT (RBMT) (cf. Section 3.4)
+include Probst et al. (2002) and Lavie et al. (2004) on knowledge elicitation forunder-resourced languages. Font-Llitjós et al. (2007) address the issue of rulereﬁnement, while Zhu and Wang (2005) investigate the relationship between thenumber of rules and the performance of RBMT systems. Menezes and Richardson(2003); Caseli et al. (2006); Sánchez-Martínez and Forcada (2007) all focus onautomatically obtaining some of the resources required for RBMT.
+Good papers on hybrid models (cf. Section 3.5) include those of Tidhar and
+Küssner (2000); Callison-Burch and Flournoy (2001); Akiba et al. (2002). For anovel view on hybridity in MT, we encourage the reader to consult Wu (2005),where a 3-D space of hybrid models of translation is presented. Systems are cat-egorized according to the extent to which they may be described as statistical vs.logical, example-based vs. schema-based, and compositional vs. lexical. Anothernovel paper is that of Simard et al. (2007), who present a combination of MTsystems based on a post-editing strategy, in which the PB-SMT system Portagecorrects the output of the Systran RBMT system.
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 571 — #41
+Machine Translation 571
+Two good papers on translation memory (cf. Section 4.2) are those of Planas
+and Furuse (2003) and Garcia (2007), while the papers of Vogel and Ney (2000)and Marcu (2001) demonstrate how translation memories can be automaticallyextracted. Carl and Hansen (1999) show how translation memories can be inte-grated with EBMT. A nice recent paper that shows how PB-SMT can upgradetranslation memory fuzzy matches to classes that require less post-editing is that
+of Biçici and Dymetman (2008).
+A recent paper on spoken language translation (cf. Section 4.3) emanating from
+the TC-STAR project is that of Fügen et al. (2007). One notable ﬁnding in TC-STARwas that today’s leading PB-SMT systems are robust in the face of errors comingfrom the automatic speech recognition phase.
+As regards our own work described in Section 5, the primary sources listed will
+provide the reader with further information on any of the topics of interest.
+ACKNOWLEDGMENT
+Thanks to Jinhua Du, Hany Hassan, Patrik Lambert, Yanjun Ma, Sara Morrissey, SudipNaskar, Sylwia Ozdowska, John Tinsley, and Ventsislav Zhechev, for their considerablehelp in putting this chapter together. Special thanks are due to Mikel Forcada and FelipeSánchez-Martínez for helping with the section on RBMT. The work described in this chapteris partially funded by a number of Science Foundation Ireland (http:/ /www.sﬁ.ie) awards,namely: Principal Investigator Award 05/IN/1732, Basic Research Award 05/RF/CMS064,and CSET Award 07/CE/I1142.
+NOTES
+1 Note, however, that Lopez (2008b) describes an SMT system which uses pattern match-
+ing to avoid the problem of computing infeasibly large statistical models. His approachdirectly accesses the training corpus at run-time, but his model is by any measure anEBMT system, despite the steps taken to avoid the term.
+2 www.isi.edu/natural-language/download/hansard/index.html3 www.ldc.upenn.edu/4 www.elda.org/5 National Institute of Standards and Technology: www.nist.gov/speech/tests/mt/6 International Workshop on Spoken Language Translation. For the 2008 edition see
+http:/ /mastarpj.nict.go.jp/IWSLT2008/
+7 www.euromatrix.net/8 Workshop on Statistical Machine Translation. For the 2009 edition see www.statmt.org/
+wmt09/
+9 www.iccs.inf.ed.ac.uk/ ∼pkoehn/publications/europarl/
+10 http:/ /langtech.jrc.it/JRC-Acquis.html11 http:/ /iwslt07.itc.it/
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 572 — #42
+572 Andy Way
+12 www.cse.unt.edu/∼rada/wpt05/13 www.cse.unt.edu/∼rada/wpt/14 Newcomers to the ﬁeld may be somewhat confused at differences between the notation
+used in this chapter and some of the primary sources noted here and in Section 7. It ismuch more common to use f
+J
+1(to be read as ‘foreign’) to indicate the source sentence,
+and eI
+1(‘English’) to represent the target sentence, At ﬁrst sight, the use of such terms
+might be upsetting for non-English speakers, and betray to an extent the Anglocentricnature of our ﬁeld, given that most translation in MT isinto English. Instead, it might
+be more fruitful perhaps to think of them as simple mnemonics for the terms in thevarious equations used to describe (especially) statistical MT systems; cf. (1) and (3)below. In any case, here and in the rest of this chapter, we will stick to the less widelyused (yet less emotive) terms sand tto indicate source and target respectively.
+15 www.fjoch.com/GIZA++ .html
+16 http:/ /mi.eng.cam.ac.uk/ ∼wjb31/distrib/mttkv1/
+17 The ‘ease’ or ‘difﬁculty’ associated with translating certain parts of a sentence is usu-
+ally expressed in terms of weighted log-probabilities which take into account (at least)language model, translation model, and reordering costs. As you might expect, com-mon words are ‘easier’ to translate in this model than less frequent words, despitethese being among the ‘hardest’ words to get right for humans.
+18 Originally known as ‘syntax-directed transduction grammars’ (Lewis & Stearns 1968)
+or ‘syntax-directed translation schemata (Aho & Ullman 1969), ‘inversion transductiongrammars’ (Wu 1997) are a special case of synchronous CFGs, while a more recentterminological introduction is ‘2-multitext grammars’ (Melamed 2003).
+19 Although it is not described until Section 4.2, a quick comparison between EBMT
+and translation memory is apposite here. Although the latter is a translation tool asopposed to an MT system per se, the initial matching process is extremely similar in
+nature in both approaches. Where the examples in the EBMT system consist of (unan-notated) text pairs, the matching process is identical. In translation memory systemssuch as Trados (www.trados.com), ‘fuzzy’ (i.e., non-exact) matches have an associated
+measure of similarity which can be put to good use by the translator in honing thesearch for higher precision (imposing a high threshold of fuzziness) or recall (loweringthe threshold). Note that the second and third EBMT phases do not form part of anytranslation memory system; rather, the end user (usually a qualiﬁed translator) selectsthe appropriate parts of each fuzzy match for manual combination into the appropriatetarget-language sentence.
+20 This can be easily demonstrated by trying some simple examples through Google
+Translate. For instance, the December 4, 2008 Spanish-to-English version gave thetranslation of the sentence Me los regaló tu hermanastro (lit. ‘To-me them gave-as-a-
+present your half-brother,’ i.e., ‘Your half-brother gave them to me as a present’) as I
+gave you the half-brother , while Me los regaló tu madre is translated as Your mother gave me,
+and Me los regaló tu hermano is translated as I am your brother the gift ; note that the three
+Spanish sentences only differ with respect to the noun acting as subject ( hermanastro,
+madre, hermano).
+21 http:/ /logos-os.dfki.de/22 www.apertium.org23 www.translendium.com24 www.reverso.net25 www.systran.co.uk
+
+“9781405155816_4_019” — 2010/5/8 — 12:12 — page 573 — #43
+Machine Translation 573
+26 http:/ /translate.google.com27 http:/ /babelﬁsh.yahoo.com28 www.windowslivetranslator.com29 www.voxtec.com/phraselator30 www.nclt.dcu.ie/mt/31 Consult Zhechev and Way (2008) for how our subtree aligner can be used to auto-
+matically generate parallel treebanks, for any language for which constituency- ordependency-based parsers exist.
+32 www.nist.gov/speech/tests/mt/33 www.cngl.ie. The CNGL is a large ﬁve-year project funded by the Irish Government
+involving four academic and nine industrial partners.
+34 www.nap.edu/books/ARC000005/html
+

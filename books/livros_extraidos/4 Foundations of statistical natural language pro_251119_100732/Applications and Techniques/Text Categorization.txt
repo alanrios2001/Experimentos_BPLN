@@ -1,0 +1,1033 @@
+p/CX /CX16 Text Categorization
+This chapter both introduces an important NLPproblem, text cat-
+egorization, and provides a more general perspective on classiﬁcation,including coverage of a number of important classiﬁcation techniquesthat are not covered elsewhere in the book. Classiﬁcation orcategoriza-
+classiﬁcation
+categorizationtionis the task of assigning objects from a universe to two or more classes
+classesorcategories . Some examples are shown in table 16.1. Many of the taskscategories
+that we have already studied in detail, such as tagging, word sense disam-
+biguation, and prepositional phrase attachment are classiﬁcation tasks.
+In tagging and disambiguation, we look at a word in context and classifyit as being an instance of one of its possible part of speech tags or an in-stance of one of its senses. In PP attachment, the two classes are the twodiﬀerent attachments. Two other
+NLPclassiﬁcation tasks are author and
+language identiﬁcation. Determining whether a newly discovered poemwas written by Shakespeare or by a diﬀerent author is an example of au-
+thor identiﬁcation. A language identiﬁer tries to pick the language that a
+document of unknown origin is written in (see exercise 16.6).
+In this chapter, we will concentrate on another classiﬁcation problem,
+text categorization . The goal in text categorization is to classify the topic
+text
+categorization or theme of a document. A typical set of topic categories is the one used
+in the Reuters text collection, which we will introduce shortly. Some of itstopics are “mergers and acquisitions,” “wheat,” “crude oil,” and “earnings
+reports.” One application of text categorization is to ﬁlter a stream of
+news for a particular interest group. For example, a ﬁnancial journalistmay only want to see documents that have been assigned the category“mergers and acquisitions.”
+In general, the problem of statistical classiﬁcation can be characterized
+as follows. We have a training set of objects, each labeled with one or
+training set
+
+p/CX /CX576 16 Text Categorization
+Problem Object Categories
+tagging context of a word the word’s tags
+disambiguation context of a word the word’s senses
+PP attachment sentence parse treesauthor identiﬁcation document authorslanguage identiﬁcation document languagestext categorization document topics
+Table 16.1 Some examples of classiﬁcation tasks in NLP. For each example,
+the table gives the type of object that is being classiﬁed and the set of possiblecategories.
+more classes, which we encode via a data representation model . Typically data
+representation
+modeleach object in the training set is represented in the form ~x;c,w h e r e
+~x2Rnis a vector of measurements and cis the class label. For text
+categorization, the information retrieval vector space model is frequentlyused as the data representation. That is, each document is representedas a vector of (possibly weighted) word counts (see section 15.2). Finally,we deﬁne a model class and a training procedure . The model class is
+model class
+training procedurea parameterized family of classiﬁers and the training procedure selects
+one classiﬁer from this family.1An example of such a family for binary
+classiﬁcation is linear classiﬁers which take the following form:
+g~x~w~xw0
+where we choose class c1forg~x> 0 and classc2forg~x0. This
+family is parameterized by the vector ~wand the threshold w0.
+We can think of training procedures as algorithms for function ﬁtting,
+which search for a good set of parameter values, where ‘goodness’ isdetermined by an optimization criterion such as misclassiﬁcation rate orentropy. Some training procedures are guaranteed to ﬁnd the optimal
+set of parameters. However, many iterative training procedures are only
+guaranteed to ﬁnd a better set in each iteration. If they start out in thewrong part of the search space, they may get stuck in a local optimumwithout ever ﬁnding the global optimum. An example of such a trainingprocedure for linear classiﬁers is gradient descent orhill climbing which
+gradient descent
+hill climbingwe will introduce below in the section on perceptrons.
+1. Note however that some classiﬁers like nearest-neighbor classiﬁers are non-parametric
+and are harder to characterize in terms of a model class.
+
+p/CX /CX577
+YES is correct NO is correct
+YES was assigned ab
+NO was assigned cd
+Table 16.2 Contingency table for evaluating a binary classiﬁer. For example, a
+is the number of objects in the category of interest that were correctly assignedto the category.
+Once we have chosen the parameters of the classiﬁer (or, as we usually
+say,trained the classiﬁer), it is a good idea to see how well it is doing on
+atest set . This test set should consist of data that was not used during test set
+training. It is trivial to do well on data that the classiﬁer was trained on.
+The real test is an evaluation on a representative sample of unseen datasince that is the only measure that will tell us about actual performance
+in an application.
+For binary classiﬁcation, classiﬁers are typically evaluated using a table
+of counts like table 16.2. An important measure is classiﬁcation accu-
+accuracy
+racy which is deﬁned asad
+abcd, the proportion of correctly classiﬁed
+objects. Other measures are precision,a
+ab, recall,a
+ac, and fallout,b
+bd.
+See section 8.1.
+In classiﬁcation tasks with more than two categories, one begins by
+making a 22 contingency table for each category ciseparately (evaluat-
+ingciversus:ci). There are then two ways to proceed. One can compute
+an evaluation measure like accuracy for each contingency table separatelyand then average the evaluation measure over categories to get an overall
+measure of performance. This process is called macro-averaging .O ro n e
+macro-averaging
+can do micro-averaging , in which one ﬁrst makes a single contingency ta- micro-averaging
+ble for all the data by summing the scores in each cell for all categories.
+The evaluation measure is then computed for this large table. Macro-averaging gives equal weight to each category whereas micro-averaginggives equal weight to each object. The two types of averaging can givedivergent results when precision is averaged over categories with diﬀer-
+ent sizes. Micro-averaged precision is dominated by the large categories
+whereas macro-averaged precision will give a better sense of the qualityof classiﬁcation across all categories.
+In this chapter we describe four classiﬁcation techniques: decision
+trees, maximum entropy modeling, perceptrons, and knearest neigh-
+bor classiﬁcation. These are either important classiﬁcation techniques
+
+p/CX /CX578 16 Text Categorization
+node 1
+7681 articles
+Pcjn10:300
+split: cts
+value: 2
+node 2
+5977 articles
+Pcjn20:116
+split: net
+value: 1cts<2
+node 3
+5436 articles
+Pcjn30:050net<1
+node 4
+541 articles
+Pcjn40:649net1node 5
+1704 articles
+Pcjn50:943
+split: vs
+value: 2cts2
+node 6
+301 articles
+Pcjn60:694vs<2
+node 7
+1403 articles
+Pcjn70:996vs1
+Figure 16.1 A decision tree. This tree determines whether a document is part
+of the topic category “earnings” or not. Pcjniis the probability of a document
+at nodenito belong to the “earnings” category c.
+in their own right, or, in the case of the perceptron, are the simplest ex-
+ample of an important class of techniques, neural networks. We concludewith some pointers to further reading.
+16.1 Decision Trees
+As the ﬁrst class of classiﬁcation models, we introduce decision trees . decision trees
+An example of a decision tree is shown in ﬁgure 16.1. This tree de-
+cides whether to assign documents to the Reuters category “earnings.”We classify a document by starting at the top node, testing its question,
+branching to the appropriate node, and then repeating this process until
+we reach a leaf node. For example, a document with weight 1 for ctsand
+weight 3 for nettakes the left branch at the top node and then the right
+branch at the child node. Its probability Pcjn
+4of being in the category
+“earnings” given that it belongs to node 4 is then estimated as 0 :649. At
+each node, we show the number of articles in the training set that belong
+
+p/CX /CX16.1 Decision Trees 579
+012012
+0.0500.649
+ctsnet
+Figure 16.2 Geometric interpretation of part of the tree in ﬁgure 16.1.
+to the node, the probability of a member of the node being in the cate-
+gory “earnings,” the word (or dimension) we split on at this node, and theweight of the word we split on.
+Another way to visualize the tree is shown in ﬁgure 16.2. The horizon-
+tal axis corresponds to the weight for cts, the vertical axis to the weight
+fornet. Questions ask whether the value of some feature is less than
+some value or not. The top node in ﬁgure 16.1 deﬁnes a decision bound-ary corresponding to the vertical line “ cts2” in ﬁgure 16.2. The left
+child node subdivides the left region into two regions above and below“net1.” The upper subregion (marked with Pcjn0:649) corre-
+sponds to node 4, the lower subregion to node 4. Note that the region tothe right of the decision boundary “ cts2” is not further subdivided be-
+cause node 5 splits on vs, not on net. We would need a three-dimensional
+graph to also show the eﬀect of node 5.
+The text categorization task that we use as an example in this chapter
+is to build categorizers that distinguish the “earnings” category in theReuters collection. The Reuters collection is currently the most popular
+Reuters
+database for evaluating text categorization research. The version we use
+(based on the so-called Modiﬁed Apte Split, Apté et al. 1994) consists
+of 9603 training articles and 3299 test articles that were sent over the
+Reuters newswire in 1987. The articles are categorized with more than100 topics such as “mergers and acquisitions” and “interest rates.” Anexample of an article in this category is shown in ﬁgure 16.3. See thewebsite for references to the Reuters collection.
+The ﬁrst task in text categorization is to ﬁnd an appropriate data rep-
+
+p/CX /CX580 16 Text Categorization
+<REUTERS NEWID="11">
+<DATE>26-FEB-1987 15:18:59.34</DATE>
+<TOPICS><D>earn</D></TOPICS><TEXT><TITLE>COBANCO INC &lt;CBCO> YEAR NET</TITLE><DATELINE> SANTA CRUZ, Calif., Feb 26 - </DATELINE><BODY>Shr 34 cts vs 1.19 dlrs
+Net 807,000 vs 2,858,000
+Assets 510.2 mln vs 479.7 mln
+Deposits 472.3 mln vs 440.3 mlnLoans 299.2 mln vs 327.2 mlnNote: 4th qtr not available. Year includes 1985
+extraordinary gain from tax carry forward of 132,000 dlrs,or five cts per shr.
+Reuter
+</BODY></TEXT>
+</REUTERS>
+Figure 16.3 An example of a Reuters news story in the topic category “earn-
+ings.” Parts of the original have been omitted for brevity.
+resentation model. This is an art in itself, and usually depends on the
+particular categorization method used, but to simplify things, we willuse a single data representation throughout this chapter. It is based onthe 20 words whose X
+2score with the category “earnings” in the train-
+ing set was highest (see section 5.3.3 for the X2measure). The words
+loss,proﬁt ,a n d cts(for “cents”), all three of which seem obvious as good
+indicators for an earnings report, are some of the 20 words that were
+selected. Each document was then represented as a vector of K20
+integers,~xjs1j;:::;sKj,w h e r esijwas computed as the following
+quantity:
+sijround 
+101logtfij
+1loglj!
+(16.1)
+Here,tfijis the number of occurrences of term iin documentjandljis
+the length of document j. The scoresijis set to 0 for no occurrences of
+the term. So for example, if proﬁt occurs 6 times in a document of length
+89 words, then the score for proﬁt would besij101log6
+1log895:09
+
+p/CX /CX16.1 Decision Trees 581
+WordwjTerm weightsijClassiﬁcation
+vs
+mln
+cts;&000loss’
+"
+3proﬁtdlrs1pctis
+s
+thatnetltat~x0
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB@5
+5
+333400
+0
+403200
+0
+03201
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCAc1
+Table 16.3 The representation of document 11, shown in ﬁgure 16.3. This
+illustrates the data representation model which we use for classiﬁcation in thischapter.
+which would be rounded to 5. This weighting scheme does log weighting
+similar to the schemes discussed in chapter 15, while at the same timeincorporating weight normalization. We round values to make it easierto present and inspect data for pedagogical reasons.
+The representation of the document in ﬁgure 16.3 is shown in ta-
+ble 16.3. As tends to happen when using an automatic feature selection
+method, some of the selected words don’t seem promising as indicators
+of “earnings,” for example, that ands. The three symbols “&”, “lt”, and “;”
+were selected because of a formatting peculiarity in the publicly availableReuters collection: a large proportion of articles in the category “earn-ings” have a company tag like <CBCO> in the title line whose left angle
+bracket was converted to an
+SGML character entity. We can think of this
+
+p/CX /CX582 16 Text Categorization
+entropy at node 1, PCjN0:300 0.611
+entropy at node 2, PCjN0:116 0.359
+entropy at node 5, PCjN0:943 0.219
+weighted sum of 2 and 55977
+76810:3591704
+76810:2190:328
+information gain 0 :611−0:328 = 0.283
+Table 16.4 An example of information gain as a splitting criterion. The table
+shows the entropies for nodes 1, 2, and 5 in ﬁgure 16.1, the weighted sum of thechild nodes and the information gain for splitting 1 into 2 and 5.
+left angle bracket as indicating: “This document is about a particular
+company.” We will see that this ‘meta-tag’ is very helpful for classiﬁca-tion. The title line of the document in ﬁgure 16.3 has an example of themeta-tag.
+2
+Now that we have a model class (decision trees) and a representation
+for the data (20-element vectors), we need to deﬁne the training proce-
+dure. Decision trees are usually built by ﬁrst growing a large tree andthen pruning it back to a reasonable size. The pruning step is necessary
+pruning
+because very large trees overﬁt the training set. Overﬁtting occurs when overﬁtting
+classiﬁers make decisions based on accidental properties of the training
+set that will lead to errors on the test set (or any new data). For exam-ple, if there is only one document in the training set that contains both
+the words dlrsandpct(for “dollars” and “percent”) and this document
+happens to be in the earnings category, then the training procedure maygrow a large tree that categorizes all documents with this property asbeing in this category. But if there is only one such document in thetraining set, this is probably just a coincidence. When the tree is prunedback, then the part that makes the corresponding inference (assign to“earnings” if one ﬁnds both dlrsandpct), will be cut oﬀ, thus leading to
+better performance on the test set.
+For growing the tree, we need a splitting criterion for ﬁnding the fea-
+splitting criterion
+ture and its value that we will split on and a stopping criterion which stopping criterion
+determines when to stop splitting. The stopping criterion can trivially be
+that all elements at a node have an identical representation or the samecategory so that splitting would not further distinguish them.
+The splitting criterion which we will use here is to split the objects at a
+2. The string “&lt;” should really have been tokenized as a unit, but it can serve as an
+example of the low-level data problems that occur frequently in text categorization.
+
+p/CX /CX16.1 Decision Trees 583
+node into two piles in the way that gives us maximum information gain.
+Information gain (Breiman et al. 1984: 25, Quinlan 1986: section 4, Quin- information gain
+lan 1993) is an information-theoretic measure deﬁned as the diﬀerence
+of the entropy of the mother node and the weighted sum of the entropiesof the child nodes:
+Ga;yHt−HtjaHt−(
+p
+LHtLpRHtR
+(16.2)
+whereais the attribute we split on, yis the value of awe split on, t is
+the distribution of the node that we split, pLand pRare the proportion of
+elements that are passed on to the left and right nodes, and t Land tRare
+the distributions of the left and right nodes. As an example, we show thevalues of these variables and the resulting information gain in table 16.4for the top node of the decision tree in ﬁgure 16.1.
+Information gain is intuitively appealing because it can be interpreted
+as measuring the reduction of uncertainty. If we make the split that max-imizes information gain, then we reduce the uncertainty in the resulting
+classiﬁcation as much as possible. There are no general algorithms for
+ﬁnding the optimal splitting value eﬃciently. In practice, one uses heuris-tic algorithms that ﬁnd a near-optimal value.
+3
+A node that is not split by the algorithm because of the stopping cri-
+terion is a leaf node . The prediction we make at a leaf node is based leaf node
+on its members. We can compute maximum likelihood estimates, but
+smoothing is often appropriate. For example, if a leaf node has 6 mem-
+bers in the category “earnings” and 2 other members, then we would
+estimate the category membership probability of a new document din
+the node asPearningsjd61
+26110:7 if we use add-one smoothing
+(section 6.2.2).
+Once the tree has been fully grown, we prune it to avoid overﬁtting
+and to optimize performance on new data. At each step, we select the re-maining leaf node that we expect by some criterion to be least helpful (or
+even harmful) for accurate classiﬁcation. One common pruning criterion
+is to compute a measure of conﬁdence that indicates how much evidencethere is that the node is ‘helpful’ (Quinlan 1993). We repeat the pruningprocess until no node is left. Each step in the process (from the full treeto the empty tree) deﬁnes a classiﬁer – the classiﬁer that corresponds tothe decision tree with the nodes remaining at this point. One way to se-
+3. We could aﬀord an exhaustive search for the optimal splitting value here because the
+sijare integers in a small interval.
+
+p/CX /CX584 16 Text Categorization
+lect the best of these ntrees (wherenis the number of internal nodes of
+the full tree) is by validation on held out data. validation
+Validation evaluates a classiﬁer on a held-out data set, the validation validation set
+setto assess its accuracy. For the same reason as needing independent
+test data, in order to evaluate how much to prune a decision tree we need
+to look at a new set of data – which is what evaluation on the valida-
+tion set does. (See section 6.2.3 for the same basic technique used insmoothing.)
+An alternative to pruning a decision tree is to keep the whole tree, but
+to make the classiﬁer probability estimates a function of internal as wellas leaf nodes. This is a means of getting at the more reliable probabilitydistributions of higher nodes without actually pruning away the nodes
+below them. For each leaf node, we can read out the sequence of nodes
+and associated probability distributions from that node to the root ofthe decision tree. Rather than using held out data for pruning, held outdata can be used to train the parameters of a linear interpolation (sec-tion 6.3.1) of all these distributions for each leaf node, and these interpo-lated distributions can then be used as the ﬁnal classiﬁcation functions.Magerman (1994) argues that this gives superior performance to pruning,
+at least for the statistical parsing problem on which he was working (see
+section 12.2.2).
+Figure 16.4 shows how performance of a decision tree depends on
+pruning. The x-axis corresponds to number of nodes pruned, the y-axis
+to classiﬁcation accuracy. In order to produce the graph we grew thetree on 80% of the training set (7681 documents) and set 20% (1922 doc-uments) aside as the validation set. The pruning of the top node is not
+shown in the graph.
+4
+The pattern we ﬁnd is standard: performance on the training set is
+maximum for the full tree and then falls oﬀ continuously. Since we op-timize the initial construction of the full tree on the training set, largertrees will ﬁt the properties of the training set better than pruned trees,hence the decrease in performance on the training set as we go from leftto right.
+Accuracy for validation and test sets peaks somewhere in the middle.
+When performance peaks we have reached the point where parts of thetree that ﬁt accidental properties of the training set have been pruned
+4. The pruning criterion was to select the leaf node with the lowest information gain on
+the validation set.
+
+p/CX /CX16.1 Decision Trees 585
+number of nodes prunedclassification accuracy
+800 850 900 950 10000.90 0.92 0.94 0.96
+800 850 900 950 10000.90 0.92 0.94 0.96
+800 850 900 950 10000.90 0.92 0.94 0.96training set
+validation set
+test set
+Figure 16.4 Pruning a decision tree. The graph shows how classiﬁcation accu-
+racy of a decision tree depends on pruning. Optimal performance on the testset (96.21% accuracy) is reached for 951 nodes pruned. Optimal performance onthe validation set (93.91% accuracy) is reached for 974–977 nodes pruned. Forthese four pruned trees, performance on the test set is 96.00%, close to optimalperformance. Performance on the training set is monotonically decreasing.
+away. Oversimplifying a little bit, any further pruning will delete nodes
+that capture correct generalizations about the “earnings” category, hence
+the decrease in performance.
+One strategy for selecting a tree is to pick the one that performs best
+for the validation set. As we can see in the picture it does not perfectlycoincide with the peak for the test set, but it is close enough. The tree thatperforms best on the validation set will often be slightly overtrained orslightly undertrained, but usually it will be close to optimal performance.
+Table 16.5 evaluates performance of the tree with 50 internal nodes on
+the test set. This is the smallest tree with the optimal performance of93:91% accuracy on the validation set.
+A problem with setting aside a validation set is that a relatively large
+part of the full training set is wasted. A better method is to use n-fold
+cross-validation (cf. section 6.2.4) to estimate a good size for the pruned
+cross-validation
+
+p/CX /CX586 16 Text Categorization
+“earnings” “earnings” correct?
+assigned? YES NO
+YES 1024 69
+NO 63 2143
+Table 16.5 Contingency table for a decision tree for the Reuters category “earn-
+ings.” Classiﬁcation accuracy on the test set is 96.0%.
+decision tree. For example, in 5-fold cross-validation we split the data
+into ﬁve parts. We reserve one part as a validation set, train the tree onthe other four parts and then prune it back based on the held-out part.
+This process is repeated four times using each of the other four parts as
+a validation set. We then determine the average size of an optimally per-forming pruned tree. Finally, a new tree is grown for the entire training
+set and pruned back to what we have calculated to be the optimal size.
+The interdependence of complexity of the learning device and accuracy
+on the training set is an important characteristic of many classiﬁcationmethods. If the device is too complex (or has too many parameters),
+then we risk overﬁtting and low accuracy on new data. If the device is
+not complex enough, it is not able to make maximum use of the trainingdata, which again leads to lower than optimal accuracy on new data. Thetrick is to ﬁnd just the right balance and cross-validation is one approachto doing that.
+Another common property of classiﬁcation methods is shown in ﬁg-
+ure 16.5, the dependence of classiﬁcation accuracy on the amount of
+training data available. Not surprisingly, the more training data, the bet-
+ter – up to a point where performance improvement levels oﬀ. Sometimesone gets lucky with a small set (hence the ﬂuctuations), but one cannotbe sure that a tree trained on a small data set will perform well.
+Computing learning curves like those in ﬁgure 16.5 is important to de-
+learning curves
+termine the size of an appropriate training set. Many training procedures
+are computationally expensive, so it is advantageous to avoid overly large
+training sets. But on the other hand, insuﬃcient training data will result
+in suboptimal classiﬁcation accuracy. Looking at the curve lets one de-cide how much data is enough for optimal performance. (Of course, thereare many cases in which one has no control over the amount of trainingdata available and has to live with a small training set even though alarger one would give much better performance.)
+
+p/CX /CX16.1 Decision Trees 587
+number of articles in training setclassification accuracy
+0 2000 4000 6000 8000 10000 120000.90 0.91 0.92 0.93 0.94 0.95 0.96
+0 2000 4000 6000 8000 10000 120000.90 0.91 0.92 0.93 0.94 0.95 0.96
+0 2000 4000 6000 8000 10000 120000.90 0.91 0.92 0.93 0.94 0.95 0.96training setvalidation settest set
+Figure 16.5 Classiﬁcation accuracy depends on the amount of training data
+available. The xaxis corresponds to the number of training documents the deci-
+sion tree was trained on. The yaxis corresponds to accuracy on the test set for
+a decision tree selected based on a constant size validation set. Classiﬁcationaccuracy is highly variable for small training set sizes and increases and levelsoﬀ for larger sets.
+When are decision trees appropriate for a classiﬁcation task in NLP?
+Decision trees are more complex than classiﬁers like Naive Bayes (sec-
+tion 7.2.1), linear regression (section 15.4.1), and logistic regression. Ifthe classiﬁcation problem is simple (in particular, if it is linearly separa-
+ble, see below), then these simpler methods are often preferable. Decision
+trees also split the training set into smaller and smaller subsets. Thismakes correct generalization harder, since there may not be enough datafor reliable prediction, and incorrect generalization easier, since smaller
+sets have accidental regularities that don’t generalize. Figure 16.6 gives
+a simple example of this problem from the domain of learning phono-logical rules. Pruning addresses this problem to some extent, but somelearning problems are better handled by methods that look at all featuressimultaneously. The other three methods we introduce in this chapter allhave this property.
+
+pa/CX /CX588 16 Text Categorization
+
+−voiced
+−cont
+−cor
+tcor
+−ant
+tantedcont
+tvoiced
+−cont
+−cor
+dcor
+−ant
+dantedcont
+d
+Figure 16.6 An example of how decision trees use data ineﬃciently from the
+domain of phonological rule learning. The regular rule for the English past tenseis that one gets /t/ after a voiceless sound, and /d/ after a voiced sound, exceptafter [−cont,cor,ant] sounds (i.e., /t/, /d/) where one gets /ed/. Because
+the voicing feature has the greatest information gain, the tree splits on thatfeature ﬁrst, but that makes the remaining conditioning harder to learn becausethe relevant data has been subdivided into diﬀerent bins within which learningis attempted independently.
+The greatest advantage of decision trees is that they can be interpreted
+so easily. It is easy to trace the path from the root to a leaf node fora couple of articles and to develop an intuition as to how the decisiontree works. This is not only invaluable in debugging one’s own code andunderstanding a new problem domain, but it also allows one to explain
+the classiﬁer to researchers and laymen alike, an important property in
+research collaboration and practical applications.
+Exercise 16.1 [«]
+What is the classiﬁcation accuracy of the trivial tree with one leaf node for the
+“earnings” category?
+Exercise 16.2 [«]
+In section 7.1, we introduced upper and lower bounds as a way to assess how
+hard a particular classiﬁcation problem is. What are upper and lower bounds forthe ‘earnings’ category?
+Exercise 16.3 [««]
+An important application of text categorization is the detection of spam (also
+known as unsolicited bulk email). Try to collect at least a hundred spam mes-sages and non-spam messages, divide them into training and test sets and build
+
+p/CX /CX16.2 Maximum Entropy Modeling 589
+a decision tree that detects spam. Finding the right features is paramount for
+this task, so design your feature set carefully.
+Exercise 16.4 [««]
+Another important application of text categorization is the detection of ‘adult’
+content, that is, content that is not appropriate for children because it is sexuallyexplicit. Collect training and test sets of adult and non-adult material from theWorld Wide Web and build a decision tree that can block access to adult material.
+Exercise 16.5 [««]
+Collect a reasonable amount of text written by yourself and by a friend. You may
+want to break up individual texts (e.g., term papers) into smaller pieces to geta large enough set. Build a decision tree that automatically determines whetheryou are the author of a piece of text. Note that it is often the ‘little’ words thatgive an author away (for example, the relative frequencies of words like because
+orthough ).
+Exercise 16.6 [««]
+Download a set of English and non-English texts from the World Wide Web or
+use some other multilingual source. Build a decision tree that can distinguishbetween English and non-English texts. (See also exercise 6.10.)
+16.2 Maximum Entropy Modeling
+Maximum entropy modeling is a framework for integrating information
+from many heterogeneous information sources for classiﬁcation. Thedata for a classiﬁcation problem is described as a (potentially large) num-ber of features. These features can be quite complex and allow the exper-imenter to make use of prior knowledge about what types of information
+are expected to be important for classiﬁcation. Each feature corresponds
+to a constraint on the model. We then compute the maximum entropy
+model , the model with maximum entropy of all the models that satisfy
+the constraints. This term may initially seem perverse, since we havespent most of the book trying to minimize the (cross) entropy of mod-els, but the idea is that we do not want to go beyond the data. If wechose a model with less entropy, we would add ‘information’ constraints
+to the model that are not justiﬁed by the empirical evidence available to
+us. Choosing the maximum entropy model is motivated by the desire topreserve as much uncertainty as possible.
+We have simpliﬁed matters in this chapter by neglecting the problem of
+feature selection (we use the same 20 features throughout). In maximumentropy modeling, feature selection and training are usually integrated.
+
+p/CX /CX590 16 Text Categorization
+Ideally, this enables us to specify all potentially relevant information at
+the beginning, and then to let the training procedure worry about how tocome up with the best model for classiﬁcation. We will only introduce thebasic method here and refer the reader to the Further Reading for featureselection.
+For a given set of features, we ﬁrst compute the expectation of each fea-
+ture based on the training set. Each feature then deﬁnes the constraintthat this empirical expectation be the same as the expectation the feature
+empirical
+expectation has in our ﬁnal maximum entropy model. Of all probability distributions
+that obey these constraints, we attempt to ﬁnd the maximum entropy maximum entropy
+distribution distribution , the one with the highest entropy. One can show that there
+is a unique such maximum entropy distribution and there exists an al-
+gorithm, generalized iterative scaling, which is guaranteed to converge
+to it.
+The featuresfiare binary functions that can be used to characterize
+any property of a pair ~x;c,w h e r e~xis a vector representing an input
+element (in our case the 20-dimensional vector of word weights repre-senting an article as in table 16.3), and cis the class label (1 if the article
+is in the “earnings” category, 0 otherwise). For text categorization, we
+deﬁne features as follows:
+f
+i~xj;c(
+1i fsij>0a n dc1
+0 otherwise(16.3)
+Recall thatsijis the term weight for word iin Reuters article j. Note that
+the use of binary features is diﬀerent from the rest of this chapter: Theother classiﬁers use the magnitude of the weight, not just the presenceor absence of a word.
+5
+The model class for the particular variety of maximum entropy model-
+ing that we introduce here is loglinear models of the following form: loglinear models
+p~x;c1
+ZKY
+i1fi~x;c
+i (16.4)
+whereKis the number of features, iis the weight for feature fiandZis
+a normalizing constant, used to ensure that a probability distributionresults. To use the model for text categorization, we compute p ~x;0and
+5. While the maximum entropy approach is not in principle limited to binary features,
+known reasonably eﬃcient solution procedures such as generalized iterative scaling,which we introduce below, do only work for binary features.
+
+p/CX /CX16.2 Maximum Entropy Modeling 591
+p~x;1and, in the simplest case, choose the class label with the greater
+probability.
+Note that, in this section, features contain information about the class features
+of the object in addition to the ‘measurements’ of the object we want to
+classify. Here, we are following most publications on maximum entropy
+modeling in deﬁning feature in this sense. The more common use of the
+term “feature” (which we have adopted for the rest of the book) is that itonly refers to some characteristic of the object, independent of the classthe object is a member of.
+Equation (16.4) deﬁnes a loglinear model because, if we take logs on
+both sides, then log p is a linear combination of the logs of the weights:
+log p~x;c−logZ
+KX
+i1fi~x;clogi (16.5)
+Loglinear models are an important class of models for classiﬁcation.
+Other examples of the class are logistic regression (McCullagh and Nelder
+1989) and decomposable models (Bruce and Wiebe 1999). We introduce
+the maximum entropy modeling approach here because maximum en-tropy models have been the most widely used loglinear models in Sta-tistical
+NLPand because it is an application of the important maximum
+entropy principle.
+16.2.1 Generalized iterative scaling
+Generalized iterative scaling is a procedure for ﬁnding the maximum en- generalized
+iterative scaling tropy distribution pof form (16.4) that obeys the following set of con-
+straints:
+EpfiE˜pfi (16.6)
+In other words, the expected value of fifor pis the same as the expected
+value for the empirical distribution (in other words, the training set).
+The algorithm requires that the sum of the features for each possible
+~x;c be equal to a constant C:6
+8~x;cX
+ifi~x;cC (16.7)
+6. See Berger et al. (1996) for Improved Iterative Scaling , a variant of generalized iterative
+scaling that does not impose this constraint.
+
+p/CX /CX592 16 Text Categorization
+In order to fulﬁl this requirement, we deﬁne C as the greatest possible
+feature sum:
+CÖmax
+~x;cKX
+i1fi~x;c
+and add a feature fK1that is deﬁned as follows:
+fK1~x;cC−KX
+i1fi~x;c
+Note that this feature is not binary, in contrast to the others.
+Epfiis deﬁned as follows:
+EpfiX
+~x;cp~x;cfi~x;c (16.8)
+where the sum is over the event space, that is, all possible vectors ~xand
+class labelsc. The empirical expectation is easy to compute:
+E˜pfiX
+~x;c˜p~x;cfi~x;c1
+NNX
+j1fi~xj;c (16.9)
+whereNis the number of elements in the training set and we use the fact
+that the empirical probability for a pair that doesn’t occur in the trainingset is 0.
+In general, the maximum entropy distribution E
+pficannot be computed
+eﬃciently since it would involve summing over all possible combinations
+of~xandc, a potentially inﬁnite set. Instead, we use the following approx-
+imation (Lau 1994: 25):
+Epfi1
+NNX
+j1X
+cpcj~xjfi~xj;c (16.10)
+wherecranges over all possible classes, in our case c2f0;1g.
+Now we have all the pieces to state the generalized iterative scaling
+algorithm:
+Initializef1
+ig. Any initialization will do, but usually we choose
+1
+i1;81jK1. ComputeE˜pfias shown above. Set n1.
+Compute pn~x;c for the distribution pngiven by the fn
+igfor
+each element ~x;c in the training set:
+pn~x;c1
+ZK1Y
+i1(
+n
+ifix;c(16.11)
+
+pa/CX /CX16.2 Maximum Entropy Modeling 593
+~xc
+proﬁt “earnings”f1f2f1log1f2log22
+(0) 0 0 1 1 2
+(0) 1 0 1 1 2(1) 0 0 1 1 2(1) 1 1 0 2 4
+Table 16.6 An example of a maximum entropy distribution in the form of equa-
+tion (16.4). The vector ~xconsists of a single element, indicating the presence
+or absence of the word proﬁt in the article. There are two classes (member
+of “earnings” or not). Feature f1is 1 if and only if the article is in “earnings”
+andproﬁt occurs.f2is the “ﬁller” feature fK1. For one particular choice of
+the parameters, namely log 12:0 and log21:0, we get after normal-
+ization (Z222410) the following maximum entropy distribution:
+p0;0p0;1p1;02=Z0:2 and p1;14=Z0:4. An example of a
+data set with the same empirical distribution is 0;0;0;1;1;0;1;1;1;1.
+ComputeEpnfifor all 1iK1 according to equation (16.10).
+Update the parameters i:
+n1
+in
+i 
+E˜pfi
+Epnfi!1
+C
+(16.12)
+If the parameters of the procedure have converged, stop, otherwise
+incrementnand go to 2.
+We present the algorithm in this form for readability. In an actual im-
+plementation, it is more convenient to do the computations using loga-rithms.
+One can show that this procedure converges to a distribution p
+that
+obeys the constraints (16.6), and that of all such distributions it is the onethat maximizes the entropy Hpand the likelihood of the data. Darroch
+and Ratcliﬀ (1972) show that this distribution always exists and is unique.
+A toy example of a maximum entropy distribution that generalized it-
+erative scaling will converge to is shown in table 16.6.
+Exercise 16.7 [«]
+What are the classiﬁcation decisions for the distribution in table 16.6? Compute
+P“earnings”jproﬁtandP“earnings”j:proﬁt.
+
+p/CX /CX594 16 Text Categorization
+Does proﬁt Is topic “earnings”?
+occur? YES NO
+YES 20 9
+NO 81 3
+Table 16.7 An empirical distribution whose corresponding maximum entropy
+distribution is the one in table 16.6.
+Exercise 16.8 [«]
+Show that the distribution in table 16.6 is a ﬁxed point for iterative general-
+ized scaling. That is, computing one iteration should leave the distributionunchanged.
+Exercise 16.9 [«]
+Consider the distribution in table 16.7. Show that for the features deﬁned in
+table 16.6, this distribution has the same feature expectations E
+pas the one in
+table 16.6.
+Exercise 16.10 [«]
+Compute a number of iterations of generalized iterative scaling for the data
+in table 16.7 (using the features deﬁned in table 16.6). The procedure should
+converge towards the distribution in table 16.6.
+Exercise 16.11 [««]
+Select one of exercises 16.3 through 16.6 and build a maximum entropy model
+for the corresponding text categorization task.
+16.2.2 Application to text categorization
+We have already suggested how to deﬁne appropriate features for text
+categorization in equation (16.3). For the task of identifying Reuters“earnings” articles we end up with 20 features, each corresponding toone of the selected words, and the f
+K1feature introduced at the start of
+the last subsection.
+Table 16.8 shows the weights found by generalized iterative scaling
+after convergence (500 iterations). We trained on the 9603 articles in the
+training set. The features with the highest weights are vs,cts,proﬁt andlt.
+If we useP“earnings”j~x>P:“earnings”j~xas our decision rule, we get
+the classiﬁcation results in table 16.9. Classiﬁcation accuracy is 88 :6%.
+An important question in an implementation is when to stop the iter-
+ation. One way to test for convergence is to compute the log diﬀerence
+
+p/CX /CX16.2 Maximum Entropy Modeling 595
+WordwiFeature weight log i
+vs 0.613
+mln −0:110
+cts 1.298; −0:432
+& −0:429
+000 −0:413
+loss −0:332
+’ −0:085
+" 0.202
+3 −0:463
+proﬁt 0.360dlrs −0:202
+1 −0:211
+pct −0:260
+is −0:546
+s −0:490
+that −0:285
+net −0:300
+lt 1.016at −0:465
+f
+K1 0.009
+Table 16.8 Feature weights in maximum entropy modeling for the category
+“earnings” in Reuters.
+“earnings” “earnings” correct?
+assigned? YES NO
+YES 735 24
+NO 352 2188
+Table 16.9 Classiﬁcation results for the distribution corresponding to ta-
+ble 16.8 on the test set. Classiﬁcation accuracy is 88 :6%.
+
+p/CX /CX596 16 Text Categorization
+between empirical and estimated feature expectations (log E˜p−logEpn),
+which should approach zero. Ristad (1996) recommends to also look atthe largestwhen doing iterative scaling. If the largest weight becomes
+too large, then this indicates a problem with either the data representa-tion or the implementation.
+When is the maximum entropy framework presented in this section ap-
+propriate as a classiﬁcation method? The somewhat lower performanceon the “earnings” task compared to some of the other methods indicatesone characteristic that is a shortcoming in some situations: the restric-tion to binary features seems to have led to lower performance. In textcategorization, we often need a notion of “strength of evidence” whichgoes beyond a simple binary feature recording presence or absence of ev-
+idence. The feature-based representation we use for maximum entropy
+modeling is not optimal for this purpose.
+Generalized iterative scaling can also be computationally expensive due
+to slow convergence (but see (Lau 1994) for suggestions for speeding upconvergence). For binary classiﬁcation, the loglinear model deﬁnes a lin-ear separator that is in principle no more powerful than Naive Bayes or
+Naive Bayes
+linear regression , classiﬁers that can be trained more eﬃciently. How- linear regression
+ever, it is important to stress that, apart from the theoretical power of
+a classiﬁcation method, the training procedure is crucial. Generalizediterative scaling takes dependence between features into account in con-trast to Naive Bayes and other linear classiﬁers. If feature dependence isnot expected to a be a problem, then Naive Bayes is a better choice thanmaximum entropy modeling.
+Finally, the lack of smoothing can also cause problems. For example,
+if we have a feature that always predicts a certain class, then this fea-
+ture may get an excessively high weight. One way to deal with this isto ‘smooth’ the empirical data by adding events that did not occur. Inpractice, features that occur less than ﬁve times are usually eliminated.
+One of the strengths of maximum entropy modeling is that it oﬀers
+a framework for specifying all possibly relevant information. The attrac-tion of the method lies in the fact that arbitrarily complex features can be
+deﬁned if the experimenter believes that these features may contribute
+useful information for the classiﬁcation decision. For example, Bergeret al. (1996: 57) deﬁne a feature for the translation of the prepositioninfrom English to French that is 1 if and only if inis translated as pen-
+dant andinis followed by the word weeks within three words. There is
+also no need to worry about heterogeneity of features or weighting fea-
+
+p/CX /CX16.3 Perceptrons 597
+tures, two problems that often cause diﬃculty in other classiﬁcation ap-
+proaches. Model selection is well-founded in the maximum entropy prin-ciple: we should not add any information over and above what we ﬁndin the empirical evidence. Maximum entropy modeling thus provides awell-motivated probabilistic framework for integrating information from
+heterogeneous sources.
+We could only allude here to another strength of the method: an inte-
+grated framework for feature selection and classiﬁcation. (The fact thatwe have not done maximum entropy feature selection here is perhapsthe main reason for the lower classiﬁcation accuracy.) Most classiﬁca-tion methods cannot deal with a very large number of features. If thereare too many features initially, an (often ad-hoc) method has to be used
+to winnow the feature set down to a manageable size. This is what we
+have done here, using the X
+2test for words. In maximum entropy mod-
+eling one can instead specify all potentially relevant features and useextensions of the basic method such as those described by Berger et al.(1996) to simultaneously select features and ﬁt the classiﬁcation model.Since the two are integrated, there is a clear probabilistic interpretation(in terms of maximum entropy and maximum likelihood) of the result-
+ing classiﬁcation model. Such an interpretation is less clear for other
+methods such as perceptrons and knearest neighbors.
+In this section we have only attempted to give enough information to
+help the reader to decide whether maximum entropy modeling is an ap-propriate framework for their classiﬁcation task when compared to otherclassiﬁcation methods. More detailed treatments of maximum entropymodeling are mentioned in the Further Reading.
+16.3 Perceptrons
+We present perceptrons here as a simple example of a gradient descent gradient descent
+(or reversing the direction of goodness, hill climbing ) algorithm, an im- hill climbing
+portant class of iterative learning algorithms. In gradient descent, we
+attempt to optimize a function of the data that computes a goodnesscriterion like squared error or likelihood. In each step, we compute thederivative of the function and change the parameters of the model in thedirection of the steepest gradient (steepest ascent or descent, dependingon the optimality function). This is a good idea because the direction of
+
+p/CX /CX598 16 Text Categorization
+1comment : Categorization Decision
+2funct decision~x;~w;
+3if~w~x> then
+4 return yes
+5 else
+6 return no
+7ﬁ.
+9comment : Initialization
+10~w0
+110
+12comment : Perceptron Learning Algorithm
+13while not converged yet do
+14 forall elements~xjin the training set do
+15ddecision~xj;~w;
+16 ifclass~xjdthen
+17 continue
+18 elsif class~xjyes anddno then
+19 −1
+20 ~w~w~xj
+21 elsif class~xjno anddyes then
+22 1
+23 ~w~w−~xj
+24 ﬁ
+25 end
+26end
+Figure 16.7 The Perceptron Learning Algorithm. The perceptron decides “yes”
+if the inner product of weight vector and data vector is greater than and “no”
+otherwise. The learning algorithm cycles through all examples. If the currentweight vector makes the right decision for an instance, it is left unchanged.Otherwise, the data vector is added to or subtracted from the weight vector,depending on the direction of the error.
+
+p/CX /CX16.3 Perceptrons 599
+steepest gradient is the direction where we can expect the most improve-
+ment in the goodness criterion.
+Without further ado, we introduce the perceptron learning algorithm in
+ﬁgure 16.7. As before, text documents are represented as term vectors.Our goal is to learn a weight vector ~wand a threshold , such that com-
+paring the dot product of the weight vector and the term vector against
+the threshold provides the categorization decision. We decide “yes” (thearticle is in the “earnings” category) if the inner product of weight vectorand document vector is greater than the threshold and “no” otherwise:
+Decide “yes” iﬀ ~w~x
+KX
+i1wixij>
+whereKis the number of features ( K20 for our example as before)
+andxijis component iof vector~xj.
+The basic idea of the perceptron learning algorithm is simple. If the
+weight vector makes a mistake, we move it (and ) in the direction of
+greatest change for our optimality criterionPK
+i1wixij−. To see that
+the changes to ~wandin ﬁgure 16.8 are made in the direction of greatest
+change, we ﬁrst deﬁne an optimality criterion that incorporates into
+the weight vector:
+~w0(0
+BBBBBBB@w
+1
+w2
+...
+wK
+1
+CCCCCCCA
+~w
+0~x00
+BBBBBBB@w
+1
+w2
+...
+wK
+1
+CCCCCCCA0
+BBBBBBB@x
+1
+x2
+...
+xK
+−11
+CCCCCCCA
+The gradient of (which is the direction of greatest change) is the vec-
+tor~x
+0:
+r~w0~x0
+Of all vectors of a given length that we can add to ~w0,~x0is the one that will
+changethe most. So that is the direction we want to take for gradient
+descent; and it is indeed the change that is implemented in ﬁgure 16.7.
+Figure 16.8 shows one error-correcting step of the algorithm for a two-
+dimensional problem. The ﬁgure also illustrates the class of models thatcan be learned by perceptrons: linear separators. Each weight vector de-ﬁnes an orthogonal line (or a plane or hyperplane in higher dimensions)that separates the vector space into two halves, one with positive values,
+
+p/CX /CX600 16 Text Categorization
+~w~x
+~x~w~x
+S S0NO
+YESNOYES
+Figure 16.8 One error-correcting step of the perceptron learning algorithm.
+Data vector~xis misclassiﬁed by the current weight vector ~wsince it lies on
+the “no”-side of the decision boundary S. The correction step adds ~xto~wand
+(in this case) corrects the decision since ~xnow lies on the “yes”-side of S0,t h e
+decision boundary of the new weight vector ~w~x.
+one with negative values. In ﬁgure 16.8, the separator is S, deﬁned by~w.
+Classiﬁcation tasks in which the elements of two classes can be perfectlyseparated by such a hyperplane are called linearly separable .
+linearly separable
+One can show that the perceptron learning algorithm always converges
+towards a separating hyperplane when applied to a linearly separable
+problem. This is the perceptron convergence theorem . It might seem perceptron
+convergence
+theoremplausible that the perceptron learning algorithm will eventually ﬁnd a
+solution if there is one, since it keeps adjusting the weights for misclassi-ﬁed elements, but since an adjustment for one element will often reverseclassiﬁcation decisions for others, the proof is not trivial.
+
+p/CX /CX16.3 Perceptrons 601
+WordwiWeight
+vs 11
+mln 6
+cts 24;2&1 2000 −4
+loss 19’ −2
+" 7
+3 −7
+proﬁt 31dlrs 113pct −4
+is −8
+s −12
+that −1
+net 8lt 11at −6
+ 37
+Table 16.10 Perceptron for the “earnings” category. The weight vector ~wand
+of a perceptron learned by the perceptron learning algorithm for the category
+“earnings” in Reuters.
+Table 16.10 shows the weights learned by the perceptron learning algo-
+rithm for the “earnings” category after about 1000 iterations. As with themodel parameters in maximum entropy modeling we get high weightsforcts,proﬁt andlt. Table 16.11 shows the classiﬁcation results on the
+test set. Overall accuracy is 83%. This suggests that the problem is not
+linearly separable. See the exercises.
+A perceptron in 20 dimensions is hard to visualize, so we reran the
+algorithm with just two dimensions, mlnandcts. The weight vector and
+the linear separator deﬁned by it are shown in ﬁgure 16.9.
+The perceptron learning algorithm is guaranteed to learn a linearly sep-
+
+p/CX /CX602 16 Text Categorization
+“earnings” “earnings” correct?
+assigned? YES NO
+YES 1059 521
+NO 28 1691
+Table 16.11 Classiﬁcation results for the perceptron in table 16.10 on the test
+set. Classiﬁcation accuracy is 83 :3%.
+12345 −11234
+−1
+−2
+−3ctsmln
+~wS
+YESNO
+Figure 16.9 Geometric interpretation of a perceptron. The weight for ctsis 5,
+the weight for mlnis−1, and the threshold is 1. The linear separator Sdivides
+the upper right quadrant into a NO and a YES region. Only documents with many
+more occurrences of mlnthan ctsare categorized as not belonging to “earnings.”
+
+pa/CX /CX16.3 Perceptrons 603
+arable problem. There are similar convergence theorems for some other
+gradient descent algorithms, but in most cases convergence will only beto a local optimum , locations in the weight space that are locally opti-
+local optimum
+mal, but inferior to the globally optimal solution. Perceptrons converge
+to aglobal optimum because they select a classiﬁer from a class of sim- global optimum
+ple models, the linear separators. There are many important problems
+that are not linearly separable, the most famous being the XOR prob-
+lem. The XOR (i.e., eXclusive OR) problem involves a classiﬁer with two
+featuresC1andC2where the answer should be “yes” if C1is true and
+C2false or vice versa. A decision tree can easily learn such a problem,
+whereas a perceptron cannot. After some initial enthusiasm about per-ceptrons (Rosenblatt 1962), researchers realized these limitations. As
+a consequence, interest in perceptrons and related learning algorithms
+faded quickly and remained low for decades. The publication of (Minskyand Papert 1969) is often seen as the point at which the interest in thisgenre of learning algorithms started to wane. See Rumelhart and Zipser(1985) for a historical summary.
+If the perceptron learning algorithm is run on a problem that is not lin-
+early separable, the linear separator will sometimes move back and forth
+erratically while the algorithm tries in vain to ﬁnd a perfectly separating
+plane. This is in fact what happened when we ran the algorithm on the“earnings” data. Classiﬁcation accuracy ﬂuctuated between 72% and 93%.We picked a state that lies in the middle of this spectrum of accuracy fortables 16.10 and 16.11. Perceptrons have not been used much in
+NLPbe-
+cause most NLPproblems are not linearly separable and the perceptron
+learning algorithm does not ﬁnd a good approximate separator in such
+cases. However, in cases where a problem is linearly separable, percep-
+trons can be an appropriate classiﬁcation method due to their simplicityand ease of implementation.
+A resurgence of work on gradient descent learning algorithms occurred
+in the eighties when several learning algorithms were proposed that over-came the limitations of perceptrons, most notably the backpropagation
+backpropagation
+algorithm which is used to train multi-layer perceptrons (MLPs), otherwise
+known as neural networks orconnectionist models . Backpropagation ap- neural networks
+connectionist
+modelsplied to MLPs can in principle learn any classiﬁcation function including
+XOR. But it converges more slowly than the perceptron learning algo-
+rithm and it can get caught in local optima . Pointers to uses of neural
+networks in NLPappear in the Further Reading.
+
+p/CX /CX604 16 Text Categorization
+Exercise 16.12 [««]
+Build an animated visualization that shows how the perceptron’s decision
+boundary moves during training and run it for a two-dimensional classiﬁcationproblem.
+Exercise 16.13 [««]
+Select a subset of 10 “earnings” and 10 non-“earnings” documents. Select two
+words, one for the xaxis, one for the yaxis and plot the 20 documents with
+class labels. Is the set linearly separable?
+Exercise 16.14 [«]
+How can one show that a set of data points from two classes is not linearly
+separable?
+Exercise 16.15 [«]
+Show that the “earnings” data set is not linearly separable.
+Exercise 16.16 [«]
+Suppose a problem is linearly separable and we train a perceptron to conver-
+gence. In such a case, classiﬁcation accuracy will often not be 100%. Why?
+Exercise 16.17 [««]
+Select one of exercises 16.3 through 16.6 and build a perceptron for the corre-
+sponding text categorization task.
+16.4kNearest Neighbor Classiﬁcation
+The rationale for the nearest neighbor classiﬁcation rule is remarkably nearest neighbor
+classiﬁcation rule simple. To classify a new object, ﬁnd the object in the training set that is
+most similar. Then assign the category of this nearest neighbor.
+The basic idea is that if there is an identical article in the training set
+(or at least one with the same representation), then the obvious decisionis to assign the same category. If there is no identical article, then themost similar one is our best bet.
+A generalization of the nearest neighbor rule is knearest neighbor or
+knearest neighbor
+KNN classiﬁcation. Instead of using only one nearest neighbor as the
+basis for our decision, we consult knearest neighbors. KNN fork>1i s
+more robust than the ‘1 nearest neighbor’ method.
+The complexity of KNN is in ﬁnding a good measure of similarity. As
+an example of what can go wrong consider the task of deciding whetherthere is an eagle in an image. If we have a drawing of an eagle thatwe want to classify and all exemplars in the database are photographs of
+
+p/CX /CX16.4kNearest Neighbor Classiﬁcation 605
+eagles, then KNN will classify the drawing as non-eagle because according
+to any low-level similarity metric based on image features drawings andphotographs will come out as very diﬀerent no matter what their content(and how to implement high-level similarity is an unsolved problem). Ifone doesn’t have a good similarity metric, one can’t use
+KNN.
+Fortunately, many NLP tasks have simple similarity metrics that are
+quite eﬀective. For the “earnings” data, we implemented cosine similarity(see section 8.5.1), and chose k1. This ‘1NN algorithm’ for binary
+categorization can be stated as follows.
+Goal: categorize ~ybased on the training set X.
+Determine the largest similarity with any element in the training set:
+sim max~ymax~x2Xsim~x;~y
+Collect the subset of Xthat has highest similarity with ~y:
+A
+~x2Xjsim~x;~ysim max~y}
+Letn1andn2be the number of elements in Athat belong to the two
+classesc1andc2, respectively. Then we estimate the conditional prob-
+abilities of membership as follows:
+Pc 1j~yn1
+n1n2Pc 2j~yn2
+n1n2(16.13)
+Decidec1ifPc 1j~y>Pc 2j~y,c2otherwise.
+This version deals with the case where there is a single nearest neighbor
+(in which case we simply adopt its category) as well as with cases of ties.
+For the Reuters data, 2310 of the 3299 articles in the test set have one
+nearest neighbor. The other 989 have 1NN neighborhoods with morethan 1 element (the largest neighborhood has 247 articles with identicalrepresentation). Also, 697 articles of the 3299 have a nearest neighborwith identical representation. The reason is not that there are that manyduplicates in the test set. Rather, this is a consequence of the featurerepresentation which can give identical representations to two diﬀerent
+documents.
+It should be obvious how this algorithm generalizes for the case k>1:
+one simply chooses the knearest neighbors, again with suitable provi-
+sions for ties, and decides based on the majority class of these kneigh-
+bors. It is often desirable to weight neighbors according to their similar-ity, so that the nearest neighbor gets more weight than the farthest.
+
+p/CX /CX606 16 Text Categorization
+“earnings” “earnings” correct?
+assigned? YES NO
+YES 1022 91
+NO 65 2121
+Table 16.12 Classiﬁcation results for an 1NN categorizer for the “earnings”
+category. Classiﬁcation accuracy is 95 :3%.
+One can show that for large enough training sets, the error rate of KNN
+approaches twice the Bayes error rate. The Bayes error rate is the optimal Bayes error rate
+error rate that is achieved if the true distribution of the data is known and
+we use the decision rule “ c1ifPc 1j~y>Pc 2j~y, otherwisec2” (Duda and
+Hart 1973: 98).
+The results of applying 1NN to the “earnings” category in Reuters are
+shown in table 16.12. Overall accuracy is 95.3%.
+As alluded to above, the main diﬃculty with KNN is that its perfor-
+mance is very dependent on the right similarity metric. Much work inimplementing
+KNN for a problem often goes into tuning the similarity
+metric (and to a lesser extent k, the number of nearest neighbors used).
+Another potential problem is eﬃciency. Computing similarity with alltraining exemplars takes more time than computing a linear classiﬁcation
+function or determining the appropriate path of a decision tree.
+However, there are ways of implementing
+KNN search eﬃciently, and
+often there is an obvious choice for a similarity metric (as in our case). Insuch cases,
+KNN is a robust and conceptually simple method that often
+performs remarkably well.
+Exercise 16.18 [«]
+Two of the classiﬁers we have introduced in this chapter have a linear decision
+boundary. Which?
+Exercise 16.19 [«]
+If a classiﬁer’s decision boundary is linear, then it cannot achieve perfect ac-
+curacy on a problem that is not linearly separable. Does this necessarily meanthat it will perform worse on a classiﬁcation task than a classiﬁer with a morecomplex decision boundary? Why not? (See Roth (1998) for discussion.)
+Exercise 16.20 [««]
+Select one of exercises 16.3 through 16.6 and build a nearest neighbors classiﬁer
+for the corresponding text categorization task.
+
+p/CX /CX16.5 Further Reading 607
+16.5 Further Reading
+The purpose of this chapter is to give the student interested in classiﬁ-
+cation for NLPsome orientation points. A recent in-depth introduction
+to machine learning is (Mitchell 1997). Comparisons of several learning
+algorithms applied to text categorization can be found in (Yang 1998),
+(Lewis et al. 1996), and (Schütze et al. 1995).
+The features and the data representation based on the features used in
+this chapter can be downloaded from the book’s website.
+Some important classiﬁcation techniques which we have not covered
+are: logistic regression and linear discriminant analysis (Schütze et al.1995); decision lists, where an ordered list of rules that change the clas-
+siﬁcation is learned (Yarowsky 1994); winnow, a mistake-driven online
+linear threshold learning algorithm (Dagan et al. 1997a); and the Rocchioalgorithm (Rocchio 1971; Schapire et al. 1998).
+Another important classiﬁcation technique, Naive Bayes , was intro-
+Naive Bayes
+duced in section 7.2.1. See (Domingos and Pazzani 1997) for a discussion
+of its properties, in particular the fact that it often does surprisingly welleven when the feature independence assumed by Naive Bayes does not
+hold.
+Other examples of the application of decision trees to
+NLPtasks are
+parsing (Magerman 1994) and tagging (Schmid 1994). The idea of usingheld out training data to train a linear interpolation over all the distri-butions between a leaf node and the root was used both by Magerman(1994) and earlier work at
+IBM. Rather than simply using cross-validation
+to determine an optimal tree size, an alternative is to grow multiple de-
+cision trees and then to average the judgements of the individual trees.
+Such techniques go under names like bagging andboosting , and have re- bagging
+boostingcently been widely explored and found to be quite successful (Breiman
+1994; Quinlan 1996). One of the ﬁrst papers to apply decision trees totext categorization is (Lewis and Ringuette 1994).
+Jelinek (1997: ch. 13–14) provides an in-depth introduction to maxi-
+maximum entropy
+modeling mum entropy modeling. See also (Lau 1994) and (Ratnaparkhi 1997b).
+Darroch and Ratcliﬀ (1972) introduced the generalized iterative scaling
+procedure, and showed its convergence properties. Feature selectionalgorithms are described by Berger et al. (1996) and Della Pietra et al.(1997).
+Maximum entropy modeling has been used for tagging (Ratnaparkhi
+1996), text segmentation (Reynar and Ratnaparkhi 1997), prepositional
+
+p/CX /CX608 16 Text Categorization
+phrase attachment (Ratnaparkhi 1998), sentence boundary detection
+(Mikheev 1998), determining coreference (Kehler 1997), named entityrecognition (Borthwick et al. 1998) and partial parsing (Skut and Brants1998). Another important application is language modeling for speechrecognition (Lau et al. 1993; Rosenfeld 1994, 1996). Iterative proportional
+ﬁtting, a technique related to generalized iterative scaling, was used by
+Franz (1996, 1997) to ﬁt loglinear models for tagging and prepositionalphrase attachment.
+Neural networks or multi-layer perceptrons were one of the statistical
+neural networks
+techniques that revived interest in Statistical NLPin the eighties based
+on work by Rumelhart and McClelland (1986) on learning the past tenseof English verbs and Elman’s (1990) paper “Finding Structure in Time,”
+an attempt to come up with an alternative framework for the conceptu-
+alization and acquisition of hierarchical structure in language. Introduc-tions to neural networks and backpropagation are (Rumelhart et al. 1986),(McClelland et al. 1986), and (Hertz et al. 1991). Other neural network re-search on
+NLPproblems includes tagging (Benello et al. 1989; Schütze
+1993), sentence boundary detection (Palmer and Hearst 1997), and pars-ing (Henderson and Lane 1998). Examples of neural networks used for
+text categorization are (Wiener et al. 1995) and (Schütze et al. 1995). Mi-
+ikkulainen (1993) develops a general neural network framework for
+NLP.
+The Perceptron Learning Algorithm in ﬁgure 16.7 is adapted from (Lit-
+tlestone 1995). A proof of the perceptron convergence theorem appearsin (Minsky and Papert 1988) and (Duda and Hart 1973: 142).
+KNN,o rmemory-based learning as it is sometimes called, has also been
+applied to a wide range of diﬀerent NLPproblems, including pronuncia-
+tion (Daelemans and van den Bosch 1996), tagging (Daelemans et al. 1996;
+van Halteren et al. 1998), prepositional phrase attachment (Zavrel et al.1997), shallow parsing (Argamon et al. 1998), word sense disambigua-tion (Ng and Lee 1996) and smoothing of estimates (Zavrel and Daele-mans 1997). For
+KNN-based text categorization see (Yang 1994), (Yang
+1995), (Stanﬁll and Waltz 1986; Masand et al. 1992), and (Hull et al. 1996).Yang (1994, 1995) suggests methods for weighting neighbors according
+to their similarity. We used cosine as the similarity measure. Other com-
+mon metrics are Euclidean distance (which is diﬀerent only if vectors arenot normalized, as discussed in section 8.5.1) and the Value DiﬀerenceMetric (Stanﬁll and Waltz 1986).
+

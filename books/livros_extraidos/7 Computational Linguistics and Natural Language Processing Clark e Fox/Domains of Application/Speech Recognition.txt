@@ -1,0 +1,600 @@
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 299 — #1
+12 Speech Recognition
+STEVE RENALS AND THOMAS HAIN
+1 Introduction
+Byautomatic speech recognition we mean the process of speech-to-text transcription:
+the transformation of an acoustic signal into a sequence of words, without nec-essarily understanding the meaning or intent of what was spoken. Recognitionwithout understanding is not always possible since some semantic context may berequired, for instance, to disambiguate Will the new display recognize speech? from
+Will the nudist play wreck a nice beach? Automatic speech recognition corresponds to
+answering the question who spoke what when?;
+1in the general case this may involve
+transcribing the speech of two or more people taking part in a conversation, inwhich the speakers frequently talk at the same time. The solution to this task isoften considered in two parts: speaker diarization (who spoke when?), and speech-to-
+text transcription (what did they say?). Of course, the speech signal contains much
+more information than just the words spoken and who said them. Speech acousticsalso carries information about timing, intonation, and voice quality. These paralin-guistic aspects convey information about the speaker’s emotion and physiology,as well as sometimes disambiguating between different possible meanings. In thischapter, however, we shall focus on automatic speech-to-text transcription.
+Speech-to-text transcription has a number of applications including the dicta-
+tion of ofﬁce documents, spoken dialogue systems for call centers, hands-freeinterfaces to computers, and the development of speech-to-speech translationsystems. Each of these applications is typically more restricted than the generalproblem which requires the automatic transcription of naturally spoken contin-uous speech, by an unknown speaker in any environment. This is an extremelychallenging task. There are several sources of variability which we cluster intofour main areas: the task domain ,speaker characteristics, speaking style,a n dt h e
+recognition environment. In many practical situations, the variability is restricted.
+For example, there may be a single, known speaker, or the speech to be recog-nized may be carefully dictated text rather than a spontaneous conversation, orthe recording environment may be quiet and non-reverberant. In speech-to-text
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 300 — #2
+300 Steve Renals and Thomas Hain
+transcription a distinction is made between parts addressing acoustic variabil-ity (acoustic modeling), and parts addressing linguistic uncertainty (languagemodeling).1.1.1 Task domain Aspects of the speciﬁc speech recognition task which affect
+the difﬁculty of the speech transcription process include the language and thesize of the vocabulary to be recognized, and whether the speech comes froma limited domain. Different languages present different challenges for a speechrecognizer. For example, agglutinative languages, such as Turkish and Finnish,have larger vocabularies than non-agglutinative languages (such as English) dueto words formed from the concatenation of multiple morphemes. This has aneffect on the lexical and language model. For English, a speech recognition sys-tem is considered to have a large vocabulary if it has the order of 10
+4word types
+in its vocabulary; a comparable system for a language such as Finnish, however,may have two orders of magnitude more word types. As another example, tonallanguages, such as Chinese, use pitch movements to distinguish small sets ofwords, which has an effect on acoustic modeling.
+The number of word types in the vocabulary of a speech recognizer gives an
+indication of the ‘size’ of the problem that may be misleading, however; perplex-ity
+2of the language model gives an indication of effective size. A spoken dialogue
+system concerned with stock prices, for instance, may have a relatively largevocabulary (due to the number of distinct words occurring in company names)but a small perplexity.1.1.2 Speaker characteristics Different speakers have differences in their
+speech production anatomy and physiology, speak at different rates, use differ-ent language, and produce speech acoustics with different degrees of intrinsicvariability. Other differences in speaker characteristics arise from systematic vari-ations such as those arising from speaker age and accent. One way to deal withthis variability is through the construction of speaker-dependent speech recogni-
+tion systems, but this demands a new system to be constructed for each speaker.Speaker-independent systems, on the other hand, are more ﬂexible in that they are
+designed to recognize any speaker. In practice, a speaker-dependent speech recog-nition system will tend to make fewer errors than a speaker-independent system.Although speaker adaptation algorithms (Section 2.5) have made great progressover the past 15 years, it is still the case that the adaptability and robustness todifferent speakers exhibited by automatic speech recognition systems is verylimited compared with human performance.1.1.3 Style In the early days of automatic speech recognition, systems solved
+the problem of where to locate word boundaries by requiring the speaker to leavepauses between words: the pioneering dictation product Dragon Dictate (Baker1989) is a good example of a large-vocabulary isolated word system. However,
+this is an unnatural speaking style and most research in speech recognition isfocused on continuous speech recognition, in which word boundary information is
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 301 — #3
+Speech Recognition 301
+not easily available. The problem of continuous speech recognition thus involvessegmentation into words, as well as labeling each word.
+Until the mid-1990s most speech recognition research followed research in
+acoustic phonetics, using recordings of planned speech recorded in laboratory orquiet ofﬁce conditions. However, it has become apparent that more natural stylesof speech, as observed in spontaneous conversation, result in considerably moreacoustic variability: this is reﬂected in the increased word error rates for conversa-
+tional orspontaneous speech recognition compared with the recognition of dictation
+or other planned speech. A modern speech recognition system for the transcription
+of dictated newspaper text results in a typical word error rate of 5–10 percent;a state-of-the-art conversational speech recognition system will result in a worderror rate of 10–30 percent when transcribing spontaneous conversations (Chenet al., 2006b; Hain et al., 2007).1.1.4 Environment Finally the acoustic environment in which the speech is
+recorded, along with any transmission channel can have a signiﬁcant impact onthe accuracy of a speech recognizer. Outside of quiet ofﬁces and laboratories, thereare usually multiple acoustic sources including other talkers, environmental noiseand electrical or mechanical devices. In many cases, it is a signiﬁcant problem toseparate the different acoustic signals found in an environment. In addition, themicrophone on which the speech is recorded may be close to the talker (in the caseof a headset or telephone), attached to a lapel, or situated on a wall or tabletop.Variations in transmission channel occur due to movements of the talker’s headrelative to the microphone and transmission across a telephone network or theinternet. Probably the largest disparity between the accuracy of automatic speechrecognition compared with human speech recognition occurs in situations withhigh additive noise, multiple acoustic sources, or reverberant environments.
+1.2 Learning from data
+The standard framework for speech recognition is statistical, developed in the1970s and 1980s by Baker (1975), a team at IBM (Jelinek 1976; Bahl et al., 1983),and a team at AT&T (Levinson et al., 1983; Rabiner 1989). In this formulationthe most probable sequence of words W
+∗must be identiﬁed given the recorded
+acoustics Xand the model θ:
+W∗=arg max
+WP(W|X,θ) (1)
+=arg max
+Wp(X|W,θ)P(W |θ)
+p(X|θ)(2)
+=arg max
+Wp(X|W,θ)P(W |θ) (3)
+=arg max
+Wlogp(X|W,θ)+logP(W|θ) (4)
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 302 — #4
+302 Steve Renals and Thomas Hain
+Equation (1) speciﬁes the most probable word sequence as the one with the highestposterior probability given the acoustics and the model. Equation (2) follows from(1) through the application of Bayes’s theorem; since p(X|θ)is independent of the
+word sequence, we usually work with (3), or its log-domain version (4). Pdenotes
+a probability and pdenotes a probability density function (pdf). In what follows,
+the dependence on the model θ(which is usually ﬁxed) is suppressed to avoid
+notational clutter.
+Equations (3) or (4) may be regarded as splitting the problem into two compo-
+nents: language modeling, which is concerned with estimating the prior probability
+of a word sequence P(W),a n d acoustic modeling , in which the likelihood of the
+acoustic data given the words, p(X|W), is estimated. The parameters of both of
+these models are normally learned from large annotated corpora of data. Obtain-ing the optimal word sequence W
+∗is the search ordecoding problem, discussed
+further in section 3.
+The language model P(W), which is discussed further in Chapter 3, STATISTICAL
+LANGUAGE MODELING , models a word sequence by providing a predictive prob-
+ability distribution for the next word based on a history of previously observedwords. Since this probability distribution does not depend on the acoustics,language models may be estimated from large textual corpora. Of course, thestatistics of spoken word sequences are often rather different from the statisticsof written text. The conventional n-gram language model, which approximates
+the history as the immediately preceding n−1 words, has represented the state of
+the art for large-vocabulary speech recognition for 25 years. It has proven difﬁcultto improve over this simple model (Jelinek 1991; Rosenfeld, 2000). Attempts to doso have focused on improved models of word sequences (e.g., Bengio et al., 2003;Blitzer et al., 2005; Teh 2006; Huang & Renals 2007) or the incorporation of richerknowledge (e.g., Bilmes & Kirchhoff 2003; Emami & Jelinek 2005; Wallach 2006).
+In this chapter we focus on acoustic modeling, and the development of systems
+for the recognition of conversational speech. In particular we focus on the train-able hidden Markov model/Gaussian mixture model (HMM/GMM) for acousticmodeling, the choice of modeling unit, and issues including adaptation, robust-ness, and discrimination. We also discuss the construction of a ﬁelded system forthe automatic transcription of multiparty meetings.
+1.3 Corpora and evaluation
+The statistical framework for ASR is extremely powerful: it is scalable and efﬁ-cient algorithms to estimate the model parameters from a corpus of speech data(transcribed at the word level) are available.
+The availability of standard corpora, together with agreed evaluation protocols,
+has been very important in the development of the ﬁeld. The speciﬁcation, col-lection, and release of the TIMIT corpus (Fisher et al., 1986) marked a signiﬁcantpoint in the history of speech recognition research. This corpus, which has beenwidely used by speech recognition researchers for over two decades, contains
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 303 — #5
+Speech Recognition 303
+utterances from 630 North American speakers, and is phonetically transcribed andtime-aligned. The corpus deﬁned training and test sets, together with a commonlyagreed evaluation metric (phone error rate – analogous to word error rate dis-cussed below). This resulted in a training and evaluation protocol enabling theexact comparison of results between researchers.
+Since the release of TIMIT, many speech corpora with corresponding evalu-
+ation protocols have been released. These include corpora of domain-speciﬁcread speech (e.g., DARPA Resource Management), read aloud newspaper text(e.g., Wall Street Journal), domain-speciﬁc human–computer dialogues (e.g., ATIS),
+broadcast news recordings (e.g., Hub4), conversational telephone speech (e.g.,Switchboard), and recordings of multiparty meetings (e.g., AMI). Many of thesecorpora are available from the Linguistic Data Consortium (www.ldc.upenn.edu);the AMI corpus is available from http://corpus.amiproject.org. The carefulrecording, transcription, and release of speech corpora has been closely connectedto a series of benchmark evaluations of automatic speech recognition systems,primarily led by the US National Institute of Standards and Technology (NIST).This cycle of data collection and system evaluation has given speech recognitionresearch a solid objective grounding, and has resulted in consistent improvementsin the accuracy of speech recognition systems (Deng & Huang 2004) – althoughBourlard et al. (1996), among others, have argued that an overly strong focus onevaluation can lead to a reduction in innovation.
+If the speech recognition problem is posed as the transformation of an acoustic
+signal to a single stream of words, then there is widespread agreement on worderror rate (WER) as the appropriate evaluation measure. The sequence of wordsoutput by the speech recognizer is aligned to the reference transcription usingdynamic programming. The accuracy of the speech recognizer may then be esti-mated as the string edit distance between the output and reference strings. If thereareNwords in the reference transcript, and alignment with the speech recognition
+output results in Ssubstitutions, Ddeletions, and Iinsertions, the word error rate
+is deﬁned as:
+WER =100·(S+D+I)
+N% (5)
+Accuracy =(100−WER)% (6)In the case of a high number of insertions, it is possible for the WER to be above 100percent. Computation of WER is dependent on the automatic alignment betweenthe reference and hypothesized sequence of words. As word timings are not usedin the process this may lead to underestimates of true error rate in situations ofconsiderable mismatch. In practice, the transition costs used in the dynamic pro-gramming algorithm to compute the alignment are standardized and embedded instandard software implementations such as the NIST sclite tool,
+3or the HResults
+tool in the HTK speech recognition toolkit.4
+More generally, the desired output of a speech recognition system cannot always
+be expressed as a single sequence of words. Multiparty meetings, for instance,
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 304 — #6
+304 Steve Renals and Thomas Hain
+are characterised by multiple overlapping speakers. A measure of transcriptionquality for meetings might usefully include attributing each word to a meetingparticipant, as well as including of timing information, to take account of overlaps.
+2 Acoustic Modeling
+The statistical formulation of the speech recognition problem outlined in Section1.2 provides the basic framework for all state-of-the-art systems. The acousticmodel, which is used to estimate p(X|W), may be interpreted as a generative
+model of a word sequence. Such a model must be decomposable into smallerunits, since it is infeasible to estimate a separate model for each word sequence.Hidden Markov models (HMMs) (Baker 1975; Poritz 1988; Rabiner 1989; Jelinek1998) have proven to be very well suited to this task.
+HMMs are probabilistic ﬁnite state machines, which may be combined hier-
+archically to construct word sequence models out of smaller units. In large-vocabulary speech recognition systems, word sequence models are constructedfrom word models, which in turn are constructed from subword models (typicallycontext-dependent phone models) using a pronunciation dictionary.
+HMM acoustic models treat the speech signal as arising from a sequence of
+discrete phonemes, or ‘beads-on-a-string’ (Ostendorf 1999). Such a modelingapproach does not (directly) take into account processes such as coarticulation,a
+phenomenon in which the place of articulation for one speech sound dependson a neighboring speech sound. For instance, consider the phoneme /n/ in thewords ‘ ten’a n d‘ tenth .’ In ‘ten ,’ /n/ is dental, with the tongue coming into
+contact (or close to) the upper front teeth; in ‘ tenth ,’ /n/ is alveolar, with the
+tongue farther back in the mouth (coming into contact with the alveolar ridge).Coarticulation gives rise to signiﬁcant context-dependent variability. The use ofcontext-dependent phone modeling (Section 2.3) aims to mitigate these effects,as does the development of richer acoustic models that take account of speechproduction knowledge (King et al., 2007).
+2.1 Acoustic features
+Speech recognition systems do not model speech directly at the waveform level;instead signal processing techniques are used to extract the acoustic features that
+are to be modeled by an HMM.
+5A good acoustic feature representation for speech
+recognition will be compact, without losing much signal information. In prac-tice the acoustic feature representations used in speech recognition do not retainphase information, nor do they aim to retain information about the glottal sourcewhich (for many languages) is relatively independent of the linguistic message.Figure 12.1 shows a speech waveform and the corresponding spectrogram, a rep-
+resentation that shows the energy of the speech signal at different frequencies.Although a variety of representations are used in speech recognition, perhaps
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 305 — #7
+Speech Recognition 305
+Figure 12.1 Waveform (top) and spectrogram (bottom) of conversational utterance
+‘no right I didn’t mean to imply that.’
+the most widely used are Mel frequency cepstral coefﬁcients (MFCCs) (Davis &Mermelstein 1980). MFCCs are based on the log spectral envelope of the speechsignal, transformed to a non-linear frequency scale that roughly corresponds tothat observed in the human auditory system. This representation is smoothedand orthogonalized by applying a discrete cosine transform, resulting in a cep-stral representation. These acoustic feature vectors are typically computed every10 ms, using a 25 ms Hamming window within the speech signal. Perceptual linearprediction (PLP) is a frequently used alternative acoustic feature analysis, whichincludes an auditory-inspired cube-root compression and uses an all-pole modelto smooth the spectrum before the cepstral coefﬁcients are computed (Hermansky1990).
+Speech recognition accuracy is substantially improved if the feature vectors are
+augmented with the ﬁrst and second temporal derivatives of the acoustic features(sometimes referred to as the deltas and delta-deltas), thus adding some infor-mation about the local temporal dynamics of the speech signal to the featurerepresentation (Furui 1986). Adding such temporal information to the acousticfeature vector introduces a direct dependence between successive feature vec-tors, which is not usually taken account of in acoustic modeling; a mathematicallycorrect treatment of these dependences has an impact on how the acoustic model is
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 306 — #8
+306 Steve Renals and Thomas Hain
+normalized – since fewer feature vector sequences will be consistent – and resultsin an approach that may be viewed as modeling an entire trajectory of featurevectors (Tokuda et al., 2003; Bridle 2004; Zhang & Renals 2006; Zen et al., 2007).
+Many state-of-the-art ASR systems use a 39-dimensional feature vector, corre-
+sponding to twelve MFCCs (or PLP cepstral coefﬁcients), plus energy, along withtheir ﬁrst and second derivatives. These acoustic feature representations have co-evolved with the basic acoustic models used in ASR: HMMs using multivariateGaussian or Gaussian mixture output probability density functions, discussed inthe next section. A particular advantage of cepstral representations compared withspectral representations is the decorrelation of cepstral coefﬁcients, compared withthe high correlations observed between neighboring spectral coefﬁcients. Suchdecorrelations are very well matched with the distributional assumptions thatunderlie systems based on Gaussians with diagonal covariance matrices.
+6Fur-
+thermore, the compact smoothed representations obtained when using MFCC orPLP coefﬁcients results in component multivariate Gaussians of lower dimensionthan would be obtained if spectral representations were used.
+Hermansky et al. (2000) introduced a class of acoustic features that attempt to
+represent discriminant phonetic information directly. These so-called tandem fea-
+tures, derived from phonetic classiﬁcation systems, estimate phone class posteriorprobabilities and have proven to be successful when used in conjunction withconventional acoustic features. This is discussed further in Section 5.2.
+2.2 HMM/GMM framework
+The statistical framework for ASR, introduced in Section 1.2, decomposes a speechrecognizer into acoustic modeling and language components (equations 3 and 4).Conceptually, the process works by estimating the probability of a hypothesizedsequence of words Wgiven an acoustic utterance Xusing a language model to esti-
+mate P(W) (see Chapter 3,
+STATISTICAL LANGUAGE MODELING ) and an acoustic
+model to estimate p(X|W).
+We can regard the machine that estimates p(X|W) as agenerative model , in which
+the observed acoustic sequence is regarded as being generated by a model of theword sequence. Acoustic models in speech recognition are typically based on hid-den Markov models. An HMM is a probabilistic ﬁnite state automaton, consistingof a set of states connected by transitions, in which the state sequence is hidden.Instead of observing the state sequence, a sequence of acoustic feature vectors isobserved, generated from a pdf attached to each state. A hierarchical approach isused to construct HMMs of word sequences from simpler basic HMMs. The build-ing blocks of an HMM-based speech recognition system are HMMs of ‘subwordunits,’ typically phones. A dictionary of pronunciations is used to build wordmodels from subword models, and models of word sequences are constructedby concatenating word models. This approach, illustrated in Figure 12.2, enablesinformation to be shared across word models: the number of distinct HMM statesin a system is determined by the size of the set of subword units. In the simplest
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 307 — #9
+Speech Recognition 307
+t
+0 200 400 600 800 1000 1200 140002000400060008000‘Don’t Ask’
+DON’T ASK
+oh n da h s kUtterance
+Word
+Subword
+HMM
+Acoustics
+Figure 12.2 HMM-based hierarchical modeling of speech. An utterance model is
+constructed from a sequence of word models, which are each in turn constructed fromsubword models.
+S1 S2 S3 SE
+x xSI
+P(S1 | SI) P(S2 | S1) P(S3 | S2) P(SE | S3)
+p(x | S3) p(x | S2) p(x | S1)P(S1 | S1) P(S2 | S2) P(S3 | S3)
+xs(t−1) s(t+1 ) s(t)
+x(t−1) x(t) x(t+1 )
+Figure 12.3 Representation of an HMM as a parameterized stochastic ﬁnite state
+automaton (left) and in terms of probabilistic dependences between variables (right).
+case, an English speech recognition system might be constructed from a set of40–60 base phone models with three states each. However, there is a lot of acous-tic variability between different observed examples of the same phone. Much ofthis variability can be accounted for by the context in which a subword appears,and more detailed acoustic models can be achieved using context-dependent sub-words, as discussed in Section 2.3. Between-word silence can be represented byspecial HMMs for silence and, since between-word silence is rare in continuousspeech, adding a so-called ‘skip’ transition to make their existence optional.
+An HMM is parameterized by an initial or prior distribution over the states q
+i,
+P(qi), a state transition distribution P(qj|qi), and an output pdf for each state
+p(x|qi), where xis an acoustic feature vector. This is illustrated in Figure 12.3
+(left) in terms of the model parameters, and in terms of the dependences betweenthe state and acoustic variables in Figure 12.3 (right).
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 308 — #10
+308 Steve Renals and Thomas Hain
+Each state has an output pdf deﬁning the relation between the state and the
+acoustic vectors. A simple form for the output pdf for state qiis ad-dimensional
+Gaussian, parameterized by a mean vector μiand a covariance matrix Σi:
+(7) p(x|q i)=N(x;μi,Σi)=1
+(2π)d/2|Σi|1/2exp(
+−1
+2(x−μi)TΣ−1i(x−μi))
+For a typical acoustic vector comprising 12th-order MFCCs plus energy, with ﬁrstand second derivatives, d=39.
+Modeling speech using hidden Markov models makes two principal assump-
+tions, illustrated in the graphical model shown in Figure 12.3 (left):
+(1) Markov process. The state sequence in an HMM is assumed to be a ﬁrst-orderMarkov process, in which the probability of the next state transition dependsonly on the current state: a history of previous states is not necessary.
+(2) Observation independence. All the information about the previouslyobserved acoustic feature vectors is captured in the current state: the like-lihood of generating an acoustic vector is conditionally independent ofprevious acoustic vectors given the current state.
+These assumptions mean that the resultant acoustic models are computation-ally and mathematically tractable, with parameters that may be estimated fromextremely large corpora. It has been frequently argued that these assumptionsresult in models that are unrealistic, and it is certainly true that a good dealof acoustic modeling research over the past two decades has aimed to addressthe limitations arising from these assumptions. However, the success of bothHMM-based speech synthesis (Yamagishi et al., 2009) and HMM-based speechrecognition is evidence that it is perhaps too facile to simply assert that HMMs arean unrealistic model of speech.
+Acoustic modeling using HMMs has become the dominant approach due to
+the existence of recursive algorithms which enable some key computations to becarried out efﬁciently. These algorithms arrive from the Markov and observationindependence assumptions. To determine the overall likelihood of an observationsequence X=(x
+1,...,xt,...,xT)being generated by an HMM, it is necessary to
+sum over all possible state sequences q1q2...qTthat could result in the observa-
+tion sequence X. Rather than enumerating each sequence, it is possible to compute
+the likelihood recursively, using the forward algorithm. The key to this algorithm is
+the computation of the forward probability αt(qj)=p(x1,...,xt,qt=qj|λ),t h e
+probability of observing the observation sequence x1...xtand being in state qj
+at time t. The Markov assumption allows this to be computed recursively using a
+recursion of the form:(8)α
+t(qj)=N∑
+i=1αt−1(qi)aijbj(xt)
+This recursion is illustrated in Figure 12.4.
+The decoding problem for HMMs involves ﬁnding the state sequence that is
+most likely to have generated an observation sequence. This may be solved using
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 309 — #11
+Speech Recognition 309
+ajit–1 t+1 t
+aiibj (xt)at (si)
+at–1 (si)
+akiat–1 (sj)
+at–1 (sk)
+Figure 12.4 Forward recursion to estimate αt(qj)=p(x1,...,xt,qt=qj|λ).
+a dynamic programming algorithm, often referred to as Viterbi decoding , which
+has a very similar structure to the forward algorithm, with the exception that thesummation at each time step is replaced by a max operation, since just the mostprobable state sequence is required. This is discussed further in Section 3.
+Bytraining we mean the estimation of the parameters of an HMM: the transition
+probabilities and the parameters of the output pdf (mean vector and covariancematrix in the case of a Gaussian). The most straightforward criterion to use forparameter estimation is maximum likelihood, in which the parameters are setso as to maximize the likelihood of the model generating the observed train-ing data. Other training criteria may be used, such as maximum a posteriori(MAP) or Bayesian estimation of the posterior distribution, and discriminativetraining (Section 2.4). Maximum likelihood training can be approximated by con-sidering the most probable state–time alignment, which may be obtained usingthe Viterbi algorithm. Given such an alignment, maximum likelihood parame-ter estimation is straightforward: the transition probabilities are estimated fromrelative frequencies, and the mean and covariance parameters from the sampleestimates. However, this approach to parameter estimation considers only themost probable path, whereas the probability mass is in fact factored across allpossible paths. Exact maximum likelihood estimation can be achieved using theforward–backward orBaum–Welch algorithm (Baum 1972), a specialization of the
+expectation-maximization (EM) algorithm (Dempster et al., 1977). Each step ofthis iterative algorithm consists of two parts. In the ﬁrst part (the E-step) a prob-abilistic state–time alignment is computed, assigning a state occupation probability
+to each state at each time, given the observed data. Then the M-step estimates theparameters by an average weighted by the state occupation probabilities. The EMalgorithm can be shown to converge in a local maximum of the likelihood func-tion. The key to the E-step lies in the estimation of the state occupation probability,γ
+t(qj)=P(qt=qj|X,λ), the probability of occupying state qjat time tgiven the
+sequence of observations. The state occupation probabilities can also be computedrecursively:(9)γ
+t(qj)=1
+αT(qE)αt(qj)βt(qj)
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 310 — #12
+310 Steve Renals and Thomas Hain
+where αt(qj)is the forward probability for state qjat time t,βt(qj)=p(xt+1,xt+2,xT|
+qt=qj,λ)is called the backward probability, and αT(qE)is a normalization factor
+(the forward probability for the end state qEat the end of the observation sequence,
+time T). The backward probabilities are so called because they may be computed
+by a recursion that goes backwards in time.
+The output pdfs are the most important part of this model, and restricting them
+to single Gaussians results in a signiﬁcant limitation on modeling capability. Inpractice, Gaussian mixture model (GMMs) are used as output pdfs. A GMM is aweighted sum of Gaussians:(10) p(x|q
+i)=K∑
+kcikN(x;μik,Σik)
+where we have a mixture of KGaussian components, with mixture weights cik.
+Training a GMM is analogous to HMM training: for HMMs the state is a hiddenvariable, for GMMs the mixture component is a hidden variable. Again the EMalgorithm may be employed, with the E-step estimating the component occupation
+probabilities, and the M-step updating the means and covariances using a weightedaverage.
+2.3 Subword modeling
+As discussed in Section 2.2, and illustrated in Figure 12.2, there is no need to trainindividual HMMs for each sentence. Instead, the sentence HMMs can be con-structed by concatenating word HMMs, which in turn may be constructed from
+subword HMMs. This is necessary as training of independent word models is not
+feasible for most applications: the Oxford English Dictionary contains more than
+250,000 entries; for morphologically rich languages, such as Finnish or Turkish,there are many more possible words.
+7If we assume that at least 50 samples per
+word are necessary and take the usually observed average word duration of halfa second, the amount of transcribed speech data for English would be approxi-mately 1,700 hours. This calculation is an underestimate, however, as it does nottake into account contextual effects, and assumes a uniform distribution over allwords. Only very recently have such amounts of annotated data been available,and only for US English. Thus subword modeling seems an attractive alternative:for example the words of British English can be described using a set of about 45phonemes.
+It is possible to write the pronunciation of words in a language with a ﬁnite set
+of symbols, hence one can associate an HMM with each. In the TIMIT database aset of 39 phones is often used: the ARPABET, a phoneme set deﬁned for speechrecognition in US English, identiﬁes 40 distinct symbols. By using HMMs for indi-vidual phonemes, several important changes are made: a dictionary describingthe transitions from words to phonemes has become necessary; the number ofunits has been drastically reduced; and the length of the units have become more
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 311 — #13
+Speech Recognition 311
+/r/ /eh/ /d/
+/iy/
+Figure 12.5 Hidden Markov models for phonemes can be concatenated to form models
+for words. Parallel paths indicate pronunciation variants.
+similar. Although the TIMIT corpus was phonetically labeled, this is not a nec-essary requirement for using models for phonemes, as the phoneme sequencecan be inferred from the word sequence using the dictionary and the sentenceHMM is constructed by phoneme model concatenation. One issue arises in that themapping from phonemes to words is not unique, e.g., the word ‘read ,’ can be pro-
+nounced in two ways, /r iy d/ and /r eh d/. However, different pronunciationscan be represented by using parallel paths in the sentence HMM (see Figure 12.5).Even more so, different weights can be given to these variants. Pronunciationmodeling and/or lexical modeling (e.g., Strik & Cucchiarini 1999) usually focuseson how to best encode pronunciation variability.
+Having fewer than 100 small HMMs does not allow to capture the large vari-
+ability of speech, caused by individual variation in articulation and speakerdifferences (so called intra- and inter-speaker variability). In an attempt to dealwith problems arising from acoustic phonetic context, such as coarticulation,many state-of-the-art systems are based on context-dependent phone models, often
+called triphones.
+Triphone modeling has at its heart the idea of basic sounds that differ depend-
+ing on their context. In particular, the context here is the immediate neighboringphonemes. Take for example the word ‘sound’ and its ARPABET representation/s ow n d/. Instead of having a model for the phoneme /ow/ a model for /ow/with left context /s/ and right context /n/ is constructed, typically written in theform [s-ow+n]. Taking a typical phoneme inventory size of 45 the number of suchtriphone models has now risen to 91,125 while retaining the trivial mapping fromwords to models. In order to avoid the same issues as with word models however,one, can start to declare some triphones as equivalent, e.g., /ow/ may sound verysimilar to any fricative appearing beforehand.
+Most state-of-the-art speech recognition systems make use of clustered tri-
+phones or even phone models in a wider context (e.g., quin-/penta-phones,Woodland et al., 1995). A natural grouping approach would be knowledge-based(e.g., Hayamizu et al., 1988), but it has been repeatedly shown that automatic tech-niques give superior performance. As in many machine learning approaches clus-tering can operate bottom-up or top-down. The use of agglomerative clustering
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 312 — #14
+312 Steve Renals and Thomas Hain
+(Hwang & Huang 1992) allows robust modeling but, if not all triphones have beenobserved in the training data, it is unclear how to represent words containing thosetriphones. Instead classiﬁcation and regression trees (CARTs) were found to servewell in both cases (Bahl et al., 1991; Young et al., 1994). Here a binary decisiontree is grown from a predeﬁned set of questions about the neighboring phonemes(e.g., if the left neighbor is a plosive). When growing the tree, at each point the onequestion yielding the highest gain in likelihood is chosen. Tree growing is aban-doned if the gain in likelihood falls below a predeﬁned threshold. It is standard tocluster HMM states rather than whole models in this way and normally one deci-sion tree per phoneme and per state position is derived. On average decision treesassociated with vowels have greater depth than those associated with consonants.
+Several weaknesses of the CART approach are known. For example, when
+clustering it is assumed that states are well represented by a single Gaussiandensity. Also, hard decisions are made on classes which are better representedas hidden variables (Hain 2001), and the dependency on neighboring phonemesis not the only property that inﬂuences sounds. Alternatives include articulatoryrepresentations or factorization of graphical models (King et al., 2007).
+In English the relationship between sounds and the written forms is looser than
+in other languages, for example German or Turkish. For these languages it wasshown that using the graphemes directly for modeling can have good results(Killer et al., 2003), thus limiting the need for a manually crafted pronunciationlexicon. For tonal languages, questions on tonal context, including the currentphoneme, can signiﬁcantly improve performance (Cao et al., 2000).
+2.4 Discriminative training
+Learning of HMM parameters can be approached in fundamentally differentways. While generative learning tries to yield good estimates of the probabil-ity density of training samples, discriminative learning drives directly at ﬁndingthose parameters that yield best classiﬁcation performance. Within the generativefamily, maximum likelihood (ML) training is the most widely used scheme. Theassociated objective function is given byFML(θ)=logp(X|θ)
+which implies that the parameters θare chosen to maximize the likelihood of the
+training data. As discussed in Section 2.2, ML training can be efﬁciently carriedout for HMMs, because the Baum–Welch algorithm enables the efﬁcient compu-tation of the state/component occupation probabilities, supplies good asymptoticguarantees, and is relatively easy to code. Although the result of the algorithm issensitive to the initialization of parameters, practical experience has shown thatthis is usually of little impact on error rates obtained.
+Discriminative training is based on the idea that, given ﬁnite training data and
+a mismatch of the model being trained to the true model, it is better to focuson learning the boundaries between the classes. Discriminative approaches have
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 313 — #15
+Speech Recognition 313
+become increasingly popular and several techniques have been developed overthe past two decades. The most important criteria are maximum mutual informa-tion (MMI), minimum classiﬁcation error (MCE), and minimum Bayes risk (MBR).All of these have in common that not only the correct, i.e., reference, sequenceis used in training but also all incorrect word sequences. Since summation overall possible incorrect word sequences is not feasible for large-vocabulary speechrecognition, the set of competitors is usually constrained to those that have signif-
+icant probability mass compared with the correct sequence. This implies that theoutput of recognition of the complete training set must be generated, usually acomputationally expensive process.
+MCE training (Juang & Katagiri 1992) is based on the idea that model param-
+eters only need correction if misrecognition occurs. The objective function to bemaximized is based on the ratio between the likelihoods of the correct sequenceand of the incorrect ones. The discriminant function is deﬁned as d(X|θ)=
+g(X|θ)−
+g(X|θ)where gdenotes the log-likelihood of the correct sentence and
+gis the average likelihood of the competitors Wincorrect :
+g(X|θ)=1
+ηlog⎛⎝1
+M−1∑
+W∈W incorrectexp(
+ηlogp(X|W,θ))⎞⎠
+Instead of using the above function directly the transition is smoothed with
+a sigmoid function, which serves as an approximation to a zero/one loss func-tion (i.e., if the value of the discriminant function is larger or smaller than zero).The overall criterion function again is an average over all training samples of thesmoothed discriminants. MCE training is mostly used for smaller vocabularies.Its main weakness is the inefﬁcient use of training data since it only considersmisrecognized examples. By allowing the smoothed functions to become a stepfunction and the weight ηto tend towards ∞the criterion function can be shown
+to converge to the misclassiﬁcation rate and hence has a clear relationship to MBRtraining (outlined below).
+A recently more prominent alternative is MMI training. Although it was
+introduced at a similar time (discrete densities, Nadas et al., 1988; continuous,Normandin 1991) it was initially feasible only for small-vocabulary tasks or evendiscrete word recognition, partially because of the substantial computationalcost incurred. The gains were substantial and the ﬁrst large-vocabulary imple-mentation was reported by Valtchev et al. (1997) but the gains were modest incomparison. The MMI objective function is given by(11)F
+MMI(θ)=E{p(X|W, θ)
+p(X|θ)}
+=E{
+p(X|W, θ)∑
+W′∈W incorrectp(X|W′,θ)αP(W′|θ)β}
+where E{·}denotes the expectation. This is equivalent to the mutual informa-
+tion between word sequence Wand acoustic features X. Naturally the amount
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 314 — #16
+314 Steve Renals and Thomas Hain
+of information transferred is to be maximized. The criterion has an equivalentinterpretation as a variant of conditional maximum likelihood (Nadas 1983). Opti-mization of the above criterion is mostly based on the extended Baum–Welchalgorithm (Gopalakrishnan et al., 1989). In contrast to the standard Baum–Welchalgorithm, a learning rate factor similar to gradient descent algorithms was intro-duced. The selection of the optimal learning rate is difﬁcult and was found to bebest set such that the variances of the updated model parameters remain sufﬁ-ciently positive. Nevertheless, usually after only a few iterations, the algorithmstend to diverge.
+Povey (2003) introduced two fundamental improvements that allowed not only
+to stabilize the algorithm, but also to improve performance on large-vocabularytasks dramatically. Equation 11 shows two so far unexplained factors αandβ.
+These factors allow to scale the contribution of the acoustic and language modelcomponents. Such scaling would be of no effect in ML training but equation11 involves a sum. Scaling the language model scores is important in decoding(see Section 3) with the rationale that acoustic models underestimate the truelikelihoods due to independence assumptions. The rationale in MMI training isidentical, with even the same scale factor values being used (or the inverse toscale the acoustics down rather than the language model up). Secondly, smooth-ing of the update equation proved to be important. The ML estimate serves as amuch more stable estimate and the addition of ﬁxed amounts of the MMI param-eter updates was shown to greatly enhance the stability of the algorithm and thusimprove performance. In Povey (2003), so-called I-smoothing adds a predeﬁnedweight to the ML estimate in the update equations.
+Both MCE and MMI training have interesting interpretations that are intuitive
+and ﬁt in well with ML training. However, in both cases one assumption is madethat is in conﬂict with the decoding scheme, namely the use of likelihood to assessthe correctness of a sentence. This correctness measure then drives the update ofparameters. Speech recognizer output, however, is normally assessed with theword error metric which measures performance in the form of insertions, dele-tions, and substitutions of words (aka minimum edit or Levenshtein distance). ForMCE and MMI the word error rate is of no concern, as long as the likelihood ofan incorrect sentence is close to the correct, little change is made on the associatedHMM parameters.
+To alleviate this shortcoming, minimum Bayes risk training was introduced,
+initially in the form of so-called minimum phone error (MPE) training (Povey& Woodland 2002). Here explicit use is made of the Levenshtein string editdistance between the competing and reference utterances, L(W, W
+ref).T h e
+criterion function is given byF
+MBR(θ)=∑
+W∈WL(W, Wref)P(W|X, θ)
+The posterior probability of the competing utterances is weighted by the amount
+of error in the target metric. Optimization of this criterion is more complicated
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 315 — #17
+Speech Recognition 315
+because, as before, the above sum cannot be computed exactly. Whereas in thecase of MMI the HMM properties allow reformation at state level, this becomesmore complicated here. The error rate is associated with a whole sentence and theerror value of a single word is not well deﬁned as the edit distance has no relationto time, i.e., only the errors of the token string are measured. In order to alleviatethis problem two steps can be taken. First, a move to smaller units and, second,the measurement of local error led to the MPE criterion functionF
+MPE(θ)=∑
+RP(X|R, θ)P(R)A(R, Rref)∑
+RP(X|R, θ)P(R)
+where Ris a sequence of phonemes and Rrefis the sequence associated with the
+reference words, and A(·)denotes the count of raw phoneme errors. It can be
+shown that maximization of this function leads again to the extended Baum–Welchequations and updates similar to those obtained for MMI if the phoneme distanceis replaced by a local estimate (Povey 2003) based on an approximation of frameoverlap. Gibson (2008) provided a formal proof of local convergence.
+Discriminative training allows signiﬁcant gains in word error rate. On most
+large-vocabulary tasks, 10–20 percent relative improvement in word error rateis typically found in comparison to ML trained models which in most casesalso serve as the starting point for training. The rate of improvement is ratherdependent on model set size, and both MMI and MPE training allow much morecompact models. Original work on large-scale MMI training postulated that gainsincreased with an increase in the amount of data (Woodland & Povey 2000), whichis very different from the behavior observed for ML training. The computationalcost of discriminative training is high and the complex solutions for optimizationcause suboptimality in other areas such as speaker adaptation (see Section 2.5).Naturally discriminative training is sensitive to the quality of the reference labels.
+2.5 Speaker adaptation
+Speech signals vary substantially without signiﬁcant changes in human percep-tion. A single person can vary the signal due to context, mood, or prosody. Despitethe range of intra-speaker variations, listeners are easily capable of discerning dif-ferent speakers. The differences are manifold and include general speech behaviorbut also the physical characteristics of a person. The vocal tract shape, lungs, andvocal chords, etc., give a distinct characteristic to a person’s voice. These character-istics are not as unique as ﬁngerprints but sufﬁcient to yield signiﬁcant distinctionin forensic applications. For the reminder of this section we focus on acousticadaptation rather than adaptation to linguistic differences, as it is to date the farmore common form of adaptation. Nevertheless, lexical and even language mod-els can be adapted to learn speaker-speciﬁc characteristics (Strik & Cucchiarini1999; Bellegarda 2004).
+The natural variability of speech sounds themselves (aside from distortions
+introduced by the environment) is the main source of confusion and cause of
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 316 — #18
+316 Steve Renals and Thomas Hain
+errors. For the reasons outlined above it seems logical to separate physical varia-tions from intentional ones. Hence the initial focus of speech recognition researchwas in the development of systems capable of dealing with a single speaker inorder to achieve reasonable performance. In practice, these speaker-dependent(SD) systems are disadvantageous as large amounts of training data have to becollected and transcribed for each speaker, an approach only feasible for selectapplications.
+The HMM-based framework was shown to cope with variability as long as
+it has been observed in the training data. This allowed the construction of so-called speaker independent (SI) model sets where the HMMs are simply trainedon data from multiple speakers. Recognition of utterances from any speaker arethen produced with the same models. While this approach is much more practical,the performance of an SI system is substantially inferior to that of an SD systemtrained on identical amounts of training data. Hence alternatives are required tobridge the gap. Human listeners are capable of adjusting to a new environment orspeaker within a few words or sentences. Similarly for ASR, a few sentences canbe used to adjust the models for recognition in order to yield better performanceeither in a second pass of recognition or for further sentences spoken by the targetspeaker.
+Adaptation techniques can be classiﬁed in several ways: whether the acoustic
+models are changed or the extracted features or both (model or feature-basedadaption); whether changes to the models are made prior to adaptation (adapta-tion or normalization); whether the labels used in adaptation can be assumed to beground truth or with errors (supervised versus unsupervised adaptation). Whenthe features alone are changed, the changes to speech recognition systems are nor-mally small and hence such methods are often preferred. However, it turns outthat in most cases changes to the features work best when changing the acousticmodels at the same time, referred to as normalization. For most practical applica-tions the ground truth is not known, in which case the adaptation technique mustbe able to cope with potentially high levels of word error rate. This has a par-ticularly bad effect on discriminative adaptation techniques (Wang & Woodland2002; Gibson & Hain 2007; Gibson 2008), however one effect usually alleviates thatshortcoming: recognition errors are often phonetically similar to the correct word.The phoneme error rate is often lower than the word error rate (Mangu et al., 1999)and hence the correct models may still be chosen.
+Since SD performance is assumed to be the best that can be obtained, an ini-
+tial strategy is to ﬁrst cluster speaker-speciﬁc models into distinct groups. Thenthe adaptation step would simply consist in ﬁnding the most likely group andusing the associated model for decoding. Albeit capable of producing SD per-formance in the limit, it does not make good use of training data, as speakercluster models are only trained on data of a subgroup and disregarded for the rest.A better approach is provided by the so-called eigenvoices method (Kuhn et al.,1998), where principal component analysis of the parameters of speaker clustermodels (the means only are used in the original work) is carried out. Adapta-tion then is performed by constructing models by weighted combination of these
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 317 — #19
+Speech Recognition 317
+principal components. The weights are found by maximum likelihood optimiza-tion on test data.
+Another option to bridge the gap between SI and SD model performance is
+based on the estimation of a prior distribution over the model parameters. Thespeaker-independent models are used to provide the prior. Maximum a posteriori(MAP) adaptation (Gauvain & Lee 1994) describes the updates of Gaussian (SI)means by data observed in adaptation:
+ˆμ=τμ
+prior+∑Tt=1γtxt
+τ+∑Tt=1γt
+The new mean vector is changed from the old μprior with the average observa-
+tion vector xtwhich is weighted by the posterior probability that the vector has
+been produced by this Gaussian. The factor τcan be selected to reﬂect the speed
+of adaptation and, in practice, iterative application of the above rules shows thebest performance (Hain et al., 2005a). While MAP adaptation can yield very goodimprovements it requires relatively large amounts of adaptation data to ensurethat enough Gaussians have actually been observed and changed in the process.Discriminative versions of MAP exist to work with prior models that are alreadydiscriminatively trained (Povey et al., 2003).
+A more knowledge-driven approach is to target the physical differences
+between speakers, in particular the vocal tract shape and size, with the latterbeing the most distinctive feature (e.g., male/female vocal tract sizes differ sub-stantially due to the relative descent of the larynx in males during puberty – seeHarries et al., 1998). The standard model of speech production is the source ﬁltermodel (Fant 1960), with a vocal tract ﬁlter represented by linear prediction basedon autocorrelation. Here the vocal tract is represented as an ideal acoustic tubewith varying length. Change to the length of the tube can be interpreted as a sim-ple shift of the magnitude spectrum with short lengths associated with a morecompact spectrum (Cohen et al., 1995; Hain et al., 1999). Vocal tract length normal-ization (VTLN) implements the so-called warping of the frequency spectrum byshifting the Mel ﬁlter banks in MFCC or PLP feature extraction, subject to ensur-ing proper computation at boundaries (Hain et al., 1999). Furthermore, the optimalwarp factor can be found by a search for the one factor that yields the highest like-lihood given an HMM set (Hain et al., 1999). However, an SI model set would havebeen trained on speakers with different vocal tract lengths, increasing the varianceof the distributions, an issue that can be avoided by prior training on normal-ized speaker data. Since the maximum likelihood estimation is used to ﬁnd thewarp factors, models are trained iteratively, interleaving warp factor estimationand model training.
+As outlined above, VTLN targets the length of the vocal tract only, allowing the
+estimation of a single parameter per speaker. This was shown to be equivalent tomultiplying the vectors with a matrix of speciﬁc structure (Claes et al., 1998). Theidea of multiplication with a matrix without constraints leads to one of the most
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 318 — #20
+318 Steve Renals and Thomas Hain
+important techniques in speaker adaptation: maximum likelihood linear regres-sion (MLLR) (Leggetter & Woodland 1995). Here the means are adjusted using alinear transform parameterised by a matrix Aa n dab i a sv e c t o rb.
+ˆμ
+j=Am(j)μj+bn(j)
+The major difference with MAP adaptation is that the update of the mean
+of the jth component can use a matrix which is shared across many Gaussian
+distributions, selected by the index functions m(j)and n(j). These functions can
+be manually set or automatically found, similar to techniques used in triphonestate clustering (see Section 2.3). The matrices can be found by maximizing thelikelihood of test data using the transformed models. MLLR adaptation is veryﬂexible as the structure of the matrices and vectors can be arbitrarily chosen (e.g.,using diagonal transforms only). Variance adaptation is equally possible (Gales &Woodland 1996) and joint optimization with a common transform leads to con-strained MLLR, which can be implemented as a feature transform, thus againshowing a connection with VTLN. As for VTLN, training on the normalized mod-els also improves: speaker adaptive training can be implemented with constrainedMLLR or normal MLLR (Anastasakos et al., 1996).
+Speaker adaptation is a rich and extensive topic in automatic speech recognition
+and the space here is too small to give a full and in-depth account. Many valuablereﬁnements have been made to the fundamental techniques above and some of thenewer schemes have not been mentioned. The interested reader will ﬁnd a goodreview by Woodland (2001).
+3 Search
+Given an observed sequence of acoustic feature vectors X, and a set of HMMs,
+what is the most probable sequence of words ˆW? This is referred to as the search or
+decoding problem, and involves performing the maximization of equations (1–4).
+Since words are composed of HMM state sequences, we may express this criterionby summing over all state sequences Q=q
+1,q2,...,qn, noting that the acoustic
+observation sequence is conditionally independent of the word sequence given theHMM state sequence. If we wish to obtain only the most probable state sequence,then we employ the Viterbi criterion, by maximizing over Q
+W, the set of all state
+sequences corresponding to word sequence W:
+(12) ˆW=arg max
+WP(W) max
+Q∈QWP(Q|W)P(X |Q)
+Thus a decoding algorithm is required to determine ˆWusing the above equation
+and the acoustic and language models.
+Solving (12) by naïve exhaustive search of all possible state sequences is of
+course not feasible. Viterbi decoding (forward dynamic programming) exploits the
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 319 — #21
+Speech Recognition 319
+ae
+kbn d
+uh t
+t aeand
+but
+catWord models Word ends
+P (cat | cat)P (but | cat) P (cat | and)Bigram
+language model
+Figure 12.6 Connected word recognition with a bigram language model.
+ﬁrst-order Markov assumption to solve the problem efﬁciently. Given a state–timelattice, Viterbi decoding carries out a left-to-right time-synchronous processing.This is structurally similar to the forward recursion (Figure 12.4), except that thesum of probabilities of paths entering a state is replaced by a max operation. TheMarkov assumption is exploited by considering only the most probable path ateach point in the state–time lattice: because the history is completely encapsulatedby the current state, an extension to a lower probability path at a particular state–time location cannot become more probable than the same extension applied tothe most probable path at that state–time location. Thus at each state–time pointthe single most probable path is retained, and the rest are discarded. The mostprobable path is the one at the end state at the ﬁnal time.
+To recognize a word sequence, a composite HMM for each word is built (includ-
+ing multiple pronunciations, if necessary) and a global HMM is constructed(Figure 12.6). A bigram language model is easily incorporated; longer span modelssuch as trigrams require a word history to be maintained. As mentioned in Section2.4, the acoustic model log-likelihoods are often scaled by a factor 0 <α<1,
+which takes into account the underestimate of the likelihood of an observationsequence arising from the conditional independence assumption.
+Viterbi decoding is an efﬁcient, exact approach. However, an exact search is
+not usually possible for a large-vocabulary task since the absence of predeﬁnedword boundaries means that any word in the vocabulary may start at each frame.Cross-word context-dependent triphone models and trigram language modelsadd to the size of the search space and overall search complexity. Large-vocabularydecoding must make the problem size more manageable by reducing the size ofthe search space through pruning unlikely hypotheses, eliminating repeated com-putations, or simplifying the acoustic or language models. A commonly employedapproach to shared computation, which does not include approximation, arisesfrom structuring the lexicon as a preﬁx pronunciation tree (Gupta et al., 1988;
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 320 — #22
+320 Steve Renals and Thomas Hain
+Bahl et al., 1993) in which common pronunciation preﬁxes are shared betweenword models; some extra bookkeeping is required to take account of context-dependent word models (Ravishankar 1996).
+The most general approach to reducing the search space – and hence speeding
+up the decoding – is beam search. In beam search (Lowerre & Reddy 1980; Ney &
+Ortmanns 2000), unlikely search paths are pruned from the search, by removingmodes in the time–state trellis whose path probability is more than a factor δless
+probable then the best path, deﬁning a beam of width δ. Both the acoustic and
+language models contribute to pruning in this way. Naïvely, language models areapplied at the end of a word, but it is possible to tighten the beam by applyinga language model upper bound within the pronunciation tree. Applying beamsearch means that the decoding process is no longer exact, and hence increasesin speed must be traded off against search errors – those errors that arise fromincorrectly pruning a hypothesis that would go on to be the most probable. Someform of beam search is used in every large-vocabulary decoder.
+Most modern large-vocabulary systems use a multi-pass search architecture
+(Austin et al., 1991), in which progressively more detailed acoustic and languagemodels are employed – the AMI system, described in Section 4), is a good exampleof such a system. In multi-pass systems the search space is constrained by con-structing word graphs (Ney & Ortmanns 2000) with less detailed models, whichare then rescored by more detailed models. Such a system can also be used tocombine differently trained models.
+In the 1990s most approaches to large-vocabulary decoding constructed the
+search network dynamically. For a large-vocabulary system, with a trigram lan-guage model, constructing the complete network in a static manner seemedout of the question in terms of required memory resources. Several very efﬁ-cient dynamic search space decoders were designed and implemented (Odell1995). Although such decoders can be very resource efﬁcient, they result, forinstance, in complex software with a tight interaction between the pruning algo-rithms and data structures. In contrast, searching a static network would offerthe ability to decouple search network construction from decoding, and to enablealgorithms to optimize the network to be deployed in advance. (Mohri et al.,2000; 2002) have developed an approach to efﬁcient static network constructionbased on weighted ﬁnite state transducer (WFST) theory. In this approach thecomponents of the speech recognition system (acoustic models, pronunciations,language model) may be composed into a single decoding network, which isoptimized using determinization and minimization procedures. This can resultin a static network of manageable size, although the construction process maybe memory-intensive. Such WFST approaches have now been used successfully inseveral systems. A number of freely available toolkits for WFST manipulation nowexist.
+8
+An alternative approach to large-vocabulary decoding is based on heuristic
+search: stack decoding (Jelinek 1969; Gopalakrishnan et al., 1995; Renals & Hochberg
+1999). In stack decoding (which is essentially an A*-search), a ‘stack’ (priorityqueue) of partial hypotheses is constructed, with each hypothesis scored using
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 321 — #23
+Speech Recognition 321
+on the probability of decoding to the current time point, plus an estimate of theremaining score. In this time-asynchronous approach to decoding, a best-ﬁrstapproach is adopted. Since it does not rely on construction of a ﬁnite-state networkit is well suited to long-span language models and acoustic models.
+4 Case Study: The AMI System
+Large-vocabulary speech recognition systems have been developed for a num-ber of applications, using the basic acoustic modeling framework outlined in theprevious sections. In the research community the most notable examples includeread newspaper text, broadcast news, and conversational telephone speech. Asdiscussed in Section 1, read or planned speech has less variability than conversa-tional or spontaneous speech, and this is reﬂected in the much lower word errorrates obtained by automatic speech recognition systems on planned speech tasks.For both planned and spontaneous speech, it has been found consistently thatthe accuracy of an HMM-based speech recognition system is heavily dependenton the training data. This dependence has two main characteristics. First, accu-racy increases as the amount of training data increases (experience has shown therelationship to be logarithmic). Second, the availability of transcribed, in-domainacoustic data for training of acoustic and language models leads to signiﬁcantlyreduced errors. Word error rates can be halved compared with models that weretrained on data recorded under different conditions, or from a different taskdomain.
+In this section we consider the construction of a speech recognition system
+for multiparty meetings. Multiparty meetings, characterized by spontaneous,conversational speech, with speech from different talkers overlapping, form achallenging task for speech recognition. Since much of the work in this area hastaken place in the context of the development of interactive environments, the datahas been collected using both individual head-mounted microphones and multi-ple microphones placed on a meeting-room table (typically in some form of arrayconﬁguration). Here we give a basic description of a system developed for theautomatic transcription of meeting speech using head-mounted microphones; thesystem we outline was developed for the NIST Rich Transcription evaluation in2006, and some of the ﬁnal system’s complexity has been omitted for clarity.
+The meetings domain forms an excellent platform for speech recognition
+research. Important research issues, necessary to the construction of an accu-rate system for meeting recognition, include segmentation into utterances bytalker, robustness to noise and reverberation, algorithms to exploit multiple micro-phone recordings, multi-pass decoding strategies to enable the incorporation ofmore detailed acoustic and language models, and the use of system combinationand cross-adaptation strategies to exploit system complementarity. The exploita-tion of system complementarity has proven to have a signiﬁcant effect on worderror rates. Speech recognition architectures may differ in terms of training data,
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 322 — #24
+322 Steve Renals and Thomas Hain
+features, or model topology, and these differences can result in systematicallydifferent errors. One can capitalize on such differences in two ways. First, unsu-pervised cross-adaptation enables the output of one part of the system to adaptanother different part. This enables some of the adverse effects caused by unsu-pervised adaptation to be alleviated. Second, system combination allows thecombination of the outputs of several stages of a system, for example by use ofmajority voting (Fiscus 1997).
+Work on meeting transcription has in part been dominated by the fact that
+the amount of in-domain data is usually relatively small. As for any otherspontaneous speech source, the cost of manual transcription is high (manual tran-scription of meeting data is about 25 times slower than real time). For the systemdescribed here, about 100 hours of acoustic training data from meetings wereavailable, which is still modest. Hence most systems make use of adaptation ofmodels from other domains. Stolcke et al. (2004) used a recognition system forconversational telephone speech as the starting point (others have reported thatstarting from broadcast news systems also works well, e.g., Schultz et al., 2004)and we have followed that strategy. Our experiments with language models formeeting data (Hain et al., 2005b) indicated that the vocabulary is similar to thatused for broadcast news, with only a few additional out-of-vocabulary words.Later work has shown that meeting-speciﬁc language models can give lowerperplexity and word error rate, but the effect is small. Our systems have useda vocabulary of 50,000 words based on the contents of meeting transcriptions aug-mented with the most frequent words from broadcast news. Pronunciations werebased on the UNISYN dictionary (Fitt 2000). The baseline language model forthese experiments was a trigram built using the meeting transcripts, a substan-tial amount of broadcast news data, and most importantly data collected from theinternet obtained by queries constructed from n-grams in the meeting transcripts
+(Bulyko et al., 2003; Wan & Hain 2006).
+Figure 12.7 presents an overall schematic of the meeting transcription system.
+The initial three steps pre-process the raw recordings into segmented utterancessuitable for processing by the recognizer. A least mean squares echo canceler(Messerschmitt et al., 1989) is applied to alleviate cross-talk in overlapped speech,followed by an automatic segmentation into speech utterances. The segmen-tation was performed on a per-channel basis and, in addition to using thestandard speech recognition features (PLP features in this case), a number ofother acoustic features were used including cross-channel normalized energy, sig-nal kurtosis, mean cross-correlation, and maximum normalized cross-correlation(Wrigley et al., 2005; Dines et al., 2006). The segmentation is based on a multi-layered perceptron trained on 90 hours of meeting data. This exceptionally largeamount of training data for a simple binary classiﬁcation was necessary to yieldgood performance. The raw segment output is then smoothed in order to mirrorthe segmentation used in training of acoustic models.
+The initial acoustic models were then trained using features obtained from
+a 12th-order MF-PLP feature analysis, plus energy. First and second temporalderivatives are estimated and appended to the feature vector, resulting in
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 323 — #25
+Speech Recognition 323
+Bigram latticesHeadset microphone
+recordings
+Multi−channel echo cancelation
+MLP-based segmentation
+Smoothing
+MLE, trigramM1
+Resegmentation
+VTLN, CMN, CVN
+POST
+M2CMLLR, 1 speech transform
+MPE, VTLN, POST bigram
+(a) Initial lattice generationBigram lattices
+4-gram latticesLattice expansion
+M2M3
+CN generationCMLLR, MLLR (2−4)
+Minimum word errror rate decoding
+Final word outputAlignmentConfusion networksMLLR (4) MPE triphones
+VTLN HLDA PLP
+(b) Cross-adaptation and CN decoding
+Figure 12.7 Block processing diagram showing the AMI 2006 system for meeting
+transcription (Hain et al., 2006). Square boxes denote processing steps, ellipsesrepresentations of the data. M1–M3 denote differently trained model sets.
+39-dimensional feature vectors, which are then normalized on a per-channel basisto zero mean and unit variance (cepstral mean and variance normalization).
+After these audio preparation stages, 39-dimensional MF-PLP feature vec-
+tors were extracted and cepstral mean and variance normalization (CMN/CVN)was performed on a per-channel basis. Then ﬁrst-pass transcripts are produced,using models trained on 100 hours of meeting data (M1) and a trigram languagemodel. This initial transcript has several uses, including the provision of a roughtranscript for estimation of VTLN warp factors, and to allow the data to be reseg-mented by realigning to the transcripts. This is possible because the acousticmodels for recognition are more reﬁned than the models used for segmentation,but naturally segments can only get shorter. This is important as cepstral mean
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 324 — #26
+324 Steve Renals and Thomas Hain
+and variance normalization have a signiﬁcant impact on word error rate and relyon the correct balance of silence in segments.
+The next pass of decoding uses different features from those used previously.
+The standard PLP feature vector is augmented with phone-state posterior prob-abilities computed using multi-layered perceptrons (further details can be foundin Section 5), and both components are normalized using VTLN. Acoustic modelsare now trained using the MPE criterion (Section 2.4) and further adapted usinga single CMLLR transform (Section 2.5). As the system has more passes to follow,bigram lattices are produced at this stage in order to enable lattice rescoring usingnew acoustic and language models. If a faster system was required, decoding witha trigram as in the ﬁrst pass could have been chosen here.
+The second part of the system, Figure 12.7(b), follows the strategy of using a
+constrained search space as represented in a lattice to quickly obtain improve-ments and apply models that could otherwise not be used. First a 4-gram languagemodel (trained on the same data as used previously) is used to expand lattices andproduce a new ﬁrst-best output. This is followed by decoding with two differentacoustic model sets for the purpose of cross-adaptation. The ﬁrst acoustic modelset uses standard PLP features only but models are trained by MAP adaptationfrom 300 hours of conversational data. After adaptation with MLLR, lattices areagain produced that are rescored using the same models and features as in thesecond pass. Finally, lattices are compacted in the form of confusion networksand minimum word error rate decoding is performed. Final alignment is onlyperformed to ﬁnd correct times for words.
+Figure 12.8 shows results for all passes. If the initial automatic segmentation into
+utterances is replaced by a manual process, then the word error rate is decreasedby 2–3 percent absolute. Considerable reductions of word error rates are achievedin each pass. Note that the ﬁrst pass error rate is almost twice the error rate of theﬁnal pass, but the processes of adaptation and normalization in the second passaccount for most of the gain. Even though the second pass uses the same acousticmodels as the ﬁnal pass, cross-adaptation still brings an additional 2.4 percentabsolute improvement in word error rate.
+5 Current Topics
+5.1 Robustness
+The early commercial successes of speech recognition, for example dictation soft-ware, relied on the assumption that the speech to be recognized was spokenin a quiet, non-reverberant environment. However, most speech communica-tion occurs in less constrained environments characterized by multiple acousticsources, unknown room acoustics, overlapping talkers, and unknown micro-phones.
+A ﬁrst approach to dealing with additive noise is by using multiple micro-
+phones to capture the speech. Microphone array beamforming uses delay-sum
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 325 — #27
+Speech Recognition 325
+1 2 3 4010203040
+Decoding PassWord Error Rate / %NIST RT’06 Meeting Transcription Evaluation –AMI System 
+Figure 12.8 Word error rates (%) results in the NIST RT’06 evaluations of the AMI 2006
+system on the evaluation test set, for the four decoding passes.
+or ﬁlter-sum techniques to offer a gain in speciﬁc directions, thus enabling com-peting acoustic sources to be separated based on location (Elko & Meyer 2008).These approaches have been used successfully in meeting transcription systems;using beamformed output of a microphone array will increase the word error rateby about 5 percent in the case of limited overlapping speech (Renals et al., 2008),and by up to 10 percent in more general situations.
+Most work in robust speech recognition has focused on the development of
+models and algorithms for a single audio channel.
+9Increased additive noise will
+cause the word error rate of a speech recognizer trained in clean, noise-free con-ditions to increase rapidly. For the Aurora-2 task of continuously spoken digitswith differing levels of artiﬁcially added noise, the case of clean test data willresult in word error rates of less than 0.5 percent using acoustic models trained onclean speech. A very low level of added noise (20 dB SNR – signal-to-noise ratio)results in 10 times more errors (5 percent word error rate) and equal amountsof noise and speech (0 dB SNR) results in a word error rate of about 85 percent(Droppo & Acero 2008). Thus the noise problem in speech recognition is signiﬁcantindeed.
+The reason for the dramatic drop in accuracy is related to acoustic mismatch; the
+noisy test data is no longer well matched to the models trained on clean speech.
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 326 — #28
+326 Steve Renals and Thomas Hain
+If we knew that the noise would be of a particular type (say car noise) and at aparticular level (say 10 dB SNR) then we could artiﬁcially create well-matchedtraining data and retrain a set of matched noisy models. However, it is rarely thecase that the test noise conditions are known in such detail. In such cases mul-tistyle training can be employed, in which the training data is duplicated anddifferent types of noise added at different SNRs. This can be very effective: in theprevious Aurora task, multistyle training decreases the 20 dB SNR word error ratefrom 5 percent to about 1 percent, and the 0 dB word error rate from 85 percent to34 percent, while adding about 0.1 percent to the clean speech error rate (Droppo &Acero 2008). Multistyle training is thus very effective, but it is rather computation-ally expensive: it may be feasible for training a recognizer on digit strings (a taskwith an 11-word vocabulary); it is much less feasible for conversational speechrecognition. Indeed, most of the techniques discussed in what follows have beendeveloped largely on relatively small-vocabulary tasks.
+Beyond the brute force approach of multistyle training, there are two main
+approaches to robustness: feature compensation and model compensation. Theaim of feature compensation is to transform the observed noisy speech into a sig-nal that is more closely matched to the clean speech on which the models weretrained. It is usually of interest to develop techniques that work in the cepstralfeature domain, since speech recognition feature vectors are usually based on PLPor Mel frequency cepstral coefﬁcients. Cepstral mean and variance normalization(CMN/CVN) is a commonly applied technique which involves normalizing thefeature vectors, on a component-by-component basis, to zero mean and unit vari-ance. CMN can be interpreted in terms of making the features robust to linearﬁltering such as that arising from varying type or position of microphones, orcharacteristics of a telephone channel. For both the Aurora digits task and forlarge-vocabulary conversational telephone speech recognition, CMN and CVNcan reduce word error rates by 2–3 percent absolute (Droppo & Acero 2008; Garau& Renals 2008).
+More elaborate forms of feature normalization attempt to directly transform
+recorded noisy speech to speech that matches the trained models. One technique,designed primarily for stationary noise, is spectral subtraction, in which an esti-mate is made of the noise (in spectral domain), and subtracted from the noisyspeech, to (theoretically) leave just clean speech (Lockwood & Boudy 1992). Thesubtraction process may be non-linear and dependent on the SNR estimate. Thistechnique requires good segmentation of speech from non-speech in order to esti-mate the noise. If that is possible the technique works well in practice. The ETSI
+Advanced Front End for noisy speech recognition over cellular phones is based
+on CMN and spectral subtraction and can reduce errors from 9.9 percent to 6.8percent on multistyle trained Aurora-2 systems (Macho et al., 2002).
+Spectral subtraction may be regarded as a very simple noisy-to-clean map-
+ping, that simply subtracts an estimate of the average noise. More sophisticatedapproaches are available, for example SPLICE, which is based on the estima-tion of a parameterized model of the joint density of the clean and noisy speech(Deng et al., 2000). A Gaussian mixture model is typically used, and stereo data
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 327 — #29
+Speech Recognition 327
+containing parallel clean and noisy recordings of the same signal is required fortraining. Other approaches to feature compensation include missing feature mod-els (Cooke et al., 2001) and uncertainty decoding (Droppo et al., 2002), in whichareas of time-frequency space are attributed to speech or noise, and probabilisticenhancement approaches are used to reconstruct the clean speech.
+It is also possible to use model-based compensation, in which the detailed
+acoustic models in the recognizer are used as the basis of the compensationscheme, as opposed to the previous approaches which construct speciﬁc featurecompensation models. In model-based compensation the clean speech modelsare combined with a noise model, resulting in a model of noisy speech. This isreferred to as parallel model combination (Gales & Young 1996). There are twomain technical challenges with parallel model combination. First, noise modelsthat are more complex than a single state result in much greater complexity over-all, due to the fact that the speech and noise models are combined as a product.Second, it is assumed that speech and noise are additive in the spectral domain.Since the models are constructed in the cepstral domain, it is necessary to trans-form the model parameters (Gaussian means and covariances) from the cepstralto the spectral domain. The noisy speech model statistics are then computedin the spectral domain, before transforming the parameters back to the cepstraldomain.
+5.2 Multiple knowledge sources
+It is possible to obtain many different parameterizations of the speech signal andto use different acoustic model formulations. Often different representations andmodels result in different strengths and weaknesses, leading to systems whichmake complementary errors. It is possible that word error rates could be reducedif such systems are combined.
+In feature combination approaches, multiple different feature vectors are com-
+puted at each frame, then combined. Although the most commonly employedacoustic parameterizations such as MFCCs and PLP cepstral coefﬁcients result inlow error rates, on average, it has been found that combining them with other rep-resentations of the speech signal can lower word error rates. For example, Garauand Renals (2008) combined MFCC and PLP features with features derived fromthe pitch-adaptive STRAIGHT spectral representation (Kawahara et al., 1999), andSchlueter et al. (2007) combined MFCC and PLP features with gammatone featuresderived from an auditory-inspired ﬁlterbank, each time demonstrating a reductionin word error rate.
+The simplest way to combine multiple feature vectors is simply to concatenate
+them at each frame. This is far from optimal since it can increase the dimensional-ity quite substantially, as well as result in feature vectors with strong dependencesbetween their elements. The latter effect can cause numerical problems when esti-mating covariance matrices. To avoid these problems, the feature vectors maybe concatenated, then linearly transformed to both reduce dimensionality and
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 328 — #30
+328 Steve Renals and Thomas Hain
+decorrelate the components. Although principal component analysis is one wayto accomplish this, it has been found that methods based on linear discriminantanalysis (LDA) are preferable, since a different transform may be derived for eachstate. Hunt proposed the use of LDA to improve discrimination between sylla-bles, and in later work used LDA to combine feature streams from an auditorymodel front end (Hunt & Lefebvre 1988). In LDA a linear transform is foundthat maximizes the between-class covariance, while minimizing the within-classcovariance. LDA makes two assumptions: ﬁrst, all the classes follow a multivariateGaussian distribution; second, they share the same within-class covariance matrix.Heteroscedatic LDA (Kumar & Andreou 1998) relaxes the second assumption andmay be considered as a generalization of LDA.
+As discussed further in Section 5.3, other feature representations have been
+explored, which have a less direct link to the acoustics. For example, consid-erable success has been achieved using so-called ‘tandem’ representations inwhich acoustic features such as MFCCs are combined with frame-wise esti-mates of phone posterior probabilities, computed using multi-layered perceptrons(MLPs). An advantage of this approach is that the MLP-based phone probabilityestimation can be obtained using a large amount of temporal context.
+Other levels of combination are possible. Acoustic models may be combined
+using the combining probability estimates at the frame or at the segment level.Approaches such as ROVER (Fiscus 1997) enable system-level combination inwhich multiple transcriptions, each produced by a different system, may becombined using a dynamic programming search based on majority voting oron conﬁdence scores. Such approaches have been used to great effect in recentlarge-scale research systems and are discussed further in Section 5.4.
+5.3 Richer sequence models
+One of the main weaknesses of HMM-based speech recognition is the assumptionof conditional independence of speech samples, i.e.,p(x
+t|x1...xt−1,qt)≡p(xt|qt)
+where qtdenotes the current state and xtdenotes the acoustic vector at time t.
+The conditional independence assumption is incorrect, since it fails to reﬂect thestrong constraints in the speed of movement of articulators, that adjacent frameshave high correlation and changes in the spectrum are slow for most sound classes.Some interdependence is of course encoded in the state succession but transitionprobabilities only exist from one state to the next and are usually found to have amodest inﬂuence on performance. This leads to considerable underestimation oftrue frame likelihoods and two approaches are commonly used to counteract that:the use of differentials (so-called delta features) in the feature vector to account forslope information; and scaling of the language model probabilities in decodingand also training to adjust for dynamic range differences. However, these changesare engineering solutions without a solid theoretical base and also account for partof the shortcoming.
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 329 — #31
+Speech Recognition 329
+There have been many attempts to address the issue and we cannot present
+all of those attempted over the years. However, recent interest in better tempo-ral modeling of parameters has increased and considerable improvements havebeen obtained with some techniques. Sometimes results are difﬁcult to interpretbecause they include multiple changes to the systems and hence multiple inter-pretations of the realization are possible. In general all of the techniques are muchmore computationally elaborate and some are so complex that only rough approx-imations to the formulae make it possible to realize such structures. Even withmodern large-scale computing resources proper implementations are not possible.
+Segment models were introduced by Ostendorf and Roukos (1989) and inter-
+preted as an extension to HMM-based modeling (Ostendorf et al., 1996). Insteadof modeling single frames, multiple frames can be represented at the same time,for example by describing a moving mean of a Gaussian distribution. Similarto HMMs, one can represent states associated with segments that have variablelength. The question on length of the segments and their proper representationis functional; form was (and still is) the topic of investigation, however the tech-niques have not found entry into large-scale systems, partially due to complexityreasons.
+One of the issues pointed out by Tokuda et al. (2000) in the context of HMM-
+based speech synthesis is the incorrect use of Gaussians for differentials of thestatic features, noting that an implicit continuity constraint is missing. A formu-lation that adds this constraint to a standard HMM for recognition is given inZen et al. (2007). In experiments, signiﬁcant improvements in word error rateshave been observed in some simple tasks, but these improvements have not beenobserved in more complex tasks (Zhang & Renals 2006).
+A much simpler and very effective method has been introduced in the form of
+the so-called TRAPS features (Sharma et al., 2000), which have been implementedin several large-scale systems in many different applications and modiﬁed forms(e.g., the AMI system as presented in Section 4 uses so called LC/RC features asdescribed in Schwarz et al., 2004). The basic idea is to convert long-term informa-tion into a single feature vector that is capable of extracting relevant informationat the given time. Long-term information can cover up to half a second but mosttechniques make use of information compression by use of, e.g., a KLT transformon a frequency band basis. The compressed information is then ﬁltered througha multi-layered perceptron that is trained to map features to phoneme state levelposterior probabilities. This step is vital as it allows to construct a feature vectorthat is relevant to the current time without causing information diffusion. Suchfeatures can be combined with standard features but recent results seem to sug-gest that the potential loss in performance is small when they are used on theirown. Substantial improvements are obtained on small- and large-scale tasks andgains are often complementary with other techniques.
+This technique bears a strong relationship with another technique aimed at aug-
+menting feature vectors. fMPE (Povey et al., 2005), or feature-based MPE training,tries to ﬁnd a matrix Msuch that a new feature vector y
+tis more informative:
+yt=xt+Mh t
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 330 — #32
+330 Steve Renals and Thomas Hain
+This is achieved by providing additional information on neighboring frames
+to the current time in the form of a vector htbut, instead of using the features
+directly, their projection into the model space is performed by using their like-lihood for each Gaussian in the acoustic model set, thus providing a link to themodels. The matrix is then trained using the MPE type criterion function. Substan-tial improvements are obtained but training of models and matrices is complexand the application of the matrix in decoding is costly. Hifny and Renals (2009)introduced a related discriminative method: augmented conditional randomﬁelds.
+Much more advanced approaches try to model long-term dynamics in a more
+principled form using for example switching linear dynamical systems (Digalakiset al., 1993; Rosti & Gales 2003). Here the fundamental assumption necessary forViterbi approximation, the assumption that the preceding model does not have aninﬂuence on the current model, is normally not correct and hence search paths cannot be merged. At this point, for many situations, only small-scale experimentsare possible and even then substantial constraints have to be included.
+5.4 Large scale
+Since the 1990s there has been an intense interest in developing approaches tospeech recognition that work well in natural situations. In particular there hasbeen a signiﬁcant focus on conversational telephone speech, broadcast news, and,more recently, multiparty meetings. Challenges for the recognition of conversa-tional telephone speech include conversational style and the telephone channel.For broadcast news, the speech signals come from a variety of sources and aremixed with other sounds such as music or street noise. The meeting domain addsthe challenge of far-ﬁeld recording and reverberation to conversational speechrecognition. Much of this work has been performed in US English, since resourcesin other languages are usually much more sparse. Lately increased interest inMandarin and Arabic, as well as ‘international English,’ has led to extensiveresource generation in those languages. Work in different languages brings tothe fore important aspects, such as larger vocabularies (over 500,000 words) dueto different morphologies, different error metrics, such as character error rate,ambiguity in orthographic and spoken word, or additional sound classes such asMandarin tones. Remarkably the basic structure in most systems remains identicaland changes are mostly made to dictionaries or feature extraction.
+The increasing amounts of data as well as the additional acoustic and speech
+complexity have substantial implications for system building. Segmentation andspeaker clustering, optimal for speaker recognition or for playback, is normallynot optimal for automatic speech recognition (Stolcke et al., 2004). Multiple micro-phone sources can affect the best strategies for acoustic modeling and adaptation.Automatic switching between microphones potentially causes substantial errors(Hain et al., 2008). Adapting models to the speaker and to the environment hasproven to be extremely important, but the interaction between different modeladaptations is complex. In particular, the order of application of techniques isimportant and may need changing depending on domain or data type.
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 331 — #33
+Speech Recognition 331
+Dependence on a domain and lack of generalizability are a major challenge.
+Techniques known to work on one domain do not necessarily work on anotherdomain: this has been observed for VTLN (Kim et al., 2004), for instance. If thein-domain data is sparse, then improved accuracy can be obtained by adaptationfrom large corpora in related domains. This may require compensation techniquesfor mismatch between domains; an example of this is the approach of Karaﬁatet al. (2007) to compensate for different audio bandwidths. Finally, the appropriateevaluation metric may be domain-speciﬁc. Word error rate is not the only metric,and optimizing systems for speciﬁc applications, such as machine translation(Gales et al., 2007), can lead to signiﬁcant improvements.
+The above illustrates that an almost limitless range of options for system build-
+ing exists which can serve two fundamentally different purposes: to enhancesystem performance in one application by ﬁnding combinations of componentsthat can enhance performance in another; or to ﬁnd the components that will yieldthe perfect result for a particular element of data. Only limited work has beencarried out on the latter, but investigations on the AMI RT’07 system (Hain et al.,2007) show that the oracle combination of outputs of various stages of a systemcan yield 20 percent relative reduction in word error rate.
+With the more widespread use of high-level system combination (Fiscus 1997;
+Evermann & Woodland 2000), recognition systems have become more complex.While attempts were made to describe generic all-purpose system architectures(Evermann & Woodland 2003), experience showed that the search for complemen-tary systems may allow for much simpler structures (Schwartz et al., 2004) wherein essence the output of one system is simply used to adapt another one and thenthe respective outputs are combined. Nevertheless systems that differ by such amargin are difﬁcult to construct. Hence more elaborate schemes, such as in theSRI-ICSI or AMI RT’07 systems (Stolcke et al., 2007; Hain et al., 2007), are devel-oped. In these cases acoustic modeling, segmentation, and data representation isvaried to yield complementarity.
+The challenges for system development in the future are deﬁned in the list of
+requirements above. Since the complexity of systems is set to increase rather thandecrease, a manual construction of system designs will always be suboptimal. InHain et al. (2008) initial attempts are reported for automation of system design.However, at this point even the right form to describe the potential combinationsefﬁciently is unknown, let alone a multi-objective dynamic optimization scheme.To ﬁnd optimal systems, not only does an optimal combination and processingorder have to be derived, but ideally the models and techniques are complemen-tary and yield mutually additive gains. Approaches have been made to automatethis process (e.g., Breslin & Gales 2006), but much more work is required, inparticular in the context of different target metrics.
+6 Conclusions
+Automatic speech recognition was one of the ﬁrst areas in which the data-driven,machine learning, statistical modeling approach became standard. Since the 1990s,
+
+“9781405155816_4_012” — 2010/5/14 — 17:19 — page 332 — #34
+332 Steve Renals and Thomas Hain
+the basic approach has been developed in several important ways. Detailed mod-els of speech may be constructed from training data, with the level of modelingdetail speciﬁed by the data. Algorithms to adapt these detailed models to aspeciﬁc speaker have been developed, even when only a small amount of speaker-speciﬁc data is available. Discriminative training methods, which optimize theword error rate directly, have been developed and used successfully. Because ofthese successful strategies speech recognition is available in commercial prod-ucts in many forms. Public perception of speech recognition technology, however,ranges widely, from ‘solved’ to ‘hopeless.’ The reasons for the mixed acceptancelie in a number of major challenges for speech recognition that are still open today.First, speech recognition systems can only operate in a much more limited setof conditions, compared with people: additive noise, reverberation, and overlap-ping talkers pose major problems to current systems. Second, the integration ofhigher-level information is weak and often non-existent, although of obvious useto humans. Third, current models of speech recognition have a rather weak tem-poral model. The use of richer temporal models has had an inconsistent impact onthe word error rate. Finally, systems lack generalizability: they are very dependenton matched training data. Moving a system from one domain to another, withouttraining data resources for the new domain, will result in a greatly increased worderror rate.
+NOTES
+1 This is sometimes referred to as speaker-attributed speech-to-text transcription.2 An information theoretic measure of the expected number of words which may be
+expected to continue any word sequence; see Chapter 3,
+STATISTICAL LANGUAGE
+MODELING .
+3 www.nist.gov/speech/tools4 http://htk.eng.cam.ac.uk/5 The autoregressive hidden ﬁlter model (Poritz 1982) is an intriguing alternative that per-
+forms modeling at the waveform level, and may be viewed as jointly optimizing signalprocessing and acoustic modeling. However, this approach relies on a linear predictionframework which is less powerful than the approaches employed in current systems.
+6 Do not be misled, however; a mixture of diagonal covariance Gaussians is able to model
+correlations between feature dimensions. But it is a relatively weak way of modelingsuch correlations.
+7 Note that derived forms are counted here as separate words whereas dictionaries such
+as the Oxford English Dictionary only list the base forms as independent entries.
+8 WFST software: www.openfst.org/; http:/ /people.csail.mit.edu/ilh/fst/; www.research.
+att.com/∼fsmtools/fsm/
+9 This is a general case, since microphone array beamforming will result in a single audio
+channel.
+

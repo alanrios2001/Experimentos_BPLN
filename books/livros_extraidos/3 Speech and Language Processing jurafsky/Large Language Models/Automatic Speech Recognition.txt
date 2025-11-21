@@ -1,0 +1,1080 @@
+334 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+CHAPTER
+15Automatic Speech Recognition
+I KNOW not whether
+I see your meaning: if I do, it lies
+Upon the wordy wavelets of your voice,
+Dim as an evening shadow in a brook,
+Thomas Lovell Beddoes, 1851
+Understanding spoken language, or at least transcribing the words into writing, is
+one of the earliest goals of computer language processing. In fact, speech processing
+predates the computer by many decades!
+The ﬁrst machine that recognized speech
+was a toy from the 1920s. “Radio Rex”,
+shown to the right, was a celluloid dog
+that moved (by means of a spring) when
+the spring was released by 500 Hz acous-
+tic energy. Since 500 Hz is roughly the
+ﬁrst formant of the vowel [eh] in “Rex”,
+Rex seemed to come when he was called
+(David, Jr. and Selfridge, 1962).
+In modern times, we expect more of our automatic systems. The task of auto-
+matic speech recognition (ASR ) is to map any waveform like this: ASR
+to the appropriate string of words:
+It’s time for lunch!
+Automatic transcription of speech by any speaker in any environment is still far from
+solved, but ASR technology has matured to the point where it is now viable for many
+practical tasks. Speech is a natural interface for communicating with appliances, or
+with digital assistants or chatbots, especially on cellphones, where keyboards are
+less convenient. ASR is also useful for general transcription, for example for auto-
+matically generating captions for audio or video text (transcribing movies or videos
+or live discussions). Transcription is important in ﬁelds like law where dictation
+plays an important role. Finally, ASR is important as part of augmentative commu-
+nication (interaction between computers and humans with some disability resulting
+in difﬁculties or inabilities in typing or audition). The blind Milton famously dic-
+tated Paradise Lost to his daughters, and Henry James dictated his later novels after
+a repetitive stress injury.
+In the next sections we’ll introduce the various goals of the ASR task, describe
+how acoustic features are extracted, and introduce the convolutional neural net
+architecture which is commonly used as an initial layer in speech recognition tasks.
+
+15.1 • T HEAUTOMATIC SPEECH RECOGNITION TASK 335
+We’ll then introduce two families of methods for ASR. The ﬁrst is the encoder-
+decoder paradigm, and we’ll introduce the baseline attention-based encoder decoder
+algorithm, sometimes called Listen Attend and Spell after an early implementation.
+We’ll also introduce a more advanced encoder-decoder system, OpenAI’s Whisper
+system (Radford et al., 2023) as well an open system based on the same architecture,
+OWSM (the Open Whisper-style Speech Model) (Peng et al., 2023). (These mod-
+els have additional capabilities including translation, as we’ll discuss later). The
+second is the use of self-supervised speech models (sometimes called SSL for self-
+supervised learning) like Wav2Vec2.0 or HuBERT, which are encoders that learn
+abstract representations of speech that can be used for ASR by pairing them with the
+CTC loss function for decoding.
+We’ll conclude with the standard word error rate metric used to evaluate ASR.
+15.1 The Automatic Speech Recognition Task
+Before describing algorithms for ASR, let’s talk about how the ASR task itself
+varies. One dimension of variation is vocabulary size. Some ASR tasks have long
+been solved with extremely high accuracy, like those with a 2-word vocabulary ( yes
+versus no) or an 11 word vocabulary like digit recognition (recognizing sequencesdigit
+recognition
+of digits including zero tonine plus oh). Open-ended tasks like accurately tran-
+scribing videos or human conversations, with large vocabularies of 60,000 or more
+words, are much harder.
+A second dimension of variation is who the speaker is talking to. Humans speak-
+ing to machines (either dictating or talking to a dialogue system) are easier to recog-
+nize than humans speaking to humans. Read speech , in which humans are reading read speech
+out loud, for example in audio books, is also relatively easy to recognize. Recog-
+nizing the speech of two humans talking to each other in conversational speech ,conversational
+speech
+for example, for transcribing a business meeting, is the hardest. It seems that when
+humans talk to machines, or read without an audience present, they simplify their
+speech quite a bit, talking more slowly and more clearly.
+A third dimension of variation is channel and noise. Speech is easier to recognize
+if it’s recorded in a quiet room with head-mounted microphones than if it’s recorded
+by a distant microphone on a noisy city street, or in a car with the window open.
+A ﬁnal dimension of variation is accent or speaker-class characteristics. Speech
+is easier to recognize if the speaker is speaking the same dialect or variety that the
+system was trained on. Speech by speakers of regional or ethnic dialects, or speech
+by children can be quite difﬁcult to recognize if the system is only trained on speak-
+ers of standard dialects, or only adult speakers.
+A number of publicly available corpora with human-created transcripts are used
+to create ASR test and training sets to explore this variation; we mention a few of
+them here since you will encounter them in the literature. LibriSpeech is a large LibriSpeech
+open-source read-speech 16 kHz dataset with over 1000 hours of audio books from
+the LibriV ox project, which has volunteers read and record copyright-free books
+(Panayotov et al., 2015). It has transcripts aligned at the sentence level. It is divided
+into an easier (“clean”) and a more difﬁcult portion (“other”) with the clean portion
+of higher recording quality and with accents closer to US English; The division was
+done when the corpus was ﬁrst released by running a speech recognizer (trained
+on read speech from the Wall Street Journal) on all the audio, computing the WER
+for each speaker based on the gold transcripts, and dividing the speakers roughly in
+
+336 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+half, with recordings from lower-WER speakers called “clean” and recordings from
+higher-WER speakers “other”.
+TheSwitchboard corpus of prompted telephone conversations between strangers Switchboard
+was collected in the early 1990s; it contains 2430 conversations averaging 6 min-
+utes each, totaling 240 hours of 8 kHz speech and about 3 million words (Godfrey
+et al., 1992). Switchboard has the singular advantage of an enormous amount of
+auxiliary hand-done linguistic labeling, including parses, dialogue act tags, phonetic
+and prosodic labeling, and discourse and information structure. The CALLHOME CALLHOME
+corpus was collected in the late 1990s and consists of 120 unscripted 30-minute
+telephone conversations between native speakers of English who were usually close
+friends or family (Canavan et al., 1997).
+A variety of corpora try to include input that is more natural. The CHiME CHiME
+Challenge is a series of difﬁcult shared tasks with corpora that deal with robustness
+in ASR. The CHiME 6 task, for example, is ASR of conversational speech in real
+home environments (speciﬁcally dinner parties). The corpus contains recordings of
+twenty different dinner parties in real homes, each with four participants, and in three
+locations (kitchen, dining area, living room), recorded with distant microphones.
+The AMI Meeting Corpus contains 100 hours of recorded group meetings (some AMI
+natural meetings, some specially organized), with manual transcriptions and some
+additional hand-labels (Renals et al., 2007). CORAAL is a collection of over 150 CORAAL
+sociolinguistic interviews with African American speakers, with the goal of studying
+African American English ( AAE ), the many variations of language used in African
+American communities and others (Kendall and Farrington, 2020). The interviews
+are anonymized with transcripts aligned at the utterance level.
+There are a wide variety of corpora available in other languages. In Chinese,
+for example, the HKUST Mandarin Telephone Speech corpus has 1206 transcribed HKUST
+ten-minute telephone conversations between speakers of Mandarin across China in-
+cluding conversations between friends and between strangers (Liu et al., 2006). The
+AISHELL-1 corpus contains 170 hours of Mandarin read speech of sentences taken AISHELL-1
+from various domains, read by different speakers mainly from northern China (Bu
+et al., 2017).
+Finally, there are many multilingual corpora. Common V oice (Ardila et al.,
+2020) is a freely available crowd-sourced corpus of transcribed read speech, stored
+in MPEG-3 format and designed for ASR. Crowd-working volunteers record them-
+selves reading scripted speech, with scripts often extracted from from Wikipedia
+articles. The recordings are then veriﬁed by other contributors. As of the writing of
+this chapter, Common V oice includes 33,150 hours of speech from 133 languages.
+FLEURS (Conneau et al., 2023) is a parallel speech dataset, built on the MT bench-
+mark FLoRes-101 (Goyal et al., 2022), which has 3001 sentences extracted from
+English Wikipedia and translated into 101 other languages by human translators.
+For a subset of 2009 of the sentences in each of the 102 languages, FLEURS has
+recordings of 3 different native speakers reading the sentence, in total about 12 hours
+of speech per language.
+Figure 15.1 shows the rough percentage of incorrect words (the word error rate ,
+or WER, deﬁned on page 355) from roughly state-of-the-art systems as of the time
+of this writing on some of these tasks. Note that the error rate on English read speech
+(like the LibriSpeech clean audiobook corpus) is around 2% ; transcription of speech
+read in English is highly accurate. By contrast, the error rate for transcribing conver-
+sations between humans is higher; 5.8 to 11% for the Switchboard and CALLHOME
+corpora or AMI meetings. The error rate is higher yet again for speakers of varieties
+
+15.2 • C ONVOLUTIONAL NEURAL NETWORKS 337
+like African American English, and yet again for difﬁcult conversational tasks like
+transcription of 4-speaker dinner party speech, which can have error rates as high as
+25.5%. Character error rates (CER) are also higher for Mandarin natural conversa-
+tion than for Mandarin read speech. Error rates are even higher for lower resource
+languages; we’ve shown a handful of examples.
+English Tasks WER %
+LibriSpeech audiobooks 960hour clean 1.4
+LibriSpeech audiobooks 960hour other 2.6
+Switchboard telephone conversations between strangers 5.8
+CALLHOME telephone conversations between family 11
+AMI meetings 11
+Sociolinguistic interviews, CORAAL (AAE) 16.2
+CHiME6 dinner parties with distant microphones 25.5
+Sample tasks in other languages WER %
+Common V oice 15 Vietnamese 39.8
+Common V oice 15 Swahili 51.2
+FLEURS Bengali 50
+Chinese (Mandarin) Tasks CER %
+AISHELL-1 Mandarin read speech corpus 3.9
+HKUST Mandarin Chinese telephone conversations 18.5
+Figure 15.1 Rough Word Error Rates (WER = % of words misrecognized) reported around
+2023-4 for ASR on various American English and other language recognition tasks, and char-
+acter error rates (CER) for two Chinese recognition tasks.
+15.2 Convolutional Neural Networks
+The convolutional neural network, or CNN (and sometimes shortened as convnet ), CNN
+is a network architecture that is particularly useful for extracting features in speech
+and vision applications. A convolutional layer for speech takes as input a represen-
+tation of the audio input (either as the raw audio or as Mel spectra) and produces
+as output a sequence of latent representations of the input speech. In ASR systems
+like Whisper, wav2vec2.0, or HuBERT, convolutional layers are stacked as an initial
+set of layers producing speech representations that are then passed to transformer
+layers.
+A standard feedforward layer is fully connected; every input is connected to ev-
+ery output. By contrast, a convolutional network makes use of the idea of a kernel, a
+kind of smaller network that we pass over the input. For example in image classiﬁca-
+tion tasks, we pass the kernel horizontally and vertically over the image to recognize
+visual features, and so we describe a visual as a 2d (for 2 dimensional) convolutional
+network. For speech, we will slide our kernel over the signal in the time dimension
+to extract speech features, so CNNs for speech are 1d convolutional networks.
+Let’s ﬂesh out this intuition a bit more. We’ll start with a very schematic version
+of a convolutional layer that takes as input a single sequence of vectors x1...xt
+and produces as output a single sequence of vectors z1...zt, of the same length t.
+Afterwards we’ll see how to deal with more complex inputs and outputs.
+A CNN uses a kernel , a small vector of weights w1...wk, to extract features. It kernel
+does this by convolving this kernel with the input. The convolution of a kernel with convolving
+
+338 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+a signal has 3 steps
+1. Flip the kernel left-to-right
+2. Pass the kernel frame by frame (temporally) across the input
+• At each frame computing the dot product of the kernel with the local
+input values
+3. The output is the resulting sequence of dot products
+We can think of the convolution process as ﬁnding regions in the signal that are
+similar to the kernel, since the dot product is high when two vectors are similar. The
+convolution operation is represented by the *operator (an unfortunate overloading
+of this symbol that also refers to simple multiplication). Let’s see how to compute
+x∗w, the convolution of a single vector xwith a kernel vector w. Let’s ﬁrst think
+about the simple case of a kernel width of 1. We compute each output element zjas
+the product of the kernel with xj:
+convolution with width-1 kernel: zj=xjw1∀j: 1≤j≤t (15.1)
+Fig. 15.2 shows an intuition of this computation.
+x1xtinput x[n]kernel w[k]w1output z[n]z1z2z3……zt
+Figure 15.2 A schematic view of convolution with a kernel (ﬁlter) wwhose width is 1.
+The kernel is walked across the input, and the output at each frame ziis the dot product of the
+kernel with the input frame. With a kernel of length 1 we don’t have to worry about ﬂipping
+the kernel, and the dot product is just the scalar product. The ﬁgure shows the computation of
+z3asx3×w1.
+Let’s now turn to longer kernels. Although we’ve described the ﬁrst step of the
+convolution as ﬂipping the kernel, in fact in ASR systems (or in component libraries
+like pytorch) we skip this step. Technically this means that the algorithm we are
+using is not in fact convolution, it’s instead cross-correlation , which is the name forcross-
+correlation
+an algorithm of walking a kernel across a signal, computing its dot product frame by
+frame, without ﬂipping it ﬁrst. The difference doesn’t matter, since the parameters
+of the kernel will be learned during training, and so the model could easily learn a
+kernel with the parameters in either order. Still, for historical reasons we still call
+this process a 1d convolution rather than cross-correlation.
+Let’s see a more general equation for these longer kernels. To avoid the con-
+volution being undeﬁned at the left and right edges of the signal, we can pad the pad
+input by adding a small number pof zeros at the beginning and end of the signal,
+so that we can start the center of the kernel at the ﬁrst element x1, and there will be
+a deﬁned value to the left of x1. This also turns out to make it simple to have the
+
+15.2 • C ONVOLUTIONAL NEURAL NETWORKS 339
+output length as the same as the input length. To do this, it’s convenient to deﬁne the
+kernel vector as having an odd number of elements of length k=2p+1, thus with
+the center element having pelements on either side. Each element zjof the output
+vector zis then computed as the following dot product:
+zj=p∑
+i=−pxj+iwi+p (15.2)
+Fig. 15.3 shows the computation of the convolution x∗wwith a kernel whose width
+is 3, and with padding of 1 frame at the beginning and end of xwith a value of zero.
+x1xtinput x[n]kernel w[k]w1wkoutput z[n]z1z2z3……paddingpadding
+Figure 15.3 A schematic view of convolution with a kernel (ﬁlter) width of 3, and with a
+padding of 1, showing a zero value added at the start and end of the signal. The (already
+ﬂipped) kernel is walked across the input, and the output at each frame ziis the dot product
+of the kernel with the input in the window. The ﬁgure shows the computation of z3.
+Note that the size k(the receptive ﬁeld ) of the kernel is designed to be small
+compared to the signal. For example for the convolutional layers in Whisper, the
+kernel width is 3 frames, meaning the kernel is a vector of length 3 (we say that
+the kernel has a receptive ﬁeld of 3). That means that the kernel is being compared receptive ﬁeld
+to 3 frames of speech. In Whisper there is a frame every 10 ms and each frame
+represent a window of 25ms of speech information. That means each kernel is ex-
+tracting information from about 40 ms of speech (10 + 10 + 12.5 + 12.5). That’s long
+enough to extract various phonetic features like formant transitions or stop closures
+or aspiration.
+We’ve now described a simpliﬁed view of convolution in which the input is a
+single vector xand the output is a single vector z, both corresponding to a signal
+over time. In practice, the input to a convolutional layer is commonly the output
+from a log mel spectrum, which means it has many (say 128) channels, one for each
+log mel ﬁlters output. The kernel will have separate vectors for each of these input
+channels. We say that the kernel has a depth of 128, meaning that the kernel is of depth
+shape [128,3].
+To get the output of the kernel, we sum over all the input channels. That is, we
+get a single output zcfor each of the input channels xcby convolving the kernel w
+
+340 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+with it, and then we sum up all the resulting outputs:
+z=Ci∑
+c=1xc∗w (15.3)
+The output at frame j,zj, thus integrates information from all of the input channels.
+Finally, the output from a convolution layer is also more complex than just a vec-
+tor consisting of a single scalar value to represent each frame. Instead, the output of
+the convolution layer for a given input frame needs to be an embedding, a latent rep-
+resentation of that frame. As with all neural models, latent representations should
+have the model dimensionality, whatever that is. For example the model dimen-
+sionality of Whisper is 1280, and so the convolutional layer needs have one output
+channel for each of these 1280 dimensions of the model. In order to do this, we’ll
+actually learn one separate kernel for each of the model dimensions. That is, we’ll
+learn 1280 separate kernels, each kernel having the depth of the number of input
+channels (for example 128), and a ﬁlter-width (say of 3). That way, the embedding
+representation of each frame will have 1280 independently computed features of the
+input signal. We show a schematic in Fig. 15.4
+128 log melinputchannels1024outputdimensionchannels
+xixi-1xi+1∑Depth128Width 3dot productwithkernel 35kernel 35zidim 35dim 1…dim 1024…
+12…12812…128time
+time12128…
+Figure 15.4 A schematic view of a convolutional net with 128 input channels and 1024
+output channels. We see how at time point ione of the 1024 kernels (“kernel 35”, each of
+depth 128 and width 3) is dot-product-ed with (each of) the 128 log mel spectrum input vec-
+tors, and then summed to produce a single value for one dimension of the output embedding
+at time i.
+A 1d convolution layer can also have a stride . Stride is the amount that we move stride
+the kernel over the input between each step. The ﬁgures above show a stride of 1,
+meaning that we ﬁrst position the kernel over x1, then x2, then x3, and so on. For a
+stride of 2, we would ﬁrst position the kernel over x1, then x3, then x5, and so on.
+A longer stride means a shorter output sequence; a stride of two means the output
+
+15.3 • T HEENCODER -DECODER ARCHITECTURE FOR ASR 341
+sequence zwill be half the length of the input sequence x. Convolutional layers with
+strides greater than 1 are commonly used to shorten an input sequence. This is useful
+partly because a shorter signal takes less memory and computational bandwidth, but
+also, as we’ll see in the next section, because it helps address the mismatch between
+the length of acoustic frame embeddings (10 ms) and letters or words, which cover
+much more of the signal.
+Finally, in practice a convolutional layer can be followed by an output nonlin-
+earity, like a ReLU layer.
+15.3 The Encoder-Decoder Architecture for ASR
+The ﬁrst ASR architecture we introduce is the encoder-decoder architecture, the
+same architecture introduced for MT in Chapter 12. Fig. 15.5 sketches this architec-
+ture, called attention-based encoder decoder orAED , orlisten attend and spell AED
+listen attend
+and spell (LAS ) after the two papers which ﬁrst applied it to speech (Chorowski et al. 2014,
+Chan et al. 2016).
+The input to the architecture xis a sequence of tacoustic feature vectors X=
+x1,x2,...,xt, one vector per 10 ms frame. We often start from the log mel spectral
+features described in the previous section, although it’s also possible to start from a
+raw wavﬁle. The output sequence Ycan be either letters or tokens (BPE or senten-
+cepiece); we’ll assume letters just to simplify the explanation here.. Thus the output
+sequence Y= (⟨SOS⟩,y1,...,ym⟨EOS⟩), assuming special start of sequence and end
+of sequence tokens ⟨sos⟩and⟨eos⟩and each yiis a character; for English we might
+choose the set:
+yi∈{a,b,c,...,z,0,...,9,⟨space⟩,⟨comma⟩,⟨period⟩,⟨apostrophe⟩,⟨unk⟩}
+ENCODER…DECODER……ym
+Feature ComputationSubsampling…Hftf180-dimensional log Mel spectrumper frameShorter sequence Xy1<s>iy2ity3t‘y4‘sy5s y6 ty7tiy8imy9mex1xn
+Figure 15.5 Schematic architecture for an encoder-decoder speech recognizer.
+This architecture is also used in the Whisper model from OpenAI (Radford et al.,
+2023). Fig. 15.6 shows a subpart of the Whisper architecture (Whisper also does
+other speech tasks like speech translation and voice activity detection, which we’ll
+discuss in the next chapter). Whisper models and inference code are publicly re-
+leased, but the training code and training data are not. However, there are open-
+source projects that use a Whisper-style architecture, like the Open Whisper-style
+
+342 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+Robust Speech Recognition via Large-Scale Weak Supervision4
+⋯⋯
+2 × Conv1D + GELU⋮cross attention
+Log-Mel Spectrogram~SOTENTRANS- CRIBE0.0ThequickTokens in Multitask Training FormatTransformer Encoder Blocks Transformer Decoder Blocks EN0.0Thequickbrown⋮⋮next-token prediction
+Sinusoidal Positional EncodingLearned Positional EncodingMultitask training data (680k hours)Sequence-to-sequence learning
+Multitask training formatEnglish transcriptionAny-to-English speech translationNon-English transcriptionNo speech
+  “Ask not what your country can do for ⋯” 
+  Ask not what your country can do for ⋯
+  “El rápido zorro marrón salta sobre ⋯” 
+  The quick brown fox jumps over ⋯
+ “언덕 위에 올라 내려다보면 너무나 넓고 넓은 ⋯” 
+  언덕 위에 올라 내려다보면 너무나 넓고 넓은 ⋯
+ (background music playing) 
+  ∅
+PREVspecialtokenstext tokenstimestamptokensSTART OF TRANSCRIPTLANGUAGE TAGNO SPEECHEOTTRANSCRIBETRANSLATEbegin timeNO TIMESTAMPS⋯end timetext tokensbegin timeend timetext tokenstext tokensVoice activity detection (VAD)Custom vocabulary /promptingTime-aligned transcription
+Text-only transcription (allows dataset-specific fine-tuning)X → English Translation previous text tokensX → X Transcription Language identificationMLPself attentionMLPself attentionMLPself attentionMLPcross attentionself attentionMLPcross attentionself attentionMLPcross attentionself attentionTRANS- CRIBE
+Figure 1.Overview of our approach.A sequence-to-sequence Transformer model is trained on many different speech processing tasks,including multilingual speech recognition, speech translation, spoken language identiﬁcation, and voice activity detection. All of thesetasks are jointly represented as a sequence of tokens to be predicted by the decoder, allowing for a single model to replace many differentstages of a traditional speech processing pipeline. The multitask training format uses a set of special tokens that serve as task speciﬁers orclassiﬁcation targets, as further explained in Section2.3.2.4. Training DetailsWe train a suite of models of various sizes in order to studythe scaling properties of Whisper. Please see Table1for anoverview. We train with data parallelism across acceleratorsusing FP16 with dynamic loss scaling and activation check-pointing (Griewank & Walther,2000;Chen et al.,2016).Models were trained with AdamW (Loshchilov & Hutter,2017) and gradient norm clipping (Pascanu et al.,2013)with a linear learning rate decay to zero after a warmup overthe ﬁrst 2048 updates. A batch size of 256 segments wasused, and the models are trained for 220updates which isbetween two and three passes over the dataset. Due to onlytraining for a few epochs, over-ﬁtting is not a large concern,and we do not use any data augmentation or regularizationand instead rely on the diversity contained within such alarge dataset to encourage generalization and robustness.Please see AppendixFfor full training hyperparameters.3During early development and evaluation we observed thatWhisper models had a tendency to transcribe plausible butalmost always incorrect guesses for the names of speakers.This happens because many transcripts in the pre-trainingdataset include the name of the person who is speaking,encouraging the model to try to predict them, but this infor-mation is only rarely inferable from only the most recent 303After the original release of Whisper, we trained an additionalLarge model (denoted V2) for 2.5X more epochs while addingSpecAugment (Park et al.,2019), Stochastic Depth (Huang et al.,2016), and BPE Dropout (Provilkov et al.,2019) for regularization.Reported results have been updated to this improved model unlessotherwise speciﬁed.
+Figure 15.6 A sketch of the Whisper architecture from Radford et al. (2023). Because
+Whisper is a multitask system that also does translation and diarization (we’ll discuss these
+non-ASR tasks in the following chapter), Whisper’s transcription format has a Start of Tran-
+script (SOT) token, a language tag, and then an instruction token for whether to transcribe or
+translate.
+Speech Model (OWSM), which reproduces reproduces Whisper-style training but
+offers a fully open-source toolkit and publicly available data (Peng et al., 2023).
+15.3.1 Input and Convolutional Layers
+The encoder-decoder architecture is particularly appropriate when input and output
+sequences have stark length differences, as they do for speech, with long acoustic
+feature sequences mapping to much shorter sequences of letters or words. For ex-
+ample English, words are on average 5 letters or 1.3 BPE tokens long (Bostrom and
+Durrett, 2020) and, in natural conversation, the average word lasts about 250 mil-
+liseconds (Yuan et al., 2006), or 25 frames of 10ms. So the speech signal in 10ms
+frames is about 5 (25/5) to 19 (25/1.3) times longer than the text signal in words or
+tokens.
+Because this length difference is so extreme for speech, encoder-decoder ar-
+chitectures for speech usually have a compression stage that shortens the acoustic
+feature sequence before the encoder stage. (We can additionally make use of a loss
+function that is designed to deal well with compression, like the CTC loss function
+we’ll introduce later.)
+The goal of the subsampling is to produce a shorter sequence X=x1,...,xnthat
+will be the input to the transformer encoder. A very simple baseline algorithm is a
+method sometimes called low frame rate (Pundak and Sainath, 2016): for time iwe low frame rate
+stack (concatenate) the acoustic feature vector fiwith the prior two vectors fi−1and
+fi−2to make a new vector three times longer. Then we simply delete fi−1andfi−2.
+Thus instead of (say) a 40-dimensional acoustic feature vector every 10 ms, we have
+a longer vector (say 120-dimensional) every 30 ms, with a shorter sequence length
+
+15.3 • T HEENCODER -DECODER ARCHITECTURE FOR ASR 343
+n=t
+3.
+But the most common way of creating a shorter input sequence is to use the
+convolutional layers we introduced in the previous section. When a convolutional
+layer has a stride greater than 1, the output sequence becomes shorter than the input
+sequence. Let’s see this in two commonly used ASR systems.
+The Whisper system (Radford et al., 2023) has an audio context window of 30
+seconds. It extracts 128 channel log mel features for each frame, with a 25ms win-
+dow and a stride of 10ms. These are then normalized to 0 mean and a range of -1
+to 1. A stride of 10 ms (100 frames per second) means there are 3000 input frames
+in a 30 second context window. These 3000 frames are passed to two convolutional
+layers, each one followed by a nonlinearity (Whisper uses GELU (Gaussian Error
+Linear Unit), which is a smoother version of ReLU). The ﬁrst convolutional layer
+has 128 input channels and uses a stride of 1, with number of output channels being
+the model dimensionality, and the window length is 3000. For the second convo-
+lutional layer the number of input and output channels is the model dimensionality,
+and there is a stride of 2. The stride of 2 in the second convolutional layer makes the
+output sequence half the length of the input sequence, bringing the output window
+length down to 1500 and producing an audio token every 20 ms. Sinusoidal position
+embeddings are added to these audio encodings before the output of this front end
+is passed to the transformer encoder.
+HuBERT (Hsu et al., 2021) uses an alternative front end architecture, in which
+convolutional layers are used to completely replace the computation of the spectrum.
+So the input is raw 16kHz sampled audio, and it is passed through seven 512-channel
+layers with strides [5,2,2,2,2,2,2] and kernel widths [10,3,3,3,3,2,2] which learn both
+to extract spectral information, and to shorten the input sequence by 320x, from
+16kHz (= one representation per .0625 ms) down to a 20 ms framerate. Positional
+encodings are added to the input, and then a GELU and layer norm are applied
+before the output is passed to the transformer encoder.
+15.3.2 Inference
+After the convolutional stage, encoder-decoders for speech use the same architecture
+(transformer with cross-attention) as for MT.
+Let’s remind ourselves of the encoder-decoder architecture that we introduced
+in Chapter 12. It uses two transformers: an encoder , which is the same as the basic
+transformer from Chapter 8, and a decoder , which has one addition: a new layer
+called the cross-attention layer. The encoder takes the acoustic input X=x1,...,xn
+and maps them to an output representation Henc=h1,...,hn; via a stack of encoder
+blocks.
+The decoder is essentially a conditional language model that attends to the en-
+coder representation and generates the target text (letters or tokens) one by one, at
+each timestep conditioning on the audio representations from the encoder and the
+previously generated text to generate a new letter or token.
+The transformer blocks in the decoder have an extra layer with a special kind
+of attention, cross-attention . Cross-attention has the same form as the multi-head cross-attention
+attention in a normal transformer block, except that while the queries as usual come
+from the previous layer of the decoder, the keys and values come from the output of
+theencoder .
+That is, where in standard multi-head attention the input to each attention layer is
+X, in cross attention the input is the the ﬁnal output of the encoder Henc=h1,...,hn.
+Hencis of shape [n×d], each row representing one acoustic input token. To link the
+
+344 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+Encoderx1x2xixn…Decoderhih2h1…hn
+EncoderBlock 1Block 2Block Ky2y1…
+DecoderBlock 1Block 2Block LUnembedding Matrixym
+Multi-Head AttentionFeedforward+Cross-Attention………………LanguageModeling HeadHenc
+Layer Normalize+
+Layer Normalize…
+…yi…Causal (Left-to-Right) Multi-Head AttentionFeedforward+Layer Normalize+
+Layer Normalize…Layer Normalize+
+y1…ym<>yi+1
+Figure 15.7 The transformer block for the encoder and the decoder, showing the residual stream view. The
+ﬁnal output of the encoder Henc=h1,...,hnis the context used in the decoder. The decoder is a standard
+transformer except with one extra layer, the cross-attention layer, which takes that encoder output Hencand
+uses it to form its KandVinputs.
+keys and values from the encoder with the query from the prior layer of the decoder,
+we multiply the encoder output Hencby the cross-attention layer’s key weights WK
+and value weights WV. The query comes from the output from the prior decoder
+layer Hdec[ℓ−1], which is multiplied by the cross-attention layer’s query weights WQ:
+Q=Hdec[ℓ−1]WQ;K=HencWK;V=HencWV(15.4)
+CrossAttention (Q,K,V) = softmax(QK⊺
+√dk)
+V (15.5)
+The cross attention thus allows the decoder to attend to the acoustic input as pro-
+jected into the entire encoder ﬁnal output representations. The other attention layer
+in each decoder block, the multi-head attention layer, is the same causal (left-to-
+right) attention that we saw in Chapter 8. But the multi-head attention in the en-
+coder, however, is allowed to look ahead at the entire source language text, so it is
+not masked.
+For inference, the probability of the output string yis decomposed as:
+p(y1,..., yn) =n∏
+i=1p(yi|y1,..., yi−1,X) (15.6)
+We can produce each letter of the output via greedy decoding:
+ˆyi=argmax char∈Alphabet P(char|y1...yi−1,X) (15.7)
+
+15.3 • T HEENCODER -DECODER ARCHITECTURE FOR ASR 345
+Alternatively encoder-decoders like Whisper or OWSM also use beam search as
+described in the next section. This is particularly relevant when we are adding a
+language model.
+Adding a language model Since an encoder-decoder model is essentially a con-
+ditional language model, encoder-decoders implicitly learn a language model for the
+output domain of letters from their training data. However, the training data (speech
+paired with text transcriptions) may not include sufﬁcient text to train a good lan-
+guage model. After all, it’s easier to ﬁnd enormous amounts of pure text training
+data than it is to ﬁnd text paired with speech. Thus we can can usually improve a
+model at least slightly by incorporating a very large language model.
+The simplest way to do this is to use beam search to get a ﬁnal beam of hy-
+pothesized sentences; this beam is sometimes called an n-best list . We then use a n-best list
+language model to rescore each hypothesis on the beam. The scoring is done by in- rescore
+terpolating the score assigned by the language model with the encoder-decoder score
+used to create the beam, with a weight λtuned on a held-out set. Also, since most
+models prefer shorter sentences, ASR systems normally have some way of adding a
+length factor. One way to do this is to normalize the probability by the number of
+characters in the hypothesis |Y|c. The following is the scoring function for Listen,
+Attend, and Spell (Chan et al., 2016):
+score(Y|X) =1
+|Y|clogP(Y|X)+λlogPLM(Y) (15.8)
+15.3.3 Learning
+Encoder-decoders for speech are trained with the normal cross-entropy loss gener-
+ally used for conditional language models. At timestep iof decoding, the loss is the
+log probability of the correct token (letter) yi:
+LCE=−logp(yi|y1,...,yi−1,X) (15.9)
+The loss for the entire sentence is the sum of these losses:
+LCE=−m∑
+i=1logp(yi|y1,...,yi−1,X) (15.10)
+This loss is then backpropagated through the entire end-to-end model to train the
+entire encoder-decoder.
+As we described in Chapter 12, we normally use teacher forcing, in which the
+decoder history is forced to be the correct gold yirather than the predicted ˆ yi. It’s
+also possible to use a mixture of the gold and decoder output, for example using
+the gold output 90% of the time, but with probability .1 taking the decoder output
+instead:
+LCE=−logp(yi|y1,..., ˆyi−1,X) (15.11)
+Modern data sizes are quite large. For example Whisper-v2 is trained on a corpus
+of 680,000 hours of speech, mostly from English, but also including 118,000 hours
+from 96 other languages. Data quality is important, so systems that scrape web
+data for training implement methods to remove ASR-generated transcripts from their
+training corpora, such as ﬁltering data that is all uppercase or all lowercase. The
+open OWSM system is trained on 180k hours, mainly hand-transcribed publicly
+
+346 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+available data, including such datasets as LibriSpeech and Multilingual LibriSpeech,
+Common V oice, FLEURS, Switchboard, AMI, and others; see (Peng et al., 2023) for
+details.
+15.4 Self-supervised models: HuBERT
+An alternative to the encoder-decoder architecture are the class of self-supervised self-supervised
+speech models. These models don’t directly learn to map an acoustic input to a
+string of letters and tokens. Instead, they ﬁrst bootstrap a set of discrete phonetic
+units from the acoustic input, learning to map from waveforms to these induced
+units. This pretraining phase doesn’t require transcripts; just unlabeled speech ﬁles..
+After they are pretrained, these models can then be ﬁnetuned to do ASR on a smaller
+set of labeled data, audio paired with transcripts. These models have the advantage
+that they can take advantage of large amounts of untranscribed audio for most of
+their training.
+Here’s we’ll introduce one self-supervised model called HuBERT (Hsu et al., HuBERT
+2021). HuBERT and similar models like wav2vec 2.0 (Baevski et al., 2020) use the wav2vec 2.0
+same intuition as the masked language models like BERT introduced in Chapter 10.
+We mask out some part of the input, and train the model to guess what was hidden
+by the mask.
+…h4h2h1…hn…TransformerStack7 CNN Layersh3h5Acosineprojection layercosines w/each class 
+x4x2x1xnx3x5AcosineAcosineAcosineAcosinesoftmaxy1y2y3y4yn
+MSKMSKMSKAcosiney5
+Figure 15.8 Schematic architecture for the HuBERT inference pass in training. A 16kHz
+wavﬁle is passed through a series of convolutional layers, some frames are replaced with a
+MASK token, and then the sequence is passed though a transformer stack, and then a linear
+layer that projects the transformer output to an output embedding. This embedding is com-
+pared via cosine with the embeddings for each of the 100/500 phonetic classes to produce a
+logit which is passed through softmax to get a probability distribution over the classes at each
+frame.
+
+15.4 • S ELF-SUPERVISED MODELS : HUBERT 347
+15.4.1 HuBERT forward pass
+Let’s ﬁrst show just the forward pass for HuBERT used during training, and then
+we’ll see this in its full training context with the backwards pass. As discussed
+earlier, the input to the HuBERT forward pass is raw 16kHz waveﬁles as input,
+and the output at each 20ms time frame will be a probability distribution over a
+set of induced phonetic classes C(100 classes or 500 classes, depending on the
+stage). Fig. 15.8 shows a sketch of the components. The waveﬁle is passed through
+7 512-channel convolutional layers which learn both to extract spectral information,
+and to shorten the input sequence down to a 20 ms frame, after which positional
+encodings are added, and then GELU and layer norm. Selected tokens are then
+replaced with a mask token, a trained embedding that is shared by all masked frames.
+The whole sequence is passed through a transformer stack, and the output is passed
+through a linear projection layer A. The output embedding at each 20ms frame is
+then compared via cosine with each of the embeddings for the 100 (/500) phonetic
+classes, resulting in a set of 100 logits representing the similarity of the current
+20ms audio timestep to each class. These are then passed through a softmax to get a
+probability distribution over the classes.
+15.4.2 Learning for HuBERT
+Let’s ﬁrst discuss how we induce the 100 or 500 phonetic classes that are the target
+of training. To bootstrap these units, HuBERT starts with mel frequency cepstral
+coefﬁcients , orMFCC vectors, a 39-dimensional feature vector that emphasizes as-
+pects of the signal that are relevant for detection of phonetic units. These vectors
+can be extracted from the acoustic signal as summarized in Section 14.6. We ex-
+tract MFCC vectors for the entire acoustic training dataset (the original HuBERT
+implementation used 960 hours of LibriSpeech data resulting in 172 million vec-
+tors). Next we cluster the MFCC vectors using the k-means clustering algorithm
+described below in Section 15.4.3. Clustering means to group the vectors into k
+classes. The output of clustering is a codebook ofkvectors, called codewords or
+templates orprototypes , each representing a cluster. Each of these kclusters is an
+acoustic unit that we can use as the gold targets for training.
+Now let’s consider the entire training process. After the acoustic input is run
+through the CNN layers, a span of tokens in the context window is chosen to be
+masked, and for those tokens the CNN output is replaced by a MASK embedding.
+The entire context window is passed through the transformer layers, and the trans-
+former output hL
+tat each timestep tis multiplied by the projection layer matrix Ato
+project it into the class embedding space. The resulting representation is then com-
+pared to the embedding for each of the classes in C(using cosine), and a softmax
+(with temperature parameter τ=0.1) is used to turn the similarity into a probability:
+p(c|X,t) =exp(sim(Aht,ec)/τ)∑C
+c′=1exp(sim(Aht,ec′)/τ)(15.12)
+As Fig. 15.9 shows, in parallel with this forward pass, the input waveform is
+passed through an MFCC to create a 39-dimensional vector which is then mapped
+to one of the 100 classes by choosing the most similar centroid in the codebook. The
+loss function is then the sum, over the set of masked tokens M, of the probability
+that the model assigns to these correct units:
+
+348 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+L=∑
+t∈Mlogp(zt|X) (15.13)
+Thus, as in masked language modeling, the model is being trained to predict the
+units associated with the masked frames. This loss is then backpropagated through
+the model
+…h4h2h1…hn…TransformerStack7 CNN Layersh3h5MFCCz4z2z1znz3z5Amap to class in codebookf4f2f1fnf3f5cosinelinear projection layer Acosines with each class -logP(z2)-log P(z4)
+…-log P(z3)
+MSKMSKx1xnMSKx5AcosineAcosineAcosineAcosinesoftmax
+……Network is trained to produce these acoustic units(class)
+Training SIgnal
+Figure 15.9 The ﬁrst phase of HuBERT training. A codebook of 100 units (deﬁned as clus-
+ters of 39-dimensional MFCC vectors) is used as the targets for training. For each timestep t,
+computes the probability of that class, and uses the logprob as the loss.
+Once the model has been initially trained to map to MFCC vector centroids, a
+second stage of training occurs, where we take the representations produced by the
+model, cluster them into 500 clusters, and use those instead as the target for training.
+The intuition is that the initial MFCC clusters will bias the model toward phonetic
+representations, but after enough training the model will learn more accurate and
+ﬁne-grained representations. Fig. 15.10 shows the intuition.
+After HuBERT has been pretrained, the projection and cosine layers are removed
+and a randomly initialized linear + softmax layer is added, mapping into 29 classes
+(corresponding to the 26 English letters and a few extra characters) for the ASR task.
+The CNNs are frozen and the rest of the model is ﬁnetuned for ASR using the CTC
+loss function to be described in Section 15.5.
+15.4.3 K-means clustering
+In this section we give the k-means clustering algorithm more formally. K-means k-means
+is a family of algorithms for grouping a set of vector data into kclusters. Clustering
+is useful whenever we want to treat a group of elements in the same way. In speech
+processing it is very commonly used whenever we need to convert a set of vectors
+over real values into a set of discrete symbols. Besides its use here in HuBERT,
+we’ll return to it in Chapter 16 as an algorithm for creating discrete acoustic tokens
+for TTS.
+We generally use the name k-means to mean a simple version of the family:
+a two-step iterative algorithm that is given a set of Nvectors v(1)..v(N)each of d
+dimensions, i.e.∀i,v(i)∈Rd, and a constant k, where usually N>>k.
+
+15.4 • S ELF-SUPERVISED MODELS : HUBERT 349
+k-means clusteringMFCCEntire training datacodebook k-means clusteringHubert forward pass layer 6 output10% of training datacodebook Stage 1 class inductionStage 2 class induction1100100 units21500500 units239-d768-d
+Figure 15.10 Creating the targets for the two stages of HuBERT training. In the ﬁrst stage,
+100 acoustic units are created by computing 39-dimensional MFCC vectors for the entire
+training data and then clustering them with k-means. In the second stage, 500 units are created
+by passing a subsample of the training data through the HuBERT model after the ﬁrst stage
+training, taking the output of an intermediate transformer layer (layer 6) and clustering them
+with k-means.
+…h4h2h1…hn…TransformerStack7 CNN Layers (Frozen)h3h5Aprojection
+x4x2x1xnx3x5AAAAsoftmaxiiithAttarget letters
+Figure 15.11 The HuBERT ﬁnetuning pass after pretraining. The projection layer and co-
+sine steps are removed, leaving only a randomly initialized projection/softmax layer. The
+CNN layers are frozen, and the rest of the model is ﬁnetuned on a dataset of audio with tran-
+scripts, trained with the CTC loss (Section 15.5) to produce letters as output. The parameters
+that are updated in ﬁnetuning are shown in red (the projection layer and the transformer stack).
+The two-step algorithm is based on iteratively updating a set of kcentroid vec-
+tors. A centroid is the geometric center of a set of a points in n-dimensional space.. centroid
+The algorithm has two steps. In the assignment step, given a set of kcurrent cen-
+troids and a dataset of vectors, it assigns each vector to the cluster whose codeword
+is the closest (by squared Euclidean distance). In the re-estimation step, it recom-
+putes the codeword for each cluster by recomputing the mean vector. Note that the
+resulting mean vector need not be an actual point from the dataset. We iterate back
+
+350 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+and forth between these two steps.
+Here’s the algorithm:
+Initialization : For each cluster kchoose a random vector µk∈Rdto be the
+codeword (also called template orprototype ) for the cluster. The result is a codeword
+template
+prototypecodebook that has one codeword for each of the kclusters.
+codebookThen repeat iteratively until convergence:
+1.Assignment : For each vector v(i)in the dataset assign it to one of the kclusters
+by choosing the one with the nearest codeword µ. Most simply we can deﬁne
+‘nearest’ as the cluster whose codeword has the smallest squared Euclidean
+distance to v(i).
+cluster(i)=argmin
+1<j<k||v(i)−µj||2(15.14)
+where||v||is the L2 norm of the vector∑d
+j=1v2
+j
+2.Re-estimation : Re-estimate the codeword for each cluster by recomputing
+the mean (centroid) of all the vectors in the cluster. If Siis the set of vectors
+in cluster i, then
+∀i:
+µi=1
+|Si|∑
+v∈Siv (15.15)
+15.5 CTC
+We pointed out in the previous section that speech recognition has two particular
+properties that make it very appropriate for the encoder-decoder architecture, where
+the encoder produces an encoding of the input that the decoder uses attention to
+explore. First, in speech we have a very long acoustic input sequence Xmapping to
+a much shorter sequence of letters Y, and second, it’s hard to know exactly which
+part of Xmaps to which part of Y.
+In this section we brieﬂy introduce an alternative to encoder-decoder: an algo-
+rithm and loss function called CTC , short for Connectionist Temporal Classiﬁca- CTC
+tion(Graves et al., 2006), that deals with these problems in a very different way. The
+intuition of CTC is to output a single character for every frame of the input, so that
+the output is the same length as the input, and then to apply a collapsing function
+that combines sequences of identical letters, resulting in a shorter sequence.
+Let’s imagine inference on someone saying the word dinner , and let’s suppose
+we had a function that chooses the most probable letter for each input spectral frame
+representation xi. We’ll call the sequence of letters corresponding to each input
+frame an alignment , because it tells us where in the acoustic signal each letter aligns alignment
+to. Fig. 15.12 shows one such alignment, and what happens if we use a collapsing
+function that just removes consecutive duplicate letters.
+Well, that doesn’t work; our naive algorithm has transcribed the speech as diner ,
+notdinner ! Collapsing doesn’t handle double letters. There’s also another problem
+with our naive function; it doesn’t tell us what symbol to align with silence in the
+input. We don’t want to be transcribing silence as random letters!
+The CTC algorithm solves both problems by adding to the transcription alphabet
+a special symbol for a blank , which we’ll represent as . The blank can be used in blank
+
+15.5 • CTC 351
+X (input)A (alignment)Y (output)dx1ix2ix3nx4nx5nx6nx7ex8rx9rx10rx11rx12rx13rx14dinerwavefile
+Figure 15.12 A naive algorithm for collapsing an alignment between input and letters.
+the alignment whenever we don’t want to transcribe a letter. Blank can also be used
+between letters; since our collapsing function collapses only consecutive duplicate
+letters, it won’t collapse across . More formally, let’s deﬁne the mapping B:a→y
+between an alignment aand an output y, which collapses all repeated letters and
+then removes all blanks. Fig. 15.13 sketches this collapsing function B.
+X (input)A (alignment)remove blanksdx1ix2x3nx4nx5x6nx7ex8rx9rx10rx11rx12x13x14dinernmerge duplicatesdinernY (output)dinern␣␣␣␣␣␣␣
+Figure 15.13 The CTC collapsing function B, showing the space blank character ; re-
+peated (consecutive) characters in an alignment Aare removed to form the output Y.
+The CTC collapsing function is many-to-one; lots of different alignments map
+to the same output string. For example, the alignment shown in Fig. 15.13 is not
+the only alignment that results in the string dinner . Fig. 15.14 shows some other
+alignments that would produce the same output.
+dinnneeerrr␣␣ddinnnerr␣␣␣dddinnnerr␣i␣␣␣␣␣
+Figure 15.14 Three other legitimate alignments producing the transcript dinner .
+It’s useful to think of the set of all alignments that might produce the same output
+Y. We’ll use the inverse of our Bfunction, called B−1, and represent that set as
+B−1(Y).
+15.5.1 CTC Inference
+Before we see how to compute PCTC(Y|X)let’s ﬁrst see how CTC assigns a proba-
+bility to one particular alignment ˆA={ˆa1,..., ˆan}. CTC makes a strong conditional
+independence assumption: it assumes that, given the input X, the CTC model output
+
+352 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+atat time tis independent of the output labels at any other time ai. Thus:
+PCTC(A|X) =T∏
+t=1p(at|X) (15.16)
+Thus to ﬁnd the best alignment ˆA={ˆa1,..., ˆaT}we can greedily choose the charac-
+ter with the max probability at each time step t:
+ˆat=argmax
+c∈Cpt(c|X) (15.17)
+We then pass the resulting sequence Ato the CTC collapsing function Bto get the
+output sequence Y.
+Let’s talk about how this simple inference algorithm for ﬁnding the best align-
+ment A would be implemented. Because we are making a decision at each time
+point, we can treat CTC as a sequence-modeling task, where we output one letter
+ˆytat time tcorresponding to each input token xt, eliminating the need for a full de-
+coder. Fig. 15.15 sketches this architecture, where we take an encoder, produce a
+hidden state htat each timestep, and decode by taking a softmax over the character
+vocabulary at each time step.
+ENCODER…yn
+Feature ComputationSubsampling…ftf1 log Mel spectrumShorter inputsequence Xy1iy2iy3iy4tx1xnClassiﬁer+softmax…ty5……output lettersequence Y
+Figure 15.15 Inference with CTC: using an encoder-only model, with decoding done by
+simple softmaxes over the hidden state htat each output step.
+Alas, there is a potential ﬂaw with the inference algorithm sketched in (Eq. 15.17)
+and Fig. 15.14. The problem is that we chose the most likely alignment A, but the
+most likely alignment may not correspond to the most likely ﬁnal collapsed output
+string Y. That’s because there are many possible alignments that lead to the same
+output string, and hence the most likely output string might not correspond to the
+most probable alignment. For example, imagine the most probable alignment Afor
+an input X= [x1x2x3]is the string [a b ϵ] but the next two most probable alignments
+are [bϵb] and [ϵb b]. The output Y=[b b], summing over those two alignments,
+might be more probable than Y=[a b].
+For this reason, the most probable output sequence Yis the one that has, not
+the single best CTC alignment, but the highest sum over the probability of all its
+
+15.5 • CTC 353
+possible alignments:
+PCTC(Y|X) =∑
+A∈B−1(Y)P(A|X)
+=∑
+A∈B−1(Y)T∏
+t=1p(at|ht)
+ˆY=argmax
+YPCTC(Y|X) (15.18)
+Alas, summing over all alignments is very expensive (there are a lot of alignments),
+so we approximate this sum by using a version of Viterbi beam search that cleverly
+keeps in the beam the high-probability alignments that map to the same output string,
+and sums those as an approximation of (Eq. 15.18). See Hannun (2017) for a clear
+explanation of this extension of beam search for CTC.
+Because of the strong conditional independence assumption mentioned earlier
+(that the output at time tis independent of the output at time t−1, given the input),
+CTC does not implicitly learn a language model over the data (unlike the attention-
+based encoder-decoder architectures). It is therefore essential when using CTC to
+interpolate a language model (and some sort of length factor L(Y)) using interpola-
+tion weights that are trained on a devset:
+score CTC(Y|X) =logPCTC(Y|X)+λ1logPLM(Y)λ2L(Y) (15.19)
+15.5.2 CTC Training
+To train a CTC-based ASR system, we use negative log-likelihood loss with a special
+CTC loss function. Thus the loss for an entire dataset Dis the sum of the negative
+log-likelihoods of the correct output Yfor each input X:
+LCTC=∑
+(X,Y)∈D−logPCTC(Y|X) (15.20)
+To compute CTC loss function for a single input pair (X,Y), we need the probability
+of the output Ygiven the input X. As we saw in Eq. 15.18, to compute the probability
+of a given output Ywe need to sum over all the possible alignments that would
+collapse to Y. In other words:
+PCTC(Y|X) =∑
+A∈B−1(Y)T∏
+t=1p(at|ht) (15.21)
+Naively summing over all possible alignments is not feasible (there are too many
+alignments). However, we can efﬁciently compute the sum by using dynamic pro-
+gramming to merge alignments, with a version of the forward-backward algo-
+rithm also used to train HMMs (Appendix A) and CRFs. The original dynamic pro-
+gramming algorithms for both training and inference are laid out in (Graves et al.,
+2006); see (Hannun, 2017) for a detailed explanation of both.
+15.5.3 Combining CTC and Encoder-Decoder
+It’s also possible to combine the two architectures/loss functions we’ve described,
+the cross-entropy loss from the encoder-decoder architecture, and the CTC loss.
+
+354 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+Fig. 15.16 shows a sketch. For training, we can simply weight the two losses with a
+λtuned on a devset:
+L=−λlogPencdec(Y|X)−(1−λ)logPctc(Y|X) (15.22)
+For inference, we can combine the two with the language model (or the length
+penalty), again with learned weights:
+ˆY=argmax
+Y[λlogPencdec(Y|X)−(1−λ)logPCTC(Y|X)+γlogPLM(Y)](15.23)
+ENCODER…DECODER…H<s>it‘s timx1xn……i   t   ’   s      t   i   m   e  …CTC LossEncoder-Decoder Loss
+Figure 15.16 Combining the CTC and encoder-decoder loss functions.
+15.5.4 Streaming Models: RNN-T for improving CTC
+Because of the strong independence assumption in CTC (assuming that the output
+at time tis independent of the output at time t−1), recognizers based on CTC
+don’t achieve as high an accuracy as the attention-based encoder-decoder recog-
+nizers. CTC recognizers have the advantage, however, that they can be used for
+streaming . Streaming means recognizing words on-line rather than waiting until streaming
+the end of the sentence to recognize them. Streaming is crucial for many applica-
+tions, from commands to dictation, where we want to start recognition while the
+user is still talking. Algorithms that use attention need to compute the hidden state
+sequence over the entire input ﬁrst in order to provide the attention distribution con-
+text, before the decoder can start decoding. By contrast, a CTC algorithm can input
+letters from left to right immediately.
+If we want to do streaming, we need a way to improve CTC recognition to re-
+move the conditional independent assumption, enabling it to know about output his-
+tory. The RNN-Transducer ( RNN-T ), shown in Fig. 15.17, is just such a model RNN-T
+(Graves 2012, Graves et al. 2013). The RNN-T has two main components: a CTC
+acoustic model, and a separate language model component called the predictor that
+conditions on the output token history. At each time step t, the CTC encoder outputs
+a hidden state henc
+tgiven the input x1...xt. The language model predictor takes as in-
+put the previous output token (not counting blanks), outputting a hidden state hpred
+u.
+The two are passed through another network whose output is then passed through a
+softmax to predict the next character.
+PRNN−T(Y|X) =∑
+A∈B−1(Y)P(A|X)
+=∑
+A∈B−1(Y)T∏
+t=1p(at|ht,y<ut)
+
+15.6 • ASR E VALUATION : W ORD ERROR RATE 355
+ENCODERP ( yt,u | x[1..t] , y[1..u-1] )
+xtPREDICTIONNETWORKyu-1JOINT NETWORKhencthpreduSOFTMAXzt,uDECODER
+Figure 15.17 The RNN-T model computing the output token distribution at time tby inte-
+grating the output of a CTC acoustic encoder and a separate ‘predictor’ language model.
+15.6 ASR Evaluation: Word Error Rate
+The standard evaluation metric for speech recognition systems is the word error word error
+rate. The word error rate is based on how much the word string returned by the
+recognizer (the hypothesized word string) differs from a reference transcription.
+The ﬁrst step in computing word error is to compute the minimum edit distance in
+words between the hypothesized and correct strings, giving us the minimum num-
+ber of word substitutions , word insertions , and word deletions necessary to map
+between the correct and hypothesized strings. The word error rate (WER) is then
+deﬁned as follows (note that because the equation includes insertions, the error rate
+can be greater than 100%):
+Word Error Rate =100×Insertions +Substitutions +Deletions
+Total Words in Correct Transcript
+Here is a sample alignment between a reference and a hypothesis utterance from alignment
+the CallHome corpus, showing the counts used to compute the error rate:
+REF: i *** ** UM the PHONE IS i LEFT THE portable **** PHONE UPSTAIRS last night
+HYP: i GOT IT TO the ***** FULLEST i LOVE TO portable FORM OF STORES last night
+Eval: I I S D S S S I S S
+This utterance has six substitutions, three insertions, and one deletion:
+Word Error Rate =1006+3+1
+13=76.9%
+The standard method for computing word error rates is a free script called sclite ,
+available from the National Institute of Standards and Technologies (NIST) (NIST,
+2005). Sclite is given a series of reference (hand-transcribed, gold-standard) sen-
+tences and a matching set of hypothesis sentences. Besides performing alignments,
+and computing word error rate, sclite performs a number of other useful tasks. For
+example, for error analysis it gives useful information such as confusion matrices
+showing which words are often misrecognized for others, and summarizes statistics
+of words that are often inserted or deleted. sclite also gives error rates by speaker
+(if sentences are labeled for speaker ID), as well as useful statistics like the sentence
+error rate , the percentage of sentences with at least one word error.Sentence error
+rate
+
+356 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+Text normalization before evaluation
+It’s normal for systems to normalize text before computing word error rate. There
+are a variety of packages for implementing normalization rules. For example some
+standard English normalization rules include:
+1. Removing metalanguage [non-language, notes, transcription comments] that
+occur between matching brackets ([, ])
+2. Remove or standardize interjections or ﬁlled pauses (“uh”, “um”, “err”)
+3. Standardize contracted and non-contracted forms of English (“I’m”/“I am”)
+4. Normalize non-standard-words (number, quantities, dates, times) [e.g., “$100
+→“One hundred dollars”]
+5. Unify US and UK spelling conventions
+Statistical signiﬁcance for ASR: MAPSSWE or MacNemar
+As with other language processing algorithms, we need to know whether a particular
+improvement in word error rate is signiﬁcant or not.
+The standard statistical tests for determining if two word error rates are different
+is the Matched-Pair Sentence Segment Word Error (MAPSSWE) test, introduced in
+Gillick and Cox (1989).
+The MAPSSWE test is a parametric test that looks at the difference between
+the number of word errors the two systems produce, averaged across a number of
+segments. The segments may be quite short or as long as an entire utterance; in
+general, we want to have the largest number of (short) segments in order to justify
+the normality assumption and to maximize power. The test requires that the errors
+in one segment be statistically independent of the errors in another segment. Since
+ASR systems tend to use trigram LMs, we can approximate this requirement by
+deﬁning a segment as a region bounded on both sides by words that both recognizers
+get correct (or by turn/utterance boundaries). Here’s an example from NIST (2007)
+with four regions:
+I II III IV
+REF: |it was|the best|of|times it|was the worst|of times| |it was
+| | | | | | | |
+SYS A:|ITS |the best|of|times it|IS the worst |of times|OR|it was
+| | | | | | | |
+SYS B:|it was|the best| |times it|WON the TEST |of times| |it was
+In region I, system A has two errors (a deletion and an insertion) and system B
+has zero; in region III, system A has one error (a substitution) and system B has two.
+Let’s deﬁne a sequence of variables Zrepresenting the difference between the errors
+in the two systems as follows:
+Ni
+Athe number of errors made on segment iby system A
+Ni
+B the number of errors made on segment iby system B
+Z Ni
+A−Ni
+B,i=1,2,···,nwhere nis the number of segments
+In the example above, the sequence of Zvalues is{2,−1,−1,1}. Intuitively, if
+the two systems are identical, we would expect the average difference, that is, the
+average of the Zvalues, to be zero. If we call the true average of the differences
+muz, we would thus like to know whether muz=0. Following closely the original
+proposal and notation of Gillick and Cox (1989), we can estimate the true average
+from our limited sample as ˆµz=∑n
+i=1Zi/n. The estimate of the variance of the Zi’s
+
+15.7 • S UMMARY 357
+is
+σ2
+z=1
+n−1n∑
+i=1(Zi−µz)2(15.24)
+Let
+W=ˆµz
+σz/√n(15.25)
+For a large enough n(>50),Wwill approximately have a normal distribution with
+unit variance. The null hypothesis is H0:µz=0, and it can thus be rejected if
+2∗P(Z≥|w|)≤0.05 (two-tailed) or P(Z≥|w|)≤0.05 (one-tailed), where Zis
+standard normal and wis the realized value W; these probabilities can be looked up
+in the standard tables of the normal distribution.
+Earlier work sometimes used McNemar’s test for signiﬁcance, but McNemar’s McNemar’s test
+is only applicable when the errors made by the system are independent, which is not
+true in continuous speech recognition, where errors made on a word are extremely
+dependent on errors made on neighboring words.
+Could we improve on word error rate as a metric? It would be nice, for exam-
+ple, to have something that didn’t give equal weight to every word, perhaps valuing
+content words like Tuesday more than function words like aorof. While researchers
+generally agree that this would be a good idea, it has proved difﬁcult to agree on a
+metric that works in every application of ASR.
+15.7 Summary
+This chapter introduced the fundamental algorithms of automatic speech recognition
+(ASR).
+• The task of speech recognition (or speech-to-text) is to map acoustic wave-
+forms to sequences of graphemes.
+• The input to a speech recognizer is a series of acoustic waves. that are sam-
+pled,quantized , and converted to a spectral representation like the log mel
+spectrum .
+• Two common paradigms for speech recognition are the encoder-decoder with
+attention model, and models based on the CTC loss function . Attention-
+based models have higher accuracies, but models based on CTC more easily
+adapt to streaming : outputting graphemes online instead of waiting until the
+acoustic input is complete.
+• ASR is evaluated using the Word Error Rate; the edit distance between the
+hypothesis and the gold transcription.
+Historical Notes
+A number of speech recognition systems were developed by the late 1940s and early
+1950s. An early Bell Labs system could recognize any of the 10 digits from a single
+speaker (Davis et al., 1952). This system had 10 speaker-dependent stored patterns,
+one for each digit, each of which roughly represented the ﬁrst two vowel formants
+
+358 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+in the digit. They achieved 97%–99% accuracy by choosing the pattern that had
+the highest relative correlation coefﬁcient with the input. Fry (1959) and Denes
+(1959) built a phoneme recognizer at University College, London, that recognized
+four vowels and nine consonants based on a similar pattern-recognition principle.
+Fry and Denes’s system was the ﬁrst to use phoneme transition probabilities to con-
+strain the recognizer.
+The late 1960s and early 1970s produced a number of important paradigm shifts.
+First were a number of feature-extraction algorithms, including the efﬁcient fast
+Fourier transform (FFT) (Cooley and Tukey, 1965), the application of cepstral pro-
+cessing to speech (Oppenheim et al., 1968), and the development of LPC for speech
+coding (Atal and Hanauer, 1971). Second were a number of ways of handling warp-
+ing; stretching or shrinking the input signal to handle differences in speaking rate warping
+and segment length when matching against stored patterns. The natural algorithm for
+solving this problem was dynamic programming, and, as we saw in Appendix A, the
+algorithm was reinvented multiple times to address this problem. The ﬁrst applica-
+tion to speech processing was by Vintsyuk (1968), although his result was not picked
+up by other researchers, and was reinvented by Velichko and Zagoruyko (1970) and
+Sakoe and Chiba (1971) (and 1984). Soon afterward, Itakura (1975) combined this
+dynamic programming idea with the LPC coefﬁcients that had previously been used
+only for speech coding. The resulting system extracted LPC features from incoming
+words and used dynamic programming to match them against stored LPC templates.
+The non-probabilistic use of dynamic programming to match a template against in-
+coming speech is called dynamic time warping .dynamic time
+warping
+The third innovation of this period was the rise of the HMM. Hidden Markov
+models seem to have been applied to speech independently at two laboratories around
+1972. One application arose from the work of statisticians, in particular Baum and
+colleagues at the Institute for Defense Analyses in Princeton who applied HMMs
+to various prediction problems (Baum and Petrie 1966, Baum and Eagon 1967).
+James Baker learned of this work and applied the algorithm to speech processing
+(Baker, 1975a) during his graduate work at CMU. Independently, Frederick Jelinek
+and collaborators (drawing from their research in information-theoretical models
+inﬂuenced by the work of Shannon (1948)) applied HMMs to speech at the IBM
+Thomas J. Watson Research Center (Jelinek et al., 1975). One early difference was
+the decoding algorithm; Baker’s DRAGON system used Viterbi (dynamic program-
+ming) decoding, while the IBM system applied Jelinek’s stack decoding algorithm
+(Jelinek, 1969). Baker then joined the IBM group for a brief time before founding
+the speech-recognition company Dragon Systems.
+The use of the HMM, with Gaussian Mixture Models (GMMs) as the phonetic
+component, slowly spread through the speech community, becoming the dominant
+paradigm by the 1990s. One cause was encouragement by ARPA, the Advanced
+Research Projects Agency of the U.S. Department of Defense. ARPA started a
+ﬁve-year program in 1971 to build 1000-word, constrained grammar, few speaker
+speech understanding (Klatt, 1977), and funded four competing systems of which
+Carnegie-Mellon University’s Harpy system (Lowerre, 1976), which used a simpli-
+ﬁed version of Baker’s HMM-based DRAGON system was the best of the tested sys-
+tems. ARPA (and then DARPA) funded a number of new speech research programs,
+beginning with 1000-word speaker-independent read-speech tasks like “Resource
+Management” (Price et al., 1988), recognition of sentences read from the Wall Street
+Journal (WSJ), Broadcast News domain (LDC 1998, Graff 1997) (transcription of
+actual news broadcasts, including quite difﬁcult passages such as on-the-street inter-
+
+HISTORICAL NOTES 359
+views) and the Switchboard, CallHome, CallFriend, and Fisher domains (Godfrey
+et al. 1992, Cieri et al. 2004) (natural telephone conversations between friends or
+strangers). Each of the ARPA tasks involved an approximately annual bakeoff at bakeoff
+which systems were evaluated against each other. The ARPA competitions resulted
+in wide-scale borrowing of techniques among labs since it was easy to see which
+ideas reduced errors the previous year, and the competitions were probably an im-
+portant factor in the eventual spread of the HMM paradigm.
+By around 1990 neural alternatives to the HMM/GMM architecture for ASR
+arose, based on a number of earlier experiments with neural networks for phoneme
+recognition and other speech tasks. Architectures included the time-delay neural
+network ( TDNN )—the ﬁrst use of convolutional networks for speech— (Waibel
+et al. 1989, Lang et al. 1990), RNNs (Robinson and Fallside, 1991), and the hybrid hybrid
+HMM/MLP architecture in which a feedforward neural network is trained as a pho-
+netic classiﬁer whose outputs are used as probability estimates for an HMM-based
+architecture (Morgan and Bourlard 1990, Bourlard and Morgan 1994, Morgan and
+Bourlard 1995).
+While the hybrid systems showed performance close to the standard HMM/GMM
+models, the problem was speed: large hybrid models were too slow to train on the
+CPUs of that era. For example, the largest hybrid system, a feedforward network,
+was limited to a hidden layer of 4000 units, producing probabilities over only a few
+dozen monophones. Yet training this model still required the research group to de-
+sign special hardware boards to do vector processing (Morgan and Bourlard, 1995).
+A later analytic study showed the performance of such simple feedforward MLPs
+for ASR increases sharply with more than 1 hidden layer, even controlling for the
+total number of parameters (Maas et al., 2017). But the computational resources of
+the time were insufﬁcient for more layers.
+Over the next two decades a combination of Moore’s law and the rise of GPUs
+allowed deep neural networks with many layers. Performance was getting close to
+traditional systems on smaller tasks like TIMIT phone recognition by 2009 (Mo-
+hamed et al., 2009), and by 2012, the performance of hybrid systems had surpassed
+traditional HMM/GMM systems (Jaitly et al. 2012, Dahl et al. 2012, inter alia).
+Originally it seemed that unsupervised pretraining of the networks using a tech-
+nique like deep belief networks was important, but by 2013, it was clear that for
+hybrid HMM/GMM feedforward networks, all that mattered was to use a lot of data
+and enough layers, although a few other components did improve performance: us-
+ing log mel features instead of MFCCs, using dropout, and using rectiﬁed linear
+units (Deng et al. 2013, Maas et al. 2013, Dahl et al. 2013).
+Meanwhile early work had proposed the CTC loss function by 2006 (Graves
+et al., 2006), and by 2012 the RNN-Transducer was deﬁned and applied to phone
+recognition (Graves 2012, Graves et al. 2013), and then to end-to-end speech recog-
+nition rescoring (Graves and Jaitly, 2014), and then recognition (Maas et al., 2015),
+with advances such as specialized beam search (Hannun et al., 2014). (Our de-
+scription of CTC in the chapter draws on Hannun (2017), which we encourage the
+interested reader to follow).
+The encoder-decoder architecture was applied to speech at about the same time
+by two different groups, in the Listen Attend and Spell system of Chan et al. (2016)
+and the attention-based encoder decoder architecture of Chorowski et al. (2014)
+and Bahdanau et al. (2016). By 2018 Transformers were included in this encoder-
+decoder architecture. Karita et al. (2019) is a nice comparison of RNNs vs Trans-
+formers in encoder-architectures for ASR, TTS, and speech-to-speech translation.
+
+360 CHAPTER 15 • A UTOMATIC SPEECH RECOGNITION
+Popular toolkits for speech processing include Kaldi (Povey et al., 2011) and Kaldi
+ESPnet (Watanabe et al. 2018, Hayashi et al. 2020). ESPnet
+Exercises
+

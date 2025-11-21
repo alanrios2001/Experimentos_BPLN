@@ -1,0 +1,746 @@
+Chapter 16 8194
+Discourse 8195
+Applications of natural language processing often concern multi-sentence documents: 8196
+from paragraph-long restaurant reviews, to 500-word newspaper articles, to 500-page 8197
+novels. Yet most of the methods that we have discussed thus far are concerned with 8198
+individual sentences. This chapter discusses theories and methods for handling multi- 8199
+sentence linguistic phenomena, known collectively as discourse . There are diverse char- 8200
+acterizations of discourse structure, and no single structure is ideal for every computa- 8201
+tional application. This chapter covers some of the most well studied discourse repre- 8202
+sentations, while highlighting computational models for identifying and exploiting these 8203
+structures. 8204
+16.1 Segments 8205
+A document or conversation can be viewed as a sequence of segments , each of which is 8206
+cohesive in its content and/or function. In Wikipedia biographies, these segments often 8207
+pertain to various aspects to the subject’s life: early years, major events, impact on others, 8208
+and so on. This segmentation is organized around topics . Alternatively, scientiﬁc research 8209
+articles are often organized by functional themes : the introduction, a survey of previous 8210
+research, experimental setup, and results. 8211
+Written texts often mark segments with section headers and related formatting de- 8212
+vices. However, such formatting may be too coarse-grained to support applications such 8213
+as the retrieval of speciﬁc passages of text that are relevant to a query (Hearst, 1997). 8214
+Unformatted speech transcripts, such as meetings and lectures, are also an application 8215
+scenario for segmentation (Carletta, 2007; Glass et al., 2007; Janin et al., 2003). 8216
+385
+
+386 CHAPTER 16. DISCOURSE
+0 5 10 15 20 25 30 35
+sentence0.00.10.20.30.40.50.6cosine similarityoriginal
+smoothing L=1
+smoothing L=3
+Figure 16.1: Smoothed cosine similarity among adjacent sentences in a news article. Local
+minima atm= 10 andm= 29 indicate likely segmentation points.
+16.1.1 Topic segmentation 8217
+A cohesive topic segment forms a uniﬁed whole, using various linguistic devices: re-
+peated references to an entity or event; the use of conjunctions to link related ideas; and
+the repetition of meaning through lexical choices (Halliday and Hasan, 1976). Each of
+these cohesive devices can be measured, and then used as features for topic segmenta-
+tion. A classical example is the use of lexical cohesion in the TextTiling method for
+topic segmentation (Hearst, 1997). The basic idea is to compute the textual similarity be-
+tween each pair of adjacent blocks of text (sentences or ﬁxed-length units), using a formula
+such as the smoothed cosine similarity of their bag-of-words vectors,
+sm=xm·xm+1
+||xm||2×||xm+1||2[16.1]
+sm=L∑
+ℓ=0kℓ(sm+ℓ+sm−ℓ), [16.2]
+withkℓrepresenting the value of a smoothing kernel of size L, e.g.k= [1,0.5,0.25]⊤. 8218
+Segmentation points are then identiﬁed at local minima in the smoothed similarities s, 8219
+since these points indicate changes in the overall distribution of words in the text. An 8220
+example is shown in Figure 16.1. 8221
+Text segmentation can also be formulated as a probabilistic model, in which each seg- 8222
+ment has a unique language model that deﬁnes the probability over the text in the seg- 8223
+ment (Utiyama and Isahara, 2001; Eisenstein and Barzilay, 2008; Du et al., 2013).1A good 8224
+1There is a rich literature on how latent variable models (such as latent Dirichlet allocation ) can track
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+16.2. ENTITIES AND REFERENCE 387
+segmentation achieves high likelihood by grouping segments with similar word distribu- 8225
+tions. This probabilistic approach can be extended to hierarchical topic segmentation , in 8226
+which each topic segment is divided into subsegments (Eisenstein, 2009). All of these ap- 8227
+proaches are unsupervised. While labeled data can be obtained from well-formatted texts 8228
+such as textbooks, such annotations may not generalize to speech transcripts in alterna- 8229
+tive domains. Supervised methods have been tried in cases where in-domain labeled data 8230
+is available, substantially improving performance by learning weights on multiple types 8231
+of features (Galley et al., 2003). 8232
+16.1.2 Functional segmentation 8233
+In some genres, there is a canonical set of communicative functions : for example, in sci- 8234
+entiﬁc research articles, one such function is to communicate the general background for 8235
+the article, another is to introduce a new contribution, or to describe the aim of the re- 8236
+search (Teufel et al., 1999). A functional segmentation divides the document into con- 8237
+tiguous segments, sometimes called rhetorical zones , in which each sentence has the same 8238
+function. Teufel and Moens (2002) train a supervised classiﬁer to identify the functional 8239
+of each sentence in a set of scientiﬁc research articles, using features that describe the sen- 8240
+tence’s position in the text, its similarity to the rest of the article and title, tense and voice of 8241
+the main verb, and the functional role of the previous sentence. Functional segmentation 8242
+can also be performed without supervision. Noting that some types of Wikipedia arti- 8243
+cles have very consistent functional segmentations (e.g., articles about cities or chemical 8244
+elements), Chen et al. (2009) introduce an unsupervised model for functional segmenta- 8245
+tion, which learns both the language model associated with each function and the typical 8246
+patterning of functional segments across the article. 8247
+16.2 Entities and reference 8248
+Another dimension of discourse relates to which entities are mentioned throughout the 8249
+text, and how. Consider the examples in Figure 16.2: Grosz et al. (1995) argue that the ﬁrst 8250
+discourse is more coherent. Do you agree? The examples differ in their choice of refer- 8251
+ring expressions for the protagonist John, and in the syntactic constructions in sentences 8252
+(b) and (d). The examples demonstrate the need for theoretical models to explain how 8253
+referring expressions are chosen, and where they are placed within sentences. Such mod- 8254
+els can then be used to help interpret the overall structure of the discourse, to measure 8255
+discourse coherence, and to generate discourses in which referring expressions are used 8256
+coherently. 8257
+topics across documents (Blei et al., 2003; Blei, 2012).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+388 CHAPTER 16. DISCOURSE
+(16.1) a. John went to his favorite music
+store to buy a piano.
+b. He had frequented the store for
+many years.
+c. He was excited that he could ﬁ-
+nally buy a piano.
+d. He arrived just as the store was
+closing for the day(16.2) a. John went to his favorite music
+store to buy a piano.
+b. It was a store John had fre-
+quented for many years.
+c. He was excited that he could ﬁ-
+nally buy a piano.
+d. It was closing just as John ar-
+rived.
+Figure 16.2: Two tellings of the same story (Grosz et al., 1995). The discourse on the left
+uses referring expressions coherently, while the one on the right does not.
+16.2.1 Centering theory 8258
+The relationship between discourse and entity reference is most elaborated in centering 8259
+theory (Grosz et al., 1995). According to the theory, every utterance in the discourse is 8260
+characterized by a set of entities, known as centers . 8261
+•The forward-looking centers in utterance mare all the entities that are mentioned 8262
+in the utterance, cf(wm) ={e1,e2,...,}. The forward-looking centers are partially 8263
+ordered by their syntactic prominence, favoring subjects over other positions. 8264
+•The backward-looking center cb(wm)is the highest-ranked element in the set of 8265
+forward-looking centers from the previous utterance cf(wm−1)that is also men- 8266
+tioned inwm. 8267
+Given these two deﬁnitions, centering theory makes the following predictions about 8268
+the form and position of referring expressions: 8269
+1. If a pronoun appears in the utterance wm, then the backward-looking center cb(wm) 8270
+must also be realized as a pronoun. This rule argues against the use of itto refer 8271
+to the piano store in Example (16.2d), since J OHN is the backward looking center of 8272
+(16.2d), and he is mentioned by name and not by a pronoun. 8273
+2. Sequences of utterances should retain the same backward-looking center if possible, 8274
+and ideally, the backward-looking center should also be the top-ranked element in 8275
+the list of forward-looking centers. This rule argues in favor of the preservation of 8276
+JOHN as the backward-looking center throughout Example (16.1). 8277
+Centering theory uniﬁes aspects of syntax, discourse, and anaphora resolution. However, 8278
+it can be difﬁcult to clarify exactly how to rank the elements of each utterance, or even 8279
+how to partition a text or dialog into utterances (Poesio et al., 2004). 8280
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+16.2. ENTITIES AND REFERENCE 389
+SKYLER WALTER DANGER A GUY THE DOOR
+You don’t know who you’re talk-
+ing to,S - - - -
+so let me clue you in. O O - - -
+I am not in danger, Skyler. X S X - -
+I am the danger. - S O - -
+A guy opens his door and gets
+shot,- - - S O
+and you think that of me? S X - - -
+No. I am the one who knocks! - S - - -
+Figure 16.3: The entity grid representation for a dialogue from the television show Break-
+ing Bad .
+16.2.2 The entity grid 8281
+One way to formalize the ideas of centering theory is to arrange the entities in a text or 8282
+conversation in an entity grid . This is a data structure with one row per sentence, and 8283
+one column per entity (Barzilay and Lapata, 2008). Each cell c(m,i)can take the following 8284
+values: 8285
+c(m,i) =
+
+S, entityiis in subject position in sentence m
+O, entityiis in object position in sentence m
+X, entityiappears in sentence m, in neither subject nor object position
+−,entityidoes not appear in sentence m.
+[16.3]
+To populate the entity grid, syntactic parsing is applied to identify subject and object 8286
+positions, and coreference resolution is applied to link multiple mentions of a single entity. 8287
+An example is shown in Figure 16.3. 8288
+After the grid is constructed, the coherence of a document can be measured by the 8289
+transitions between adjacent cells in each column. For example, the transition (S→S) 8290
+keeps an entity in subject position across adjacent sentences; the transition (O→S)pro- 8291
+motes an entity from object position to subject position; the transition (S→−)drops the 8292
+subject of one sentence from the next sentence. The probabilities of each transition can be 8293
+estimated from labeled data, and an entity grid can then be scored by the sum of the log- 8294
+probabilities across all columns and all transitions,∑Ne
+i=1∑M
+m=1logp(c(m,i)|c(m−1,i)). 8295
+The resulting probability can be used as a proxy for the coherence of a text. This has been 8296
+shown to be useful for a range of tasks: determining which of a pair of articles is more 8297
+readable (Schwarm and Ostendorf, 2005), correctly ordering the sentences in a scrambled 8298
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+390 CHAPTER 16. DISCOURSE
+text (Lapata, 2003), and disentangling multiple conversational threads in an online multi- 8299
+party chat (Elsner and Charniak, 2010). 8300
+16.2.3 *Formal semantics beyond the sentence level 8301
+An alternative view of the role of entities in discourse focuses on formal semantics, and the 8302
+construction of meaning representations for multi-sentence units. Consider the following 8303
+two sentences (from Bird et al., 2009): 8304
+(16.3) a. Angus owns a dog. 8305
+b. It bit Irene. 8306
+We would like to recover the formal semantic representation, 8307
+∃x.DOG(x)∧OWN (ANGUS,x)∧BITE(x,IRENE ). [16.4]
+However, the semantic representations of each individual sentence are:
+∃x.DOG(x)∧OWN (ANGUS,x) [16.5]
+BITE(y,IRENE ). [16.6]
+Unifying these two representations into the form of Equation 16.4 requires linking the 8308
+unbound variable yfrom [16.6] with the quantiﬁed variable xin [16.5]. Discourse un- 8309
+derstanding therefore requires the reader to update a set of assignments, from variables 8310
+to entities. This update would (presumably) link the dogin the ﬁrst sentence of [16.3] 8311
+with the unbound variable yin the second sentence, thereby licensing the conjunction in 8312
+[16.4].2This basic idea is at the root of dynamic semantics (Groenendijk and Stokhof, 8313
+1991). Segmented discourse representation theory links dynamic semantics with a set 8314
+ofdiscourse relations , which explain how adjacent units of text are rhetorically or con- 8315
+ceptually related (Lascarides and Asher, 2007). The next section explores the theory of 8316
+discourse relations in more detail. 8317
+16.3 Relations 8318
+In dependency grammar, sentences are characterized by a graph (usually a tree) of syntac- 8319
+tic relations between words, such as N SUBJ and D ET. A similar idea can be applied at the 8320
+document level, identifying relations between discourse units, such as clauses, sentences, 8321
+or paragraphs. The task of discourse parsing involves identifying discourse units and 8322
+the relations that hold between them. These relations can then be applied to tasks such as 8323
+document classiﬁcation and summarization, as discussed in §16.3.4. 8324
+2This linking task is similar to coreference resolution (see chapter 15), but here the connections are be-
+tween semantic variables, rather than spans of text.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+16.3. RELATIONS 391
+•TEMPORAL
+–Asynchronous
+–Synchronous:
+precedence, succession
+•CONTINGENCY
+–Cause: result, reason
+–Pragmatic cause:
+justiﬁcation
+–Condition: hypothetical,
+general, unreal present,
+unreal past, real present,
+real past
+–Pragmatic condition:
+relevance, implicit
+assertion•COMPARISON
+–Contrast: juxtaposition, opposition
+–Pragmatic contrast
+–Concession: expectation,
+contra-expectation
+–Pragmatic concession
+•EXPANSION
+–Conjunction
+–Instantiation
+–Restatement: speciﬁcation,
+equivalence, generalization
+–Alternative: conjunctive, disjunctive,
+chosen alternative
+–Exception
+–List
+Table 16.1: The hierarchy of discourse relation in the Penn Discourse Treebank annota-
+tions (Prasad et al., 2008). For example, PRECEDENCE is a subtype of S YNCHRONOUS ,
+which is a type of TEMPORAL relation.
+16.3.1 Shallow discourse relations 8325
+The existence of discourse relations is hinted by discourse connectives , such as however , 8326
+moreover ,meanwhile , and if . . . then . These connectives explicitly specify the relationship 8327
+between adjacent units of text: however signals a contrastive relationship, moreover signals 8328
+that the subsequent text elaborates or strengthens the point that was made immediately 8329
+beforehand, meanwhile indicates that two events are contemporaneous, and if . . . then sets 8330
+up a conditional relationship. Discourse connectives can therefore be viewed as a starting 8331
+point for the analysis of discourse relations. 8332
+Inlexicalized tree-adjoining grammar for discourse (D-LTAG) , each connective an- 8333
+chors a relationship between two units of text (Webber, 2004). This model provides the 8334
+theoretical basis for the Penn Discourse Treebank (PDTB) , the largest corpus of discourse 8335
+relations in English (Prasad et al., 2008). It includes a hierarchical inventory of discourse 8336
+relations (shown in Table 16.1), which is created by abstracting the meanings implied by 8337
+the discourse connectives that appear in real texts (Knott, 1996). These relations are then 8338
+annotated on the same corpus of news text used in the Penn Treebank (see §9.2.2), adding 8339
+the following information: 8340
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+392 CHAPTER 16. DISCOURSE
+•Each connective is annotated for the discourse relation or relations that it expresses, 8341
+if any — many discourse connectives have senses in which they do not signal a 8342
+discourse relation (Pitler and Nenkova, 2009). 8343
+•For each discourse relation, the two arguments of the relation are speciﬁed as ARG 1 8344
+and ARG 2, where ARG 2 is constrained to be adjacent to the connective. These argu- 8345
+ments may be sentences, but they may also smaller or larger units of text. 8346
+•Adjacent sentences are annotated for implicit discourse relations , which are not 8347
+marked by any connective. When a connective could be inserted between a pair 8348
+of sentence, the annotator supplies it, and also labels its sense (e.g., example 16.5). 8349
+In some cases, there is no relationship at all between a pair of adjacent sentences; 8350
+in other cases, the only relation is that the adjacent sentences mention one or more 8351
+shared entity. These phenomena are annotated as N ORELand E NTREL(entity rela- 8352
+tion), respectively. 8353
+Examples of Penn Discourse Treebank annotations are shown in (16.4). In (16.4), the 8354
+word therefore acts as an explicit discourse connective, linking the two adjacent units of 8355
+text. The Treebank annotations also specify the “sense” of each relation, linking the con- 8356
+nective to a relation in the sense inventory shown in Table 16.1: in (16.4), the relation is 8357
+PRAGMATIC CAUSE :JUSTIFICATION because it relates to the author’s communicative in- 8358
+tentions. The word therefore can also signal causes in the external world (e.g., He was 8359
+therefore forced to relinquish his plan ). In discourse sense classiﬁcation , the goal is to de- 8360
+termine which discourse relation, if any, is expressed by each connective. A related task 8361
+is the classiﬁcation of implicit discourse relations, as in (16.5). In this example, the re- 8362
+lationship between the adjacent sentences could be expressed by the connective because , 8363
+indicating a CAUSE :REASON relationship. 8364
+16.3.1.1 Classifying explicit discourse relations and their arguments 8365
+As suggested by the examples above, many connectives can be used to invoke multiple 8366
+types of discourse relations. Similarly, some connectives have senses that are unrelated 8367
+to discourse: for example, andfunctions as a discourse connective when it links propo- 8368
+sitions, but not when it links noun phrases (Lin et al., 2014). Nonetheless, the senses of 8369
+explicitly-marked discourse relations in the Penn Treebank are relatively easy to classify, 8370
+at least at the coarse-grained level. When classifying the four top-level PDTB relations, 8371
+90% accuracy can be obtained simply by selecting the most common relation for each 8372
+connective (Pitler and Nenkova, 2009). At the more ﬁne-grained levels of the discourse 8373
+relation hierarchy, connectives are more ambiguous. This fact is reﬂected both in the ac- 8374
+curacy of automatic sense classiﬁcation (Versley, 2011) and in interannotator agreement, 8375
+which falls to 80% for level-3 discourse relations (Prasad et al., 2008). 8376
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+16.3. RELATIONS 393
+(16.4) . . . as this business of whaling has somehow come to be regarded among landsmen as a
+rather unpoetical and disreputable pursuit ;therefore, I am all anxiety to convince
+ye, ye landsmen, of the injustice hereby done to us hunters of whales .
+(16.5) But a few funds have taken other defensive steps. Some have raised their cash
+positions to record levels. Implicit =BECAUSE High cash positions help buffer a
+fund when the market falls.
+(16.6) Michelle lives in a hotel room, and although she drives a canary-colored
+Porsche ,she hasn’t time to clean or repair it .
+(16.7) Most oil companies ,when they set exploration and production budgets for this
+year ,forecast revenue of $15 for each barrel of crude produced .
+Figure 16.4: Example annotations of discourse relations. In the style of the Penn Discourse
+Treebank, the discourse connective is underlined, the ﬁrst argument is shown in italics,
+and the second argument is shown in bold. Examples (16.5-16.7) are quoted from Prasad
+et al. (2008).
+A more challenging task for explicitly-marked discourse relations is to identify the 8377
+scope of the arguments. Discourse connectives need not be adjacent to ARG 1, as shown 8378
+in item 16.6, where ARG 1 follows ARG 2; furthermore, the arguments need not be contigu- 8379
+ous, as shown in (16.7). For these reasons, recovering the arguments of each discourse 8380
+connective is a challenging subtask. Because intra-sentential arguments are often syn- 8381
+tactic constituents (see chapter 10), many approaches train a classiﬁer to predict whether 8382
+each constituent is an appropriate argument for each explicit discourse connective (Well- 8383
+ner and Pustejovsky, 2007; Lin et al., 2014, e.g.,). 8384
+16.3.1.2 Classifying implicit discourse relations 8385
+Implicit discourse relations are considerably more difﬁcult to classify and to annotate.3
+Most approaches are based on an encoding of each argument, which is then used as input
+to a non-linear classiﬁer:
+z(i)=Encode (w(i)) [16.7]
+z(i+1)=Encode (w(i+1)) [16.8]
+ˆyi= argmax
+yΨ(y,z(i),z(i+1)). [16.9]
+3In the dataset for the 2015 shared task on shallow discourse parsing, the interannotator agreement was
+91% for explicit discourse relations and 81% for non-explicit relations, across all levels of detail (Xue et al.,
+2015).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+394 CHAPTER 16. DISCOURSE
+This basic framework can be instantiated in several ways, including both feature-based 8386
+and neural encoders. Several recent approaches are compared in the 2015 and 2016 shared 8387
+tasks at the Conference on Natural Language Learning (Xue et al., 2015, 2016). 8388
+Feature-based approaches Each argument can be encoded into a vector of surface fea- 8389
+tures. The encoding typically includes lexical features (all words, or all content words, or 8390
+a subset of words such as the ﬁrst three and the main verb), Brown clusters of individ- 8391
+ual words (§14.4), and syntactic features such as terminal productions and dependency 8392
+arcs (Pitler et al., 2009; Lin et al., 2009; Rutherford and Xue, 2014). The classiﬁcation func- 8393
+tion then has two parts. First, it creates a joint feature vector by combining the encodings 8394
+of each argument, typically by computing the cross-product of all features in each encod- 8395
+ing: 8396
+f(y,z(i),z(i+1)) ={(a×b×y) : (z(i)
+az(i+1)
+b)} [16.10]
+The size of this feature set grows with the square of the size of the vocabulary, so it can be 8397
+helpful to select a subset of features that are especially useful on the training data (Park 8398
+and Cardie, 2012). After fis computed, any classiﬁer can be trained to compute the ﬁnal 8399
+score, Ψ(y,z(i),z(i+1)) =θ·f(y,z(i),z(i+1)). 8400
+Neural network approaches In neural network architectures, the encoder is learned 8401
+jointly with the classiﬁer as an end-to-end model. Each argument can be encoded using 8402
+a variety of neural architectures (surveyed in §14.8): recursive (§10.6.1; Ji and Eisenstein, 8403
+2015), recurrent ( §6.3; Ji et al., 2016), and convolutional ( §3.4; Qin et al., 2017). The clas- 8404
+siﬁcation function can then be implemented as a feedforward neural network on the two 8405
+encodings (chapter 3; for examples, see Rutherford et al., 2017; Qin et al., 2017), or as a 8406
+simple bilinear product, Ψ(y,z(i),z(i+1)) = (z(i))⊤Θyz(i+1)(Ji and Eisenstein, 2015). The 8407
+encoding model can be trained by backpropagation from the classiﬁcation objective, such 8408
+as the margin loss. Rutherford et al. (2017) show that neural architectures outperform 8409
+feature-based approaches in most settings. While neural approaches require engineering 8410
+the network architecture (e.g., embedding size, number of hidden units in the classiﬁer), 8411
+feature-based approaches also require signiﬁcant engineering to incorporate linguistic re- 8412
+sources such as Brown clusters and parse trees, and to select a subset of relevant features. 8413
+16.3.2 Hierarchical discourse relations 8414
+In sentence parsing, adjacent phrases combine into larger constituents, ultimately pro- 8415
+ducing a single constituent for the entire sentence. The resulting tree structure enables 8416
+structured analysis of the sentence, with subtrees that represent syntactically coherent 8417
+chunks of meaning. Rhetorical Structure Theory (RST) extends this style of hierarchical 8418
+analysis to the discourse level (Mann and Thompson, 1988). 8419
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+16.3. RELATIONS 395
+The basic element of RST is the discourse unit , which refers to a contiguous span of 8420
+text. Elementary discourse units (EDUs) are the atomic elements in this framework, and 8421
+are typically (but not always) clauses.4Each discourse relation combines two or more 8422
+adjacent discourse units into a larger, composite discourse unit; this process ultimately 8423
+unites the entire text into a tree-like structure.58424
+Nuclearity In many discourse relations, one argument is primary. For example: 8425
+(16.8) [LaShawn loves animals ]N 8426
+[She has nine dogs and one pig ]S 8427
+In this example, the second sentence provides EVIDENCE for the point made in the ﬁrst 8428
+sentence. The ﬁrst sentence is thus the nucleus of the discourse relation, and the second 8429
+sentence is the satellite . The notion of nuclearity is analogous to the head-modiﬁer struc- 8430
+ture of dependency parsing (see §11.1.1). However, in RST, some relations have multiple 8431
+nuclei. For example, the arguments of the CONTRAST relation are equally important: 8432
+(16.9) [The clash of ideologies survives this treatment ]N 8433
+[but the nuance and richness of Gorky’s individual characters have vanished in the scufﬂe ]N68434
+Relations that have multiple nuclei are called coordinating ; relations with a single nu- 8435
+cleus are called subordinating . Subordinating relations are constrained to have only two 8436
+arguments, while coordinating relations (such as CONJUNCTION ) may have more than 8437
+two. 8438
+RST Relations Rhetorical structure theory features a large inventory of discourse rela- 8439
+tions, which are divided into two high-level groups: subject matter relations, and presen- 8440
+tational relations. Presentational relations are organized around the intended beliefs of 8441
+the reader. For example, in (16.8), the second discourse unit provides evidence intended 8442
+to increase the reader’s belief in the proposition expressed by the ﬁrst discourse unit, that 8443
+LaShawn loves animals. In contrast, subject-matter relations are meant to communicate ad- 8444
+ditional facts about the propositions contained in the discourse units that they relate: 8445
+4Details of discourse segmentation can be found in the RST annotation manual (Carlson and Marcu,
+2001).
+5While RST analyses are typically trees, this should be taken as a strong theoretical commitment to the
+principle that all coherent discourses have a tree structure. Taboada and Mann (2006) write:
+It is simply the case that trees are convenient, easy to represent, and easy to understand. There
+is, on the other hand, no theoretical reason to assume that trees are the only possible represen-
+tation of discourse structure and of coherence relations.
+The appropriateness of tree structures to discourse has been challenged, e.g., by Wolf and Gibson (2005), who
+propose a more general graph-structured representation.
+6from the RST Treebank (Carlson et al., 2002)
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+396 CHAPTER 16. DISCOURSE
+RConcession
+	Justify
+1A
+Conjunction
+	Elaboration
+1B 1C1D
+	Justify
+1EConjunction
+1F 1G1H
+[It could have been a great movie]1A[It does have beautiful scenery,]1B[some of
+thebest since Lord of the Rings.]1C[The acting is well done,]1D[and I really liked
+the son of the leader of the Samurai.]1E[He was a likable chap,]1F[and I:::::hated to
+see him die.]1G[But, other than all that, this movie is::::::nothing more than hidden
+:::::rip-oﬀs.]1H
+Figure 16.5: A rhetorical structure theory analysis of a short movie review, adapted from
+Voll and Taboada (2007). Positive and:::::::::negative sentiment words are underlined, indicat-
+ing RST’s potential utility in document-level sentiment analysis.
+(16.10) [the debt plan was rushed to completion ]N 8446
+[in order to be announced at the meeting ]S78447
+In this example, the satellite describes a world state that is realized by the action described 8448
+in the nucleus. This relationship is about the world, and not about the author’s commu- 8449
+nicative intentions. 8450
+Example Figure 16.5 depicts an RST analysis of a paragraph from a movie review. Asym- 8451
+metric (subordinating) relations are depicted with an arrow from the satellite to the nu- 8452
+cleus; symmetric (coordinating) relations are depicted with lines. The elementary dis- 8453
+course units 1F and 1G are combined into a larger discourse unit with the symmetric 8454
+CONJUNCTION relation. The resulting discourse unit is then the satellite in a J USTIFY 8455
+relation with 1E. 8456
+7from the RST Treebank (Carlson et al., 2002)
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+16.3. RELATIONS 397
+16.3.2.1 Hierarchical discourse parsing 8457
+The goal of discourse parsing is to recover a hierarchical structural analysis from a doc- 8458
+ument text, such as the analysis in Figure 16.5. For now, let’s assume a segmentation 8459
+of the document into elementary discourse units (EDUs); segmentation algorithms are 8460
+discussed below. After segmentation, discourse parsing can be viewed as a combination 8461
+of two components: the discourse relation classiﬁcation techniques discussed in §16.3.1.2, 8462
+and algorithms for phrase-structure parsing, such as chart parsing and shift-reduce, which 8463
+were discussed in chapter 10. 8464
+Both chart parsing and shift-reduce require encoding composite discourse units, ei- 8465
+ther in a discrete feature vector or a dense neural representation.8Some discourse parsers 8466
+rely on the strong compositionality criterion (Marcu, 1996), which states the assumption 8467
+that a composite discourse unit can be represented by its nucleus. This criterion is used in 8468
+feature-based discourse parsing to determine the feature vector for a composite discourse 8469
+unit (Hernault et al., 2010); it is used in neural approaches to setting the vector encod- 8470
+ing for a composite discourse unit equal to the encoding of its nucleus (Ji and Eisenstein, 8471
+2014). An alternative neural approach is to learn a composition function over the compo- 8472
+nents of a composite discourse unit (Li et al., 2014), using a recursive neural network (see 8473
+§14.8.3). 8474
+Bottom-up discourse parsing Assume a segmentation of the text into Nelementary 8475
+discourse units with base representations {z(i)}N
+i=1, and assume a composition function 8476
+COMPOSE(
+z(i),z(j),ℓ)
+, which maps two encodings and a discourse relation ℓinto a new 8477
+encoding. The composition function can follow the strong compositionality criterion and 8478
+simply select the encoding of the nucleus, or it can do something more complex. We 8479
+also need a scoring function Ψ(z(i,k),z(k,j),ℓ), which computes a scalar score for the (bi- 8480
+narized) discourse relation ℓwith left child covering the span i+ 1 :k, and the right 8481
+child covering the span k+ 1 :j. Given these components, we can construct vector rep- 8482
+resentations for each span, and this is the basic idea underlying compositional vector 8483
+grammars (Socher et al., 2013). 8484
+These same components can also be used in bottom-up parsing, in a manner that is 8485
+similar to the CKY algorithm for weighted context-free grammars (see §10.1): compute 8486
+the score and best analysis for each possible span of increasing lengths, while storing 8487
+back-pointers that make it possible to recover the optimal parse of the entire input. How- 8488
+ever, there is an important distinction from CKY parsing: for each labeled span (i,j,ℓ), we 8489
+must use the composition function to construct a representation z(i,j,ℓ). This representa- 8490
+tion is then used to combine the discourse unit spanning i+1 :jin higher-level discourse 8491
+relations. The representation z(i,j,ℓ)depends on the entire substructure of the unit span- 8492
+8To use these algorithms, is also necessary to binarize all discourse relations during parsing, and then to
+“unbinarize” them to reconstruct the desired structure (e.g., Hernault et al., 2010).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+398 CHAPTER 16. DISCOURSE
+ningi+ 1 :j, and this violates the locality assumption that underlie CKY’s optimality 8493
+guarantee. Bottom-up parsing with recursively constructed span representations is gen- 8494
+erally not guaranteed to ﬁnd the best-scoring discourse parse. This problem is explored 8495
+in an exercise at the end of the chapter. 8496
+Transition-based discourse parsing One drawback of bottom-up parsing is its cubic 8497
+time complexity in the length of the input. For long documents, transition-based parsing 8498
+is an appealing alternative. The shift-reduce algorithm can be applied to discourse parsing 8499
+fairly directly (Sagae, 2009): the stack stores a set of discourse units and their represen- 8500
+tations, and each action is chosen by a function of these representations. This function 8501
+could be a linear product of weights and features, or it could be a neural network ap- 8502
+plied to encodings of the discourse units. The R EDUCE action then performs composition 8503
+on the two discourse units at the top of the stack, yielding a larger composite discourse 8504
+unit, which goes on top of the stack. All of the techniques for integrating learning and 8505
+transition-based parsing, described in §11.3, are applicable to discourse parsing. 8506
+16.3.2.2 Segmenting discourse units 8507
+In rhetorical structure theory, elementary discourse units do not cross the sentence bound- 8508
+ary, so discourse segmentation can be performed within sentences, assuming the sentence 8509
+segmentation is given. The segmentation of sentences into elementary discourse units is 8510
+typically performed using features of the syntactic analysis (Braud et al., 2017). One ap- 8511
+proach is to train a classiﬁer to determine whether each syntactic constituent is an EDU, 8512
+using features such as the production, tree structure, and head words (Soricut and Marcu, 8513
+2003; Hernault et al., 2010). Another approach is to train a sequence labeling model, such 8514
+as a conditional random ﬁeld (Sporleder and Lapata, 2005; Xuan Bach et al., 2012; Feng 8515
+et al., 2014). This is done using the BIO formalism for segmentation by sequence labeling, 8516
+described in§8.3. 8517
+16.3.3 Argumentation 8518
+An alternative view of text-level relational structure focuses on argumentation (Stab and 8519
+Gurevych, 2014b). Each segment (typically a sentence or clause) may support or rebut 8520
+another segment, creating a graph structure over the text. In the following example (from 8521
+Peldszus and Stede, 2013), segment S2provides argumentative support for the proposi- 8522
+tion in the segment S1: 8523
+(16.11) [We should tear the building down, ]S1 8524
+[because it is full of asbestos ]S2. 8525
+Assertions may also support or rebut proposed links between two other assertions, cre- 8526
+ating a hypergraph , which is a generalization of a graph to the case in which edges can 8527
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+16.3. RELATIONS 399
+join any number of vertices. This can be seen by introducing another sentence into the 8528
+example: 8529
+(16.12) [In principle it is possible to clean it up, ]S3 8530
+[but according to the mayor that is too expensive. ]S4 8531
+S3 acknowledges the validity of S2, but undercuts its support of S1. This can be repre- 8532
+sented by introducing a hyperedge, (S3,S2,S1)undercut , indicating that S3undercuts the 8533
+proposed relationship between S2andS1. S4 then undercuts the relevance of S3. 8534
+Argumentation mining is the task of recovering such structures from raw texts. At 8535
+present, annotations of argumentation structure are relatively small: Stab and Gurevych 8536
+(2014a) have annotated a collection of 90 persuasive essays, and Peldszus and Stede (2015) 8537
+have solicited and annotated a set of 112 paragraph-length “microtexts” in German. 8538
+16.3.4 Applications of discourse relations 8539
+The predominant application of discourse parsing is to select content within a document. 8540
+In rhetorical structure theory, the nucleus is considered the more important element of 8541
+the relation, and is more likely to be part of a summary of the document; it may also 8542
+be more informative for document classiﬁcation. The D-LTAG theory that underlies the 8543
+Penn Discourse Treebank lacks this notion of nuclearity, but arguments may have varying 8544
+importance, depending on the relation type. For example, the span of text constituting 8545
+ARG 1 of an expansion relation is more likely to appear in a summary, while the sentence 8546
+constituting ARG 2 of an implicit relation is less likely (Louis et al., 2010). Discourse rela- 8547
+tions may also signal segmentation points in the document structure. Explicit discourse 8548
+markers have been shown to correlate with changes in subjectivity, and identifying such 8549
+change points can improve document-level sentiment classiﬁcation, by helping the clas- 8550
+siﬁer to focus on the subjective parts of the text (Trivedi and Eisenstein, 2013; Yang and 8551
+Cardie, 2014). 8552
+16.3.4.1 Extractive Summarization 8553
+Text summarization is the problem of converting a longer text into a shorter one, while 8554
+still conveying the key facts, events, ideas, and sentiments from the original. In extractive 8555
+summarization , the summary is a subset of the original text; in abstractive summariza- 8556
+tion, the summary is produced de novo , by paraphrasing the original, or by ﬁrst encoding 8557
+it into a semantic representation (see §19.2). The main strategy for extractive summa- 8558
+rization is to maximize coverage , choosing a subset of the document that best covers the 8559
+concepts mentioned in the document as a whole; typically, coverage is approximated by 8560
+bag-of-words overlap (Nenkova and McKeown, 2012). Coverage-based objectives can be 8561
+supplemented by hierarchical discourse relations, using the principle of nuclearity: in any 8562
+subordinating discourse relation, the nucleus is more critical to the overall meaning of the 8563
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+400 CHAPTER 16. DISCOURSE
+text, and is therefore more important to include in an extractive summary (Marcu, 1997a).98564
+This insight can be generalized from individual relations using the concept of discourse 8565
+depth (Hirao et al., 2013): for each elementary discourse unit e, the discourse depth deis 8566
+the number of relations in which a discourse unit containing eis the satellite. 8567
+Both discourse depth and nuclearity can be incorporated into extractive summariza- 8568
+tion, using constrained optimization. Let xnbe a bag-of-words vector representation of 8569
+elementary discourse unit n, letyn∈{0,1}indicate whether nis included in the summary, 8570
+and letdnbe the depth of unit n. Furthermore, let each discourse unit have a “head” h, 8571
+which is deﬁned recursively: 8572
+•if a discourse unit is produced by a subordinating relation, then its head is the head 8573
+of the (unique) nucleus; 8574
+•if a discourse unit is produced by a coordinating relation, then its head is the head 8575
+of the left-most nucleus; 8576
+•for each elementary discourse unit, its parent π(n)∈{∅,1,2,...,N}is the head of 8577
+the smallest discourse unit containing nwhose head is not n; 8578
+•ifnis the head of the discourse unit spanning the whole document, then π(n) =∅. 8579
+With these deﬁnitions in place, discourse-driven extractive summarization can be for-
+malized as (Hirao et al., 2013),
+max
+y={0,1}NN∑
+n=1ynΨ (xn,{x1:N})
+dn
+s.t.N∑
+n=1yn(V∑
+j=1xn,j)≤L
+yπ(n)≥yn,∀n [16.11]
+where Ψ (xn,{x1:N})measures the coverage of elementary discourse unit nwith respect 8580
+to the rest of the document, and∑V
+j=1xn,mis the number of tokens in xn. The ﬁrst con- 8581
+straint ensures that the number of tokens in the summary has an upper bound L. The 8582
+second constraint ensures that no elementary discourse unit is included unless its parent 8583
+is also included. In this way, the discourse structure is used twice: to downweight the 8584
+contributions of elementary discourse units that are not central to the discourse, and to 8585
+ensure that the resulting structure is a subtree of the original discourse parse. The opti- 8586
+9Conversely, the arguments of a multi-nuclear relation should either both be included in the summary,
+or both excluded (Durrett et al., 2016).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+16.3. RELATIONS 401
+h
+a
+b d e
+c f g
+Figure 16.6: A discourse depth tree (Hirao et al., 2013) for the discourse parse from Fig-
+ure 16.5, in which each elementary discourse unit is connected to its parent. The discourse
+units in one valid summary are underlined.
+mization problem in 16.11 can be solved with integer linear programming , described in 8587
+§13.2.2.108588
+Figure 16.6 shows a discourse depth tree for the RST analysis from Figure 16.5, in 8589
+which each elementary discourse is connected to (and below) its parent. The ﬁgure also 8590
+shows a valid summary, corresponding to: 8591
+(16.13) It could have been a great movie, and I really liked the son of the leader of the 8592
+Samurai. But, other than all that, this movie is nothing more than hidden rip-offs. 8593
+16.3.4.2 Document classiﬁcation 8594
+Hierarchical discourse structures lend themselves naturally to text classiﬁcation: in a sub- 8595
+ordinating discourse relation, the nucleus should play a stronger role in the classiﬁcation 8596
+decision than the satellite. Various implementations of this idea have been proposed. 8597
+•Focusing on within-sentence discourse relations and lexicon-based classiﬁcation (see 8598
+§4.1.2), Voll and Taboada (2007) simply ignore the text in the satellites of each dis- 8599
+course relation. 8600
+•At the document level, elements of each discourse relation argument can be reweighted, 8601
+favoring words in the nucleus, and disfavoring words in the satellite (Heerschop 8602
+et al., 2011; Bhatia et al., 2015). This approach can be applied recursively, computing 8603
+weights across the entire document. The weights can be relation-speciﬁc, so that the 8604
+features from the satellites of contrastive relations are discounted or even reversed. 8605
+•Alternatively, the hierarchical discourse structure can deﬁne the structure of a re- 8606
+cursive neural network (see§10.6.1). In this network, the representation of each 8607
+10Formally, 16.11 is a special case of the knapsack problem , in which the goal is to ﬁnd a subset of items
+with maximum value, constrained by some maximum weight (Cormen et al., 2009).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+402 CHAPTER 16. DISCOURSE
+discourse unit is computed from its arguments and from a parameter correspond- 8608
+ing to the discourse relation (Ji and Smith, 2017). 8609
+Shallow, non-hierarchical discourse relations have also been applied to document clas- 8610
+siﬁcation. One approach is to impose a set of constraints on the analyses of individual 8611
+discourse units, so that adjacent units have the same polarity when they are connected 8612
+by a discourse relation indicating agreement, and opposite polarity when connected by a 8613
+contrastive discourse relation, indicating disagreement (Somasundaran et al., 2009; Zirn 8614
+et al., 2011). Yang and Cardie (2014) apply explicitly-marked relations from the Penn 8615
+Discourse Treebank to the problem of sentence-level sentiment polarity classiﬁcation (see 8616
+§4.1). They impose the following soft constraints: 8617
+•When a CONTRAST relation appears between two sentences, those sentences should 8618
+have opposite sentiment polarity. 8619
+•When an EXPANSION orCONTINGENCY relation appears between two sentences, 8620
+they should have the same polarity. 8621
+•When a CONTRAST relation appears within a sentence, it should have neutral polar- 8622
+ity, since it is likely to express both sentiments. 8623
+These discourse-driven constraints are shown to improve performance on two datasets of 8624
+product reviews. 8625
+16.3.4.3 Coherence 8626
+Just as grammaticality is the property shared by well-structured sentences, coherence is 8627
+the property shared by well-structured discourses. One application of discourse process- 8628
+ing is to measure (and maximize) the coherence of computer-generated texts like transla- 8629
+tions and summaries (Kibble and Power, 2004). Coherence assessment is also used to eval- 8630
+uate human-generated texts, such as student essays (e.g., Miltsakaki and Kukich, 2004; 8631
+Burstein et al., 2013). 8632
+Coherence subsumes a range of phenomena, many of which have been highlighted 8633
+earlier in this chapter: e.g., that adjacent sentences should be lexically cohesive (Foltz 8634
+et al., 1998; Ji et al., 2015; Li and Jurafsky, 2017), and that entity references should follow 8635
+the principles of centering theory (Barzilay and Lapata, 2008; Nguyen and Joty, 2017). 8636
+Discourse relations also bear on the coherence of a text in a variety of ways: 8637
+•Hierarchical discourse relations tend to have a “canonical ordering” of the nucleus 8638
+and satellite (Mann and Thompson, 1988): for example, in the ELABORATION rela- 8639
+tion from rhetorical structure theory, the nucleus always comes ﬁrst, while in the 8640
+JUSTIFICATION relation, the satellite tends to be ﬁrst (Marcu, 1997b). 8641
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+16.3. RELATIONS 403
+•Discourse relations should be signaled by connectives that are appropriate to the 8642
+semantic or functional relationship between the arguments: for example, a coherent 8643
+text would be more likely to use however to signal a COMPARISON relation than a 8644
+temporal relation (Kibble and Power, 2004). 8645
+•Discourse relations tend to be ordered in appear in predictable sequences: for ex- 8646
+ample, COMPARISON relations tend to immediately precede CONTINGENCY rela- 8647
+tions (Pitler et al., 2008). This observation can be formalized by generalizing the 8648
+entity grid model ( §16.2.2), so that each cell (i,j)provides information about the 8649
+role of the discourse argument containing a mention of entity jin sentence i(Lin 8650
+et al., 2011). For example, if the ﬁrst sentence is ARG 1 of a comparison relation, then 8651
+any entity mentions in the sentence would be labeled C OMP .ARG1. This approach 8652
+can also be applied to RST discourse relations (Feng et al., 2014). 8653
+Datasets One difﬁculty with evaluating metrics of discourse coherence is that human- 8654
+generated texts usually meet some minimal threshold of coherence. For this reason, much 8655
+of the research on measuring coherence has focused on synthetic data. A typical setting is 8656
+to permute the sentences of a human-written text, and then determine whether the origi- 8657
+nal sentence ordering scores higher according to the proposed coherence measure (Barzi- 8658
+lay and Lapata, 2008). There are also small datasets of human evaluations of the coherence 8659
+of machine summaries: for example, human judgments of the summaries from the partic- 8660
+ipating systems in the 2003 Document Understanding Conference are available online.118661
+Researchers from the Educational Testing Service (an organization which administers sev- 8662
+eral national exams in the United States) have studied the relationship between discourse 8663
+coherence and student essay quality (Burstein et al., 2003, 2010). A public dataset of es- 8664
+says from second-language learners, with quality annotations, has been made available by 8665
+researchers at Cambridge University (Yannakoudakis et al., 2011). At the other extreme, 8666
+Louis and Nenkova (2013) analyze the structure of professionally written scientiﬁc essays, 8667
+ﬁnding that discourse relation transitions help to distinguish prize-winning essays from 8668
+other articles in the same genre. 8669
+Additional resources 8670
+For a manuscript-length discussion of discourse processing, see Stede (2011). Article- 8671
+length surveys are offered by Webber et al. (2012) and Webber and Joshi (2012). 8672
+11http://homepages.inf.ed.ac.uk/mlap/coherence/
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+404 CHAPTER 16. DISCOURSE
+Exercises 8673
+1.•Implement the smoothed cosine similarity metric from Equation 16.2, using the 8674
+smoothing kernel k= [.5,.3,.15,.05]. 8675
+•Download the text of a news article with at least ten paragraphs. 8676
+•Compute and plot the smoothed similarity sover the length of the article. 8677
+•Identify local minima insas follows: ﬁrst ﬁnd all sentences msuch thatsm< 8678
+sm±1. Then search among these points to ﬁnd the ﬁve sentences with the lowest 8679
+sm. 8680
+•How often do the ﬁve local minima correspond to paragraph boundaries? 8681
+–The fraction of local minima that are paragraph boundaries is the precision- 8682
+at-k, where in this case, k= 5. 8683
+–The fraction of paragraph boundaries which are local minima is the recall- 8684
+at-k. 8685
+–Compute precision-at- kand recall-at- kfork= 3andk= 10 . 8686
+2. This exercise is to be done in pairs. Each participant selects an article from to- 8687
+day’s news, and replaces all mentions of individual people with special tokens like 8688
+PERSON 1, P ERSON 2, and so on. The other participant should then use the rules 8689
+of centering theory to guess each type of referring expression: full name ( Captain 8690
+Ahab ), partial name (e.g., Ahab ), nominal (e.g., the ship’s captain ), or pronoun. Check 8691
+whether the predictions match the original article, and whether the original article 8692
+conforms to the rules of centering theory. 8693
+3. In§16.3.2.1, it is noted that bottom-up parsing with compositional representations 8694
+of each span is not guaranteed to be optimal. In this exercise, you will construct 8695
+a minimal example proving this point. Consider a discourse with four units, with 8696
+base representations {z(i)}4
+i=1. Construct a scenario in which the parse selected by 8697
+bottom-up parsing is not optimal, and give the precise mathematical conditions that 8698
+must hold for this suboptimal parse to be selected. You may ignore the relation 8699
+labelsℓfor the purpose of this example. 8700
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+

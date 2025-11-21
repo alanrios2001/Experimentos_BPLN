@@ -1,0 +1,1011 @@
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 11 — #1
+1 Formal Language Theory
+SHULY WINTNER
+1 Introduction
+This chapter provides a gentle introduction to formal language theory, aimed atreaders with little background in formal systems. The motivation is natural lan-guage processing (NLP), and the presentation is geared towards NLP applications,with linguistically motivated examples, but without compromising mathematicalrigor.
+The text covers elementary formal language theory, including: regular lan-
+guages and regular expressions; languages vs. computational machinery; ﬁnitestate automata; regular relations and ﬁnite state transducers; context-free gram-mars and languages; the Chomsky hierarchy; weak and strong generativecapacity; and mildly context-sensitive languages.
+2 Basic Notions
+Formal languages are deﬁned with respect to a given alphabet, which is a ﬁnite
+set of symbols, each of which is called a letter. This notation does not mean, how-
+ever, that elements of the alphabet must be “ordinary” letters; they can be anysymbol, such as numbers, or digits, or words. It is customary to use ‘ Σ’ to denote
+the alphabet. A ﬁnite sequence of letters is called a string,o ra word . For sim-
+plicity, we usually forsake the traditional sequence notation in favor of a morestraightforward representation of strings.Example 1 (Strings). LetΣ={0, 1} be an alphabet. Then all binary numbers
+are strings over Σ. Instead of ⟨0, 1, 1, 0, 1 ⟩we usually write 01101. If Σ=
+{a,b,c,d,...,y,z}is an alphabet, then
+cat,incredulous ,a n d supercalifragilisticexp-
+ialidocious are strings, as are tac,qqq,a n d kjshdﬂkwjehr .
+The length of a string wis the number of letters in the sequence, and is denoted
+|w|. The unique string of length 0 is called the empty string a n di su s u a l l yd e n o t e dϵ
+(but sometimes λ).
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 12 — #2
+12 Shuly Wintner
+Let w1=⟨ x1,...,xn⟩and w2=⟨ y1,...,ym⟩be two strings over the same
+alphabet Σ.T h e concatenation ofw1and w2, denoted w1·w2, is the string
+⟨x1,...,xn,y1,...,ym⟩. Note that the length of w1·w2is the sum of the lengths of
+w1and w2:|w1·w2|=| w1|+| w2|. When it is clear from the context, we sometimes
+omit the ‘ ·’ symbol when depicting concatenation.
+Example 2 (Concatenation). LetΣ={a,b,c,d,...,y,z}be an alphabet. Then master ·
+mind =mastermind ,mind ·master =mindmaster ,a n d master ·master =
+mastermaster . Similarly, learn ·s=learns ,learn ·ed=learned ,a n d learn ·
+ing=learning .
+Notice that when the empty string ϵis concatenated with any string w,t h e
+resulting string is w. Formally, for every string w,w·ϵ=ϵ·w=w.
+We deﬁne an exponent operator over strings in the following way: for every
+string w,w0(read: wraised to the power of zero) is deﬁned as ϵ. Then, for n>0,
+wnis deﬁned as wn−1·w. Informally, wnis obtained by concatenating wwith itself
+ntimes. In particular, w1=w.
+Example 3 (Exponent). Ifw=go, then w0=ϵ,w1=w=go,w2=w1·w=w·w=
+gogo ,w3=gogogo ,a n ds oo n .
+A few other notions that will be useful in the sequel: the reversal of a string w
+is denoted wRand is obtained by writing win the reverse order. Thus, if w=
+⟨x1,x2,...,xn⟩,wR=⟨xn,xn−1,...,x1⟩.
+Example 4 (Reversal). LetΣ={a,b,c,d,...,y,z}be an alphabet. If wis the string
+saw, then wRis the string was.I fw=madam , then wR=madam =w. In this case
+we say that wis a palindrome.
+Given a string w,a substring ofwis a sequence formed by taking contiguous
+symbols of win the order in which they occur in w:wcis a substring of wif and
+only if there exist (possibly empty) strings wland wrsuch that w=wl·wc·wr.T w o
+special cases of substrings are preﬁx and sufﬁx:i f w=wl·wc·wrthen wlis a preﬁx
+ofwand wris a sufﬁx of w. Note that every preﬁx and every sufﬁx is a substring,
+but not every substring is a preﬁx or a sufﬁx.Example 5 (Substrings). LetΣ={a,b,c,d,...,y,z}be an alphabet and w=
+indistinguishable a string over Σ. Then ϵ, in, indis, indistinguish ,a n d indistin-
+guishable are preﬁxes of w, while ϵ, e, able, distinguishable and indistinguish-
+able are sufﬁxes of w. Substrings that are neither preﬁxes nor sufﬁxes include
+distinguish, gui ,a n d is.
+G i v e na na l p h a b e t Σ, the set of all strings over Σis denoted by Σ∗(the reason
+for this notation will become clear presently). Notice that no matter what the Σis,
+as long as it includes at least one symbol, Σ∗is always inﬁnite. A formal language
+over an alphabet Σis any subset of Σ∗. Since Σ∗is always inﬁnite, the number of
+formal languages over Σis also inﬁnite.
+As the following example demonstrates, formal languages are quite unlike
+what one usually means when one uses the term “language” informally. They
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 13 — #3
+Formal Language Theory 13
+are essentially sets of strings of characters. Still, all natural languages are, at leastsuperﬁcially, such string sets. Higher-level notions, relating the strings to objectsand actions in the world, are completely ignored by this view. While this is a ratherradical idealization, it is a useful one.Example 6 (Languages). LetΣ={
+a ,b ,c ,...,y ,z }. Then Σ∗is the set of all strings
+over the Latin alphabet. Any subset of this set is a language. In particular, thefollowing are formal languages:•Σ
+∗;
+•the set of strings consisting of consonants only;
+•the set of strings consisting of vowels only;
+•the set of strings each of which contains at least one vowel and at least oneconsonant;
+•the set of palindromes: strings that read the same from right to left and fromleft to right;
+•the set of strings whose length is less than 17 letters;
+•the set of single-letter strings;
+•the set {
+i, you, he, she, it, we, they };
+•the set of words occurring in Joyce’s Ulysses (ignoring punctuation etc.);
+•the empty set.
+Note that the ﬁrst ﬁve languages are inﬁnite while the last ﬁve are ﬁnite.
+We can now lift some of the string operations deﬁned above to languages. If
+Lis a language then the reversal ofL, denoted LR, is the language {w|wR∈L},
+that is, the set of reversed L-strings. Concatenation can also be lifted to lan-
+guages: if L1and L2are languages, then L1·L2is the language deﬁned as
+{w1·w2|w1∈L1and w 2∈L2}: the concatenation of two languages is the set of
+strings obtained by concatenating some word of the ﬁrst language with some wordof the second.Example 7 (Language operations). Let L
+1={i, you, he, she, it, we, they }and L2=
+{smile, sleep }. Then LR1={i, uoy, eh, ehs, ti, ew, yeht }and L1·L2={ismile, yous-
+mile, hesmile, shesmile, itsmile, wesmile, theysmile, isleep, yousleep, hesleep,
+shesleep, itsleep, wesleep, theysleep }.
+In the same way we can deﬁne the exponent of a language: if Lis a language
+then L0is the language containing the empty string only, {ϵ}. Then, for i>0,
+Li=L·Li−1,t h a ti s ,Liis obtained by concatenating Lwith itself itimes.
+Example 8 (Language exponentiation). Let Lbe the set of words {bau, haus, hof,
+frau}. Then L0={ϵ},L1=Land L2={baubau, bauhaus, bauhof, baufrau,
+hausbau, haushaus, haushof, hausfrau, hofbau, hofhaus, hofhof, hoffrau, fraubau,
+frauhaus, frauhof, fraufrau }.
+The language obtained by considering any number of concatenations of words
+from Lis called the Kleene closure ofLa n di sd e n o t e d L∗. Formally, L∗=⋃∞i=0Li,
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 14 — #4
+14 Shuly Wintner
+which is a terse notation for the union of L0with L1, then with L2,L3and so on
+ad inﬁnitum. When one wants to leave L0out, one writes L+=⋃∞i=1Li.
+Example 9 (Kleene closure). Let L={dog, cat }. Observe that L0={ϵ},L1={dog,
+cat},L2={catcat, catdog, dogcat, dogdog },e t c .T h u s L∗contains, among its inﬁ-
+nite set of strings, the strings ϵ, cat, dog, catcat, catdog, dogcat, dogdog, catcatcat,
+catdogcat, dogcatcat, dogdogcat ,e t c .
+As another example, consider the alphabet Σ={a,b}and the language L=
+{a,b}deﬁned over Σ.L∗is the set of all strings over aand b, which is exactly
+the deﬁnition of Σ∗. The notation for Σ∗should now become clear: it is simply a
+special case of L∗, where L=Σ.
+3 Language Classes and Linguistic Formalisms
+Formal languages are sets of strings, subsets of Σ∗, and they can be speciﬁed
+using any of the speciﬁcation methods for sets (of course, since languages maybe inﬁnite, stipulation of their members is in the general case infeasible). Whenlanguages are fairly simple (not arbitrarily complex), they can be characterized bymeans of rules. In the following sections we deﬁne several mechanisms for deﬁn-
+ing languages, and focus on the classes of languages that can be deﬁned with these
+mechanisms. A formal mechanism with which formal languages can be deﬁned isalinguistic formalism.W eu s e L(with or without subscripts) to denote languages,
+andLto denote classes of languages.
+Example 10 (Language class). LetΣ={
+a ,b ,c ,...,y ,z }.L e t Lbe the set of all the
+ﬁnite subsets of Σ∗. Then Lis a language class.
+When classes of languages are discussed, some of the interesting properties to
+be investigated are closures with respect to certain operators. The previous section
+deﬁned several operators, such as concatenation, union, Kleene closure, etc., onlanguages. Given a particular (binary) operation, say union, it is interesting toknow whether a class of languages is closed under this operation. A class of lan-
+guages Lis said to be closed under some operation ‘ •’ if and only if, whenever
+two languages L
+1and L2are in the class ( L1,L2∈L), the result of performing the
+operation on the two languages is also in this class: L1•L2∈L.
+Closure properties have a theoretical interest in and by themselves, but they
+are especially important when one is interested in processing languages. Given anefﬁcient computational implementation for a class of languages (for example, analgorithm that determines membership : whether a given string indeed belongs to a
+given language), one can use the operators that the class is closed under, and stillpreserve computational efﬁciency in processing. We will see such examples in thefollowing sections.
+The membership problem is one of the fundamental questions of interest con-
+cerned with language classes. As we shall see, the more expressive the class,the harder it is to determine membership in languages of this class. Algorithmsthat determine membership are called recognition algorithms; when a recognition
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 15 — #5
+Formal Language Theory 15
+algorithm additionally provides the structure that the formalism induces on thestring in question, it is called a parsing algorithm.
+4 Regular Languages
+4.1 Regular expressions
+The ﬁrst linguistic formalism we discuss is regular expressions . These are expres-
+sions over some alphabet Σ, augmented by some special characters. We deﬁne a
+mapping, called denotation, from regular expressions to sets of strings over Σ, such
+that every well-formed regular expression denotes a set of strings, or a language.
+DEFINITION 1.Given an alphabet Σ, the set of regular expressions overΣis deﬁned
+as follows:•∅ is a regular expression;
+•ϵis a regular expression;
+•if a∈Σis a letter, then a is a regular expression;
+•if r
+1and r 2are regular expressions, then so are (r1+r2)and(r1·r2);
+•if r is a regular expression, then so is (r)∗;
+•nothing else is a regular expression over Σ.
+Example 11 (Regular expressions). LetΣbe the alphabet {a ,b ,c ,...,y ,z }. Some
+regular expressions over this alphabet are ∅,a,((c·a)·t),(((m·e)·(o)∗)·w),
+(a+(e+(i+(o+u)))), ((a+(e+(i+(o+u)))))∗,e t c .
+DEFINITION 2.Given a regular expression r, its denotation, [ [ r]], is a set of strings
+deﬁned as follows:•[[∅]]={ } , the empty set;
+•[[ϵ]]={ϵ}, the singleton set containing the empty string;
+•if a∈Σis a letter, then [ [a] ] ={a}, the singleton set containing a only;
+•if r
+1and r 2are two regular expressions whose denotations are [ [r 1]] a n d [[ r 2]] ,
+respectively, then [ [(r 1+r2)]]=[[ r1]]∪[[ r2]] a n d [[ (r1·r2)]]=[[ r1]]·[[ r2]] ;
+•if r is a regular expression whose denotation is [ [r] ] then [ [(r)∗]]=[ [r] ]∗.
+Example 12 (Regular expressions). Following are the denotations of the regular
+expressions of the previous example:
+∅∅ϵ {ϵ}
+a {a}
+((c·a)·t) {c·a·t}
+(((m·e)·(o)
+∗)·w) {mew, meow, meoow, meooow, meoooow, ...}
+(a+(e+(i+(o+u)))) {a,e,i,o,u}
+((a+(e+(i+(o+u)))))∗the set containing all strings of 0 or more vowels
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 16 — #6
+16 Shuly Wintner
+Regular expressions are useful because they facilitate speciﬁcation of complex
+languages in a formal, concise way. Of course, ﬁnite languages can still be speciﬁedby enumerating their members; but inﬁnite languages are much easier to specifywith a regular expression, as the last instance of the above example shows.
+For simplicity, we omit the parentheses around regular expressions when no
+confusion can be caused. Thus, the expression ((a+(e+(i+(o+u)))))
+∗is written
+as(a+e+i+o+u)∗. Also, if Σ={ a1,a2,...,an},w eu s e Σas a shorthand
+notation for a1+a2+···+ an. As in the case of string concatenation and language
+concatenation, we sometimes omit the ‘ ·’ operator in regular expressions, so that
+the expression c·a·tcan be written cat.
+Example 13 (Regular expressions). Given the alphabet of all English letters, Σ=
+{a,b,c,...,y,z}, the language Σ∗is denoted by the regular expression Σ∗.T h es e t
+of all strings which contain a vowel is denoted by Σ∗·(a+e+i+o+u)·Σ∗.T h e
+set of all strings that begin in “ un” is denoted by (un)Σ∗. The set of strings that
+end in either “ tion”o r“ sion ” is denoted by Σ∗·(s+t)·(ion). Note that all these
+languages are inﬁnite.
+The class of languages which can be expressed as the denotation of regular
+expressions is called the class of regular languages.
+DEFINITION 3.A language L is regular iff there exists a regular expression r such that
+L=[[ r ]] .
+It is a mathematical fact that some languages, subsets of Σ∗, are not regular. We
+will encounter such languages in the sequel.
+4.2 Properties of regular languages
+The class of regular languages is interesting because of its “nice” properties, whichwe review here. It should be fairly easy to see that regular languages are closedunder union, concatenation, and Kleene closure. Given two regular languages, L
+1
+and L2, there must exist two regular expressions, r1and r2, such that [ [r 1]]=L1and
+[[r2]]=L2. It is therefore possible to form new regular expressions based on r1and
+r2, such as r1·r2,r1+r2and r∗1. Now, by the deﬁnition of regular expressions and
+their denotations, it follows that the denotation of r1·r2isL1·L2:[ [r1·r2]]=L1·L2.
+Since r1·r2is a regular expression, its denotation is a regular language, and hence
+L1·L2is a regular language. Hence the regular languages are closed under concate-
+nation. In exactly the same way we can prove that the class of regular languagesis closed under union and Kleene closure.
+One of the reasons for the attractiveness of regular languages is that they are
+known to be closed under a wealth of useful operations: intersection, complemen-tation, exponentiation, substitution, homomorphism, etc. These properties comein handy both in practical applications that use regular languages and in mathe-matical proofs that concern them. For example, several formalisms extend regularexpressions by allowing one to express regular languages using not only the three
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 17 — #7
+Formal Language Theory 17
+basic operations, but also a wealth of other operations (that the class of regularlanguages is closed under). It is worth noting that such “good behavior” is notexhibited by more complex classes of languages.
+4.3 Finite state automata
+Regular expressions are a declarative formalism for specifying (regular) lan-guages. We now present languages as entities generated by a computation.T h i s
+is a very common situation in formal language theory: many language classesare associated with computing machinery that generates them. The dual view oflanguages (as the denotation of some specifying formalism and as the output of acomputational process) is central in formal language theory.
+The computational device we deﬁne in this section is ﬁnite state automata (FSA).
+Informally, they consist of a ﬁnite set of states (sometimes called nodes orvertices),
+connected by a ﬁnite number of transitions (also called edges orlinks ). Each of the
+transitions is labeled by a letter, taken from some ﬁnite alphabet Σ. A computation
+starts at a designated state, the start state or initial state, and it moves from one
+state to another along the labeled transitions. As it moves, it prints the letter whichlabels the transition. Thus, during a computation, a string of letters is printed out.Some of the states of the machine are designated ﬁnal states, or accepting states.
+Whenever the computation reaches a ﬁnal state, the string that was printed sof a ri ss a i dt ob eaccepted by the machine. Since each computation deﬁnes a string,
+the set of all possible computations deﬁnes a set of strings or, in other words, alanguage. We say that this language is accepted orgenerated by the machine.
+D
+EFINITION 4.Aﬁnite state automaton is a ﬁve-tuple ⟨Q,q0,Σ,δ,F⟩,w h e r e Σis a
+ﬁnite set of alphabet symbols, Q is a ﬁnite set of states,q 0∈Qi st h einitial state,
+F⊆Q is a set of ﬁnal states, and δ:Q×Σ×Q is a relation from states and alphabet
+symbols to states.Example 14 (Finite state automata). Finite state automata are depicted graphically,
+with circles for states and arrows for the transitions. The initial state is shadedand the ﬁnal states are depicted by two concentric circles. The ﬁnite stateautomaton A=⟨Q,Σ,q
+0,δ,F⟩, where Q={q0,q1,q2,q3},Σ={c,a,t,r},F={q3},a n d
+δ={⟨q0,c,q1⟩,⟨q1,a,q2⟩,⟨q2,t,q3⟩,⟨q2,r,q3⟩}, is depicted graphically as follows:
+q0 q1 q2 q3c at
+r
+To deﬁne the language generated by an FSA, we ﬁrst extend the transition
+relation from single edges to paths by extending the transition relation δto its
+reﬂexive transitive closure, ˆδ. This relation assigns a string to each path (it also
+assumes that an empty path, decorated by ϵ, leads from each state to itself). We
+focus on paths that lead from the initial state to some ﬁnal state. The strings thatdecorate these paths are said to be accepted by the FSA, and the language of the
+FSA is the set of all these strings. In other words, in order for a string to be in the
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 18 — #8
+18 Shuly Wintner
+language of the FSA, there must be a path in the FSA which leads from the initialstate to some ﬁnal state decorated by the string. Paths that lead to non-ﬁnal statesdo not deﬁne accepted strings.
+D
+EFINITION 5.Given an FSA A =⟨Q,q0,Σ,δ,F⟩, the reﬂexive transitive closure of the
+transition relation δisˆδ, deﬁned as follows:
+•for every state q ∈Q,(q,ϵ,q)∈ˆδ;
+•for every string w ∈Σ∗and letter a ∈Σ,i f(q,w,q′)∈ˆδand(q′,a,q′′)∈δ,t h e n
+(q,w·a,q′′)∈ˆδ.
+A string w is accepted by A if and only if there exists a state q f∈F such that ˆδ(q0,w)=
+qf.T h e language of A is the set of all the strings accepted by it: L (A)={w|there exists
+qf∈F such that ˆδ(q0,w)=qf}.
+Example 15 (Language accepted by an FSA). For the ﬁnite state automaton of
+Example 14, ˆδis the following set of triples: ⟨q0,ϵ,q0⟩,⟨q1,ϵ,q1⟩,⟨q2,ϵ,q2⟩,⟨q3,ϵ,q3⟩,
+⟨q0,c,q1⟩,⟨q1,a,q2⟩,⟨q2,t,q3⟩,⟨q2,r,q3⟩,⟨q0,ca,q2⟩,⟨q1,at,q3⟩,⟨q1,ar,q3⟩,⟨q0,cat,q3⟩,
+⟨q0,car,q3⟩. The language of the FSA is thus {cat, car }.
+Example 16 (Finite state automata). Following are some simple FSA and the lan-
+guages they generate.
+FSA, AL (A)
+q0 ∅
+q0 q1a
+{a}
+q0 q1a
+b{a,b}
+q0 {ϵ}
+q0 q1a
+a a+={a, aa, aaa, aaaa ,...}
+q0 a a∗={ϵ, a, aa, aaa, aaaa ,...}
+We now slightly amend the deﬁnition of ﬁnite state automata to include what is
+called ϵ-moves . By our original deﬁnition, the transition relation δis a relation from
+states and alphabet symbols to states. We extend δsuch that its second coordinate
+is now Σ∪{ϵ}, that is, any edge in an automaton can be labeled either by some
+alphabet symbol or by the special symbol ϵ, which as usual denotes the empty
+word. The implication is that a computation can move from one state to anotherover an ϵ-transition without printing out any symbol.
+Example 17 (Automata with ϵ-moves). The language accepted by the following
+automaton is {
+do, undo, done, undone }:
+q0 q1 q2 q3 q4 q5 q6u n d o n e
+ϵ ϵ
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 19 — #9
+Formal Language Theory 19
+Finite state automata, just like regular expressions, are devices for deﬁning for-
+mal languages. The major theorem of regular languages states that the class oflanguages which can be generated by FSA is exactly the class of regular languages.Furthermore, there are simple and efﬁcient algorithms for “translating” a regularexpression to an equivalent automaton and vice versa.
+T
+HEOREM 1.A language L is regular iff there exists an FSA A such that L =L(A).
+Example 18 (Equivalence of ﬁnite state automata and regular expressions). For each of
+the regular expressions of Example 12 we depict an equivalent automaton below:
+∅ q0
+a q0 q1a
+((c·a)·t) q0 q1 q2 q3c a t
+(((m·e)·(o)∗)·w) q0 q1 q2 q3m e
+ow
+(a+(e+(i+(o+u)))) q0 q1a,e,i,o,u
+((a+(e+(i+(o+u)))))∗ q0 a,e,i,o,u
+4.4 Minimization and determinization
+The ﬁnite state automata presented above are non-deterministic. By this we meanthat when the computation reaches a certain state, the next state is not uniquelydetermined by the next alphabet symbol to be printed. There might very well bemore than one state that can be reached by a transition that is labeled by some sym-bol. This is because we deﬁned automata using a transition relation, δ, which is not
+required to be functional. For some state qand alphabet symbol a,δmight include
+the two pairs ⟨q,a,q
+1⟩and⟨q,a,q2⟩with q1̸=q2. Furthermore, when we extended
+δto allow ϵ-transitions, we added yet another dimension of non-determinism:
+when the machine is in a certain state qand an ϵ-arc leaves q, the computation
+must “guess” whether to traverse this arc.
+DEFINITION 6.An FSA A =⟨Q,q0,Σ,δ,F⟩isdeterministic iff it has no ϵ-transitions
+andδis a function from Q ×Σto Q.
+Much of the appeal of ﬁnite state automata lies in their efﬁciency; and their
+efﬁciency is in great part due to the fact that, given some deterministic FSA Aand
+as t r i n gw, it is possible to determine whether or not w∈L(A) by “walking” the
+path labeled w, starting with the initial state of A, and checking whether the walk
+leads to a ﬁnal state. Such a walk takes time that is proportional to the length of w,
+and is completely independent of the number of states in A. We therefore say that
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 20 — #10
+20 Shuly Wintner
+themembership problem for FSA can be solved in linear time. But when automata
+are non-deterministic, an element of guessing is introduced, which may impairthe efﬁciency: no longer is there a single walk along a single path labeled w,a n d
+some control mechanism must be introduced to check that all possible paths aretaken.
+Non-determinism is important because it is sometimes much easier to construct
+a non-deterministic automaton for some language. Fortunately, we can rely on twovery important results: every non-deterministic ﬁnite state automaton is equiva-lent to some deterministic one; and every ﬁnite state automaton is equivalent toone that has a minimum number of nodes, and the minimal automaton is unique.We now explain these results.
+First, it is important to clarify what is meant by equivalent. We say that two ﬁnite
+state automata are equivalent if and only if they accept the same language.
+D
+EFINITION 7.Two FSA A 1and A 2areequivalent iff L(A 1)=L(A 2).
+Example 19 (Equivalent automata). The following three ﬁnite state automata are
+equivalent: they all accept the set {go, gone, going }.
+A1n g
+i
+g o n e
+A2go i n g
+g o n e
+g
+o
+A3g o i n g
+ne ϵ
+ϵ
+ϵ
+Note that A1is deterministic: for any state and alphabet symbol there is at most
+one possible transition. A2is not deterministic: the initial state has three out-
+going arcs all labeled by g. The third automaton, A3,h a s ϵ-arcs and hence is
+non-deterministic. While A2might be the most readable, A1is the most compact
+as it has the fewest nodes.
+Given a non-deterministic FSA A, it is always possible to construct an equiv-
+alent deterministic automaton, one whose next state is fully determined by thecurrent state and the alphabet symbol, and which contains no ϵ-moves. Some-
+times this construction yields an automaton with more states than the original,
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 21 — #11
+Formal Language Theory 21
+non-deterministic one (in the worst case, the number of states in the deterministicautomaton can be exponential in the size of the non-deterministic one). However,the deterministic automaton can then be minimized such that it is guaranteed thatno deterministic ﬁnite state automaton generating the same language is smaller.Thus, it is always possible to determinize and then minimize a given automatonwithout affecting the language it generates.
+T
+HEOREM 2.For every FSA A (with n states) there exists a deterministic FSA A′(with
+at most 2nstates) such that L (A)=L(A′).
+THEOREM 3.For every regular language L there exists a minimal FSA A such that
+no other FSA A′such that L(A) =L(A′)has fewer states than A. A is unique (up to
+isomorphism).
+4.5 Operations on ﬁnite state automata
+We know from Section 4.3 that ﬁnite state automata are equivalent to regularexpressions; we also know from Section 4.2 that the regular languages are closedunder several operations, including union, concatenation, and Kleene closure. So,for example, if L
+1and L2are two regular languages, there exist automata A1and
+A2which accept them, respectively. Since we know that L1∪L2is also a regu-
+lar language, there must be an automaton which accepts it as well. The questionis, can this automaton be constructed using the automata A
+1and A2?I nt h i s
+section we show how simple operations on ﬁnite state automata correspond tosome operators on languages.
+We start with concatenation. Suppose that A
+1is a ﬁnite state automaton such
+that L(A 1)=L1, and similarly that A2is an automaton such that L(A 2)=L2.W e
+describe an automaton Asuch that L(A)=L1·L2.Aw o r d wis in L1·L2if and only
+if it can be broken into two parts, w1and w2, such that w=w1·w2,a n d w1∈L1,
+w2∈L2. In terms of automata, this means that there is an accepting path for w1in
+A1and an accepting path for w2inA2; so if we allow an ϵ-transition from all the
+ﬁnal states of A1to the initial state of A2, we will have accepting paths for words
+ofL1·L2. The ﬁnite state automaton Ais constructed by combining A1and A2in
+the following way: its set of states, Q,i st h eu n i o no f Q1and Q2; its alphabet is the
+union of the two alphabets; its initial state is the initial state of A1; its ﬁnal states
+are the ﬁnal states of A2; and its transition relation is obtained by adding to δ1∪δ2
+the set of ϵ-moves described above: {⟨qf,ϵ,q02⟩|q f∈F1}where q02is the initial
+state of A2.
+In a very similar way, an automaton Acan be constructed whose languages
+isL1∪L2by combining A1and A2. Here, one should notice that for a word to be
+accepted by Ait must be accepted either by A1or by A2(or by both). The combined
+automaton will have an accepting path for every accepting path in A1and in A2.
+The idea is to add a new initial state to A, from which two ϵ- a r c sl e a dt ot h ei n i t i a l
+states of A1and A2. The states of Aare the union of the states of A1and A2,p l u s
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 22 — #12
+22 Shuly Wintner
+the new initial state. The transition relation is the union of δ1withδ2, plus the new
+ϵ-arcs. The ﬁnal states are the union of F1and F2.
+An extension of the same technique to construct the Kleene closure of an
+automaton is rather straightforward. However, all these results are not surprising,as we have already seen in Section 4.2 that the regular languages are closed underthese operations. Thinking of languages in terms of the automata that accept themcomes in handy when one wants to show that the regular languages are closedunder other operations, where the regular expression notation is not very sugges-tive of how to approach the problem. Consider the operation of complementation :
+ifLis a regular language over an alphabet Σ, we say that the complement of Lis
+the set of all the words (in Σ
+∗) that are not in L, and write Lfor this set. Formally,
+L=Σ∗\L. Given a regular expression r, it is not clear what regular expression r′
+is such that [ [ r′]]=[[r] ]. However, with automata this becomes much easier.
+Assume that a ﬁnite state automaton Ais such that L(A)=L. Assume also that
+Ais deterministic. To construct an automaton for the complemented language,
+all one has to do is change all ﬁnal states to non-ﬁnal, and all non-ﬁnal states toﬁnal. In other words, if A=⟨Q,Σ,q
+0,δ,F⟩, then A=⟨Q,Σ,q0,δ,Q\F⟩is such that
+L(A)=L. This is because every accepting path in Ais not accepting in A, and vice
+versa.
+Now that we know that the regular languages are closed under complementa-
+tion, it is easy to show that they are closed under intersection: if L1and L2are
+regular languages, then L1∩L2is also regular. This follows directly from funda-
+mental theorems of set theory, since L1∩L2can actually be written as L1∪L2,a n d
+we already know that the regular languages are closed under union and comple-mentation. In fact, construction of an automaton for the intersection language isnot very difﬁcult, although it is less straightforward than the previous examples.
+4.6 Applications of ﬁnite state automata in natural
+language processing
+Finite state automata are computational devices that generate regular languages,but they can also be viewed as recognizing devices: given some automaton Aand a
+word w, it is easy to determine whether w∈L(A). Observe that such a task can be
+performed in time linear in the length of w, hence the efﬁciency of the represen-
+tation is optimal. This reversed view of automata motivates their use for a simpleyet necessary application of natural language processing: dictionary lookup.Example 20 (Dictionaries as ﬁnite state automata). Many NLP applications require
+the use of lexicons or dictionaries, sometimes storing hundreds of thousands ofentries. Finite state automata provide an efﬁcient means for storing dictionar-ies, accessing them, and modifying their contents. Assume that an alphabet isﬁxed (say, Σ={
+a, b,...,z}) and consider how a single word, say go, can be repre-
+sented. As we have seen above, a naïve representation would be to construct anautomaton with a single path whose arcs are labeled by the letters of the word
+go:
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 23 — #13
+Formal Language Theory 23
+go:g o
+To represent more than one word, add paths to the FSA, one path for eachadditional word. For example, after adding the words
+gone and going ,w eo b t a i n :
+go, gone, going :go i n g
+g o n e
+g
+o
+This automaton can then be determinized and minimized, yielding:
+go, gone, going :n g
+i
+g o n e
+The organization of the lexicon as outlined above is extremely simplistic. A
+possible extension attaches to the ﬁnal states of the FSA additional informationpertaining to the words that decorate the paths to those states. Such informa-tion can include deﬁnitions, morphological information, translations, etc. FSA arethus suitable for representing various kinds of dictionaries, in addition to simplelexicons.
+Regular languages are particularly appealing for natural language processing
+for two main reasons. First, it turns out that most phonological and morphologi-cal processes can be straightforwardly described using the operations that regularlanguages are closed under, in particular concatenation. With very few excep-tions (such as the interdigitation word-formation processes of Semitic languagesor the duplication phenomena of some Asian languages), the morphology of mostnatural languages is limited to simple concatenation of afﬁxes, with some morpho-phonological alternations, usually on a morpheme boundary. Such phenomena areeasy to model with regular languages, and hence are easy to implement with ﬁnitestate automata. Second, many of the algorithms one would want to apply to ﬁnitestate automata take time proportional to the length of the word being processed,independently of the size of the automaton. Finally, the various closure propertiesfacilitate modular development of FSA for natural languages.
+4.7 Regular relations
+While ﬁnite state automata, which deﬁne (regular) languages, are sufﬁcient for
+some natural language applications, it is often useful to have a mechanism forrelating two (formal) languages. For example, a part-of-speech tagger can be
+viewed as an application that relates a set of natural language strings (the source
+language) to a set of part-of-speech tags (the target language). A morphological
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 24 — #14
+24 Shuly Wintner
+analyzer can be viewed as a relation between natural language strings (the surfaceforms of words) and their internal structure (say, as sequences of morphemes).In this section we discuss a computational device, very similar to ﬁnite stateautomata, which deﬁnes a relation over two regular languages.
+Example 21 (Relations over languages). Consider a simple part-of-speech tagger: an
+application which associates with every word in some natural language a tag,drawn from a ﬁnite set of tags. In terms of formal languages, such an applica-tion implements a relation over two languages. Assume that the natural languageis deﬁned over Σ
+1={a,b,...,z}and that the set of tags is Σ2={PRON, V , DET,
+ADJ, N, P }. Then the part-of-speech relation might contain the following pairs
+(here, a string over Σ1is mapped to a single element of Σ2):
+I PRON the DET
+know V Cat N
+some DET in P
+new ADJ the DET
+tricks N Hat N
+said V
+As another example, assume that Σ1is as above, and Σ2is a set of part-of-speech
+and morphological tags, including {-PRON, -V , -DET, -ADJ, -N, -P , -1, -2, -3, -sg,
+-pl, -pres, -past, -def, -indef }. A morphological analyzer is a relation between a
+language over Σ1and a language over Σ2. Some of the pairs in such a relation are:
+I I-PRON-1-sg the the-DET-def
+know know-V-pres Cat cat-N-sg
+some some-DET-indef in in-P
+new new-ADJ the the-DET-def
+tricks trick-N-pl Hat hat-N-sg
+said say-V-past
+Finally, consider the relation that maps every English noun in singular to its plu-
+ral form. While the relation is highly regular (namely, adding “ s” to the singular
+form), some nouns are irregular. Some instances of this relation are:
+cat cats hat hats
+ox oxen child children
+mouse mice sheep sheep
+goose geese
+Summing up, a regular relation is deﬁned over two alphabets, Σ1andΣ2.
+Of course, the two alphabets can be identical, but for many natural languageapplications they differ. If a relation in Σ
+∗×Σ∗is regular, its projections on both
+coordinates are regular languages (not all relations that satisfy this condition areregular; additional constraints must hold on the underlying mapping which we
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 25 — #15
+Formal Language Theory 25
+ignore here). Informally, a regular relation is a set of pairs, each of which consistsof one string over Σ
+1and one string over Σ2, such that both the set of strings
+overΣ1and that over Σ2constitute regular languages. We provide a precise
+characterization of regular relations via ﬁnite state transducers below.
+4.8 Finite state transducers
+Finite state automata are a computational device for deﬁning regular languages;in a very similar way, ﬁnite state transducers (FSTs) are a computational device for
+deﬁning regular relations. Transducers are similar to automata, the only differencebeing that the edges are not labeled by single letters, but rather by pairs of sym-bols: one symbol from Σ
+1and one symbol from Σ2. The following is a preliminary
+deﬁnition that we will revise presently:
+DEFINITION 8.Aﬁnite state transducer is a six-tuple ⟨Q,q0,Σ1,Σ2,δ,F⟩,w h e r eQi s
+a ﬁnite set of states, q 0∈Q is the initial state, F ⊆Q is the set of ﬁnal states, Σ1andΣ2
+are alphabets, and δis a subset of Q ×Σ1×Σ2×Q.
+Example 22 (Finite state transducers). Following is a ﬁnite state transducer relating
+the singular forms of two English words with their plural form. In this case,both alphabets are identical: Σ
+1=Σ2={a,b,...,z}. The set of nodes is Q={q1,
+q2,...,q11}, the initial state is q6and the set of ﬁnal states is F={q5,q11}.T h et r a n s i -
+tions from one state to another are depicted as labeled edges; each edge bears twosymbols, one from Σ
+1and one from Σ2, separated by a colon (:). So, for example,
+⟨q1,o,e,q2⟩is an element of δ.
+q1 q2 q3 q4 q5
+q6 q7 q8 q9 q10 q11g:go:e o:e s:s e:e
+s:s h:h e:e e:e p:p
+Observe that each path in this device deﬁnes twostrings: a concatenation of the
+left-hand-side labels of the arcs, and a concatenation of the right-hand-side labels.The upper path of the above transducer thus deﬁnes the pair
+goose:geese , whereas
+the lower path deﬁnes the pair sheep:sheep .
+What constitutes a computation with a transducer? Similarly to the case of
+automata, a computation amounts to “walking” a path of the transducer, start-ing from the initial state and ending in some ﬁnal state. Along the path, edgesbear bi-symbol labels: one can view the left-hand-side symbol as an “input” sym-bol and the right-hand-side symbol as an “output” symbol. Thus, each path ofthe transducer deﬁnes a pair of strings, an input string (over Σ
+1) and an output
+string (over Σ2). This pair of strings is a member of the relation deﬁned by the
+transducer.
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 26 — #16
+26 Shuly Wintner
+DEFINITION 9.Let T =⟨Q,q0,Σ1,Σ2,δ,F⟩be a ﬁnite state transducer. Deﬁne ˆδ⊆
+Q×Σ∗
+1×Σ∗
+2×Q as follows:
+•for each q ∈Q,ˆδ(q,ϵ,ϵ,q);
+•ifˆδ(q1,w1,w2,q2)andδ(q2,a,b,q3),t h e n ˆδ(q1,w1·a,w2·b,q3).
+Then a pair ⟨w1,w2⟩isaccepted (orgenerated) by T if and only if ˆδ(q0,w1,w2,wf)holds
+for some ﬁnal state q f∈F. The relation deﬁned by the transducer is the set of all the
+pairs it accepts.
+As a shorthand notation, when an edge is labeled by two identical symbols, we
+depict only one of them and omit the colon.
+The above deﬁnition of ﬁnite state transducers is not very useful: since each arc
+is labeled by exactly one symbol of Σ1and exactly one symbol of Σ2,a n yr e l a -
+tion that is implemented by such a transducer must relate only strings of exactlythe same length. This should not be the case, and to overcome this limitation weextend the deﬁnition of δto allow also ϵ-labels. In the extended deﬁnition, δis a
+relation over Q,Σ
+1∪{ϵ},Σ2∪{ϵ}and Q. Thus a transition from one state to another
+can involve “reading” a symbol of Σ1without “writing” any symbol of Σ2,o rt h e
+other way round.Example 23 (Finite state transducer with ϵ-labels). With the extended deﬁnition of
+transducers, we depict below an expanded transducer for singular–plural nounpairs in English.
+go:e o:e s e
+s h e e p
+ox ϵ:e ϵ:n
+m
+o:i u:ϵ s:c e
+Note that ϵ-labels can occur on the left or on the right of the ‘:’ separator. The
+pairs accepted by this transducer are goose:geese, sheep:sheep, ox:oxen ,a n d
+mouse:mice .
+4.9 Properties of regular relations
+The extension of automata to transducers carries with it some interesting results.First and foremost, ﬁnite state transducers deﬁne exactly the set of regular rela-tions. Many of the closure properties of automata are valid for transducers, butsome are not. As these properties bear not only theoretical but also practicalsigniﬁcance, we discuss them in more detail in this section.
+Given some transducer T, consider what happens when the labels on the arcs
+ofTare modiﬁed such that only the left-hand symbol remains. In other words,
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 27 — #17
+Formal Language Theory 27
+consider what is obtained when the transition relation δis projected on three of its
+coordinates: Q,Σ1,a n d Qonly, ignoring the Σ2coordinate. It is easy to see that
+a ﬁnite state automaton is obtained. We call this automaton the projection ofTto
+Σ1. In the same way, we can deﬁne the projection of TtoΣ2by ignoring Σ1in the
+transition relation. Since both projections yield ﬁnite state automata, they induceregular languages. Therefore the relation deﬁned by Tis a regular relation.
+We can now consider certain operations on regular relations, inspired by similar
+operations on regular languages. For example, union is very easy to deﬁne. Recall
+that a regular relation is a subset of the Cartesian product of Σ
+∗
+1×Σ∗
+2,t h a ti s ,
+a set of pairs. If R1and R2are regular relations, then R1∪R2is well deﬁned,
+and it is straightforward to show that it is a regular relation. To deﬁne the unionoperation directly over transducers, extend the construction of FSA delineated inSection 4.5, namely add a new initial state with two edges labeled ϵ:ϵleading
+from it to the initial states of the given transducers. In a similar way, concatenation
+can be extended to regular relations: if R
+1and R2are regular relations then R1·
+R2={ ⟨ w1·w2,w3·w4⟩|⟨w1,w3⟩∈R1and⟨w2,w4⟩∈R 2}. Again, the construction
+for FSA can be straightforwardly extended to the case of transducers, and it is easyto show that R
+1·R2is a regular relation.
+Example 24 (Operations on ﬁnite state transducers). Let R1be the following relation,
+mapping some English words to their German counterparts: R1={tomato:Tomate ,
+cucumber:Gurke, grapefruit:Grapefruit, pineapple:Ananas, coconut:Koko }.L e t R2
+be a similar relation: R2={grapefruit:Pampelmuse, coconut:Kokusnuß }. Then:
+R1∪R2={tomato:Tomate, cucumber:Gurke, grapefruit:Grapefruit, grapefruit:
+Pampelmuse, pineapple:Ananas, coconut:Koko, coconut:Kokusnuß }.
+A rather surprising fact is that regular relations are notclosed under intersec-
+tion. In other words, if R1and R2are two regular relations, then it very well
+might be the case that R1∩R1is not a regular relation. It will take us beyond
+the scope of the material covered so far to explain this fact, but it is important toremember it when dealing with ﬁnite state transducers. For this reason exactly itfollows that the class of regular relations is not closed under complementation :s i n c e
+intersection can be expressed in terms of union and complementation, if regularrelations were closed under complementation they would have been closed alsounder intersection, which we know is not the case.
+A very useful operation that is deﬁned for transducers is composition . Intuitively,
+a transducer relates one word (“input”) with another (“output”). When we havemore than one transducer, we can view the output of the ﬁrst transducer as theinput to the second. The composition of T
+1and T2relates the input language of
+T1with the output language of T2, bypassing the intermediate level (which is the
+output of T1and the input of T2).
+DEFINITION 10. If R 1is a relation from Σ∗
+1toΣ∗
+2and R 2is a relation from Σ∗
+2toΣ∗
+3
+then the composition of R 1and R 2, denoted R 1◦R2, is a relation from Σ∗
+1toΣ∗
+3deﬁned
+as{⟨w1,w3⟩|there exists a string w 2∈Σ∗
+2such that w 1R1w2and w 2R2w3}.
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 28 — #18
+28 Shuly Wintner
+Example 25 (Composition of ﬁnite state transducers). Let R1be the following rela-
+tion, mapping some English words to their German counterparts: R1={tomato :
+Tomate, cucumber:Gurke, grapefruit:Grapefruit, grapefruit:Pampelmuse, pine-
+apple:Ananas, coconut:Koko, coconut:Kokusnuß }.L e t R2be a similar relation,
+mapping French words to their English translations: R2={tomate:tomato,
+ananas :pineapple, pamplemousse:grapefruit, concombre:cucumber, cornichon:
+cucumber, noix-de-coco:coconut }. Then R2◦R1is a relation mapping French
+words to their German translations (the English translations are used tocompute the mapping, but are not part of the ﬁnal relation): R
+2◦R1=
+{tomate:Tomate, ananas:Ananas, pamplemousse:Grapefruit, pamplemousse:
+Pampelmuse, concombre:Gurke, cornichon:Gurke, noix-de-coco:Koko, noix-de-
+coco:Kokusnuße }.
+5 Context-Free Languages
+5.1 Where regular languages fail
+Regular languages and relations are useful for various applications of natural lan-guage processing, but there is a limit to what can be achieved with such means.We mentioned in passing that not alllanguages over some alphabet Σare regular;
+we now look at what kind of languages lie beyond the regular ones.
+To exemplify a non-regular language, consider a simple language over the
+alphabet Σ={a,b}whose members are strings that consist of some number, n,
+of ‘a’s, followed by the same number of ‘ b’s. Formally, this is the language L=
+{a
+n·bn|n>0}. Assume towards a contradiction that this language is regular, and
+therefore a deterministic ﬁnite state automaton Aexists whose language is L.C o n -
+sider the language Li={ai|i>0}. Since every string in this language is a preﬁx
+of some string ( ai·bi)o fL, there must be a path in Astarting from the initial state
+for every string in Li. Of course, there is an inﬁnite number of strings in Li,b u tb y
+its very nature, Ahas a ﬁnite number of states. Therefore there must be two dif-
+ferent strings in Lithat lead the automaton to a single state. In other words, there
+exist two strings, ajand ak, such that j̸=kbutˆδ(q0,aj)=ˆδ(q0,ak). Let us call this
+state q. There must be a path labeled bjleading from qto some ﬁnal state qf,s i n c e
+the string ajbjis in L. This situation is schematically depicted below (the dashed
+arrows represent paths):
+q0 q qfaj
+akbj
+Therefore, there is also an accepting path akbjinA, and hence also akbjis in L,i n
+contradiction to our assumption. Hence no deterministic ﬁnite state automatonexists whose language is L.
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 29 — #19
+Formal Language Theory 29
+We have seen one language, namely L={an·bn|n>0}, which cannot be
+deﬁned by a ﬁnite state automaton and therefore is not regular. In fact, there areseveral other such languages, and there is a well-known technique, the so-calledpumping lemma, for proving that certain languages are not regular. If a language isnot regular, then it cannot be denoted by a regular expression. We must look foralternative means of speciﬁcation for non-regular languages.
+5.2 Grammars
+In order to specify a class of more complex languages, we introduce the notion ofagrammar. Intuitively, a grammar is a set of rules that manipulate symbols. We
+distinguish between two kinds of symbols: terminal ones, which should be thought
+of as elements of the target language, and non-terminal ones, which are auxiliary
+symbols that facilitate the speciﬁcation. It might be instructive to think of the non-terminal symbols as syntactic categories , such as Sentence, Noun Phrase ,o r Verb
+Phrase. However, formally speaking, non-terminals have no “special,” externalinterpretation where formal languages are concerned. Similarly, terminal symbolsmight correspond to letters of some natural language, or to words, or to somethingelse: they are simply elements of some ﬁnite set.
+Rules can express the internal structure of “phrases,” which should not nec-
+essarily be viewed as natural language phrases. A rule is a non-empty sequenceof symbols, a mixture of terminals and non-terminals, with the only requirementthat the ﬁrst element in the sequence be a non-terminal one (alternatively, onecan deﬁne a rule as an ordered pair whose ﬁrst element is a non-terminal symboland whose second element is a sequence of symbols). We write such rules with aspecial symbol, ‘ →,’ separating the distinguished leftmost non-terminal from the
+rest of the sequence. The leftmost non-terminal is sometimes referred to as the head
+of the rule, while the rest of the symbols are called the body of the rule.
+Example 26 (Rules). Assume that the set of terminals is {
+the, cat, in, hat }and the
+set of non-terminals is {D, N, P , NP , PP }. Then possible rules over these two sets
+include:
+D→the NP →DN
+N→cat PP →PN P
+N→hat NP →NP PP
+P→in
+Note that the terminal symbols correspond to words of English, and not to lettersas was the case above.
+Consider the rule
+NP→DN . If we interpret NPas the syntactic category noun
+phrase, Dasdeterminer ,a n d Nasnoun, then what the rule informally means is that
+one possible way to construct a noun phrase is by concatenating a determiner witha noun. More generally, a rule speciﬁes one possible way to construct a “phrase” of
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 30 — #20
+30 Shuly Wintner
+the category indicated by its head: this way is by concatenating phrases of the cat-egories indicated by the elements in the body of the rule. Of course, there might bemore than one way to construct a phrase of some category. For example, there aretwo rules which deﬁne the structure of the category
+NPin Example 26: either by
+concatenating a phrase of category Dwith one of category N, or by concatenating
+anNPwith a PP.
+In Example 26, rules are of two kinds: the ones on the left have a single terminal
+symbol in their body, while the ones on the right have one or more non-terminalsymbols, but no rule mixes both terminal and non-terminal symbols in its body.While this is a common practice where grammars for natural languages are con-cerned, nothing in the formalism requires such a format for rules. Indeed, rulescan mix any combination of terminal and non-terminal symbols in their bodies.
+Formal language theory deﬁnes rules and grammars in a much broader way
+than that which was discussed above, and the deﬁnition below is actually onlya special case of rules and grammars. For various reasons that have to do withthe format of the rules, this special case is known as context-free rules. This has
+nothing to do with the ability of grammars to refer to context; the term should notbe taken mnemonically. In the next section we discuss other rule-based systems. Inthis section, however, we use the terms rule and context-free rule interchangeably,
+as we do for grammars, derivations, etc.
+D
+EFINITION 11. Acontext-free grammar is a four-tuple G =⟨V,Σ,P,S⟩,w h e r eV
+is a ﬁnite set of non-terminal symbols ,Σis an alphabet of terminal symbols,P ⊆
+V×(V∪Σ)∗is a set of rules and S ∈Vi st h e start symbol.
+Note that this deﬁnition permits rules with empty bodies. Such rules, which
+consist of a left-hand-side only, are called ϵ-rules, and are useful both for formal
+and for natural languages. Example 33 below makes use of an ϵ-rule.
+Example 27 (Grammar). The set of rules depicted in Example 26 can constitute the
+basis for a grammar G=⟨V,Σ,P,S⟩, where V={D, N, P , NP , PP },Σ={the, cat,
+in, hat },Pis the set of rules, and the start symbol SisNP.
+In the sequel we depict grammars by listing their rules only, as we did in Exam-
+ple 26. We keep a convention of using uppercase letters for the non-terminals andlowercase letters for the terminals, and we assume that the set of terminals is thesmallest that includes all the terminals mentioned in the rules, and the same forthe non-terminals. Finally, we assume that the start symbol is the head of the ﬁrstrule, unless stated otherwise.
+5.3 Derivation
+In order to deﬁne the language denoted by a grammar we need to deﬁne theconcept of derivation . Derivation is a relation that holds between two forms, each a
+sequence of grammar symbols (terminal and/or non-terminal).
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 31 — #21
+Formal Language Theory 31
+DEFINITION 12. Let G =⟨V,Σ,P,S⟩be a grammar. The set of forms induced by G is
+(V∪Σ)∗.Af o r m αimmediately derives af o r m β, denoted by α⇒β, if and only if
+there exist γl,γr∈(V∪Σ)∗such that α=γlAγrandβ=γlγcγr, and A →γcis a rule
+in P. A is called the selected symbol .
+Af o r m αimmediately derives βif a single non-terminal symbol, A, occurs in α,
+such that whatever is to its left in α, the (possibly empty) sequence of terminal and
+non-terminal symbols γl, occurs at the leftmost edge of β; and whatever is to the
+right of Ainα, namely the (possibly empty) sequence of symbols γr, occurs at the
+rightmost edge of β; and the remainder of β, namely γc, constitutes the body of
+some grammar rule of which Ais the head.
+Example 28 (Immediate derivation). LetGbe the grammar of Example 27. The set of
+forms induced by Gcontains all the (inﬁnitely many) sequences of elements from
+VandΣ, such as ⟨⟩,⟨NP⟩,⟨D cat P D hat ⟩,⟨DN⟩,⟨the cat in the hat ⟩,e t c .
+Let us start with a simple form, ⟨NP⟩. Observe that it can be written as γlNPγr,
+where both γlandγrare empty. Observe also that NPis the head of some grammar
+rule: the rule NP→DN . Therefore, the form is a good candidate for derivation:
+if we replace the selected symbol NPwith the body of the rule, while preserving
+its environment, we obtain γlDNγr=DN. Therefore, ⟨N⟩⇒⟨ DN⟩.
+We now apply the same process to ⟨DN⟩. This time the selected symbol is D
+(we could have selected N, of course). The left context is again empty, while the
+right context is γr=N. As there exists a grammar rule whose head is D, namely
+D→the, we can replace the rule’s head by its body, preserving the context, and
+obtain the form ⟨the N ⟩. Hence ⟨DN⟩⇒⟨ the N ⟩.
+Given the form ⟨the N ⟩, there is exactly one non-terminal that we can select,
+namely N. However, there are two rules that are headed by N:N→catand
+N→hat. We can select either of these rules to show that both ⟨the N ⟩⇒⟨ the cat ⟩
+and⟨the N ⟩⇒⟨ the hat ⟩.
+Since the form ⟨the cat ⟩consists of terminal symbols only, no non-terminal can
+be selected and hence it derives no form.
+We now extend the immediate derivation relation from a single step to an
+arbitrary number of steps by considering the reﬂexive transitive closure of therelation.
+D
+EFINITION 13. Thederivation relation, denoted ‘∗⇒,’ is deﬁned recursively as follows:
+α∗⇒βifα=β,o ri fα⇒γandγ∗⇒β.
+Example 29 (Extended derivation). In Example 28 we showed that the following
+immediate derivations hold: ⟨NP⟩⇒⟨ DN⟩;⟨DN⟩⇒⟨ the N ⟩;⟨the N ⟩⇒⟨ the cat ⟩.
+Therefore, ⟨NP⟩∗⇒⟨the cat ⟩.
+The derivation relation is the basis for deﬁning the language denoted by a gram-
+mar. Consider the form obtained by taking a single grammar symbol, say ⟨A⟩;i f
+this form derives a sequence of terminals, this string is a member of the languagedenoted by A. The language of a grammar G,L(G), is the language denoted by its
+start symbol.
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 32 — #22
+32 Shuly Wintner
+DEFINITION 14. Let G =⟨V,Σ,P,S⟩be a grammar. The language of a non-terminal
+A∈Vi s
+LG(A)={a1···an|ai∈Σfor1≤i≤n and ⟨A⟩∗⇒⟨a1,...,an⟩}
+Thelanguage of the grammar Gi sL(G)=LG(S).
+Example 30 (Language of a grammar). Consider again the grammar Gof Exam-
+ple 27. It is fairly easy to see that the language denoted by the non-terminal symbol
+D,LG(D), is the singleton set {the}. Similarly, LG(P)is{in}and LG(N)={cat, hat }.
+It is more difﬁcult to deﬁne the languages denoted by the non-terminals NPand
+PP, although it should be straightforward that the latter is obtained by concatenat-
+ing{in}with the former. We claim without providing a proof that LG(NP)is the
+denotation of the regular expression (the·(cat+hat)·(in·the·(cat+hat))∗).
+5.4 Derivation trees
+Sometimes two derivations of the same string differ only in the order in whichthey were applied. Consider again the grammar of Example 27. Starting with theform⟨
+NP⟩it is possible to derive the string the cat in two ways:
+(1)⟨NP⟩⇒⟨ DN⟩⇒⟨ D cat⟩⇒⟨ the cat ⟩
+(2)⟨NP⟩⇒⟨ DN⟩⇒⟨ the N ⟩⇒⟨ the cat ⟩
+Derivation (1) applies ﬁrst the rule N→catand then the rule D→thewhereas
+derivation (2) applies the same rules in the reverse order. But since both usethe same rules to derive the same string, it is sometimes useful to collapse such“equivalent” derivations into one. To this end the notion of derivation trees is
+introduced.
+A derivation tree (sometimes called parse tree, or simply tree) is a visual aid
+in depicting derivations, and a means for imposing structure on a grammaticalstring. Trees consist of vertices and branches; a designated vertex, the root of the
+tree, is depicted on the top. Branches are connections between pairs of vertices.Intuitively, trees are depicted “upside down,” since their root is at the top andtheir leaves are at the bottom. An example of a derivation tree for the string
+the cat
+in the hat with the grammar of Example 27 is given in Example 31.
+Example 31 (Derivation tree).
+NP
+NP PP
+DNP N P
+DN
+the cat in the hat
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 33 — #23
+Formal Language Theory 33
+Formally, a tree consists of a ﬁnite set of vertices and a ﬁnite set of branches
+(or arcs), each of which is an ordered pair of vertices. In addition, a tree has adesignated vertex, the root, which has two properties: it is not the target of any arc,
+and every other vertex is accessible from it (by following one or more branches).When talking about trees we sometimes use family notation: if a vertex vhas a
+branch leaving it which leads to some vertex u, then we say that vis the mother
+ofuand uis the daughter,o r child,o f v.I f uhas two daughters, we refer to them
+assisters. Derivation trees are deﬁned with respect to some grammar G, and must
+obey the following conditions:(1) every vertex has a label, which is either a terminal symbol, a non-terminal
+symbol, or ϵ;
+(2) the label of the root is the start symbol;(3) if a vertex vhas an outgoing branch, its label must be a non-terminal symbol;
+furthermore, this symbol must be the head of some grammar rule; and theelements in the body of the same rule must be the labels of the children of v,
+in the same order;
+(4) if a vertex is labeled ϵ, it is the only child of its mother.
+Aleaf is a vertex with no outgoing branches. A tree induces a natural “left-to-
+right” order on its leaves; when read from left to right, the sequence of leaves iscalled the frontier,o r yield , of the tree.
+Derivation trees correspond very closely to derivations. In fact, it is easy to show
+that a non-terminal symbol Aderives a form αif and only if αis the yield of some
+parse tree whose root is A. In other words, whenever some string can be derived
+from a non-terminal, there exists a derivation tree for that string, with the samenon-terminal as its root. However, sometimes there exist different derivations ofthe same string that correspond to a single tree. The tree representation collapsesexactly those derivations that differ from each other only in the order in whichrules are applied.
+Sometimes, however, different derivations (of the same string!) correspond to
+different trees. This can happen only when the derivations differ in the rules whichthey apply. When more than one tree exists for some string, we say that the stringisambiguous. Ambiguity is a major problem when grammars are used for certain
+formal languages, in particular for programming languages. But for natural lan-guages, ambiguity is unavoidable as it corresponds to properties of the naturallanguage itself.Example 32 (Ambiguity). Consider again the grammar of Example 27, and the
+string
+the cat in the hat in the hat . Intuitively, there can be (at least) two readings
+for this string: one in which a certain cat wears a hat-in-a-hat, and one in which acertain cat-in-a-hat is inside a hat. If we wanted to indicate the two readings withparentheses, we would distinguish between
+((the cat in the hat) in the hat)
+and
+(the cat in (the hat in the hat))
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 34 — #24
+34 Shuly Wintner
+This distinction in intuitive meaning is reﬂected in the grammar, and two differentderivation trees, corresponding to the two readings, are available for this string:
+NP
+NP
+NP PP PP
+DNP N P P N P
+DN DN
+the cat in the hat in the hatNP
+NP PP
+DNP N P
+NP PP
+PN P
+DN DN
+the cat in the hat in the hat
+Using linguistic terminology, in the left tree the second occurrence of the preposi-tional phrase
+in the hat modiﬁes the noun phrase the cat in the hat , whereas in the
+right tree it only modiﬁes the (ﬁrst occurrence of) the noun phrase the hat .T h i s
+situation is known as syntactic orstructural ambiguity.
+5.5 Expressiveness
+Context-free grammars are more expressive than regular expressions. InSection 5.1 we claimed that the language L={a
+nbn|n>0}is not regular; we now
+show a context-free grammar for this language. The grammar, G=⟨V,Σ,P,S⟩,h a s
+two terminal symbols, Σ={a,b}, and one non-terminal symbol, V={S}. The idea
+is that whenever Sis used recursively in a derivation (rule 1), the current form is
+extended by exactly one aon the left and one bon the right, hence the number of
+‘a’s and ‘b’s must be equal.Example 33 (A context-free grammar for L ={a
+nbn|n≥0}).
+(1) S→aSb
+(2) S→ϵ
+DEFINITION 15. The class of languages that can be generated by context-free grammars
+is the class of context-free languages.
+The class of context-free languages properly contains the regular languages:
+given some ﬁnite state automaton which generates some language L, it is always
+possible to construct a context-free grammar whose language is L. We conclude
+this section with a discussion of converting automata to context-free grammars.
+Let A=⟨Q,q0,δ,F⟩be a deterministic ﬁnite state automaton with no ϵ-moves
+over the alphabet Σ. The grammar we deﬁne to simulate AisG=⟨V,Σ,P,S⟩,
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 35 — #25
+Formal Language Theory 35
+where the alphabet Σis that of the automaton, and where the set of non-terminals,
+V,i st h es e t Qof the automaton states. The idea is that a single (immediate) deriva-
+tion step with the grammar simulates a single arc traversal with the automaton.Since automata states are simulated by grammar non-terminals, it is reasonable tosimulate the initial state by the start symbol, and hence the start symbol Sisq
+0.
+What is left, of course, are the grammar rules. These come in two varieties: ﬁrst,for every automaton arc δ(q,a)=q
+′we stipulate a rule q→aq′. Then, for every
+ﬁnal state qf∈F,w ea d dt h er u l eq f→ϵ.
+Example 34 (Simulating a ﬁnite state automaton by a grammar). Consider the automa-
+ton⟨Q,q0,δ,F⟩depicted below, where Q={ q0,q1,q2,q3},F={ q3},a n d δis
+{⟨q0,m,q1⟩,⟨q1,e,q2⟩,⟨q2,o,q2⟩,⟨q2,w,q3⟩,⟨q0,w,q2⟩}:
+q0 q1 q2 q3m e
+ow
+w
+The grammar G=⟨V,Σ,P,S⟩which simulates this automaton has V={q0,q1,
+q2,q3},S=q0, and the set of rules:
+(1) q0→mq1
+(2) q1→eq2
+(3) q2→oq2
+(4) q2→wq3
+(5) q0→wq2
+(6) q3→ϵ
+The string meoow , for example, is generated by the automaton by walking along
+the path q0−q1−q2−q2−q2−q3. The same string is generated by the grammar
+with the derivation
+⟨q0⟩1⇒⟨mq1⟩2⇒⟨meq 2⟩3⇒⟨meoq 2⟩3⇒⟨meooq 2⟩4⇒⟨meoowq 3⟩6⇒⟨meoow ⟩
+Since every regular language is also a context-free language, and since we have
+shown a context-free language that is not regular, we conclude that the class ofregular languages is properly contained within the class of context-free languages.
+Observing the grammar of Example 34, a certain property of the rules stands
+out: the body of each of the rules either consists of a terminal followed by anon-terminal or is empty. This is a special case of what are known as right-
+linear grammars. In a right-linear grammar, the body of each rule consists of a
+(possibly empty) sequence of terminal symbols, optionally followed by a sin-gle non-terminal symbol. Most importantly, no rule exists whose body containsmore than one non-terminal; and if a non-terminal occurs in the body, it isin the ﬁnal position. Right-linear grammars are a restricted variant of context-free grammars, and it can be shown that they generate all and only the regularlanguages.
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 36 — #26
+36 Shuly Wintner
+5.6 Formal properties of context-free languages
+Context-free languages are more expressive than regular languages; this addi-tional expressive power comes with a price: given an arbitrary context-freegrammar Gand some string w, determining whether w∈L(G) takes time pro-
+portional to the cube of the length of w,O(|w|
+3)(in the worst case). In addition,
+context-free languages are not closed under some of the operations that the regularlanguages are closed under.
+It should be fairly easy to see that context-free languages are closed under union.
+Given two context-free grammars G
+1=⟨V1,Σ1,P1,S1⟩and G2=⟨V2,Σ2,P2,S2⟩,
+a grammar G=⟨V,Σ,P,S⟩whose language is L(G 1)∪L(G 2)can be constructed
+as follows: the alphabet Σis the union of Σ1andΣ2, the non-terminal set Vis a
+union of V1and V2, plus a new symbol S, which is the start symbol of G. Then,
+the rules of Gare just the union of the rules of G1and G2, with two additional
+rules: S→S1and S→S2, where S1and S2are the start symbols of G1and G2
+respectively. Clearly, every derivation in G1can be simulated by a derivation in
+Gusing the same rules exactly, starting with the rule S→S1, and similarly for
+derivations in G2.A l s o ,s i n c e Sis a new symbol, no other derivations in Gare
+possible. Therefore L(G)=L(G 1)∪L(G 2).
+A similar idea can be used to show that the context-free languages are closed
+under concatenation: here we only need one additional rule, namely S→S1S2,
+and the rest of the construction is identical. Any derivation in Gwill “ﬁrst” derive
+as t r i n go f G1(through S1) and then a string of G2(through S2). To show clo-
+sure under the Kleene-closure operation, use a similar construction with the addedrules
+S→ϵand S→SS1.
+However, it is possible to show that the class of context-free languages is
+not closed under intersection. That is, if L1and L2are context-free languages,
+then it is not guaranteed that L1∩L2is context-free as well. From this fact
+it follows that context-free languages are not closed under complementationeither. While context-free languages are not closed under intersection, they are
+closed under intersection with regular languages: if Lis a context-free lan-
+guage and Ris a regular language, then it is guaranteed that L∩Ris context-
+free.
+In the previous section we have shown a correspondence between two spec-
+iﬁcation formalisms for regular languages: regular expressions and ﬁnite stateautomata. For context-free languages, we focused on a declarative formalism,namely context-free grammars, but they, too, can be speciﬁed using a computa-tional model. This model is called push-down automata, and it consists of ﬁnite
+state automata augmented with unbounded memory in the form of a stack . Com-
+putations can use the stack to store and retrieve information: each transitioncan either push a symbol (taken from a special alphabet) onto the top of thestack, or pop one element off the top of the stack. A computation is success-ful if it ends in a ﬁnal state with an empty stack. It can be shown that the classof languages deﬁned by push-down automata is exactly the class of context-freelanguages.
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 37 — #27
+Formal Language Theory 37
+5.7 Normal forms
+The general deﬁnition of context-free grammars stipulates that the body of a rulemay consist of any sequence of terminal and non-terminal symbols. However, it ispossible to restrict the form of the rules without affecting the generative capacityof the formalism. Such restrictions are known as normal forms and are the topic of
+this section.
+The best-known normal form is the Chomsky normal form (CNF): under this
+deﬁnition, rules are restricted to be of either of two forms. The body of any rule ina grammar may consist either of a single terminal symbol, or of exactly two non-terminal symbols (as a special case, empty bodies are also allowed). For example,the rules
+D→theand NP→DN can be included in a CNF grammar, but the
+rule S→aSb cannot.
+Unlike the right-linear grammars deﬁned in Section 5.5, which can only gen-
+erate regular languages, CNF grammars are equivalent in their weak generativecapacity to general context-free grammars: it can be proven that for every context-free language Lthere exists a CNF grammar Gsuch that L=L(G). In other words,
+CNF grammars can generate all the context-free languages.
+The utility of normal forms is in their simplicity. When some property of context-
+free languages has to be proven, it is sometimes much simpler to prove it forthe restricted version of the formalism (e.g., for CNF grammars only), becausethe result can then extend to the entire class of languages. Similarly, processingnormal-form grammars may be simpler than processing the general class of gram-mars. Thus, the ﬁrst parsing algorithms for context-free grammars were limitedto grammars in CNF. In natural language grammars, a normal form can embodythe distinction between “real” grammar rules and the lexicon; a commonly usednormal form deﬁnes grammar rules to have either a single terminal symbol or anysequence of zero or more non-terminal symbols in their body (notice that this is arelaxation of CNF).
+6 The Chomsky Hierarchy
+6.1 A hierarchy of language classes
+We focus in this section on grammars as formalisms which denote languages. Wehave seen two types of grammars: context-free grammars, which generate the classof context-free languages; and right-linear grammars, which generate the class ofregular languages. Right-linear grammars are a special case of context-free gram-mars, where additional constraints are imposed on the form of the rules. Moregenerally, constraining the form of the rules can constrain the expressive powerof the formalism. Similarly, more freedom in the form of the rules can extend theexpressiveness of the formalism.
+One way to achieve this is to allow more than a single non-terminal symbol
+in the head of the rules or, in other words, restrict the application of rules to a
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 38 — #28
+38 Shuly Wintner
+speciﬁed context. In context-free grammars, a rule can be applied during a deriva-
+tion whenever its head, A, is an element in a form. In the extended formalism such
+a derivation is allowed only if the context of Ain the form, that is, A’s neighbors to
+the right and left, are as speciﬁed in the rule. Due to this reference to context, thisformalism is known as context-sensitive grammars. A rule in a context-sensitive
+grammar has the form α
+1Aα2→α1βα2, where α1,α2,a n d βare all (possibly
+empty) sequences of terminal and non-terminal symbols. The other componentsof context-sensitive grammars are as in context-free grammars.
+As usual, the class of languages that can be generated by context-sensitive gram-
+mars is called the context-sensitive languages. Considering that every context-free
+grammar is a special case of context-sensitive grammars (with an empty con-text), it should be clear that every context-free language is also context-sensitiveor, in other words, that the context-free languages are contained in the set of thecontext-sensitive ones. As it turns out, this containment is proper, and there arecontext-sensitive languages that are not context-free.
+This establishes a hierarchy of classes of languages: the regular languages are
+properly contained in the context-free languages, which are properly containedin the context-sensitive languages. These, in turn, are known to be properly con-tained in the set of languages generated by the so-called unrestricted orgeneral
+phrase-structure grammars (this set is called the recursively enumerable languages).
+Each of the language classes in this hierarchy is associated with a computationalmodel: FSA and push-down automata for the regular and context-free languagesrespectively; linear bounded Turing machines for the context-sensitive languages;and Turing machines for the recursively enumerable languages.
+This hierarchy of language classes is called the Chomsky hierarchy of languages ,
+and is schematically depicted in Figure 1.1.
+6.2 The location of natural languages in the hierarchy
+The Chomsky hierarchy of languages reﬂects a certain order of complexity: insome sense, the lower the language class is in the hierarchy, the simpler are itspossible constructions. Furthermore, lower language classes allow for more efﬁ-cient processing (in particular, the recognition problem is tractable for regular andcontext-free languages, but not for higher classes). If formal grammars are usedto express the structure of natural languages, then we must know the location of
+these languages in the hierarchy.
+Chomsky presents a theorem that says “English is not a regular language” (1957:
+21); as for context-free languages, he says “I do not know whether or not Englishis itself literally outside the range of such analyses” (1957: 34). For many years,however, it was well accepted that natural languages were beyond the expres-sive power of context-free grammars. This was only proven in the 1980s, whentwo natural languages (Dutch and a dialect of Swiss German) were shown tobe trans-context-free (that is, beyond the expressive power of context-free gram-mars). Still, the constructions in natural languages that necessitate more than
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 39 — #29
+Formal Language Theory 39
+Phrase-structure
+languages
+Context-sensitive
+languages
+Context-free
+languages
+Regular
+languages
+Figure 1.1 Chomsky’s hierarchy of languages.
+context-free power are few and very speciﬁc. (Most of these constructions boildown to patterns of the form a
+nbmcndm, known as cross-serial dependencies;w i t h
+some mathematical machinery, based mostly on closure properties of the context-free languages, it can be proven that languages that include such patterns cannotbe context-free.) This motivated the deﬁnition of the class of mildly context-sensitive
+languages, which we discuss in Section 7.
+6.3 Weak and strong generative capacity
+So far we have only looked at grammars as generating sets of strings (i.e., lan-guages), and ignored the structures that grammars impose on the strings in theirlanguages. In other words, when we say that English is not a regular languagewe mean that no regular expression exists whose denotation is the set of all andonly the sentences of English. Similarly, when a claim is made that some natu-ral language, say Dutch, is not context-free, it should be read as saying that nocontext-free grammar exists whose language is Dutch. Such claims are propo-sitions about the weak generative capacity of the formalisms involved: the weak
+generative capacity of regular expressions is insufﬁcient for generating English;the weak generative capacity of context-free languages is insufﬁcient for Dutch.Where natural languages are concerned, however, weak generative capacity might
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 40 — #30
+40 Shuly Wintner
+not correctly characterize the relationship between a formalism (such as regularexpressions or context-free grammars) and a language (such as English or Dutch).This is because one expects the formalism not only to be able to generate the stringsin a language, but also to assign them “correct” structures.
+In the case of context-free grammars, the structure assigned to strings is a
+derivation tree. Other linguistic formalisms may assign other kinds of objects totheir sentences. We say that the strong generative capacity of some formalism is
+sufﬁcient to generate some language if the formalism can (weakly) generate allthe strings in the language, and also to assign them the “correct” structures. Unlikeweak generative capacity, which is a properly deﬁned mathematical notion, stronggenerative capacity is poorly deﬁned, because no accepted deﬁnition of the“correct” structure for some string in some language exists.
+7 Mildly Context-Sensitive Languages
+When it was ﬁnally proven that context-free grammars are not even weakly ade-quate as models of natural languages, research focused on “mild” extensions ofthe class of context-free languages. In a seminal work, Joshi (1985) coined the termmildly context-sensitive languages, which is loosely deﬁned as a class of languagesthat:(1) properly contains all the context-free languages;(2) can be parsed in polynomial time;(3) can properly account for the constructions in natural languages that context-
+free languages fail to account for, such as cross-serial dependencies; and
+(4) has the linear-growth property (this is a formal property that we ignore here).
+One formalism that complies with these speciﬁcations (and which motivated
+their design) is tree adjoining grammars (TAGs). Motivated by linguistic consider-
+ations, TAGs extend the scope of locality in which linguistic constraints can beexpressed. The elementary building blocks of the formalism are trees. Whereascontext-free grammar rules enable one to express constraints among the mother ina local tree and its immediate daughters, the elementary trees of TAG facilitate theexpression of constraints between arbitrarily distant nodes, as long as they are partof the same elementary tree. Two operations, adjunction and substitution, construct
+larger trees from smaller ones, so that the basic operations that take place dur-ing derivations are not limited to string concatenation. Crucially, these operationsfacilitate nesting of one tree within another, resulting in extended expressiveness.
+The class of languages generated by tree adjoining grammars is naturally called
+the tree adjoining languages. It contains the context-free languages, and several
+trans-context-free ones, such as the language {a
+nbmcndm|n,m≥0}. As usual, the
+added expressiveness comes with a price, and determining membership of a stringwin a language generated by some TAG can only be done in time proportional
+to|w|
+6.
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 41 — #31
+Formal Language Theory 41
+Several linguistic formalisms were proposed as adequate for expressing the
+class of natural languages. Noteworthy among them are three formalisms: head
+grammars, linear indexed grammars ,a n d combinatory categorial grammars.A l lt h r e e
+were developed independently with natural languages as their main motivation;and all three were proven to be (weakly) equivalent to TAG. The class of treeadjoining languages, therefore, may be just the correct formal class in which allnatural languages reside.
+8 Further Reading
+Much of the material presented in this chapter can be found in introductory text-books on formal language theory. Hopcroft and Ullman (1979, chapter 1) providea formal presentation of formal language theory; just as rigorous, but with aneye to linguistic uses and applications, is the presentation of Partee et al. (1990,chapters 1–3). For the ultimate reference, consult the Handbook of Formal Languages
+(Rozenberg & Salomaa 1997).
+A very good formal exposition of regular languages and the computing machin-
+ery associated with them is given by Hopcroft and Ullman (1979, chapters 2–3).Another useful source is Partee et al. (1990, chapter 17). Theorem 1 is due to Kleene(1956); Theorem 2 is due to Rabbin and Scott (1959); Theorem 3 is a corollary of theMyhil–Nerode theorem (Nerode 1958). The pumping lemma for regular languagesis due to Bar-Hillel et al. (1961).
+For natural language applications of ﬁnite state technology refer to Roche and
+Schabes (1997a), which is a collection of papers ranging from mathematical prop-erties of ﬁnite state machinery to linguistic modeling using them. The introduction(Roche & Schabes 1997b) can be particularly useful, as will be Karttunen (1991).Kaplan and Kay (1994) is a classic work that sets the very basics of ﬁnite statephonology, referring to automata, transducers, and two-level rules. As an exampleof an extended regular expression language, with an abundance of applications tonatural language processing, see Beesley and Karttunen (2003). Finally, Karttunenet al. (1996) is a fairly easy paper that relates regular expressions and relationsto ﬁnite automata and transducers, and exempliﬁes their use in several languageengineering applications.
+Context-free grammars and languages are discussed by Hopcroft and Ullman
+(1979, chapters 4, 6) and Partee et al. (1990, chapter 18). The correspondencebetween regular languages and right-linear grammars is due to Chomsky andMiller (1958). A cubic-time parsing algorithm for context-free languages was ﬁrstproposed by Kasami (1965); see also Younger (1967). Push-down automata wereintroduced by Oettinger (1961); see also Schützenberger (1963). Chomsky (1962)proved that they were equivalent to context-free grammars.
+A linguistic formalism that is based on the ability of context-free grammars to
+provide adequate analyses for natural languages is generalized phrase-structuregrammars, or GPSGs (Gazdar et al., 1985).
+
+“9781405155816_4_001” — 2010/5/14 — 17:13 — page 42 — #32
+42 Shuly Wintner
+The Chomsky hierarchy of languages is due to Chomsky (1956, 1959). The
+location of the natural languages in this hierarchy is discussed in severalpapers, of which the most readable, enlightening, and amusing is Pullum andGazdar (1982). Several other works discussing the non-context-freeness of nat-ural languages are collected in Part III of Savitch et al. (1987). Rounds et al.(1987) inquire into the relations between formal language theory and linguistictheory, in particular referring to the distinction between weak and strong gen-erative capacity. Works showing that natural languages cannot be described bycontext-free grammars include Bresnan et al. (1982) (Dutch), Shieber (1985) (SwissGerman), and Manaster-Ramer (1987) (Dutch). Miller (1999) is dedicated to gener-ative capacity of linguistic formalisms, where strong generative capacity is deﬁnedas the model theoretic semantics of a formalism.
+Tree adjoining grammars were introduced by Joshi et al. (1975) and are dis-
+cussed in several subsequent papers Joshi (1985; 1987; 2003). A polynomial-timeparsing algorithm for TAG is given by Vijay-Shanker and Weir (1993) and Satta(1994). The three formalisms that are equivalent to TAG are head grammars(Pollard 1984), linear-indexed grammars (Gazdar 1988), and combinatory cate-gorial grammars (Steedman 2000); they were proven equivalent by Vijay-Shankerand Weir (1994).
+

@@ -1,0 +1,694 @@
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 333 — #1
+13 Statistical Parsing
+STEPHEN CLARK
+1 Introduction
+Natural language parsing, in its most general form, is the process of assigningsome structure to a natural language input. In this chapter we focus on the morespeciﬁc problem of taking a sentence as input and, using a predeﬁned grammar,assigning a syntactic structure to it. We will not be too speciﬁc about the formof the syntactic structure, only that it need be some hierarchical representation ofhow the words in a sentence are related; this could be a phrase-structure tree ordependency graph, for example. We will use the general term parse to refer to such
+a representation.
+This initial description of the problem raises a number of questions:
+(1) What is the grammar which deﬁnes the set of legal syntactic structures for a
+sentence? How is that grammar obtained?
+(2) What is the algorithm for determining the set of legal parses for a sentence?
+What data structure is used to represent those parses?
+(3) What is the model for determining the plausibility of different parses for a
+sentence?
+(4) What is the algorithm, given the model and a set of possible parses, which
+ﬁnds the best parse (or the n-best parses)?
+The ﬁrst three questions correspond roughly to the characterization of parsing
+in Steedman (2000) (although Steedman uses the term oracle for model). The addi-
+tional fourth component is the decoder. If the possible parses can be efﬁciently
+enumerated, then there is a trivial decoding algorithm: simply loop through eachparse calculating its score, and return the highest-scoring one. However, as weshall see, the grammars used by statistical parsers are often wide-coverage, pro-ducing many parses for some sentences, far too many to enumerate. In this case, amore sophisticated representation of the possible parses, and decoding algorithm,is required.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 334 — #2
+334 Stephen Clark
+The examples in this chapter show that parsers do not always divide neatly
+into these four modules, and there can be considerable overlap between them. Forexample, many of the approaches to parsing the Penn Treebank (PTB), a standardparsing task, treat statistical parsing as essentially pattern recognition combinedwith search. Collins (1999), in a seminal work on parsing the PTB, characterizesthe problem as follows:
+T
+best=arg max
+TP(T,S) (1)where Tis a parse and Sis a sentence. Here Pis a joint probability distribution,
+often referred to as the generative model , over all possible (T,S)pairs.
+The one aspect of this characterization that is clearly separated from the rest is
+the generative model: P(T,S). However, there is considerable freedom in how to
+interpret the arg max
+T, both in terms of the set of parses over which the arg max is
+performed (not explicitly speciﬁed), and in how the search is carried out. Section 3describes the Collins parser in more detail.
+The motivation for statistical parsing arises mainly from question (3) in our
+original characterization. One of the surprising conclusions from early languageprocessing research was that syntactic ambiguity is a serious problem for parsing(Church & Patil 1982). It is very difﬁcult to manually deﬁne a grammar whoserules determine a single parse for an arbitrary sentence, and statistical modelsprovide a well-founded method for selecting between the alternative parses.
+The ambiguity problem is especially severe for wide-coverage grammars, that
+is, grammars which cover a large proportion of the constructions found in natu-rally occurring text. Articles on parsing often give examples of ordinary-lookingsentences which receive many hundreds or thousands of possible parses accord-ing to some grammar; however, with automatically extracted grammars, suchas the CCG grammar described in Section 6, the problem is much more severe,with some newspaper sentences receiving many orders of magnitude more parses.The standard textbook examples of syntactic ambiguity, such as see a man with a
+telescope , are potentially misleading since the ambiguity in these examples is eas-
+ily perceived; however, the majority of the ambiguity inherent in wide-coveragegrammars is much more subtle, and it is the subtle ambiguities which lead tovery large numbers of parses. In fact, we could not expect a statistical parsingmodel to resolve truly ambiguous cases such as the telescope example, since thiswould require a detailed representation of the context and sophisticated reasoningcapabilities. Abney (1996) provides an illuminating discussion of this issue.
+Further motivation for taking a statistical approach to parsing arises from the
+remaining questions in our original characterization. Even the grammar itself canbe partly determined by the statistical parsing model. For example, Model 1 fromCollins (1999) uses Markov processes to generate left and right sequences of verbalmodiﬁers, where the Markov process is used to assign probabilities to particularsequences of non-terminals. The parser considers all possible combinations of non-terminals to be a legal sequence, and relies on the statistical model to rule out theunlikely ones.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 335 — #3
+Statistical Parsing 335
+Of course the grammar does not have to be so closely tied to the statistical
+model. In the parsers of Riezler et al. (2002) and Briscoe and Carroll (2006), thegrammar is manually constructed and the statistical model is used for parse selec-tion. But even with a manually constructed grammar, there is still a need for astatistical selection component if the grammar is to have wide enough coverage tobe useful in language processing applications.
+Finally, there are various ways in which the statistical model can interact with
+the parsing algorithm. Most statistical parsers use some form of heuristic searchto manage the large search space, a standard example being probabilistic beamsearch. But there are also parsers in which the model and parsing algorithm inter-act more closely, in that the parsing model is used to guide the actions of the parser.This approach to statistical parsing is described in Section 5.
+The focus in this chapter will be on supervised learning, in which we assume
+that training data for the parsing model, either in the form of gold standard parsesor parser actions, is available in sufﬁcient quantities to make supervised train-ing feasible. Chapter 8 of this book,
+UNSUPERVISED LEARNING AND GRAMMAR
+INDUCTION , deals with the unsupervised case.
+The majority of this chapter focuses on the various probability models for pars-
+ing, and how the parameters of the models are estimated. Note that probability
+model is being used here in a broad sense to include approaches such as the per-
+ceptron and support vector machines, even though these are often described as‘non-probabilistic.’ There will also be some discussion of the parsing and decodingalgorithms used (questions (2) and (4) in our original characterization).
+The ﬁnal section describes work carried out with the grammar formalism com-
+binatory categorial grammar (CCG). Here there has been much recent work onautomatic grammar acquisition from the Penn Treebank and probability modelsfor CCG, and this work provides a good example of robust, formalism-based sta-tistical parsing.
+1This work also provides an example of statistical parsing with
+lexicalized grammars, which appear well suited to providing efﬁcient, robust,and wide-coverage parsers. In particular, the technique of supertagging (Bangalore
+& Joshi 1999) applied to CCG leads to a surprisingly efﬁcient formalism-basedparser, and allows the estimation of large, complex parsing models.
+There are many ways in which to describe the literature on statistical parsing:
+in terms of the representation used (e.g., phrase-structure vs. dependencies); interms of the grammar formalism (e.g., LFG, HPSG, TAG, CCG); in terms of theparsing algorithm (e.g., bottom-up vs. top-down); or in terms of the parsing model(e.g., generative vs. discriminative). I have chosen the ﬁnal option for the majorityof the chapter, since the literature has tended to focus on the statistical model-ing problem, and the evolution of statistical parsers can be seen in terms of themove to more complex models (especially the shift from generative to discrimina-tive models). I have also chosen to separate approaches which model the actionsof the parser from models of the parses themselves. The large body of recentwork on dependency parsing could also form a separate section by itself, but Ihave chosen to include examples of work on dependency parsing in the relevantsections.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 336 — #4
+336 Stephen Clark
+2 History
+Perhaps the ﬁrst attempt at statistical parsing was by Sampson (1986). Sampson’sapproach involved the use of manually parsed training material to obtain scoresfor local tree conﬁgurations, which were combined to obtain a score for a com-plete parse-tree. The search to ﬁnd the highest-scoring parse was performed usinga form of simulated annealing. Although the technical details of Sampson’s workare perhaps less relevant now, given the advances in statistical modeling for pars-ing (and statistical NLP more generally), the idea of treating parsing as a machinelearning problem, and recognizing the need for a method to combat the largesearch space, was farsighted and radical at the time.
+The years following Sampson’s attempt yielded some new approaches, for
+example Briscoe and Carroll’s use of the Susanne treebank to model the movesmade by a shift-reduce parser (Briscoe & Carroll 1993), and some theoreticalpapers on how to deﬁne stochastic versions of various grammar formalisms, forexample stochastic tree adjoining grammar (Resnik 1992b). However, the eventwhich led to the large interest in statistical parsing among the NLP communitywas the release of the Penn Treebank (Marcus et al., 1993). Magerman (1995)was among the ﬁrst to release parsing accuracies on the new treebank, and sobegan the parsing ‘competition’ which still continues today – the quest to obtainthe highest scores on matching brackets using the Parseval metrics (Black et al.,1991). Magerman also introduced the idea of standard splits of the Wall Street
+Journal (WSJ ) part of the PTB for training, development, and testing; sections 2–21
+have typically been used for training, section 22 for development, and section 23for testing.
+The Magerman parser (named S
+PATTER )u s e sa history-based model, in which a
+parse is modeled as the sequence of decisions used to build it, with the probabilityof each decision conditioned on some limited aspect of the previous decisions (thehistory). S
+PATTER works in a bottom-up fashion, using decision trees to deﬁne
+a distribution over the possible moves available to the parser at each point inthe parsing process. Examples of parser moves include assigning a POS tag toa word, or extending a node in a partially built tree by creating a parent–child arc.Magerman’s approach extended work by the automatic speech recognition (ASR)group at
+IBM (Jelinek et al., 1994), and many of the techniques used by S PATTER ,
+for example decision tree modeling, stack decoding for the search for the highest-scoring parse, and EM estimation for some of the model parameters, relate closelyto the statistical techniques used to build ASR systems.
+The accuracy scores achieved by S
+PATTER were 84.3 percent labeled precision
+and 84.0 percent labeled recall on the Parseval metrics, which compare the labelednodes in the parse-tree returned by the parser with the labeled nodes in the goldstandard PTB parse. These metrics have become the standard measure for eval-uating PTB parsers, although there has been considerable debate regarding thesuitability of these metrics in general for parser evaluation (Carroll et al., 1998).A year later Collins (1996) improved on Magerman’s results, to 85.7 percent and
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 337 — #5
+Statistical Parsing 337
+85.3 percent labeled precision and recall. At least as signiﬁcant as the improvedresults was the simple nature of the Collins (1996) model, compared with S
+PAT-
+TER, showing that it is possible to obtain competitive results on the PTB parsing
+task with a simple model and parsing algorithm. Collins (1997) improved onthese results further, with a theoretically more motivated approach based on agenerative model. This approach to parsing is described in Section 3.
+The impact of the PTB on statistical parsing has been immense, and has
+undoubtedly led to improvements in robust parsing technology. The downsideof the PTB’s domination is that there has been a focus on text from one particulargenre, namely English newspaper text. In addition, PTB parsing is sometimes seenas ‘standard parsing,’ whereas the building of PTB style trees, although an inter-esting and useful task in itself, is a somewhat narrow view of natural languageparsing. This situation is changing with the creation of treebanks based on partic-ular grammatical frameworks, such as LFG, HPSG, TAG, and CCG, and with thecreation of treebanks for domains other than newspaper text (Tateisi et al., 2005),and for languages other than English.
+3 Generative Parsing Models
+The years immediately following the introduction of the Penn Treebank saw aplethora of new parsing models; however, the most inﬂuential of these was thegenerative model of Collins (1997; 1999), and related work such as Eisner (1996),Goodman (1997), and Charniak (2000). This section describes the models of Collins(1997), although some of the innovations described may also be attributed to thisrelated work. The work on generative parsing was particularly inﬂuential for thefollowing reasons: it focused on the modeling of the parses themselves, rather thanassigning scores to the moves made by the parser; it demonstrated the importanceof sound probabilistic modeling; it produced impressive empirical results, at thetime the best on the PTB; and it exploited a number of important ideas such aslexicalization.
+Probabilistic parsing can be deﬁned as ﬁnding the tree, T, with the highest
+conditional probability given the sentence, S:
+(2) T
+best=arg max
+TP(T|S)
+The move to generative models comes from recognizing that the maximizationover the conditional probability can be written as a maximization over the joint,since P(S) is constant for a given sentence:
+T
+best=arg max
+TP(T|S) (3)
+=arg max
+TP(T,S)
+P(S)(4)
+=arg max
+TP(T,S) (5)
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 338 — #6
+338 Stephen Clark
+The reason for using a joint model is that it is possible to deﬁne a generative
+process which generates the parse and sentence, and probabilities can be attached
+to the various parts of this process. Given certain independence assumptions, theprobability of the complete parse and sentence can be deﬁned as the product of theprobabilities of the parts. In addition, there exist simple and well-motivated meth-ods for estimating the various probabilities. A probabilistic context-free grammar(PCFG) is the simplest example of this approach.
+2
+The disadvantage of PCFGs is that they are essentially structural models of syn-
+tax, only incorporating lexical information in the form of emission probabilities atthe leaves, where the words are generated from the pre-terminal nodes. One ofthe innovations of Collins (1997) and related work was the incorporation of lexi-
+calization . Earlier work on PP-attachment ambiguities (Collins & Brooks 1995) had
+demonstrated the importance of lexical information for resolving some forms ofsyntactic ambiguity, and Collins (1997) extended this idea to complete parse-trees.
+3.1 Collins – Models 1, 2, and 3
+Collins (1997) introduced three generative parsing models, the second and thirdmodels building on the previous one by adding a level of linguistic sophistication.Model 1 is essentially a lexicalized PCFG, augmenting non-terminal nodes withlexical items, except that it uses Markov processes to generate the non-terminalnodes on the right-hand side of a rule. Model 2 extends Model 1 by makingthe complement/adjunct distinction and generating complements separately frommodiﬁers. And Model 3 includes a probabilistic treatment of Wh-movement, based
+on the gap propagation analysis from GPSG (Gazdar et al., 1985). The followingdescription of the Collins parser mirrors closely that given in Collins (1997).
+For a PCFG, and a tree derived by napplications of context-free rewrite rules,
+LHS
+i⇒RHS i,1≤i≤n, the joint probability of the tree, T, and sentence, S,i s
+deﬁned as follows:(6) P(T,S)=
+n∏
+i=1P(RHS i|LHS i)
+The probability can be written in this way because of the following independenceassumption: the probability of a non-terminal on the LHS of a rule expanding to aparticular sequence of non-terminals on the right, is only dependent on the non-terminal on the left, and independent of any part of the tree outside of this ruleapplication.
+Model 1 extends the PCFG by making it lexicalized – associating with each
+non-terminal node a word and its POS tag. The word associated with a partic-ular non-terminal is the linguistic head of the constituent corresponding to thenon-terminal. Heads are found using a set of head-ﬁnding rules which, givena particular rule, deterministically return a head based on the sequence of non-terminals in the rule. Figure 13.1 gives an example lexicalized parse-tree from
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 339 — #7
+Statistical Parsing 339
+S(bought)TOP
+NP(week) NP(IBM) VP(bought)
+NNP
+IBMVBD NP(Lotus)
+NNP bought
+LotusJJ NN
+Last week
+TOP -> S(bought)
+S(bought) -> NP(week) NP(IBM) VP(bought)
+NP(week) -> JJ(Last) NN(week)
+NP(IBM) -> NNP(IBM)
+VP(bought) -> VBD(bought) NP(Lotus)
+NP(Lotus) -> NNP(Lotus)
+Figure 13.1 Example lexicalized parse-tree.
+Collins (1997) (with POS tags of headwords omitted on the non-terminal nodes),together with the rules it contains.
+The use of lexicalization makes accurate estimation of the rule probabilities
+much harder. For a PCFG, the standard estimate for a conditional rule probabilityis simply the count of the number of times the LHS is seen expanded as the RHS,divided by the total number of times the LHS is seen in the training data. As wellas being simple and intuitive, this estimate is theoretically well motivated: for aPCFG the relative frequency estimate is also the maximum likelihood estimate.However, lexicalization greatly expands the set of non-terminals, introducing asevere sparse data problem. For any given rule from a lexicalized
+PCFG , there are
+two possible problems: one, the LHS of a rule may not appear in the data – forexample, if the head word associated with the LHS is unseen – leading to an unde-ﬁned relative frequency estimate; and two, the LHS may appear in the data butnever expand to the RHS, leading to a zero relative frequency estimate. Zeroes areespecially problematic because they propogate through the product in (6) makingthe total probability of the parse equal to zero.
+Collins’s solution is to break up the generation of the rule into parts, and esti-
+mate the probability of each part separately. The RHS is generated from the headoutwards, with ﬁrst-order Markov processes separately generating the modiﬁers
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 340 — #8
+340 Stephen Clark
+S (bought)TOP
+NP (week) VP (bought)
+NNP
+IBMVBD
+NNP bought
+LotusJJ NN
+Last weekNP−C (IBM)
+NP−C (Lotus)
+Figure 13.2 Example tree with complements distinguished from adjuncts.
+to the left and right of the head. For reasons of space we omit the details here andrefer readers to Collins (1999).
+Model 2 incorporates an additional level of linguistic sophistication by making
+the complement/adjunct distinction and including the notion of subcategorizationframe. In the tree in Figure 13.1, the only difference between IBM andLast week is
+that IBM occurs closer to the verb, even though IBM is a subject and Last week
+is a modiﬁer. Clearly Model 1 is missing an important linguistic generalization.Collins solves this problem by adding a -Csufﬁx to non-terminals which represent
+complements of verbs, including subjects (see Figure 13.2), and modifying thegenerative process to generate subcategorization frames as a separate step. Collins(1999: 173) contains some examples motivating the use of this distinction in thegenerative model.
+The incorporation of subcategorization information in the generative model
+relies on the ability to distinguish between complements and adjuncts in the PennTreebank. In fact this distinction is not made explicitly in the PTB, but comple-ments can be identiﬁed fairly reliably using a set of heuristic rules based on someaspects of the annotation. For example, the PTB contains tags identifying somemodifying expressions such as LOC for locative and TMP for temporal. Any con-
+stituent marked with TMP orLOC cannot serve as part of a subcategorization frame.
+Collins (1999: 174) describes the rules used to identify complements.
+The ﬁnal model, Model 3, adds a further level of linguistic sophistication by
+accounting for wh-movement. The PTB contains a signiﬁcant amount of infor-mation relating to ‘movement,’ such as extraction from a relative clause, in theform of traces in the tree. Figure 13.3 contains an example from Collins (1999),
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 341 — #9
+Statistical Parsing 341
+NP (store)
+NP (store)
+The storeSBAR (that)(+gap)
+WHNP (that)
+WDT
+thatSBAR (bought)(+gap)
+NP−C(IBM) VP (bought)(+gap)
+IBM
+VBD NP (week)
+bought last weekTRACE
+Figure 13.3 Example tree containing a trace and the gap feature.
+together with the modiﬁed rules which encode the extraction. These modiﬁedrules effectively encode the gap-propagation analysis from GPSG (Gazdar et al.,1985), whereby a gap feature is added to the non-terminal nodes in the tree whichdominate the trace. The gap is ‘discharged’ at the NP node which represents theextracted constituent.
+Model 3 was found to offer little, if any, improvement over Model 2. However,
+the attempt to directly model traces in the PTB was an important contribution,since this information, which is crucial for obtaining predicate–argument struc-ture, is largely ignored by most PTB parsers. There has been some work oninserting traces into the output of a PTB parser, as a postprocessing phase (Johnson2002; Levy & Manning 2004). Section 6 describes a CCG parser which incorporatesthe trace information directly into the grammar and parsing process, without theneed for postprocessing.
+3.2 Parameter estimation
+The remaining issue with regard to the model is parameter estimation. Collins usesa standard method to deal with sparse data, in which successively less speciﬁccontexts are used for maximum likelihood estimation, and the various estimatescombined in a weighted linear sum. For example, obtaining an accurate esti-mate of P(VP|S,VBD,bought )– i.e., the probability of generating a VPnode
+given that the parent is Sheaded by bought with POS tag VBD – is difﬁcult if
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 342 — #10
+342 Stephen Clark
+bought occurs infrequently in the data. However, a relative frequency estimate
+ofP(VP|S,VBD )can also be used, and, since this conditioning event is a superset
+of the more speciﬁc one, the estimate is likely to be more accurate. The various‘backed-off’ estimates are then combined in the following way, where ˆPdenotes a
+relative frequency estimate of P:
+ˆP(VP|S,VBD,bought )=λ
+1ˆP(VP|S,bought,VBD )
++(1−λ1)(λ2ˆP(VP|S,VBD )
++(1−λ2)ˆP(VP|S ))
+λ1,λ2,λ3are smoothing parameters with values between 0 and 1, and the esti-
+mates are combined as above in order to produce a proper probability distribution.A similar technique is used for the other parameter types. A simple, but effective,method is used to set the values of the λparameters, based on the frequency with
+which the context has been seen, and also the number of different outcomes thathave been seen with a particular context. Again, readers are referred to Collins(1999) for the details.
+3.3 Parsing algorithm and search
+The parsing algorithm Collins uses is a bottom-up chart parsing algorithm. Notethat the parsing algorithm is only indirectly related to the process used to deﬁnethe generative model; this can be seen clearly in the fact that the generative modelprocess is top-down, in that a PCFG starts with the root node and assigns probabil-ities to top-down applications of the rewrite rules, whereas the parsing algorithmis bottom-up. The model and parsing algorithm do interact, via the search processdescribed below; however, the generative process was deﬁned primarily to facili-tate the deﬁnition of an accurate probability model for phrase-structure trees, withthe interaction between parsing model and algorithm a secondary consideration.
+The chart is a set of edges, where an edge is essentially a non-terminal label (aug-
+mented with head information) together with its span, i.e., the part of the sentencewhich the non-terminal dominates.
+3In the parser implementation an edge also
+contains additional information, such as pointers to the children which were com-bined to produce the edge, and the log-probability of the edge according to themodel. The algorithm works by taking two existing edges and combining them toform a new edge. This combination is carried out in two ways: one in which theheadword comes from the left edge, and one where it comes from the right. Allpossible combinations of contiguous edges in the chart are considered.
+There are two strategies for making the parsing practical. First, dynamic pro-
+gramming is used to create a packed chart. The basic idea is that if two edges have
+the same label, the same headword (and POS), and the same span, then they areequivalent for the purposes of further parsing. The Viterbi algorithm exploits thisequivalence by only considering the edge in an equivalence class with the high-est probability, since any equivalent edge with a lower probability cannot be part
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 343 — #11
+Statistical Parsing 343
+of the highest-scoring parse. The complexity of this parsing algorithm is O(n5),
+where nis the length of the sentence.4This is too high for practical parsing, and so
+some form of heuristic search is required.
+Collins uses a beam search in which low probability constituents are pruned
+from the chart. The obvious score to use for pruning is the inside score of a con-
+stituent, i.e., the conditional probability of the constituent’s subtree, given itsnon-terminal label and headword. The problem with this measure is that it doesnot take into account the prior probability of seeing a constituent with a particu-lar label and headword. A constituent can score highly according to this measure,and yet be unlikely in the larger context of a complete parse. Hence Collins alsoincludes a prior probability factor in the score. Readers are referred to Collins(1999) for the details.
+The beam simply discards all constituents in a chart cell (i.e., all constituents
+spanning the same part of the sentence) whose beam score is less than αtimes
+the maximum score for that cell, where αis a parameter which determines how
+agressive the pruning is. A typical value for αis 0.0001. Collins shows this beam
+search strategy to be highly effective, obtaining practical parsing speeds (roughlyone sentence per second) but with little loss of accuracy due to the heuristic search.
+The accuracies for Model 2 set the standard for the PTB parsing task: 87.5 per-
+cent labeled recall and 88.1 percent labeled precision on section 23, using theParseval measures. Since then, parsing accuracies have increased to over 90 per-cent, but largely through incremental improvements due to improved modelingtechniques and methods such as re-ranking (Charniak & Johnson 2005), ratherthan any signiﬁcant conceptual leap in how to solve the PTB parsing problem.
+4 Discriminative Parsing Models
+One downside of the generative modeling approach is that the sentence is mod-eled, even though this is given and does not need to be inferred. Anotherdisadvantage is the need for various independence assumptions to enable efﬁ-cient estimation and decoding. This section describes conditional, or discriminative ,
+models which do not model the sentence and do not make explicit independenceassumptions in the way that generative models do; hence these models can bethought of as more direct solutions to the statistical parsing problem. Discrimina-tive parsing models deﬁne the conditional probability of a parse, P(T|S),d i r e c t l y ,
+rather than indirectly via the joint distribution. The discriminative models we con-sider here are able to model complex dependencies between features; however,this ﬂexibility comes at a price, in that discriminative models typically requiremore complex training procedures for estimation.
+The term discriminative derives from the idea that, during estimation, we would
+like the parsing model to directly compare the correct parse for each trainingsentence with the corresponding incorrect parses, and set the feature weightsto ‘discriminate against’ the incorrect parses. There are many recent papersdescribing discriminative parsing models; examples include approaches based
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 344 — #12
+344 Stephen Clark
+on support vector machines (Yamada & Matsumoto 2003), the linear perceptron(Collins & Roark 2004), and log-linear models (Riezler et al., 2002).
+4.1 Conditional log-linear models
+The approach we describe here is based on log-linear models (Riezler et al., 2002),also known as maximum entropy models (Ratnaparkhi 1998) and conditional ran-dom ﬁelds (Lafferty et al., 2001) in the NLP literature. We chose these models asan example because they possess the advantages of discriminative approaches –such as optimization of a discriminative criterion during estimation and some ﬂex-ibility in deﬁning features – but also some of the disadvantages, such as complextraining procedures (at least compared to generative models). The presentation inthis section is quite general; Section 6 has a concrete example of a log-linear modelapplied to wide-coverage CCG parsing.
+The form of the probability model is as follows, where Tis a parse and Sis a
+sentence:(7) P(T|S)=e
+∑
+iλifi(T,S)
+Z(S)
+Z(S) is a normalization factor ensuring a proper probability distribution: Z(S)=∑
+Tj∈ρ(S)e∑
+iλifi(Tj,S)where ρ(S)is the set of possible parses for S. The features,
+fi, are real-valued functions of (T,S)which identify particular aspects of a parse
+which might be useful for discriminating between good and bad parses. In earlywork on maximum entropy modeling, such as Ratnaparkhi (1998), features areindicator functions, taking the value 1 or 0, indicating whether a particular fea-ture is present or absent in some context. For modeling complete parses, thisidea is generalized to integer-valued functions which count the number of timessome feature is present in a parse. In principle the features could be real-valued,although there has been little work on using real-valued features in log-linearparsing models (see Johnson & Riezler 2000 for one example).
+The parse, T, can be any parse representation. Log-linear models have been
+applied in particular to constraint-based grammar formalisms, such as HPSG andLFG (Riezler et al., 2002; Malouf & van Noord 2004). The application of log-lineartechniques to these grammars was argued for by Abney (1997), who showed thatthe complex dependencies encoded in feature structures in these grammars aredifﬁcult to capture using generative models, and that previous attempts to do sohad resulted in ill-motivated estimation techniques.
+The form in (7) can be motivated in a number of ways. The presentation in
+Della Pietra et al. (1997) begins by choosing from a set of models which satisfycertain constraints – namely that the expected value of each feature according tothe model is equal to the empirical expected value – and then selecting the sin-gle model from that set which is the most uniform, or has the maximum entropy.
+Johnson et al. (1999) start with the model form in (7), and set the values of the
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 345 — #13
+Statistical Parsing 345
+weights by maximizing the conditional likelihood function. In fact, the two formu-lations result in identical models. See Chapter 5 of this book,
+MAXIMUM ENTROPY
+MODELS , for more details.
+Note that the probability in (7) applies to the whole parse, T, and not to indi-
+vidual parts, and that we have made no independence assumptions regarding thefeatures. In principle this allows great ﬂexibility in terms of the features that can bedeﬁned. In practice the parser developer is limited by two factors. First, there hasto be enough training data to obtain reliable estimates for the weights; featureswhich incorporate detailed or large parts of a parse-tree – for example featuresencoding more than one lexical item – may appear infrequently, if at all, in thetraining data. Second, the ‘locality’ of the features has a direct effect on the efﬁ-ciency of the model estimation and decoding. Section 6 has more discussion ofthis issue.
+From the perspective of maximum likelihood estimation, the maximum likeli-
+hood model, ˜Λ, for a conditional parsing model is as follows:
+(8)˜Λ=arg max
+Λm∏
+i=1PΛ(Ti|Si)
+where (T1,S1)...( Tm,Sm)is the training data consisting of gold standard parses
+Tifor each sentence Si. Note that the likelihood function is a conditional likelihood
+function, consisting of the product of the conditional probabilities of the gold stan-dard parses. Johnson et al. (1999) motivate the use of the conditional likelihood(and use the term pseudo-likelihood).
+In terms of maximizing the likelihood function in (8), a useful intuition is given
+by Riezler et al. (2002): choosing weights to maximize the likelihood involvesputting as much mass as possible on the correct parse, relative to the incorrectparses, for each sentence, whilst maintaining a conditional distribution for eachsentence in the training data. This intuition also ﬁts well with the idea of choosingweights which discriminate between the good and bad parses for each sentence.Section 6 describes how the maximization can be performed in practice.
+4.2 Discriminative dependency parsing
+There is a large literature on data-driven dependency parsing, exempliﬁed by theCoNLL shared tasks on this topic (Nivre et al., 2007), and this work provides somenotable examples of discriminative parsing models. This subsection begins with abrief introduction to dependency parsing, and then focuses on the discriminativemodels from McDonald et al. (2005b).
+The advantages of dependency representations are that efﬁcient decoding algo-
+rithms exist, e.g., the O(n
+3)algorithm of Eisner (1996), and the representation
+goes some way towards capturing the predicate–argument structure of a sentence,making it useful for a variety of tasks such as question answering and syntax-based statistical machine translation. Dependency representations are based onlinking words together in a dependency graph, where a link indicates that a
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 346 — #14
+346 Stephen Clark
+<root> John hit the ball with the bat
+Figure 13.4 Example unlabeled dependency tree.
+syntactic relation exists between the two words. The links can either be labeled –with syntactic relations such as subject and object and so on – or unlabeled.
+Figure 13.4 gives an example of an unlabeled dependency tree (taken fromMcDonald et al., 2005b). The direction of the link is away from the syntactic head.
+Dependency formalisms have an established history in linguistics (Hudson
+1984), and have been argued to be a more ﬂexible multi-lingual representationthan phrase structure, applying to a wide variety of languages, as the CoNNLshared tasks demonstrate. Data-driven dependency parsers have also been shownto be accurate, with unlabeled dependency scores of over 90 percent on Englishnewspaper text. However, whether dependency parsers for English could evercompete with their phrase-structure counterparts, which have access to a richerstructure to perform disambiguation, is an open question. McDonald et al. (2005b)extracted dependencies from the phrase-structure output of the Collins parser,using head-ﬁnding rules, and found the Collins parser to be slightly more accu-rate (0.5 percent) at correctly assigning dependency links, even though the Collinsparser was not trained for this particular task.
+There have been two major approaches to data-driven dependency parsing:
+graph-based and transition-based. The transition-based approach uses a model ofthe parser moves made within a particular parsing architecture, e.g., shift-reduce,typically in conjunction with a greedy algorithm which makes a local decision ateach point in the parsing process; this approach will be described in Section 5. Thegraph-based approach uses a model of the dependency structure itself, typicallyin conjuction with an exact inference algorithm.
+A seminal paper in the graph-based approach is McDonald et al. (2005b), which
+uses a discriminative model to score dependency trees, together with an online,large margin-based algorithm for learning. Here we describe the perceptron learn-ing algorithm, which is simpler conceptually, and which McDonald et al. (2005b)show to perform almost as well as the margin-based algorithm. The dependencymodel is a linear model which uses an edge-based factorization of the dependencygraph. Let x=x
+1...xnbe a sentence and ybe a dependency tree for x, then
+(i,j)denotes a dependency in yfrom word xito word xj. The score for an edge
+is deﬁned as follows, where fis a feature representation of the edge and wis a
+corresponding weight vector:5
+(9) s(i,j)=w·f(i,j)
+The score for a complete tree is simply the sum of the scores over the edges:(10) s(x,y)=∑
+(i,j)∈ys(i,j)=∑
+(i,j)∈yw·f(i,j)
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 347 — #15
+Statistical Parsing 347
+Training data: T={(xt,yt)}Tt=1
+1.w0=0;v=0;i=0
+2. for n:1 . .N
+3. for t:1 . .T
+4. w(i+1)=update w(i)according to instance (xt,yt)
+5. v=v+w(i+1)
+6. i=i+1
+7.w=v/(N∗T)
+Figure 13.5 Generic algorithm for online learning taken from McDonald et al. (2005b).
+McDonald et al. (2005b) use the Eisner (1996) algorithm for decoding. This
+algorithm is based on the CKY chart parsing algorithm, creating a packed chart(orforest) and using the Viterbi algorithm to ﬁnd the highest scoring depen-
+dency tree, in a similar way to that described for the Collins parser in Section 3.The standard application of a packed chart and Viterbi to dependency pars-ing results in an O(n
+5)algorithm, where nis the sentence length, as for the
+Collins parser. However, Eisner (1996) noticed that if the left and right depen-dents of a word are parsed independently, and the deﬁnition of equivalence forthe packed chart is modiﬁed, then an O(n
+3)algorithm results. Appendix B of
+McDonald et al. (2005c) gives a detailed description and the intuition behind thenew algorithm.
+TheO(n
+3)algorithm is especially useful for online learning, since this involves
+repeatedly parsing the training examples and updating the weight vector aftereach example (as opposed to batch learning in which the weights are updated all
+at once on each iteration). In fact, the repeated parsing of training examples is abottleneck for discriminative approaches in general. The training algorithms forthe log-linear models described in Section 4.1 calculate feature expectations oneach iteration, which requires the alternative parses for each training sentence,as well as the correct parse, and so requires repeated parsing.
+6Thus it is only
+recently that discriminative models have been applied to the full PTB constituent
+parsing task (Carreras et al., 2008), following earlier attempts in which only shortsentences were used for training and testing (Taskar et al., 2004); and even recentapproaches to this task (Finkel et al., 2008) have restricted parser development toshort sentences because of the expense of repeatedly parsing the training data witha constituency-based parser.
+Online learning is conceptually very simple. Figure 13.5, taken from McDonald
+et al. (2005b), gives a generic algorithm for the online setting. w
+(i)is the weight
+vector after the ith update, where an update occurs for every training instance,
+and Nis the total number of passes through the data. In this description of the
+algorithm there is also an accumulated weight vector, v, which is used to obtain
+the ﬁnal weight vector, w, which is simply the average weight vector across all the
+updates. The reason for using averaging in this way is that it has been shown tobe effective against overﬁtting (Collins 2002).
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 348 — #16
+348 Stephen Clark
+calculate zi=arg max y∈GEN(xt(i))f(xt(i),y)·w(i)
+ifzi̸=yt(i)
+w(i+1)=w(i)+f(xt(i),yt(i))−f(xt(i),zi)
+else
+w(i+1)=w(i)
+Figure 13.6 The perceptron update; t(i)is the index of the training example
+corresponding to the ith update.
+There are a number of ways of updating the weights after each training example.
+One simple, but effective, method is provided by the perceptron. Figure 13.6 givesthe procedure for the ith update; f(x,y), extending the notation introduced earlier,
+is the feature representation for the training example (x,y), that is, the sum of the
+feature vectors for each edge in y:f(x,y)=∑
+(i,j)∈y f(i,j);a n d GEN(x), borrowing
+notation from Collins (2002), is the set of alternative analyses of x, in our case
+dependency trees.
+If the dependency tree returned by the parser, zi, is the same as the gold stan-
+dard tree, yt(i), then no update is performed; if the tree is different, then the weight
+vector is updated as shown: each feature which appears in the parser output, butnot in the correct tree, has its weight reduced by one, and each feature whichappears in the correct tree, but not in the parser output, has its weight increasedby one. In this way the parser is effectively being encouraged to return the correctdependency tree for each training example, which also explains why the percep-tron is prone to overﬁtting, and the need for averaging parameters. Of coursewhat we would like is for the resulting model to perform well on unseen data, notjust the training data. Collins (2002) gives proofs showing that reducing errors onthe training data, by using this update procedure, will lead to better parsing onunseen data.
+7
+The remaining aspect of the model is the feature representation f(i,j)for
+each dependency. Note that dependency-parsing models are at a disadvantagecompared to their phrase-structure counterparts, since the latter have access tophrase-structure as well as dependency structure when deﬁning the feature set. Infact, dependency graphs, if simply taken as unlabelled edges between words, area highly impoverished representation for a statistical parsing model. McDonaldet al. (2005b) solve this problem by making extensive use of
+POS tags, including
+the POS tags of words between dependents, and either side of dependents, as well
+as the POSof the dependents themselves; see McDonald et al. (2005b) for a detailed
+description of the feature set. The ﬁnal set contains almost 7 million features.
+The standard split of the Penn Treebank was used by McDonald et al. (2005b) for
+the experiments: 2–21 for training, 22 for development, and 23 for testing; and aset of head-ﬁnding rules was used to extract the dependency structures. Since eachword in the sentence has exactly one parent (assuming the existence of a root nodeat the root of the dependency tree), parsing performance can be measured in termsof accuracy: the percentage of words whose parent is correctly identiﬁed. No labelsare assigned to the links by the parser, so this is unlabeled dependency accuracy.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 349 — #17
+Statistical Parsing 349
+The averaged perceptron model scored 90.6 percent on this evaluation, with thelarge margin-based method, MIRA, scoring 90.9 percent. Extracting dependen-cies from the output of the Collins phrase-structure parser gives an accuracy of91.4 percent. However, the dependency parser is much faster, taking only ﬁveminutes to parse the test set compared to 98 minutes for the Collins parser.
+8
+Finally, the discussion so far has assumed that the dependency graph is pro-
+jective , which, informally, means that the graph can be drawn so that no links
+in the graph cross. A dependency tree where each word has exactly one parentcan be drawn in this way and so is projective. McDonald et al. (2005d) arguethat projective trees are sufﬁcient to analyze the majority of sentence types forEnglish. However, for languages with more ﬂexible word order, non-projectivedependencies are more frequent.
+McDonald et al. (2005d) introduce a method for building non-projective depen-
+dency graphs, by formalizing the problem as ﬁnding the maximum spanning tree(MST) in a directed graph. The same edge-based factorization is used as describedabove for the projective case, and the same training algorithm. A standard algo-rithm for ﬁnding the MST exists (the Chu–Liu–Edmonds algorithm) for whichthere is an O(n
+2)implementation (so non-projective dependency parsing, per-
+haps surprisingly, can be performed more efﬁciently than projective parsing). Forreasons of space we do not go into the details of non-projective parsing here.McDonald et al. (2005d) give results for Czech and English, showing that, forCzech, there is a signiﬁcant advantage in using the non-projective, rather thanprojective, parsing algorithm, resulting in an absolute increase of over 1 percentunlabeled parsing accuracy.
+This section has focused on English, but there has been a large amount of work
+on dependency parsing for other languages. The CoNLL 2007 shared task (Nivreet al., 2007) performed an extensive evaluation, using a number of submitted sys-tems, on Arabic, Basque, Catalan, Chinese, Czech, English, Greek, Hungarian,Italian, and Turkish. The accuracies were invariably higher for English than theother languages, but whether this is due to the dependency-parsing problem beingharder for other languages; or due to smaller treebanks being available; or due tothe multi-lingual application of inappropriate models which have been developedfor English, is an open question.
+5 Transition-Based Approaches
+The approaches we have seen so far use models of parses to drive the statisti-cal parsing process: probabilities are deﬁned over parses (or parts of parses) andthese probabilities are used to guide the search for the most probable parse. Hencethe probability model is somewhat divorced from the parsing algorithm: the algo-rithm builds subparses and the probability model is used to decide which partsare retained as hypotheses during the parsing process.
+The strategy described above is a natural one considering that our aim is to ﬁnd
+the best parse, and that we usually do not care how the statistical parser ﬁnds
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 350 — #18
+350 Stephen Clark
+that parse (as long as it does so efﬁciently). However, there is an alternative strat-egy, which is to use a probability model to guide the moves made by the parsingalgorithm. This is the approach taken by, among others, Briscoe and Carroll (2006),Ratnaparkhi (1999), and a number of recent papers in the dependency-parsingliterature (Yamada & Matsumoto 2003; Nivre & Scholz 2004).
+A strength of these approaches is that, since probabilities are being used to
+guide the parsing algorithm, extremely efﬁcient parsers can be built by follow-ing a greedy strategy of selecting the highest-scoring move at each decision point(or by selecting only a small number of high-scoring moves at each point). Thedisadvantage is that it is not always clear whether optimizing for parser movesleads to the selection of the most optimal parse (see Section 4 of Collins 1999 for adiscussion of this issue).
+We will use transition-based dependency parsing as an example, since the
+transition-based approach has been particularly successful for the dependency-parsing problem. However, there are a number of examples of constituent-basedparsing which use this approach. Briscoe and Carroll (1993) were one of the earli-est, using an LR-parser in conjunction with a manually deﬁned uniﬁcation-basedgrammar and associating probabilities with the actions in the LR parse table.Briscoe and Carroll (2006) have recently extended the grammar and parser to han-dle WSJ text, arguing that the unlexicalized nature of the model makes it relativelyeasy to adapt the parser to new domains.
+Magerman (1995) and Ratnaparkhi (1999) apply transition-based approaches
+to the PTB parsing task. Ratnaparkhi (1999) builds a parse-tree in three stages.Stage 1 uses a maximum entropy POS tagger to assign a POS tag to each word(Ratnaparkhi 1996). Stage 2 uses a maximum entropy tagger to assign chunklabels to each word, essentially grouping the words together into a ﬂat constituentstructure. And ﬁnally the third stage uses maximum entropy models to link thechunks into a hierarchical parse-tree structure. The key point is that local proba-bility models are used to assign a score to each action – whether it be assigninga POS tag to a word, for example, or linking two chunks – and the probabilityof a complete parse is deﬁned as the product of the probabilities of the actionsused to build the parse. A beam search is used to search the space of possibleactions, keeping some ﬁxed number of best-scoring hypotheses at each point inthe parsing process, and extending the highest-scoring hypothesis at each point.This search procedure results in a parser that runs in linear time with respect to thesentence length.
+The accuracies on the PTB for the Ratnaparkhi parser were competitive at the
+time, but not as high as those reported by Collins (1997). Lafferty et al. (2001)suggest that the model used by Ratnaparkhi – in which conditional probabilitiesfor each action are multiplied to give a score for the complete parse – may sufferfrom the label bias problem . Put very simply, the use of local conditional probability
+distributions to make decisions at each point in the parsing process may lead to achoice which is not globally optimal; readers are referred to Lafferty et al. (2001)for the details.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 351 — #19
+Statistical Parsing 351
+5.1 Transition-based dependency parsing
+Yamada and Matsumoto (2003) is a seminal paper on data-driven dependencyparsing. Head-ﬁnding rules are used to convert phrase-structure trees from thePenn Treebank into dependency trees, giving trees where each word in the sen-tence (except the root) has exactly one parent. See Yamada and Matsumoto (2003)for an example phrase-structure tree and the corresponding dependency tree.
+Dependency trees are built using a simple bottom-up shift-reduce parsing algo-
+rithm, operating from left to right along the sentence. There are three actionsavailable to the parser: shift, left,a n d right. The state of the parser always
+has a pair of words acting as the ‘focus’ (using Yamada and Matsumoto’s terminol-ogy). The shift action simply moves the focus one word to the right. The right
+action constructs a dependency relation between the two words in focus, wherethe word to the left becomes a child of the word to the right, and the child is takenout of focus. The left action works in the same way, but the word to the right
+becomes the child and moves out of focus. Again see Yamada and Matsumoto(2003) for an example of each action.
+The parser uses a classiﬁer to decide which of the three actions to take at any
+point in the parsing process, and uses a greedy method by selecting only thehighest-scoring action at each point. Multiple passes over the input sentence areused to build a dependency tree. Yamada and Matsumoto apply a support vectormachine to the classiﬁcation problem, but in principle any classiﬁer could be used.The feature set consists of a rich set of features describing the contexts of the wordsin focus, in terms of the subtrees already built, utilizing both words and POS tags.
+Nivre and Scholz (2004) describe a similar approach, but use a shift-reduce
+parsing algorithm which is guaranteed to build a dependency tree in a singlepass from left to right over the sentence. They also extend the dependency pars-ing problem by building trees with labeled edges, indicating the syntactic typeof the dependency relation. Another difference is that Nivre and Scholz use amemory-based classiﬁer rather than support vector machine. Nivre (2007) extendsthe transition-based approach to non-projective dependency parsing.
+McDonald and Nivre (2007) show that the transition-based approach and
+graph-based approach result in remarkably similar performance across a range oflanguages, despite using different parsing algorithms and feature sets. They alsoshow that the two approaches result in different errors, a fact exploited by Sagaeand Lavie (2006), who use a parser recombination scheme to increase the accuracyover the individual parsers.
+Finally, Zhang and Clark (2008) show that the transition-based approach does
+not have to be based on local greedy search, nor does the graph-based approachhave to be based on exact global inference. They build a dependency parser basedon beam search, utilizing both graph-based and transition-based features, and usea linear model trained with the generalized perceptron of Collins (2002). The inno-vation in this approach is to train a single model which utilizes features from bothapproaches, demonstrating accuracy gains over using each approach in isolation.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 352 — #20
+352 Stephen Clark
+6 Statistical Parsing with CCG
+The evolution of parsing models since the early Penn Treebank work has movedin two directions: towards more ﬂexible, discriminative parsing models; andtowards more sophisticated grammar formalisms. The work described in thissection represents both of these dimensions.
+The attraction of using linguistic formalisms for parsing, such as lexical func-
+tional grammar (LFG), head driven phrase structure grammar (HPSG), tree adjoin-ing grammar (TAG), and combinatory categorial grammar (CCG), is that theseformalisms allow direct access to the underlying predicate–argument structure ofa sentence (roughly who did what to whom), including long-range dependen-cies such as those inherent in coordination and extraction phenomena. Recoveringsuch structure is arguably necessary for high performance on tasks such as ques-tion answering (QA), information extraction (IE), and machine translation (MT).I use ‘arguably’ here because, despite decades of research on automatic parsing, itis still the case that convincing evidence of the beneﬁts of parsing for NLP applica-tions is lacking, especially for MT where phrase-based models currently providethe state of the art (although one of the most active areas of research in MT iscurrently syntax-based statistical MT).
+Perhaps the best example of an application where parsing has been beneﬁ-
+cial is QA, where the use of a wide-coverage parser has now become standard(Harabagiu et al., 2001b). The recent development of formalism-based parserswhich are also efﬁcient and robust, of which the CCG parser described in thischapter is a notable example, may lead to the increased adoption of parsers inNLP applications over the next few years, but this remains to be seen.
+The CCG parser described here is representative of recent work in the area of
+robust, formalism-based parsing in a number of respects: it uses a formalism-speciﬁc treebank derived from the Penn Treebank, both as a source for thegrammar and as training data for the statistical models; it uses a discriminativeparsing model deﬁned over complete parses, which is estimated using generalnumerical optimization techniques; it uses dynamic programming to allow bothefﬁcient estimation and decoding; it uses a supertagging phase as a precursor to the
+parsing; and it uses gold standard resources annotated with grammatical relationsfor evaluation, including long-range dependencies. Other work which has someor all of these features includes Riezler et al. (2002), Sarkar and Joshi (2003), Cahillet al. (2004), and Miyao and Tsujii (2005).
+The following description is taken largely from Clark and Curran (2007b). The
+section begins with a description of the grammar formalism and the resourceused to build the parser, followed by a description of the parser model, and ﬁn-ishes with an explanation of how the modeling techniques are applied in practice.Note that there is nothing particularly ‘CCG-speciﬁc’ about the application of log-linear models here, or the use of feature forests for estimation, but for expositorypurposes it is useful to have the modeling techniques grounded in a particulargrammar formalism and parser.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 353 — #21
+Statistical Parsing 353
+Investors are appealing to the Exchange Commission
+NP (S[dcl]\ NP)/(S[ng]\NP)( S[ng]\NP)/PP PP/NP NP/NN /NN
+>N
+>NP
+>PP
+>S[ng]\NP
+>S[dcl]\ NP
+<S[dcl]
+Figure 13.7 Example derivation using forward and backward application.
+6.1 Combinatory categorial grammar
+Combinatory categorial grammar (CCG) (Steedman 1996; 2000) is a type-drivenlexicalized theory of grammar based on categorial grammar (Wood 1993). CCGlexical entries consist of a syntactic category, which deﬁnes valency and direc-tionality, and a semantic interpretation (not shown in the examples given here).Categories can be either basic or complex. Examples of basic categories are S
+(sentence), N(noun), NP(noun phrase), and PP(prepositional phrase). Complex
+categories are built recursively from basic categories, and indicate the type anddirectionality of arguments (using slashes), and the type of the result. For exam-ple, the following category for the transitive verb bought speciﬁes its ﬁrst argument
+as a noun phrase to its right, its second argument as a noun phrase to its left, andits result as a sentence:(11) bought := (S\NP)/NP
+Categories are combined in a derivation using combinatory rules. In the original
+categorial grammar (Bar-Hillel 1953), which is context-free, there are two rules offunctional application:
+X/YY ⇒X(>) (12)
+YX\Y⇒X(<) (13)where XandYdenote categories (either basic or complex). The ﬁrst rule is forward
+application (>) and the second rule is backward application (<). Figure 13.7 gives an
+example derivation using these rules.
+9
+CCG extends the original categorial grammar by introducing a number of addi-
+tional combinatory rules. The ﬁrst is forward composition, which Steedman denotes
+by>B(since Bis the symbol used by Curry to denote function composition in
+combinatory logic; Curry & Feys 1958):(14) X/YY/Z⇒
+BX/Z(>B)
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 354 — #22
+354 Stephen Clark
+the agreement which the fund reached
+NP/NN (NP\ NP)/(S[dcl]/NP) NP/NN (S[dcl]\ NP)/NP
+> >NP NP
+>T
+S/(S\ NP)
+>BS[dcl]/NP
+>NP\NP
+<NP
+Figure 13.8 Example derivation using type-raising and forward composition.
+Forward composition is often used in conjunction with type-raising (T), deﬁned
+according to the following two rule schemata:
+X⇒TT/(T\X) (15)
+X⇒TT\(T/X) (16)Tis a variable over categories, ranging over the result types of functional
+categories over X.
+Figure 13.8 gives an example showing the combination of type-raising and
+composition. In this case type-raising takes a subject noun phrase (the fund)a n dturns it into a functor looking to the right for a verb phrase; the fund is then able to
+combine with reached using forward composition, giving the fund reached the cate-
+gory S[dcl]/NP (a declarative sentence missing an object). It is exactly this type of
+constituent which the object relative pronoun category is looking for to its right:(NP\NP)/(S[dcl]/NP) .
+Further combinatory rules in the theory of CCG, and in the parser, include back-
+ward composition and backward crossed composition. There is also a coordinationrule which conjoins categories of the same type, producing a further category ofthat type. Steedman (2000) motivates the need for the additional rules, and Clarkand Curran (2007b) describe which rules are implemented in the parser.
+The treebank used to develop the parser is CCGbank (Hockenmaier &
+Steedman 2002a; Hockenmaier 2003), a CCG version of the Penn Treebank(Marcus et al., 1993). The treebank performs two roles: it provides the lexical cat-egory set which makes up the grammar (plus some unary type-changing rulesand punctuation rules used by the parser – see Clark and Curran (2007b) forthe details), and it is used as training data for the statistical models. CCGbankwas created by converting the phrase-structure trees in the Penn Treebank intoCCG derivations. Hockenmaier (2003) gives a detailed description of the proce-dure used to create CCGbank. Figure 13.9 shows an example derivation for an(abbreviated) CCGbank sentence. The derivation has been inverted, so that it isrepresented as a binary tree.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 355 — #23
+Statistical Parsing 355
+UnderNP
+N
+newN
+features,NP
+N
+participants can
+transferNP
+N
+moneyfromNP
+theN
+newN
+funds.S[dcl]
+S/S
+(S/S)/ NP
+N/N
+(S[b]\NP )/NP
+NP[nb]/N
+N/N((S\NP)\(S\NP)) /NP(S\NP)\(S\NP),.S[dcl]
+S[dcl]
+S[dcl]
+S[dcl] \ NP
+S[b] \ NP (S[dcl] \ NP)/  (S[b] \ NP)
+S[b] \ NP
+Figure 13.9 Example CCG derivation for the sentence Under new features, participants can
+transfer money from the new funds.
+6.2 Log-linear parsing model for CCG
+The log-linear modeling approach can be applied directly to CCG derivations, inthe same way that it can be applied to any kind of linguistic structure. Thus thereis nothing particularly CCG-speciﬁc about the model, except that the features aredeﬁned over CCG derivations. Clark and Curran (2003) give some motivationfor applying log-linear models to CCG in particular, by arguing for the inclu-sion of long-range dependencies in the model; the seminal article of Abney (1997)contained a similar argument for constraint-based grammar formalisms.
+According to the log-linear model, the probability of a derivation d,g i v e na
+sentence, S, is deﬁned as follows:
+(17) P(d|S) =1
+ZSeλ.f(d)
+where λ.f(d)=∑
+iλifi(d). The function fiis the integer-valued frequency func-
+tion of the ith feature; λiis the weight of the ith feature; and ZSis a normalizing
+constant which ensures that P(d|S) is a probability distribution:
+(18) ZS=∑
+d′∈ρ(S)eλ.f(d′)
+where ρ(S)is the set of possible derivations for S. This is the same formalization
+as given in equation (7), but with a slightly different notation. The features usedin the parser will be described later.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 356 — #24
+356 Stephen Clark
+The training data consists of gold standard derivations from CCGbank. The dis-
+criminative estimation method follows Riezler et al. (2002) by maximizing theconditional log-likelihood of the model given the data, minus a Gaussian prior
+term to prevent overﬁtting (Chen & Rosenfeld 1999; Johnson et al., 1999). Thus,given training sentences S
+1,...,Sm, and gold standard derivations, d1,...,dm,t h e
+objective function for a model Λis:
+L′(Λ)=L(Λ)−G(Λ) (19)
+=logm∏
+j=1PΛ(dj|Sj)−n∑
+i=1λ2i
+2σ2
+The Gaussian prior simply implements the intuition that we do not expect
+the weights to get too high in absolute value, and prevents them doing so bypenalizing any model whose second term in (19) becomes excessively large. Theparameter σis set empirically using held-out development data (by choosing the
+value which leads to the highest parsing accuracy on the held-out data).
+Maximizing L
+′(Λ) is a numerical optimization problem, for which there are a
+number of standard techniques available (Nocedal & Wright 1999). Early work inestimating log-linear models for NLP applications used iterative scaling methods(Della Pietra et al., 1997), although these were shown to be too slow for complexparsing and tagging models (Sha & Pereira 2003; Clark & Curran 2004). Malouf(2002) introduced general numerical optimization techniques to the NLP com-munity and showed them to be signiﬁcantly more efﬁcient than iterative scalingmethods.
+A useful function for optimizing L
+′(Λ)is the gradient, i.e., the partial derivative
+with respect to each weight:
+∂L′(Λ)
+∂λi=m∑
+j=1fi(dj)−m∑
+j=1∑
+d∈θ( Sj)eλ.f(d)fi(d)
+∑
+d∈θ( Sj)eλ.f(d)−λi
+σ2(20)where d
+jis the gold standard derivation for sentence Sjandθ(Sj)is the set of
+possible derivations for Sj. A useful intuition for understanding the optimization
+process is to think of the likelihood function as a surface (but in many dimensions),and the role of the optimization algorithm is to ﬁnd the ‘top’ of the surface, givensome random starting point. Chapter 5,
+MAXIMUM ENTROPY MODELS , describes in
+detail how this optimization problem can be solved. The key point for this chapteris that any method for optimizing (19), including the iterative scaling algorithms,requires calculation of the gradient in (20).
+Note that (20) is a difference in feature expectations (ignoring the third term
+resulting from the Gaussian prior). The ﬁrst term is simply the (unnormalized)empirical expectation for feature f
+i, that is, the number of times the feature
+appears in the training data, and the second term is the model expectation for
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 357 — #25
+Statistical Parsing 357
+fi. Hence the estimation process can also be thought of in terms of the maximum
+entropy framework of Della Pietra et al. (1997), since setting the gradient in (20)to zero (required for maximizing L
+′(Λ)) yields the usual maximum entropy con-
+straints, namely that the expected value of each feature is equal to its empiricalvalue.
+Crucially, calculation of the model expectations for each feature requires a sum
+over all derivations for each sentence in the training data; however, the numberof derivations grows exponentially with the sentence length, and the number ofderivations for a sentence, according to the automatically extracted CCG grammar,can be very large. The next section brieﬂy explains how this calculation can beperformed in practice.
+6.3 Efﬁcient estimation
+Clark and Curran (2007b) adapt the feature forest method of Miyao and Tsujii (2002)
+to perform a sum over a potentially exponential number of CCG derivations,required for calculation of the feature expectations in (20). A key data structurefor this approach is the packed chart, which can be seen as an instance of a feature
+forest and hence used to calculate the feature expectations.
+A chart is an array which stores the constituents for each substring (or span) in
+the sentence, as was described for the Collins parser. A packed chart is based onthe idea that, if there is more than one way of deriving a constituent of the sametype with the same span, then only one of these chart entries needs to be consid-ered for further parsing. Equivalent entries are grouped into equivalence classes,and, for an individual entry in a class, back pointers to the daughters indicate howthat entry was created, so that any derivation can be recovered from the chart.The use of equivalence classes in this way allows a large set of derivations to berepresented compactly.
+Entries are equivalent when they have the same span, form the same structures
+in any subsequent parsing, and generate the same features in any subsequentparsing. For a CCG parse chart, any constituents with the same CCG category, thesame span, and the same linguistic head are equivalent for the purposes of fur-ther parsing and the log-linear parsing model. Note that equivalence with regardto the parsing model is only guaranteed if the features in the model are sufﬁ-ciently local, in this case conﬁned to a single rule application.
+10In the models of
+Clark and Curran (2007b), features are deﬁned in terms of local rule instantiations,where a rule instantiation is the local tree arising from the application of a rule inthe grammar.
+A CCG packed chart is an instance of a feature forest (Miyao & Tsujii 2002)
+which can be used for efﬁcient calculation of the feature expectations. Represent-ing a CCG packed chart as a feature forest is straightforward, but we refer readersto Clark and Curran (2007b) and Miyao and Tsujii (2002) for the technical details.Essentially, the packed chart representation enables the use of a dynamic program-ming algorithm to sum over all derivations containing a particular feature, whichis required to calculate the feature’s expectation.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 358 — #26
+358 Stephen Clark
+Estimating the parsing model in practice consists of generating packed charts
+for each sentence in the training data, and then repeatedly calculating the valuesrequired by the estimation algorithm until convergence. Even though the packedcharts are an efﬁcient representation of the derivation space, the charts for thecomplete training data (sections 2–21 of CCGbank) take up a considerable amountof memory. One solution is to only keep a small number of charts in memory atany one time, and to keep reading in the charts on each iteration. However, giventhat the estimation algorithms for log-linear models typically require hundreds ofiterations to converge, this approach would be infeasibly slow.
+The solution in Clark and Curran (2007b) is to keep all charts in memory by
+developing a parallel version of the L-BFGS training algorithm and running it onan 18-node Beowulf cluster. As well as solving the memory problem, another sig-niﬁcant advantage of parallelization is the reduction in estimation time: using 18nodes allows the best-performing model to be estimated in less than three hours.
+The log-linear modeling framework allows considerable ﬂexibility for repre-
+senting the parse space in terms of features. However, in order to use packedcharts as feature forests for the estimation, the features are limited to those deﬁnedover local rule instantiations. The features used in the parser constitute a fairlystandard set for a statistical parsing model. There are features encoding localtrees (two combining categories and the result category); features encoding word-lexical category pairs at the leaves of the derivation; features encoding the categoryat the root of the derivation; and features encoding word–word dependencies,some of these also with information regarding the distance between the depen-dents. Each feature type has variants with and without head information, withseparate features encoding heads as lexical items and POS tags. Clark and Curran(2007b) describe the feature set in detail.
+The best-performing model from Clark and Curran (2007b) had 475,537 features;
+converged in 610 iterations of the L-BFGS algorithm; required 22.5 GB of RAM,which was provided by the 18-node Beowulf cluster; and was trained in just overtwo hours.
+6.4 Parsing in practice
+Parsing with lexicalized grammar formalisms such as CCG is a two-stage pro-cess: ﬁrst, elementary syntactic structures – in CCG’s case lexical categories – areassigned to each word in the sentence, and then the parser combines the structurestogether. Clark and Curran (2007b) use a supertagger (Bangalore & Joshi 1999) toperform step one. The supertagger uses log-linear models to deﬁne a distributionover the lexical category set for each local ﬁve-word context containing the targetword (Ratnaparkhi 1996). The features used in the models are the words and POStags in the ﬁve-word window, plus the two previously assigned lexical categoriesto the left. The conditional probability of a sequence of lexical categories, givena sentence, is then deﬁned as the product of the individual probabilities for eachcategory. In order that the supertagger be accurate enough to serve as a front endto the parser, Clark and Curran (2007b) deﬁne a multi-tagger, in a fairly standard
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 359 — #27
+Statistical Parsing 359
+way, using the distribution over lexical categories for each word in the sentence topotentially assign more than one category to each word. The lexical category dis-tributions for each word can be calculated efﬁciently using the forward–backwardalgorithm.
+The algorithm used to build the packed charts is the CKY chart parsing algo-
+rithm (Kasami 1965; Younger 1967) described in Steedman (2000). The CKYalgorithm applies naturally to CCG since the grammar is binary. It builds thechart bottom-up, starting with constituents spanning a single word, incrementallyincreasing the span until the whole sentence is covered. The Viterbi algorithm isused to ﬁnd the most probable derivation from a packed chart.
+There are a number of possible ways of evaluating the CCG parser.
+Hockenmaier and Steedman (2002b) argue against the use of the Parseval met-rics applied to CCG derivations, since the binary-branching nature of CCG meansthat it is penalized more heavily according to these metrics than the ﬂatter PTBstructures. Also, a primary motivation for CCG parsing is the recovery of long-range, as well as local, dependencies, making a dependency-based evaluation thenatural choice.
+Clark and Curran (2007b) perform two dependency-based evaluations. The ﬁrst
+uses the gold standard predicate–argument structures from CCGbank, includinglong-range dependencies, which are deﬁned in terms of the argument slots inCCG lexical categories. According to this evaluation, the best-performing modelachieves an F-score of 85.5 percent on section 23, which rises to 87.6 percent ifgold standard POS tags are fed to the supertagger and parser. There are two dis-advantages to this evaluation: one, it is CCG-speciﬁc, so the accuracies cannotbe compared with the scores reported for parsers not based on CCGbank; andtwo, the accuracy ﬁgures are arguably inﬂated in that the CCG parser is beingrewarded for reproducing any systematic biases or errors in the treebank, forexample incorrect bracketing in complex noun phrases.
+11
+Clark and Curran (2007b) attempt a formalism-independent evaluation by map-
+ping the CCG dependencies to Briscoe and Carroll-style grammatical relations(GRs), and evaluating on DepBank, a 700-sentence subset of section 23 of thePTB which has been manually annotated with GRs. The mapping turned out tobe surprisingly difﬁcult to perform, and evaluating the gold standard CCG depen-
+dencies from CCGbank against the GRs in DepBank (after applying the mapping)resulted in an F-score of only 84.8 percent. Thus the best that the CCG parser canbe expected to achieve is 84.8 percent. Despite this relatively low upper bound, theCCG parser scored 81.1 percent on DepBank, almost ﬁve percentage points higherthan the RASP parser which it was compared against.
+Finally, Clark and Curran (2007b) give parse times for the CCG parser, compar-
+ing against those reported for other parsers in the literature. The CCG parser is anorder of magnitude faster than the Collins and Charniak parsers. The relativelylow parse times are due primarily to the use of the supertagger, which is veryeffective in accurately limiting the search space. Parser efﬁciency was the originalmotivation for supertagging when applied to LTAG parsing (Bangalore & Joshi1999).
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 360 — #28
+360 Stephen Clark
+6.5 Summary
+The CCG parsing work described here was perhaps the ﬁrst to develop a dis-criminative parsing model based on the Penn Treebank (or derivative of the PTB)using an automatically extracted grammar. The huge parse space resulting fromthe automatically extracted grammar was handled in two ways: one, through theuse of a cluster and a parallelized estimation algorithm; and two, through theuse of a supertagger as a parsing pre-processor. Similar techniques have recentlybeen applied to the PTB parsing task. Finkel et al. (2008) use cluster recources toestimate a log-linear model, and Carreras et al. (2008) use a TAG-like grammar,together with a simpler pre-processing stage, to limit the parse space for discrim-inative estimation (although the pre-processing is a simpler parsing model, rather
+than a supertagger).
+The CCG parser was perhaps also the ﬁrst to successfully use a supertagger in
+conjunction with an automatically extracted grammar. The supertagger not onlymakes discriminative estimation possible, but also results in a surprisingly fastformalism-based parser.
+One of the motivations for using CCG is the ability to recover long-range depen-
+dencies. There has been little evaluation of parsers’ ability in this regard; someexamples include Clark et al. (2004) for the CCG parser, and Johnson (2002) fora postprocessor applied to PTB parsers. Steedman (2008) argues that the abilityto handle long-range dependencies will become increasingly important, both asa way of improving basic language technology, and also to satisfy the increasingexpectations of users of the technology.
+7 Other Work
+It is inevitable in a chapter such as this that many relevant pieces of workhave been omitted. For the history section, Brill’s work on transformation-basedparsing was an early, inﬂuential attempt at the PTB parsing task (Brill 1993).
+For the generative parsing section, there is a large body of work on data-oriented
+parsing (DOP) (Bod 2003). DOP uses a highly ﬂexible representation in which anysubtree appearing in the data can be used to compose trees for unseen sentences,motivated by the idea that important dependencies exist which cannot be capturedby the usual head-based decomposition of a parse-tree. Much of the DOP pars-ing work is concerned with developing estimation and parsing algorithms to dealwith the enormous search space which results from this representation. Collinsand Duffy (2002) use a similarly ﬂexible representation, but within a kernel frame-work, showing how parsing models which use all subtrees of a parse-tree can beefﬁciently estimated, even though the number of subtrees grows exponentiallywith the size of the tree.
+Titov and Henderson (2007c) describe a PTB parsing model in which neural net-
+works are used to estimate the parameters of a generative model. The innovationin this approach lies in their ﬂexible notion of history, in that the estimation process
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 361 — #29
+Statistical Parsing 361
+itself decides how much conditioning context is appropriate for each parame-ter. This work is described in more detail in Chapter 9 of this book,
+ARTIFICIAL
+NEURAL NETWORKS .
+For the CCG parsing section, and formalism-based parsing more generally,
+Chiang (2000) developed a wide-coverage parser using an automatically extractedTAG grammar. Hockenmaier and Steedman (2002b) describe a generative CCGparsing model, applying the techniques from the PTB generative models toCCGbank. Miyao and Tsujii (2005), in tandem with the development of the CCGparser, have done similar work for automatically extracted HPSG grammars, inparticular developing the theoretical framework for the discriminative estimationmethod used by the CCG parser (Miyao & Tsujii 2002), which also draws heav-ily on Riezler et al. (2002). Cahill et al. (2004) obtain competitive results on a GRevaluation by automatically extracting LFG representations from PTB parse-trees.
+There has been some recent work on statistical parsing motivated by psycholin-
+guistic considerations, for example Dubey and Keller (2003), with the parsingmodel and algorithm typically exhibiting some amount of incrementality. Roark(2001a) describes an incremental, top-down parser with the aim of deﬁningsyntax-based language models for speech recognition, where incrementality is auseful feature as it allows the speech signal to be processed in real time.
+Finally, this chapter has focused on the parsing of English. Whilst the majority
+of work on statistical parsing has been for English, of course there has been workfor other languages, for example German (Dubey & Keller 2003), French (Arun& Keller 2005), Spanish (Cowan & Collins 2005), Czech (Collins et al., 1999), andChinese (Wang et al., 2006). Section 4.2 referred to the CoNNL shared task in whicha number of languages were investigated in the context of dependency parsing.
+8 Conclusion
+This chapter has discussed the signiﬁcant advances that have taken place in wide-coverage parsing, through the adoption of statistical and data-driven methods.However, the publication of accuracy results of over 90 percent can give a mis-leading impression that parsing is close to being a solved problem. There are manyareas in which there is large room for improvement in statistical parsing.
+First, an overall accuracy ﬁgure hides that fact that there are many semantically
+important dependencies that are being recovered at accuracies much lower than90 percent. In addition, an overall score is inﬂated by the fact that some frequentdependencies, such as determiner–noun and auxiliary–verb, can be recoveredwith very high accuracies. Dependency-based evaluation schemes are useful inthis regard, since they allow accuracies to be presented for particular depen-dency types. For example, the Collins parser has an accuracy on PP modiﬁcationdependencies of roughly 82 percent, and on coordination structures of roughly62 percent (Collins 1999d: 193–4). PP-attachment and coordination have alwaysbeen classic syntactic ambiguity problems, and remain so despite decades of workon the problem.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 362 — #30
+362 Stephen Clark
+Second, the majority of work, or at least the most inﬂuential work, in statis-
+tical parsing has been performed on the WSJ section of the Penn Treebank. It is
+well known that parsers trained on newspaper text can perform much worse inother domains (Gildea 2001). Given the demand for NLP tools in domains suchas biomedical text, a key area for development in statistical parsing, and one inwhich there is a growing literature, is domain adaptation.
+Third, the majority of the work in statistical parsing has been for English. It is an
+open question whether models developed for English can be applied to languageswhich have very different characteristics, such as complex morphology or freeword order, or whether signiﬁcantly different modeling techniques are requiredfor these languages.
+Fourth, the lack of data in domains other than newspaper text and languages
+other than English (and a handful of other languages which have treebanks) is abarrier to developing accurate parsing models outside of the WSJ. Currently there
+are two suggestions for how to solve this problem: one, through the use of cleverways of obtaining manually annotated data, such as active learning; and two,through the use of semi-supervised or unsupervised approaches. Self-training is arecent example of the latter approach (McClosky et al., 2006).
+Finally, evaluation, which has gained importance across the whole of NLP , has
+taken an increasingly prominent role in parsing, because of the desire to compareparsers across linguistic frameworks. However, the development of an evaluationscheme which can be applied fairly to a number of parsers has proven surprisinglydifﬁcult (Clark & Curran 2007a).
+Despite the fact that parsing has been a central problem in NLP since its incep-
+tion, and that many researchers believe that parsing is important for applicationssuch as question answering and machine translation, it is still surprisingly difﬁ-cult to ﬁnd compelling examples of language technology in which parsing playsa central role. The development of robust, wide-coverage, and efﬁcient parsersmay change this state of affairs – a recent prominent example of parser-drivenlanguage technology is the search engine of Powerset, which uses an LFG parser(Riezler et al., 2002) – but whether parsers will become a standard component infuture language technology remains to be seen.
+NOTES
+1 The term formalism-based is used in this chapter to denote parsing research based on
+speciﬁc linguistic formalisms, such as TAG, LFG, HPSG, and CCG.
+2 See Manning and Schütze (1999) for a textbook treatment of PCFGs.3 Chapter 4 of this book,
+THEORY OF PARSING , contains a more detailed description of
+parsing algorithms.
+4 Collins (1999) gives a more detailed analysis, considering the various constant factors
+related to the grammar and training data.
+
+“9781405155816_4_013” — 2010/5/8 — 12:03 — page 363 — #31
+Statistical Parsing 363
+5 The rest of this chapter uses λfor the weight vector; here we use wto be consistent
+with McDonald et al. (2005b).
+6 An alternative to repeated parsing, which is described in Section 6, is to create packed
+charts for each sentence only once, and either keep them in memory, if enough RAM isavailable, or store them on disk and read each one in individually.
+7 This is a rough paraphrase of the theoretical result; readers should consult Collins
+(2002) for the details.
+8 Fairly comparing parser speeds is difﬁcult, because of differences in implementation
+and so on; however, it is reasonable to assume in this case that some of the speedup isdue to the more efﬁcient dependency-parsing decoder.
+9 Figures 13.7, 13.8, and 13.9 originally appeared in Clark and Curran (2007b), and are
+used with the permission of the Association for Computational Linguistics.
+10 Features could also incorporate any part of the sentence , since this is a conditional
+parsing model and the sentence is not being generated.
+11 The ﬂat structure of noun phrases in the PTB means that complex noun phrase struc-
+tures in CCGbank are always right-branching, sometimes incorrectly so. See Vadas andCurran (2008) for work describing manual correction of complex noun phrases in thePTB and CCGbank, and the impact this has on the accuracy of the CCG parser.
+

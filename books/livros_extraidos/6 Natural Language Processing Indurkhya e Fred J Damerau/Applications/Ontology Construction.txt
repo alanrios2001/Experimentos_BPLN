@@ -1,0 +1,888 @@
+24
+Ontology Construction
+Philipp Cimiano
+DelftUniversityofTechnology
+Johanna Völker
+UniversityofKarlsruhe
+Paul Buitelaar
+NationalUniversityofIreland24.1 Introduction ..........................................................57724.2 OntologyandOntologies............................................579
+AnatomyofanOntology •TypesofOntologies •OntologyLanguages •
+OntologiesandNaturalLanguage
+24.3 OntologyEngineering ...............................................585
+Principles •Methodologies
+24.4 OntologyLearning ...................................................592
+StateoftheArt
+24.5 Summary ..............................................................596Acknowledgments ..........................................................596References....................................................................597
+24.1 Introduction
+As humans, we base our decisions on our knowledge about the world, which we have acquired througheducation, reading, reﬂection, conversation, etc. We all have substantial commonsense knowledge aswellasknowledgeabouthowourworldisstructured,whichguidesusinourdailylives,helpsustotakedecisions,etc.
+Forexample,duetobasicknowledgeofhowEuropeanmedievalcitiesarestructured,weﬁnditrather
+easytoﬁndourwaythroughthem.Europeanmedievalcitiestypicallyhaveachurchinthecenter,which,inmanycases,hasatowerwecanseefromadistance.Asthemarketplaceofamedievaltownistypicallyalso in the center of a town, by following the church we will also ﬁnd the marketplace. The towers aretypicallylocatedonthewesternendofthechurches,whichgivesusadditionalnavigationhelp.
+Weknowthattherearediﬀerenttypesofchurches:basilicas,cathedrals,chapels,etc.,originatingfrom
+diﬀerent centuries and having diﬀerent styles: Romanesque, Gothic, Renaissance, etc. As we know themain characteristics of each of these styles, we can also (in many cases) recognize the correspondingstyles. Romanesque churches are heavy and compact buildings with round-arched, small windows andfeature-elaboratedsculpturesontheentranceportal.Gothicchurchesaretallerandlighter(comparedtoRomanesquechurches)andfeaturepointedarches.
+Thisshowshowmuchknowledgeaboutourworldwehaveashumansanditseemsclearthatmaking
+all this knowledge explicit (as we have attempted in a very sketchy and informal way above) is a verychallenging endeavor. To some extent, this is exactly what our aim is when constructing ontologies .
+Ontologiesaimatcapturingknowledgeabouttheworldexplicitlyforaspeciﬁcpurposeortask.Inmostcases,ontologiesareactuallymoremodestandaimtocapturetheknowledgeaboutacertaindomain(e.g.,medicine), a speciﬁcphenomenon (e.g., thefunction of thehuman heart), or even a certainsituation orevent (e.g., a football match). The essential purpose of an ontology is thus to encode knowledge about acertain reality in a declarative way, independently of any application and the way this knowledge might
+577
+
+578 HandbookofNaturalLanguageProcessing
+beused,suchthatsomebodycanreusethisknowledgeandapplyitintheirowncontext.Whenencodingknowledgeformachines,thepurposeremainsessentiallythesame,withtheexceptionthattheknowledgeneeds to be encoded in a formal language that machines can process and “understand.” In fact, variouslanguages,especiallyvariantsof(ﬁrst-order)logic,havebeenusedfortherepresentationofandreasoningwithknowledgeinontologies.WewillcomebacktothisissueinSection24.2.
+AsmentionedintheontologydevelopmentguidebyNoyandMcGuinness(2001),atanabstractlevel,
+thereasonsfordevelopinganontologyarethefollowing:
+•To share a common understanding of the structure of information among people or softwareagents
+•Toenablethereuseofdomainknowledge
+•Tomakedomainassumptionsexplicit
+•Toseparatedomainknowledgefromoperationalknowledge
+•Toanalyzedomainknowledge
+Ontologies can thus serve as artifacts for establishing a “common ground,” thus fostering communi-
+cationbetweenpeoplewithdiﬀerentbackgroundsbycreatingasharedunderstandingandconsensusonhowtounderstandtheterminologyinacertaindomain. Theabovereasons, however, donottalkaboutthepotentialapplicationsforontologies.Weciteonlyafewhere:
+•Dataintegration: Thepromiseofontologiesisthattheyprovideaunifyingdataschemabridgingbetweenthewaydiﬀerentpeoplehavemodeledtheirinformation,thusfacilitatingtheintegrationof diﬀerent sources of information at a higher level abstracting from these proprietary schemas(seeWacheetal.,2001;ReynaudandSafar,2002).
+•Content and functionality description at a “semantic level:” By describing content (e.g., of Web
+sites) as well as functionality (e.g., of services or programs) at a semantic level, the matching ofcontenttoinformationneedsordiscoveringappropriateserviceswillbemoreeﬀectivecomparedto pure matching at a syntactic level (e.g., as done in current search engines to match contentto information needs or relying mainly on method signatures for services). Describing resources(services, multimedia content, etc.) semantically is in fact the crucial aim of the Semantic Web(Berners-Lee et al., 2001). A semantic description of service functionality will also enable morecomplex tasks such as Web service composition into a workﬂow (McIlraith et al., 2001; Paoluccietal.,2001;Sirinetal.,2003).
+•Providing relevant background knowledge for knowledge-intensive tasks : e.g., in expert systems
+(Russel and Norvig, 2003) that help users to take better decisions in speciﬁc domains speciﬁcdomains as in the well-known MYCIN expert system (see Shortliﬀe, 2001). Natural languageprocessing is another good example for this, where relevant background knowledge can help indisambiguation (lexical, syntactic, semantic, quantiﬁer scope, etc.), discourse analysis (anaphoraresolution,bridgingreferenceresolution,inferringdiscourserelations),etc.
+Theremainderofthischapterisstructuredasfollows.InSection24.2wediscussontologiesassuch.We
+presentthemaindeﬁnitionsofanontology,diﬀerenttypesofontologiesaswellasontologyrepresentationlanguages,andtherelationbetweenontologiesandnaturallanguage.InSection24.3wedealwithontologyengineering,inparticular,describingdiﬀerentontologyengineeringmethods.InSection24.4wediscussautomaticmethodsfor ontologyconstruction andpresentanoverview ofthediﬀerentstepsinvolvedasspeciﬁed by the so-called ontology learning layer cake . Finally, in Section 24.5 we brieﬂy summarize the
+chapter.
+SincethebasicNLPandmachinelearningtechnologiesneededfortext-drivenontologyconstruction
+arealldescribedinthishandbook,wedonotdescribethemindetailhere.Instead,wereferthereadertorelatedchaptersofthisbook,i.e.,on(1) lexicalandphraseanalysis fortermextraction(seeChapters3,10,
+and12),(2) multilingualprocessing formultilingualtermandtranslationextraction(seeChapter16),(3)
+
+OntologyConstruction 579
+similarityanalysis forsynonymextraction(seeChapters13and14),and(4) parsingforrelationextraction
+andaxiomanalysis(seeChapter4).
+24.2 Ontology and Ontologies
+While ontologies currently have the status of designed artifacts in computer science, ontologyoriginally
+was a (philosophical) discipline concerned with the study of existence and the formal description of thestructure of reality. According to Barry Smith, “Ontology as a branch of philosophy is the science of whatis,ofthekindsandstructuresofobjects,properties,events,processesandrelationsineveryareaofreality. ”
+(Smith, 2003, corresponding to Deﬁnition 1 in Guarino and Giaretta, 1995). According to this view,ontology is a universal discipline and deals with existence independent of any speciﬁc domains and ofanybeliefsystems.
+∗
+Aristotle(384–322BC)cancertainlybecalledtheﬁrstontologistashefundamentallyshapedthenature
+of ontologies as we understand them today (compare Sowa, 2000). Aristotle however never mentionedthe word ontologyin his works, which was introduced in the seventeenth century independently by two
+philosophers:RudolfGöckelinhis LexiconPhilosophicum (Göckel,1613)andJacobLorhardinhis Ogdaes
+Scholasticas Lorhard(1606)(compareSmith,2003;Ohrstrometal.,2005).Aristotlehimselfreferredtothe
+studyofexistenceas“ﬁrstphilosophy.”Inhisworkson Categories
+†helaidthefoundationsfor(ontological)
+classiﬁcation,developingasystemforclassiﬁcationconsistingof10basiccategories: substance,quantity,
+quality,relation,place,time,situation (orposition), state(orcondition), action,andaﬀection (orpassion)
+(compare Studtmann, 2007). In the fundamental work described in the Categories , Aristotle introduced
+thebasicontologicalnotionsweusetoday: universals (alsoknownasclassesorconcepts)and particulars
+(also known as instances, individuals, or objects). Aristotle further established the basis for taxonomiesas used in ontologies and knowledge representation nowadays. In order to come up with a taxonomicalorganizationofthings,Aristotleproposeda“methodofdivision”accordingtowhichageneralcategory(agenus)isspecializedintoseveral(subgenera orspecies)bymeansofdiﬀerentiae ,i.e.,propertiesonwhich
+theydiﬀerfromeachother.
+From the computer science point of view, ontologies
+‡can be deﬁned as logical theories describing
+some aspect of reality. Typically, such logical theories describe a speciﬁc domain, i.e., some part ofreality that is of relevance to a set of applications (compare the use of domain of discourse in database
+andinformationsystemdesign). Forexample, wecoulddeﬁneanontologyforthedomainofacademia,such as the SWRC ontology (Sure et al., 2005), for medicine (Grenon et al., 2004), biochemistry (TheGeneOntologyConsortium,2000)etc.Suchontologieswillbetypicallyusedforapplicationsinwhichadeclarativedescriptionofthedomainisuseful,forexample,inordertoinferimplicitdomainknowledge,forintegratingdiﬀerentdatasources,etc.
+While there is no agreed-upon deﬁnition of ontology, there are a number of popular deﬁnitions of
+ontologiesincomputersciencethatareregularlycitedbythecommunity:
+§
+1. “Anexplicitspeciﬁcationofaconceptualization”(Gruber,1993)2. “Anexplicitaccountorrepresentationof[somepartof]aconceptualization”(Uschold,1996)
+∗Thiscorrespondstotheaimof“externalmetaphysics”ofstudyingrealitybeyondanybeliefsystemsorcognitivebiases.In
+fact,accordingtotherealist’sposition,theobjectiveofontologyistoreﬂectthephysicalreality(asstudiedbythephysicaland life sciences) as truthfully as possible. This is in contrastto the aims ofinternal metaphysicists studying the worldbythewaypeopleperceiveandtalkaboutit.
+†TheCategories ispartofthe Organon:acollectionofsixworksonlogic.
+‡Note the use of the plural “ontologies” here to distinguish this use from the upper case “Ontology” as a philosophical
+discipline. The use of the plural clearly denotes that there can be many ontologies, i.e., for diﬀerent views of the world,diﬀerentdomains,diﬀerentapplications,etc.Therecanevenbediﬀerentontologiesforoneandthesamedomain!
+§OtherpossibleinterpretationsofthetermontologycanbefoundinGuarinoandGiaretta(1995).
+
+580 HandbookofNaturalLanguageProcessing
+3. “A logical theory accounting for the intended meaning of a formal vocabulary, i.e., its ontological
+commitment toaparticular conceptualization oftheworld”(Guarino,1998a)
+4. “Aformalexplicitdescriptionofconceptsinadomainofdiscourse”(NoyandMcGuinness,2001)5. “Aformal,explicitspeciﬁcationofasharedconceptualization”(Studeretal.,1998)
+Commontomostofthesedeﬁnitionsistheterm conceptualization (Deﬁnitions1,2,3,and5)which“is
+aworldview;itcorrespondstoawayofthinkingaboutsomedomain ”(Uschold,1996)andcanbeseenas
+“asetofinformalrulesthatconstrainthestructureofapieceofreality”(Guarino,1997).Anothercommonaspect of the deﬁnitions given above is that this conceptualization needs to be explicit(Deﬁnition 1
+through 5),
+∗i.e., in the sense that it is not just in someone’s head but written down on a sheet of
+paper, stored in an electronic ﬁle, etc. Further, some of the deﬁnitions require an ontology to be formal
+(Deﬁnition 3 through 5, but also 1 according to the further descriptions in Gruber (1993)), i.e., in thesense that it should have a formal semantics and be machine readable as well as interpretable. Finally,someresearchers(seeDeﬁnition5)requireanontologytobe sharedamongdiﬀerentpeople.
+Inthischapter,wewillnotpreferanyoftheabovedeﬁnitionsovertheother.Forourpurposes,itsuﬃces
+to understand ontologies as logical theories used to conceptualize a certain domain, i.e., to formalize anabstractionofsomepartofrealityrelevanttothisdomain.
+24.2.1 Anatomy of an Ontology
+In this section we give a brief overview of the prototypical axiomatic constructs found in ontologies. Ifwedissectaprototypicalontology(e.g.,modelinginformationaboutmedievalEuropeancities)wemightﬁndthefollowing:
+•Subclass axioms: For example, Church is subclass of Building in the sense that all members
+of the class of churches are contained in the class of buildings. This is referred to as “extensionalsubsumption.”Normally,wealsosaythat“theclassofbuildingssubsumestheclassofchurches.”
+•Non-taxonomic relations: For example, the relation between a church and its style, which can bemodeledthroughthe hasStyle relationforexample.
+•Domainandrangerestrictions (onrelations):Foracertainrelation,i.e., hasStyle,theontology
+might restrict which kind of entities can stand at the domain and range positions, respectively.At the range position we would expect, say, Architectonic_artefact, while at the range
+positionwewouldexpectsome Architectonic_style.
+•Cardinality constraints : We would for example like to say that each Basilica has at least one
+Apse. This can be done by attachinga cardinality constraint of “at least 1” to the correspondingrelationintheontology.
+•Part-of relations: Have a special ontological status and have received special attention in theknowledgerepresentationliterature(Artaleetal.,1996).Whilethereareclearlydiﬀerenttypesof“part-of”relations,wewillglossoverthisaspecthere(butseeArtaleetal.,1996onthisissue).Wecouldforexamplespecifythattherecanbeapart-ofrelationbetweena TowerandtheChurch
+itbelongsto.
+•Disjointness: To further constrain the models of our logical theory, we might want to add alsoso-called disjointness axioms between classes which essentially state that the classes cannot havecommon elements. For instance, we would specify that the classes StyleandChurch are
+disjoint, i.e., there is no thing which is a style and a church at the same time. While such thingslooktrivialforusashumans,foramachineprocessingourontologythereisinprinciplenoreasonwhythesetwoclassescannotshareelements.
+∗Deﬁnition3talksabouta“logicaltheory,”whichistriviallyexplicit.
+
+OntologyConstruction 581
+Top-level ontology
+Domain ontology Task ontology
+Application ontology
+FIGURE24.1 OntologytypesaccordingtoGuarino(1998a).(ReproducedfromGuarino,N.,Formalontologyand
+informationsystems.In ProceedingsofFormalOntologyinInformationSystems(FOIS) ,Trento,Italy,pp.3–15,1998.)
+24.2.2 Types of Ontologies
+Many researchers have attempted to provide a classiﬁcation of ontologies according to type. Guarino
+(1998a), for example, distinguishes between the following types of ontologies (graphically depicted in
+termsofaspecializationrelationinFigure24.1):
+•Top-levelontologies :describingverygeneralconceptsrelatedtotime,space,matter,etc.
+•Domainontologies :describingthevocabularyinaspeciﬁcdomain.
+•Task ontologies : describing the vocabulary of a generic task or activity, such as the task of selling
+something.
+•Application ontologies : describing concepts that are often specializations of domain and task
+ontologies.Consideradomainontologyaboutbooksandataskontologyaboutselling,anonline
+bookretailerwouldspecializebothontologiestodescribeabooksellingserviceforexample.
+Thesetypesappear in similar waysalso in otherclassiﬁcations(compare Studer et al., 1998; Uschold,
+1996, but also the orthogonal classiﬁcation in Hovy, 2005). Further, Uschold (1996) has suggested a
+classiﬁcationofontologiesaccordingtothefollowingdimensions:
+•Degree of formality : ranging from highly informal (e.g., glossaries), structured informal over
+semiformal torigorouslyformal .
+•Purpose:mentioningdiﬀerentpurposessuchas(1) communicationbetweenpeople ,(2)interoper-
+ability(betweensystems),wheretheontologyisusedasaninterchangeformatand(3) knowledge
+reuseacrosssystems,aswellas(insoftwareengineering)(4)veriﬁcationby automatedconsistency
+checksandassistanceintheprocessofrequirementsspeciﬁcation.
+•Subject matter : distinguishing (similarly to Guarino) between domain ontologies ,task, method
+or problem-solving ontologies ,a n dmeta-ontologies , i.e., ontologies describing the vocabulary and
+semanticsofaknowledgerepresentationlanguage.
+Besides the diﬀerent categories introduced by diﬀerent researchers, the important message to bear in
+mindisthatontologiescanbeengineeredforverydiﬀerent(butalllegitimate)purposes.
+24.2.3 Ontology Languages
+As ontologies are in essence logical theories, we need logical formalisms to write such logical theories
+down(i.e.,somesyntax)aswellassomespeciﬁcationoftheirformalsemantics(i.e.,adeﬁnitionoflogical
+consequence) in order to reason over the theory. For the purpose of formalizing ontologies, typically
+
+582 HandbookofNaturalLanguageProcessing
+RDF/RDF(S)
+DAML-ONT
+OilDAML+oilJoint EU/US committee
+OntoKnowledge+othersDAML
+W3C
+OWLFrames
+Description
+logics
+FIGURE24.2 Evolutionofontologylanguages.(TakenfromBechhofer,S.,AnintroductiontoOWL.Tutorialslides
+fortheSemanticWebTutorialatISWC’08,2008.http://kmi.open.ac.uk/events/iswc08-semantic-web-intro/.)
+variants of ﬁrst-order logic with standard model-theoretic semantics are used (but also other non-ﬁrst-
+orderlogicswithnon-monotonicpropertieshavebeenproposed).Examplesofolderlanguagesallowing
+to specify ontologies are KIF (Knowledge Interchange Format) (Genesereth and Fikes, 1992), but also
+DAML-ONT(McGuinessetal.,2002)orOIL(OntologyInferenceLayer)(Fenseletal.,2001).
+Figure24.2showstheevolutionofvariousontologylanguagesintothenowadayswidelyknownOWL
+language(Bechhoferetal.,2004).RDF(LassilaandSwick,1999)andRDF(S)(BrickleyandGuha,2002)
+can be seen as a precursor to the DAML-ONT (McGuiness et al., 2002) language, which was developed
+inthecontextoftheU.S.DAMLProgram.∗
+OIL was an ontology representation language developed in the context of European projects such as
+OntoKnowledge†andbuildsstronglyon‘DescriptionLogics’(Baaderetal.,2003).Theterm‘description
+logics’actuallyreferstoafamilyoflanguagesfordescribingconceptsaswellasthesubsumptionrelations
+between these.‡DAML-ONT (McGuiness et al., 2002) and OIL (Fensel et al., 2001) provided the basis
+for a new language called DAML+OIL (Conolly et al., 2001), developed by a joint initiative involving
+European and U.S. groups. DAML+OIL can be regarded as providing the foundations for OWL, which
+hasbeenstandardizedbytheW3Cas“oﬃcial”Webontologylanguage.§Inwhatfollowswebrieﬂycitethe
+main characteristicsof the RDF, RDFS, and OWL languages, together with its dialects OWL Full, OWL
+DL, and OWL Lite. In general, for a more detailed discussion of OWL, its three dialects, the relation to
+otherformalismssuchasRDFS,DAML+OIL,toframelanguagesandtodescriptionlogics,theinterested
+readerisreferredtotheexcellentoverviewbyHorrocksetal.(2003).
+•RDF: The Resource Description Framework essentially provides the vocabulary to express
+triples—i.e., constructs of the shape (subject,predicate,object) —which allow to
+provide elementary statements like the fact that Berlin is the capital of Germany, i.e.,
+(Berlin,capitalOf,Germany) . One of the important characteristics of RDF and which
+makesitespeciallysuitablefortheWebisthatitreliesonthecrucialnotionofaURIinthesense
+of a unique identiﬁer allowing us to point to “things” (or “resources” as they are called in RDF).
+ThisisessentialforaWebinwhichsitespointtocontent(orthings)onothersites,thusreﬂecting
+the true distributional architecture of the Web as we know it today. URIs thus provide the basis
+for talking about identity. However, it is not the case that RDF adopts the UNA (Unique Name
+Assumption), thus allowing diﬀerent URIs to refer to the same thing (after all we cannot force
+peopletousethesameURIs,butonlyencourageit!).
+•RDF Schema , abbreviated as RDFS, extends RDF in the sense of providing additional machinery
+for describing the vocabulary used in the triples in terms of their relation to other vocabulary
+∗http://www.daml.org/
+†http://www.ontoknowledge.org/
+‡FormoredetailsonDL,theinterestedreaderisreferredtotheDescriptionLogicsHandbook(Baaderetal.,2003).
+§TheWebOntologyLanguageisabbreviatedOWLinsteadofWOL,seeHitzleretal.(2008)onthisissue.
+
+OntologyConstruction 583
+elements.RDF(S)allowsonetointroduceclassesaswellastoarrangethemtaxonomicallyviatherdfs:subClassOf property.InRDFSchemawecould,forexample,statethattheclasschurch
+is a subclass of building, i.e., (Church,rdfs:subClassOf,Building) ,t h u ss p e c i f y i n g
+that all churches are buildings. An important feature in RDF(S) is that classes (and properties)arethemselvesresourcesandthus“ﬁrstclasscitizens”wecantalkabout.TheexpressivityofRDFSchemaintermsofthelogicalrepertoirethatcanbeusedtoconstrainthepossiblemodelsisratherlimited.ThisisthereasonwhymoreexpressiveontologylanguagessuchasOWL(seebelow)weredeveloped.
+•OWLFull istheonlydialectofOWLthatisfullycompatiblewithRDF(S),basicallyinheritingits
+semantics (with a few extensions). However, the way that OWL and RDF(S) have been mergedtogetherinOWLFullhasleadtothefactthatthelatterisundecideable.Inadditiontoallowingonetodeﬁnesubclasses(asinRDFS),OWLallowstodeﬁnecomplexclasses,i.e.,theclassof Medieval
+Cities astheintersectionbetweentheclass CityandMedieval (MedievalCity ≡Medieval ⊓
+CityinOWLabstractsyntax),orspecifynecessaryconditionsorachurch,i.e.,thatitissubsumed
+by the class of things that are clerical buildings, have a speciﬁc style, and are located somewhere:Church ⊑ClericalBuilding ⊓∃hasStyle.Style ⊓∃hasLocation.Place. Thus, OWL extends RDF by
+allowingtodeﬁnemorepreciselytheclassesintermsofcomplexclassdescriptionsliketheabove.Itisclearthatsuchdescriptionsallowmoreinferencesasfromthefactthatsomethingisachurchwecaninferthat(1)itisaclericalbuilding,(2)ithassomestyle,and(3)itislocatedsomewhere.OWL also allows to deﬁne classes by complements, i.e., the class of Non-Romanesque churchesasChurch ⊓¬ ∃hasStyle.{Romanesque}.
+∗Further, OWL allows to state cardinality constraints on
+relations,e.g.,specifyingthatelementsofacertainclass(e.g.,a Basilica)needstohaveatleast
+oneApse(andsimilarfor at most andspeciﬁcationsofexactcardinality).InOWLFull,there
+isessentiallynorestrictionontheuseoftheOWLvocabulary.
+•OWLDL isamemberofthefamilyofDescriptionLogicLanguages,correspondingtothelanguage
+SHOIN(D) actually,†a language featuring a standard ﬁrst-order model theoretic semantics (but
+less expressive than ﬁrst order logic). OWL DL was designed in order to have a computationallydecidable OWL fragment. It restricts OWL Full by fostering a clear separation between classesandindividuals(noindividualcanbeaclassatthesametime).TherelationtoRDF(S)isonlyanindirect one. First, OWL DL and RDF(S) have a diﬀerent semantics. Further, there are OWL DLontologiesthatarenotvalidRDF(S)ontologiesandalsotheotherwayround.Itisinthiscasethathere is not direct relation between them other than that there is an RDF-based syntax to expressOWLDLontologies,wheretheconstructs(axioms)deﬁnedinanOWLontologyareexpressedasa set of RDF triples. While it might seem a rather awkward idea to use RDF (which is layered ontopofXMLinthesensethateveryRDFdocumentisavalidXMLdocument)toencodeontologies(RDF serializations of OWL ontologies look indeed like beasts!), it is important to mention thatthiswasmainlydonetoallowforthepublicationandsharingofontologiesovertheWeb. AstheWeb inherently builds on standards such as XML and XHTML, this is an important move. TheabstractsyntaxofanOWLontologyiscertainlynotsomethingthatlendsitselftostraightforwardserializationinanASCIIdocument.
+•OWL Lite is a subset of OWL DL removing several sources of complexity for practical reasoning
+algorithms, including (1) disjunction (in the form of class union in OWL), (2) complementationanddisjointnessofclasses(bothrequiringnegation),(3)constructsthatimplicitlyintroduce(in-)equalities, such as enumerated classes (realized by oneOfin OWL
+‡) and cardinality constraints
+∗HereweareusingaspecialfeatureoftheOWLabstractsyntaxtostatethatthestyleneedstobeoneoftheelementsinthe
+set{Romanesque},bywhichweessentiallyrestrictthetypetoRomanesque.ThedetouroverasetnotationisnecessaryasOWLexpectsalwaysaclassattherangerestrictionforarole.
+†Seethedescriptionlogiccomputationalcomplexitynavigatorat http://www.cs.man.ac.uk/~ezolin/dl/
+‡Enumerated classes allow us to deﬁne a class extensionally, e.g., the class of continents as consisting exactly of Europe,
+Africa,Asia,NorthAmerica,SouthAmerica,Australia,andAntarctica.
+
+584 HandbookofNaturalLanguageProcessing
+onrelationsgreaterthan“1.”OWLDLallowsonlytorestrictthecardinalityofapropertyto“0”or“1”(anexistentialquantiﬁcationinessence). Thisisenoughtosaythata Basilica hasatleast
+oneApse,butnottospecifythata Doghasexactlyfour legsforinstance.
+24.2.4 Ontologies and Natural Language
+There has been substantial debate over the relation between ontologies and lexica as well as betweenontologies and natural language in general. We intend to shed light on this relation along the followinglines: (1) the relation between ontologies and lexica, (2) the role of ambiguity in ontologies, and (3) adiscussionoftheissuewhetherthedesignofontologiesshouldbeguidedbylinguisticdistinctions.24.2.4.1 Ontologies and LexicaThemaindiﬀerencebetweenanontologyandalexicon,alexicaldatabaseorathesaurusisthatallofthelatterarelinguisticobjectswhileontologiesarenot(theyarelogicaltheories).Inparticular,whileconceptsand properties are deﬁned on logical grounds (through necessary and suﬃcient conditions, expressedthrough axioms), words are organized in a lexicon with respect to lexical relations such as hypernymy(broaderterm),hyponymy(narrowerterm),meronymy/holonymy(part-of/has-part),antonymy(oppo-siteterm).Theserelationsarenotdeﬁnedatalogicallevel,butratherdeﬁnedlinguistically,e.g.,throughso-calleddiagnosticframes(Cruse,1986),i.e.,bytypicalsentencesdescribingthecontextinwhichapairofwordsmayormaynotoccurgivenacertainlexicalrelationamongthem.Thus,ontologicallydeﬁnedrelations do not correspond directly to lexical relations, or citing (Hirst, 2004): “lexical relationships
+between word senses mirror, perhaps imperfectly, certain relationships that hold between the categoriesthemselves .” Hirst also emphasizes the fact that ontologies are not linguistic objects (in contrast to lexi-
+consorlexicaldatabases):“ Anontology,afterall,isasetofcategoriesofobjectsorideasintheworld,along
+with certain relationships among them: it is not a linguistic object. A lexicon, on the other hand, depends,bydeﬁnition,onnaturallanguageandthewordsensesinit .”
+For example, in the case of WordNet (Fellbaum, 1998), the basic unit of representation, the synset,
+can be understood as a categorygrouping together words according to similar meaning and which can
+be organized taxonomically according to the hypernymy/hyponymy relation. Nevertheless, synsets arestill deﬁned on the lexical level and as noted by Hirst (2004) do not correspond directly to concepts,whicharedeﬁnedextensionallyandintensionallyinthecontextofcurrentKRrepresentationparadigms.However,ithastobenotedthatforthekindofapplicationsthatWordNetwasdesignedfor,itprobablydoes not matter what the semantics of a synset actually is. The semantics of a concept in an ontologyon the other hand, and more particularly in description logics, is however clearly extensional, i.e., themodel-theoreticinterpretationofaconcept Ccorrespondstoasetofobjectsinthedomainofdiscourse /Delta1.
+However,conceptsalsohaveanintensionaldimension,axiomatizedintermsofsuﬃcientandnecessaryconditions, which, in many cases, is accompanied by a natural language deﬁnition, as many aspects ofthe concept deﬁnition are out of scope of logical formalization or it is simply not worth (in terms of acost–beneﬁttrade-oﬀ)capturingallaspectsformally.Thenaturallanguagedeﬁnitionthusbasicallyservesasaninterfacetothehumanreaderwhorequiresaprecisecharacterizationoftheintensionoftheconceptinordertomakesurethattheyareusingitintheintendedway.24.2.4.2 Is There Ambiguity in Ontologies?An important question concerning the interface of ontologies and language is that of ambiguity. HereweadheretothepositionofNirenburgandRaskin(2001)inthesensethat,whilelanguageisinherentlyambiguous,thequestionofambiguityofconceptsdoessimplynotarise.Ontologies,assymbolicsystems,rely on unique symbols to identify meaning through their logical connections to other symbols, suchthataccordingtothisviewconceptsaresimplyuninterpretedsymbolsthatcanbemanipulatedaccordingto some well-deﬁned rules (a logical calculus typically). However, as people interact with an ontologythroughexploration,population,querying,etc.,ontologyconceptsaretypicallyassignednaturallanguage
+
+OntologyConstruction 585
+“labels” and deﬁnitions for human consumption. As these labels and deﬁnitions are speciﬁed in naturallanguage,theywillbeinherentlyambiguous,butthisconcernsthelabeland/ornaturallanguagedeﬁnitionofaconceptratherthantheconceptitself(asasymbol).
+Obviously,conceptscanbemoreorlesspreciselydeﬁned,thusleavingmoreorlessroomforinterpre-
+tation. In this case, concepts are relatively vague, but clearly not ambiguous in the sense that they havecompletelydiﬀerentintensions(meanings). Sometimesitissimplythecasethatthelogicalrepertoireathandisnotenoughtocapturethemeaningofaconceptaspreciselyaspossible(andinmanycasesthisiseven not necessary, depending on thegranularity thatis required for a certain application). An extremecase of a vague concept is that which corresponds to a word such as slim, which is inherently vague in
+thesensethattheboundariesofsuchaconceptarenotcrispandmembershiptotheconceptisclearlyamatterofdegree.Butobviously, slimisnotanambiguousconceptwithcompletelydiﬀerentintensions.
+24.2.4.3 The Role of Linguistic Distinctions in Ontology DesignHaving clariﬁed this, let us brieﬂy turn to the question whether ontologies should mirror distinctionsmade in natural language (possibly across languages). As we saw above, ontologies mirror the structureoftheworldandthusareaprioriindependentoflanguage.Thequestionabout“how”welearnaboutthestructure of the world or a speciﬁc domain is a completely orthogonal one and it might well be the casethat reading texts is the best way to learn about how the world is actually structured (we are not takinganystrongpositionhere!),butitdoescertainlynotfollowfromthisobservationthatanontologyshouldnecessarily mirror distinctions made in natural language. As argued by Hirst (2004), on the one handlanguage makes distinctions that are not relevant from an ontological point of view and on the otherhandthereareforinstancecategoriesthatarenotnecessarilylexicalizedinagivenlanguage,butcertainlyexist (e.g., the class of objects that can be ridden). It does also not mean that an ontology should reﬂect
+the distinctions that a particular language makes. Ontologies should and can thus never be speciﬁc to acertain language as they are concerned with existence rather than lexicalization and existence is, in ourview,languageindependent.
+A good example for the diﬀerences that can exist between the lexicalizations of a concept in two
+languagesisprovidedbyNirenburgandRaskin(2004):Giventhecomplexlexicalizationfortheconceptwallin Italian
+∗(inside wall: paretevs. outside wall: muro) and the simple lexicalization in English
+(wallin both cases), one might be tempted to include the distinction between an inside and an outside
+wall into a “Italianontology” but not into an “English ontology.” Clearly, such artifactsasan English orItalianontologydonotexist.Thisconclusionissimplywrong.Theonlyrelevantdecisioniswhethertheexistence of inside vs. outside walls is relevant for a certain domain or application. If yes, they will thenbeincludedintheontology(possiblyassubclassesof wall),otherwisenot.Thequestionwhetherthere
+are direct lexicalizations of these concepts in diﬀerent languages is an orthogonal issue and simply notrelevantfromtheontologicalpointofview.
+If the design of ontologies should not be based on linguistic distinctions, we certainly need a set of
+criteriathatcanguidetheprocessofdesigninganontology.WediscusssuchcriteriaaswellasthemainontologydesignmethodologiesandparadigmsinSection24.3.
+24.3 Ontology Engineering
+The question of how to best develop an ontology is certainly a diﬃcult one. Everyone who has triedto model an ontology even for a toy domain has faced the many design decisions that one has to takeinto account.
+†While there are clearly no deﬁnitive answers about how to best model a domain, a lot
+∗A similar distinction is made in Spanish, where paredrefers to the inside wall and the word murois used for the outside
+wall.
+†In many cases we model intuitively and then discover the many modeling alternatives only later when rethinking the
+ontology.
+
+586 HandbookofNaturalLanguageProcessing
+of research has been done on meta-level issues concerning ontology engineering. Here we will discussseveralofthese, inparticular: (1)Whichprinciplesshouldagoodontologyfollow? and(2)Whatdoesagoodmethodologyforbuildinganontologylooklike?Further,wewilldiscussbrieﬂy(3)methodologiesallowingtocollaborativelydesignontologiesand(4)theimportantissueofontologyreuseaswellas(5)diﬀerentengineeringparadigmstodesignontologies.
+24.3.1 Principles
+Ontologies are engineered artifacts that, according to Gruber (1993), need to fulﬁll their purpose andprovide the desired functionality. Gruber in fact formulated a number of principles that any ontologyshouldfollow:
+∗
+1.Clarity: An ontology should clearly state the meaning of the deﬁned vocabulary. The deﬁnition
+should be objective and independent of computational aspects. Ontologies should be formal inthe sense that deﬁnitions should be stated in the form of logical axioms (if possible), aiming forcompletedeﬁnitionsintermsofnecessaryandsuﬃcientconditions.Alldeﬁnitionsintheontologyshouldbedocumentedinnaturallanguage.
+2.Coherence:Ontheonehand,ontologiesshouldbecoherentinthesensethattheaxiomscontainedthereinshouldbelogicallyconsistent(i.e., thecorrespondinglogicaltheoryshouldbesatisﬁable).On the other hand, not everything can be axiomatized, such that the overall ontology should beconsistentwithrespecttothenaturallanguagedeﬁnitions.
+3.Extensibility :Anontologyshouldbedesignedinageneralwaysuchthatitanticipatesfurtherusage
+thatitwasnotconceivedfor.Thus,itshouldideallybeeasilyextensibleandstraightforwardlyallowfor the introduction of new concepts, relations, etc. This should be a monotonic process, i.e., itshouldnotalterthestructuredevelopedsofar.
+4.Minimal encoding bias: The speciﬁcation of the ontology should be as independent as possible ofissuesconcerningitsencodinginanyparticularontologylanguage.
+5.Minimalontologicalcommitment :Anontologyshouldmakeasfewassumptionsasnecessaryabout
+theworldbeingmodeled,thusallowingotherpartiestoreusetheontologyfortheirpurposes.
+As Gruber mentions, at the surface there seem to be some trade-oﬀs between the above mentioned
+principles(e.g.,betweenclarityandminimalontologicalcommitment),althoughtheaboveprinciplesarenotindirectopposition.TheinterestedreaderisreferredtoGruber(1993),formoredetailsandtwocasestudiesillustratinghowtheaboveprinciplescanbeapplied.
+24.3.2 Methodologies
+Thetaskofbuildinganontologyiscertainlynotatrivialoneandrequiresguidance.Thus,researchinthearea of ontology engineering has developed methodologies to guide the process of building an ontologyby describing some necessary steps to follow. Ontology engineering along these lines is a relatively newscience. In fact, the ﬁrst ontology engineering methodologies were proposed only in the early 1990s(comparePintoandMartins,2004),amongwhichtheonebyUscholdandKing(1995)hasbeenthemostinﬂuential,comprisingofthefollowingsteps:
+1. Identiﬁcationofthe purposeoftheontology
+2. Buildingtheontology,consistingofthefollowingsubsteps
+a.Ontologycapture (attheso-called knowledgelevel )
+b. Ontology coding
+c.Integration ofexistingontologies
+∗Theseprincipleshavebeenreformulatedhereinourownwords,tryingtocapturetheoriginalintentasfaithfullyaspossible.
+
+OntologyConstruction 587
+3. Evaluation4. Documentation
+Theidentiﬁcationofthe(intended)purposeofanontologyisacrucialstepwhenbuildinganontology.
+Forthis,avarietyoftechniquescanbeused,suchasdeﬁningcompetencyquestions(UscholdandKing,1995),carryingoutinterviewswithdomainexperts,analyzingdomain-speciﬁctexts,etc.(seeRusselandNorvig,2003).Thedevelopmentofcompetencyquestionsisanintegralpartofmanymethodologies,e.g.,in the uniﬁed methodology of Uschold (1996) and in the OntoKnowledge methodology by Sure et al.(2004).Competencyquestionsclearlydeﬁnethepurposeandscopeoftheontologybydeﬁningquestionsthattheontologyshouldbeabletoanswer.
+Theontology capture step has the goal of producing an informal model of the ontology by compare
+UscholdandKing(1995):
+1. Identifyingthe keyconceptsandrelationships inthedomain
+2. Preciseand unambiguousdeﬁnitions (innaturallanguage)oftheconceptsandrelationships
+3. Identiﬁcationofthe termsthatrefertotheseconceptsandrelations
+4.Agreeing onalloftheabove
+It is important to emphasize a few aspects of the ontology capture step as envisioned by Uschold and
+King. First, this step is targeted toward yielding agreement between a number of interested parties onthe relevant concepts and relationships. Second, it is worth noticing that ambiguity is something thataccording to the above model has no place in the ontology, where meaning should be clearly speciﬁed,thusremovingallambiguities.Third,UscholdandKingclearlydistinguishbetweentheconceptlevelandthe terms that are used to refer to these, thus clearly separating the ontological level from the linguisticlevel.
+Inthecodingstep,theinformalmodelproducedbytheontologybuildingstepisrepresentedinsome
+formallanguage.Thus,themethodologyofUscholdandKingclearlyseparatesthetaskofdevelopingtheontologyfromitsrepresentationinsomeformallanguage,thusmodelingtheontologyatthe“knowledgelevel” (Newell, 1982) and inherently avoiding encoding bias as required by Gruber. Uschold and King
+acknowledge that reusing or integrating other ontologies is a nontrivial problem. However, they alsostressthatontologyreuseandintegrationisacentralandcrucialtaskinthecomplexprocessofdesigninganontology.WediscussthisissuefurtherinSection24.3.2.2.
+ThemethodologybyUscholdandKingwaslatermergedwiththeTOVEmethodologybyGrüninger
+and Fox (1995) to produce the uniﬁed methodology (Uschold, 1996) that is graphically depicted in
+Figure24.3.Afterthisseminalwork,otherproposalsemerged,i.e.,METHONTOLOGYbyCorchoetal.(2005), OntoKnowledge by Sure et al. (2004), DOGMA by Spyns et al. (2008), and DILIGENT by Pintoetal.,(2004).
+The main lessons to be learned from all of the work on ontology engineering methodologies are the
+following:
+•Deﬁningthe purposeandscope ofanontologybeforehandisanimportantstepofallmethodologies,
+asemphasized,forexample,byUschold(1996)inthefollowing:“ Ifyoureallycannotclearlyidentify
+yourpurpose,youshouldconsiderwhetheritisworthproceedingtobuildtheontology,foryoumayencounter problems later. For example, there will be no clear guidelines for determining the natureandcontentoftheontology,norwillitbeclearbywhatcriteriaitcanbeevaluated. ”
+•Every ontology engineering project should follow a clearly deﬁned methodology. This decreasestheriskoffailure.
+•Manymethodologiesarecertainly“underspeciﬁed”inthesensethattheydonotspellouthowtoreachconsensusorhowtodecideoncertainmodelingissues.Thus,whiletheysupporttheoverallprocess(macro-level),theycertainlydonotsupportthedesignatthemicro-level.AnexceptionisDILIGENTwithaclearspeciﬁcationofhowtoreachconsensus(seeSection24.3.2.1below).
+
+588 HandbookofNaturalLanguageProcessing
+Identify purpose
+Identify scope
+Formalization
+EvaluationGeneral
+scenariosCompetency
+questions
+Reqs.
+documentTarget
+users
+Formal
+ontologyInformal
+modelPurpose
+FIGURE24.3 UniﬁedmethodologybyUscholdandGruninger, distilledfromthedescriptionsinUschold(1996).
+(FromUschold,M.,Buildingontologies:Towardsauniﬁedmethodology,In Proceedingsofthe16thAnnualConference
+oftheBritishComputerSpecialistGrouponExpertSystem ,Cambridge,U.K.,1996.)
+Having described the main ontology engineering methodologies, we now discuss issues related to
+ontology engineering and orthogonal to the methodology adopted, i.e., the collaborative design of
+ontologies,issuesrelatedtoontologyreuseaswellasdiﬀerent paradigms formodelingontologies.
+24.3.2.1 Collaborative Aspects
+Some deﬁnitions of ontologies state that they should describe a formalized and sharedvocabulary.∗
+For this reason, some researchers have worked on methodologies that are inherently collaborative in
+the sense that they support people (distributed parties in general) in the task of agreeing on certain
+modelingchoices.Experimentshaveshownthatwithoutanyrulesorconstraints,developinganontology
+in a distributed fashion can be very ineﬃcient (see Pinto and Tempich, 2004). As a solution to this,
+methodologies have been proposed that take into account the collaborative nature of ontology design.
+An example for this is the DILIGENT methodology (Pinto and Tempich, 2004; Tempich et al., 2005),
+which has provided a framework for collaborative design by way of a meta-ontology of—let us call
+them—“speech acts” that people can use to contribute to the discussion of an ongoing collaborative
+engineeringproject.The“speechacts”borrowheavilyfromthediscourserelationsdeﬁnedinRhetorical
+StructureTheory(MannandThompson,1983)andinthissenserepresentaniceexampleofhowworkin
+linguisticshasinﬂuencedontologyengineeringmethodologies.ParticipantsinDILIGENTthusformulate
+theircontributionsaccordingtoprimitivessuchas elaboration ,contrast ,counter-example ,
+etc. A decision is then reached by consensus on the basis of the arguments raised during the structured
+discussion.
+24.3.2.2 Ontology Reuse
+MentionedasacentralstepinthemethodologyofUscholdandKing,integrationisacrucialstepwithin
+ontology engineering as one of the purposes of an ontology is to allow for the reuse of knowledge in
+diﬀerentcontexts.Pintodistinguishesbetweendiﬀerenttypesof“ontologyreuse”(seePintoetal.,1999;
+PintoandMartins,2000):
+∗It is a debatable issue whether the conceptualization, the ontology formulated at the knowledge level or the ontology
+formalizedinagivenlanguageshouldbeshared.
+
+OntologyConstruction 589
+•Fusion or Merging: The process of unifying various ontologies (typically on similar or relateddomains) into a new ontology. Hereby, the contribution of each source ontology might not beclearlyidentiﬁable.
+•Composition or Integration: The process of selecting parts of certain ontologies (typically ondiﬀerent domains) and integrating them into a new ontology in a modular fashion as clearlyidentiﬁablesubmodulesdrawnfromotherontologies.
+An essential prerequisite to merging or, more generally speaking, the reuse of ontological resources
+are methods for ontology alignment (for a good overview see Euzenat and Shvaiko, 2007). Ontologyalignmentisconcernedwiththedevelopmentofmethodsforthealignmentofontologyelements(classes,properties)fromdiﬀerentontologies,basedontheirsemanticsimilarity.Ingeneral,threetypesofmethodscan be distinguished here: (1) structure-based methods that compute semantic similarity relative to thestructureoftheontology(similarclassessharesimilarparents, sisters, etc.); (2)instance-basedmethodsthat compute similarity based on the overlap in terms of instances for any given pair of classes (orproperties);(3)lexicalmethodsthatbuildonstringdistancebetweenthenamesofclasses/propertiesor,inmoresophisticatedversions,onthesimilarityoflinguisticcontextsofclass/propertyinstances(whichisonlytractableifasemanticallyannotatedtextualdatasetisavailable,e.g.,inthecaseofontology-basedinformation extraction). Once two ontologies have been aligned, they can be merged and queried in areallyintegratedway.
+A diﬀerent, and more recent strand of research in ontology reuse is concerned with identifying
+appropriate ontologies for reuse (merging, integration) from among the growing number of publishedontologies.Astheseincreaseinnumberaswellasquality,itwillbecomemucheasierto ﬁndratherthan
+toconstruct an appropriate ontology for a particular application. On the other hand, as more and more
+ontologiesbecomeavailable,thetaskofselectinganappropriateontologybecomesincreasinglydiﬃcult.Originally,thesolutiontothisproblemwassupposedtobehandledbyfoundationalontologylibrariesasdiscussedbyvanHeijstetal.(1997).However,inrecentyearsWeb-basedserviceslikeSwoogle,
+∗Watson,†
+and OntoSelect‡have been developed that enable a more data-driven approach to ontology search and
+retrieval.Animportantaspectoftheseservicesistherankingofretrievedontologiesrelativetoakeywordqueryforinstance,or,asisthecaseofOntoSelect(BuitelaarandEigner,2008),aquerydocument.AWeb-based ontology, deﬁned in RDFS or OWL, is in many respects just another Web document that can beindexed,stored,andretrieved.However,duetothefactthatontologiesarestructuredobjects,consistingof relations, possibly also pointing to other ontologies, structural criteria are needed to rank them.Along these lines, Alani et al. (2006) have deﬁned, for example, ontology ranking measures exploitingthe structure of the ontology, including measures of “class match,” “density,” “semantic similarity,”“betweenness,” etc. The last two measures are based on the assumption that ontologies (as structures)are well-balanced in the sense that the modeling granularity is homogeneous over the whole ontology.However, practical experience shows that this is not always the case, as some parts of the ontology willbe modeled more in detail than others. Another set of measures or rather criteria for ontology selectionhas been proposed by Sabou et al. (2006). The focus here is more on the application of ranked/selectedontologiesandthereforeincludessuchcriteriaas“modularization”(Canretrievedontologiesbesplitupinusefulmodules?),“returningontologycombinations”(Canretrievedontologiesbeusedincombination?),and“dealingwithinstances”(Doretrievedontologiesincludeinstancesaswellasclasses/properties?)nexttomorestandardmeasuressuchascoverage.
+Severalexamplesof “mergedontologies”canbefound intheNLPliterature. Thedesignof language-
+neutral ontologies with applicationin machine translation (MT) was an important research topic in theSENSUS project (Knight and Luk, 1994), especially in the context of interlingua MT systems.H o v ya n d
+∗http://swoogle.umbc.edu/
+†http://watson.kmi.open.ac.uk/WatsonWUI/
+‡http://olp.dfki.de/ontoselect
+
+590 HandbookofNaturalLanguageProcessing
+Nirenburg(1992),however,arguethatlanguageindependenceisalmostimpossibletoachieveinpracticeandproposeadata-drivenapproachinwhichalanguage-independentinterlinguais“approximated”byfoldinginvarioustaxonomiesfordiﬀerentlanguagesintoatargettaxonomythatiterativelygetsmoreandmore “language-neutral. ” The approach proceeds by processing the taxonomies in a top-down fashion,
+merging diﬀerent nodes as well as removing ﬁne-granular distinctions proprietary to a given language.OtherworkalongtheselinesinvolvesmerginglinguisticknowledgesourcessuchasWordNet(Fellbaum,1998) and Mikrokosmos (Nirenburg and Raskin, 2004) into an ontology called Omega (Philpot et al.,2008).ThishasbeenaccomplishedbyremovingthetoplevelsofWordNetandMikrokosmosandaligningthe remaining parts to a New Upper Level (NUL). The resulting and unlinked “taxonomic strands” (or“curtains” as the authors call them) are then cross-linked whereby the cross-linking is supported by anautomaticapproachsuggestingsomelinkstohumanusers.24.3.2.3 Engineering ParadigmsWe have seen above that early methodologies for building ontologies emerged in the 1990s. Ontologyengineering methodologies in essence describe the process of ontology engineering at a meta-level,describing which steps need to be carried out in order to actually build an ontology. In this sense theyare the ontology engineer’s companion, guiding them in the process of building an ontology. However,current methodologies do not provide any support for making decisions about whether to include aconceptornot,tomodelsomethingasaclassvs.anindividual(isBordeauxwineaclassoraninstance?),asapropertyvs.aclass(shouldwemodelcolorsasdatatypepropertyofobjectsorasaclass?).Becauseofthis,Hovyclaimsthattherearecurrentlynoacceptedmethodologiesforengineeringontologies(seeHovy,2005). Still, there is no contradiction with what we have said so far in this chapter, because the notionof“ontologyengineeringmethodology”intheknowledgerepresentationliteratureisdiﬀerentfromwhatHovycallsanengineeringmethodology,i.e.,asetofguidelinestofollowwhentakingmodelingdecisions.Thisisdiﬀerentfromtheunderstandingofamethodologyasameta-descriptionoftheprocessofontologyengineeringintermsofstepstofollow.WewillrefertoHovy’smethodologiesas engineeringparadigms .In
+thissensethereisindeedalackofacceptedontologyengineeringparadigms.Hovydistinguishesbetweenthefollowingparadigms
+∗thatcanbegenerallyattributedtodiﬀerentschoolsofthoughtanddisciplines:
+•The logico-philosophical/mathematical paradigm : Borrowing directly from the ideas of Aristotle
+in the sense that the diﬀerent properties (diﬀerentiae) of things are responsible for introducingontological distinctions in terms of subclasses. As Hovy mentions, this paradigm features anunrivaled elegance and beauty but is more diﬃcult to implement in practice as it introduces toomany distinctions (leading to a combinatorial explosion) which we as humans would not alwaysperceiveasintuitiveor cognitivelyplausible. Second, therearemanythingswhichwe ashumansperceiveasdiﬀerentconceptsbutwewouldhaveahardtimespecifyingwhatthediﬀerentiaactuallyare(e.g.,whataretheessentialpropertiesorfeaturesof democracy ?tociteanexamplefromHovy).
+Nevertheless, this is an important ontology modeling paradigm that has most notably lead tothe development of Formal Concept Analysis (Ganter and Wille, 1999) and inﬂuenced ontologyengineering methodologies such as the one by Bouaud et al. (1995) and further elaborationsthereof(Bachimontetal.,2002).AnumberofItalianresearchers(amongthemthepeoplebehindDOLCE (Masolo et al., 2003)) have recently started a project of building a knowledge repositorycollaborativelyrelyingondiﬀerentiatingcriteriadrawnfromformalontology(the SensoComune
+project
+†). They rely for this purpose on top-level distinctions such as whether something is
+countableornot,whetherithasownidentitycriteriaornot,etc.
+•Thecognitiveparadigm:Makingontologicaldistinctionsonthebasisofwhatisintuitivelyperceivedasdiﬀerentwithouttheneedforanexplicitandformalspeciﬁcationofthefeaturesonwhichclasses
+∗Wedonotregardthe“taxonomicalclarity”asadistinctparadigm,becauseitissomethingthatispursuedacrossparadigms,
+leadingtotheintroductionofconceptsordistinctionsatahigherleveltofostereconomyofrepresentation.
+†http://www.senso-comune.it/portale/
+
+OntologyConstruction 591
+diﬀer.Instead,inthecognitiveparadigm,themeaningofclassescanbecapturedthroughnaturallanguage deﬁnitions (as suggested by Gruber) delimiting the meaning of the class in question ascloseaspossibleandcontrastingitindirectlytootherconcepts.Wewouldnotgoasfarasregardingthis paradigm as “hopeless” as Hovy claims. In fact, we would claim that most of the ontologiesout there are produced in this way. We agree though that this makes ontological engineeringa highly subjective endeavor. But after all, everybody perceives the world diﬀerently and hasdiﬀerentneedsforengineeringanontology.Collaborativeengineeringmethodologies(seeSection24.3.2.1)areclearlyasteptowardreducingthissubjectivityandmakingpeopleatleasttoagreeondeﬁnitions.
+•Thelinguisticapproach:Thelinguisticapproachtypicallyassumesthatanontologyneedstoreﬂectlinguisticdistinctions.Thisisindeedproblematic(seeour“muro”vs.“parete”exampleabove).Anontologyengineeredonthebasisoflinguisticdistinctionsneedstobelanguage-speciﬁc(unlessonetriestokeepitlanguage-neutralbyanapproachaspursuedbyHovyandNirenburg(1992)),suchthatdistinctionslikethecount/massdistinctionproducediﬀerentontologiesindiﬀerentlanguages(e.g.,“furniture” beingamassnouninEnglishwhile “Möbel”beingcountableinGerman,seeagain
+Hirst (2004)). While this approach has inherent problems as there are concepts for which thereis no direct lexicalization (e.g., the so-called covert categories such as “all the things that can be
+wornonthebody,” seeHirst(2004))andontheotherhandtherearemanylinguisticdistinctions
+thatseemarbitraryandarenotdirectlyontologicallyrelevant(seeagainHirst(2004)onthis),theapproach has been successfully applied in developing language-speciﬁc thesauri as well as lexicaldatabasessuchasWordNet(Fellbaum,1998)(withaclearcognitiveinﬂuencethough).
+•The computer science approach: Here we certainly have diﬀerent subparadigms. On the onehand, we have people modeling ontologies as a database schema, i.e., for describing data. Suchdata description ontologies are typically well-deﬁned in scope and do not generate too muchcontroversy (after all one models the data that is already there). Applications of such schema-oriented ontologies are important for data integration where data from diﬀerent sources (e.g.,databases) needs to be integrated in order to allow for uniform access. On the other hand, thereare people modeling ontologies according to computational aspects (against Gruber’s advice!),organizingknowledgesothatreasoningcanbeaccomplishedeﬃciently.
+•The domain specialist approach : In many domains, people model taxonomies reﬂecting their
+understanding of a certain area (such as the gene ontology (The Gene Ontology Consortium,2001)). Theseontologiesaretypicallyorganizedforbrowsingorclassifyingresourcestofacilitateretrieval. In such a context it does not matter at all if ontologies are philosophically adequate orlogicallyconsistent.Infact,inmostcasesthetaxonomiesmodeledaresosimplethatthequestionoflogicalinconsistencydoesnotevenarise.Suchlightweightontologies(orshouldwerathercallthem vocabularies?) are so large and so dynamically evolving that it would be simply hopeless toapplyanymethodofformalsemanticstoensuretheircorrectness.
+While it seems inadequate to base ontology design decisions only on distinctions made in language
+(as argued above extensively), it is certainly the case that textual data can guide the development of anontology.Afterall,textsdealwiththeworldasperceivedbypeople,thusreﬂectingreality(atleastasitisperceived)andthushavingthepotentialtoguidetheontologyengineeringprocess.Forthisreason,somemethodologiescenteronthe(linguistic)analysisoftext.Forexample,Aussenac-Gillesetal.(2000)havesuggested to apply well-known techniques from NLP, such as term extraction, concordance extraction,clustering according to distributional similarity, etc., to the task of ontology engineering. Such a text-oriented approach to ontology engineering brings us ﬁnally to the topic of ontology learning , i.e., the
+question of how data-driven learning techniques (such as NLP techniques applied to a corpus of texts)cansupporttheprocessofontologyengineering.WediscussthisinmoredetailinSection24.4.
+
+592 HandbookofNaturalLanguageProcessing
+General axioms
+Axiom schemata
+Relation hierarchy
+Concept hierarchy
+Concepts
+Synonyms
+Terms river, country, nation, city, capital ...{ country, nation }c := country := < i(c), ||c||, Refc(c) >capital ≤c city, city ≤c  inhabited_GEflow_through (dom:river, range:GE)capital_of ≤R located_indisjoint (river, mountain)
+Relationsx (country(x)         y capital_of(y,x) Л z (capital_of(z,x)      y = z))
+FIGURE 24.4 Ontology learning “layer cake.” (Reproduced from Cimiano, P., Ontology Learning and Population
+fromText:Algorithms,EvaluationandApplication ,Springer-Verlag,NewYork,2006.)
+24.4 Ontology Learning
+As ontologies are domain descriptions that tend to evolve rapidly over time and between diﬀerent
+applications, there has been an increasing development in recent years toward learning or adapting
+ontologies dynamically, e.g., by analysis of a corresponding text collection. As human language is a
+primary mode of knowledge transfer, ontology learning from relevant text collections seems indeed a
+viableoption.Theterm “ontologylearning,” initsnarrowersensemeaning“ontologylearningfromtext,”
+hasbeencoinedbyMädcheandStaab(2004)(seealsoMädche,2002)whoproposedaninitialsetoftasks
+and methods for the automated generation of ontologies from natural language text—including term
+extraction,taxonomyinduction,andrelationlearning.
+Alloftheseaspectsofontologydevelopmentcanbeorganizedina“layercake”ofincreasinglycomplex
+subtasks(Cimiano,2006).Thislayercake,takinginspirationfromtheW3C’ssemanticWebtechnologies
+stack also known as semantic web layer cake∗has been proposed as a means for classifying approaches
+according to the fulﬁlled ontology learning tasks. As depicted by Figure 24.4, the most fundamental
+tasksinontologylearningareassumedtobetheacquisitionoflexicalinformationabout termsandtheir
+respective synonymy relationships.Atomic concepts(orclasses)andassociatedlabelsconstitutethethird
+level of the cake, followed by concept hierarchies , non-taxonomic relations(or properties), and relation
+hierarchies representedbyroleinclusionaxioms.Theupperpartofthestackcomprisestheinstantiation
+ofaxiomschemata (includingfunctionalcharacteristicsofpropertiesandclassdisjointness)aswellasthe
+deﬁnitionof generalaxioms .
+Unavoidably, like any diagrammatic visualization or model, this layer cake represents a simpliﬁed
+view on the ﬁeld of ontology learning. Since it has been tailored toward the requirements of ontology
+learning from text, it has a certain bias toward purely lexical approaches to ontology acquisition (e.g.,
+startingwiththeacquisitionofknowledgeabouttermsandsynonyms)withoutexplicitlydistinguishing
+between syntactic and semantic aspects of ontologies. Moreover, it does not commit to any particular
+ontology representation language and assumes an ideal, i.e., linear structure of the overall ontology
+learningprocess,withouttakingintoaccount,e.g.,theneedformethodologicalontologyevaluationand
+engineering. However, from our point of view, the ontology learning layer cake is a respectable ﬁrst
+∗http://www.w3.org/2001/sw/
+
+OntologyConstruction 593
+attempttoclassifyontologyacquisitionapproachesaswellastogiveastructuredoverviewoftheﬁeldofontologylearningfromtext.
+InSection24.4.1,wewillthereforeadoptthelayercakeasabasisforourstate-of-the-artreview,focusing
+onopen-domain approachestoontologylearningfromtext.Notethatnowadaysmoreandmoreresearch
+aims at developing domain-speciﬁc ontology learning, e.g., in the ﬁeld of bioinformatics (Alexopoulouetal.,2008).Sincemanyoftheseapproachescandrawuponlargeamountsofhigh-qualitydataordomain-speciﬁcheuristics,e.g.,theyoftenperformbetterthangeneralpurposeontologylearningmethods.
+24.4.1 State of the Art
+24.4.1.1 TermsTermextractionisaprerequisiteforallotheraspectsofontologylearningfromtext.Termsarelinguisticrealizationsofdomain-speciﬁcconceptsandhencearequiredinputforalloftheotherlayershigherupinthelayercake.Theliteratureprovidesmanyexamplesoftermextractionmethodsthatcouldbeusedhere.Mostofthesearebasedoninformationretrievalmethodsfortermindexing(SaltonandBuckley,1998),butmanyalsousemethodsfromnaturallanguageprocessing(seePearson,1998;FrantziandAnaniadou,1999;MaynardandAnaniadou,2001;Meyer,2001;Ibekwe-SanJuanetal.,2007).Termextractionbuildson syntactic and morphological analysis to identify and decompose complex nouns and noun phrases(compounds).
+As such analysis tools are not always readily available for every language and technical domain or
+sublanguage,muchoftheresearchontermextractionforontologylearninghasremainedratherlimited.State-of-the-artimplementationsmostlyrunapart-of-speechtaggeroverthedomaincorpususedfortheontology learning task and identifying terms over manually constructed ad hoc patterns. Additionally,and in order to identify only relevant term candidates, a statistical processing step will be included thatcompares the distribution of terms between corpora. The most widely used statistical measures for thisincludeTFIDF(Salton,1991),entropy(Gray,1990),andC-value/NC-value(Frantzietal.,1998),whereasthe signiﬁcance of term occurrences is determined by comparison with a reference corpus (Basili et al.,2001;Kilgarriﬀ,2001;Drouin,2004)orbyconsideringstructuralinformationthatisprovidedbyHTMLor XML documents (Brunzel, 2008). For a good overview of term extraction methods, see Witschel(2005) and Jacquemin (2001). An ontology learning system that builds primarily on term extraction isTERMINAE(BiebowandSzulman,1999).24.4.1.2 SynonymsThe synonymy level addresses the acquisition of semantic variants, i.e., words as well as more complexterms that have similar meanings and can be mutually exchanged within semantically similar contexts.Synonymy can be deﬁned within as well as between languages, where the latter in fact concerns theacquisition of term translations. Much of the work on synonymy acquisition has focused on the useof WordNet for English synonyms and EuroWordNet for multilingual synonyms and translations. Animportantaspectofthisworkistheidentiﬁcationoftheappropriatesenseofthewordinquestion,whichdeterminesthesetofsynonymsthataretobeextracted. Synonymydetectionisthereforecloselyrelatedto word sense disambiguation (cf. Lesk, 1986; Yarowsky, 1992) with some approaches directly applyingsensedisambiguationforsynonymyacquisition(Turcatoetal., 2000; BuitelaarandSacaleanu, 2002). Inthecaseoftermsconsistingofseveralwords,ambiguityusuallyisaminorproblembutthechallengehereistoidentifysimilarityacrossasetoftermswithdiﬀerentlexicalstructures.HamonandNazarenko(2001)have for example developed a compositional projection approach in which they assume that complextermsaresynonymsincasetheircomponentsarethesameorsynonymsaccordingtosomegivenlexicon.
+Incontrasttoallsuchapproachesthatarebasedonexistingsynonymycollectionsandthereforetop-
+down, other, more bottom-up approaches have focused on algorithms for the dynamic acquisition ofsynonymsthroughclustering.SuchalgorithmsarebasedprimarilyonHarris’sdistributionalhypothesis,
+
+594 HandbookofNaturalLanguageProcessing
+whichstatesroughlythatwordsaresimilarinmeaningtotheextentinwhichtheysharesyntacticcontexts,see Harris (1954, 1968) for seminal work as well as more recent work building on this assumption, e.g.,Hindle(1990)andLinandPantel(2001b,2002).RelatedworkonLatentSemanticIndexingandsimilaralgorithms(LSI,LSA,PLSI)emergedoutoftermindexingforinformationretrieval.LSIalgorithmsapplydimension reduction techniques to reveal inherent connections between words that may lead to groupformation (Schütze, 1993; Landauer and Dumais, 1997). Given the growing importance of the Web inknowledge acquisition, such methods are now increasingly applied also to Web-based data sets (e.g.,Turney,2001;BaroniandBisi,2004).24.4.1.3 ConceptsTheextractionofconceptsfromtextiscontroversialasitisnotclearwhatexactlyconstitutesaconcept.Inourview,conceptlearningshouldprovideanintensionaldeﬁnitionoftheconcept,anextensionalsetof concept instances, and a set of linguistic realizations for the concept. Most of the research in conceptlearningaddressesthequestionfromalinguisticortextualperspective,regardingconceptsasclustersofrelatedterms.Theseapproachesthereforeoverlapwiththoseintermextractionandsynonymydetectionasdiscussedabove.
+Alternatively, researchers have approached the problem from an extensional point of view. Evans
+(2003),forexample,derivedconceptsfromhierarchiesofnamedentitiesthatwereextractedfromtextualdocuments. In contrast, the KnowItAll system (Etzioni et al., 2004) aims at learning the extension ofpre-deﬁned concepts like movie actors as they appear in Web documents. In the approach of Evans theconceptsaswellastheirextensionsarederivedsimultaneously,whereastheKnowItAllsystemessentiallypopulatesexistingconceptswithinstances.Thepopulationofexistingconceptswithinstancesistypicallyreferredtoas ontologypopulation.
+Finally, intensional concept learning includes the generation of formal and informal deﬁnitions. The
+generation of concept deﬁnitions can be based for example on the generation of a textual description intheformofagloss.Researchonthisareaishoweverquiterare.Infacttheonlyworkreportedinthisareais the OntoLearn system that derives glosses for domain-speciﬁc concepts from WordNet, text corporaandotherWebresources(Velardietal.,2005).Formaldeﬁnitiongeneration,incontrast,willbebasedontheextractionofrelationsandaxiomsasdiscussedinSections24.4.1.5and24.4.1.6.24.4.1.4 Concept HierarchyThebackboneofanyontologyisconstitutedbyasetoftaxonomicrelationshipsamongclasses.Eachoftheclassescanbedeﬁnedintensionally,e.g.,byadescriptivelabeloritsrelationshipstootherclasses,aswellasextensionallybyspecifyingasetofinstancesbelongingtothisclass.Sincetheunderlyingtaxonomyofanontology,independentlyoftheunderlyingontologyrepresentationlanguage,isofcrucialimportancefor the use of ontologies as a means of abstraction, many ontology learning approaches have focusedon the extraction of concept hierarchies. The vast majority of these approaches rely on lexico-syntacticpatternsforhyponymyextraction,commonlyknownas Hearstpatterns,namedafterMartiHearst,who
+authoredaninﬂuentialandcommonlycitedpaperonthistopic(Hearst,1992)(seealsoadescriptionofthecurrentstateoftheartinAugerandBarriere,2008).ThefollowingexamplesaretakenfromHearst’sseminalpublication:
+•SuchNPas{NP,}*{or |and}NP(e.g.,“religiousbuildingssuchaschurchesandmosques ”)
+•NP{,NP}*{,}{and |or}otherNP(e.g.,“ senators,governors,andotherpoliticians ”)
+•NP{,}including{NP,}*{or |and}NP(e.g.,“greenvegetables,includingbeansandspinach ”)
+•NP{,}especially{NP,}*{or |and}NP(e.g.,“oﬃcefurniture,especiallydesksandbookcases ”)
+Thesepatterns,essentiallylinguisticexpressionsencodingbothlexicalandsyntacticconstraints,have
+showntobeahelpfulmeanstotheacquisitionoftaxonomicknowledgesuchashyponymyrelationshipsor categories of named entities. Additional patterns such as the following have been proposed by OgataandCollier(2004),Cimianoetal.(2004),Marhsmanetal.(2002),andothers:
+
+OntologyConstruction 595
+•Exception:NPexceptforNP(e.g.,“European countries exceptfor Spain”)
+•Apposition:NP,thecapitalofNP(e.g.,“ London,the capitalofEngland”)
+•Deﬁnites:thePNhotel(e.g.,“the Hiltonhotel ”)
+•Copula:NPisaNP(e.g.,“Brazil isaSouthAmerican country”)
+•Doubly anchored hyponym patterns as suggested by Kozareva et al. (2008), (e.g., presidents such
+asClintonandPN)
+Thelatterkindsofpatternsarecalled“doublyanchored”becausetheynotonlyincludethesuperclassor
+hyponym,i.e.,“presidents”intheaboveexample,butalsoanadditionalinstance,subclassor,inlinguisticterms, a hyponym, i.e., “Clinton” in the given example. The aim is to have more “focused” patternsyielding a higher precision, which in this case can be used to extract other presidents than Clinton. Theabove pattern would for example match an occurrence such as “presidents such as Clinton and Bush,”where“Bush”wouldbeextractedasanewinstanceoftheclassofpresidents.
+The performance of diﬀerent patterns has been systematically investigated (e.g., Aussenac-Gilles and
+Jacques,2008).Finally,alargebodyofworkondictionaryparsingreachingbacktothe1980sand1990s(Cimiano,2006,Chapter6)aswellasrecentsimilarworkonknowledgeextractionfromonlineglossaries(Hovyetal.,2003)andWikipedia(Ruiz-Casadoetal.,2005;Suhetal.,2006;WeberandBuitelaar,2006)buildsalsoonlexico-syntacticpatterns.
+Common to all pattern-based approaches to hyponymy extraction is the problem of data sparseness.
+Since occurrences of lexico-syntactic patterns are comparatively rare in naturally occurring text, mostresearch nowadays concentrates on the use of search engines and therefore indirectly using the Webitself as a data set (Resnik and Smith, 2003; Cimiano et al., 2005; Blohm and Cimiano, 2007)—althoughthe enormous syntactic and semantic heterogeneity of Web documents poses many new challenges.Additionally, approaches toward the automatic generation of lexico-syntactic patterns (Etzioni et al.,2004; Pantel and Pennacchiotti, 2006; Blohm et al., 2007; Brewster et al., 2007) also aim at increasingﬂexibilityandeﬀectivenessinhyponymyextraction.
+Asetofverydiﬀerentapproachesrelyinsteadonhierarchicalclusteringtechniquesinordertogroup
+terms with similar linguistic behavior into hierarchically arranged clusters (Caraballo, 1999; Faure andNédellec, 1999; Cimiano et al., 2004). The clusters obtained by this kind of approach are assumedto represent classes, the meaning of which is constrained by a characterizing set of terms. Clusteringtechniques clearly have the advantage of yielding a higher recall than pattern-based approaches becausethey are less dependent on more or less explicit manifestations of hyponymy. On the other hand, thegenerated clusters, respectively classes, often lack meaningful labels, although several approaches to theautomaticlabelingofclustershavebeenproposedinrecentyears(Kashyapetal.,2005).Clustering-basedtaxonomy induction seems to yield only low precision, especially on small to medium size corpora, ashereagaindatasparsenessconstitutesaseriouschallenge,e.g.,PantelandPennacchiotti(2006)claimthatclusteringmethodscannotworkreliablyoncorporawithfewerthan100millionwords.24.4.1.5 Relation ExtractionSynonymyandconcepthierarchiesdependontheparadigmaticaspectoflanguage,i.e.,theextentinwhichwords, terms, or more complex linguistic units can be exchanged across diﬀerent contexts (sentences,paragraphs,ormoreextensivediscourses).Relationextractionhowever,asdiscussedhere,dependsratheronthesyntagmaticaspectof language, i.e., theextent inwhichmore orless complex linguisticunitsareconnectedwithinasentence,paragraph,ormoreextensivediscourse.Syntagmaticrelationsaregivenbysyntactic structure and have been, for example, exploited in the acquisition of non-taxonomic relations(orobjectproperties)fromtext,speciﬁcallythroughtheanalysisofverbsandtheirargumentsasdeﬁnedlexically by subcategorization frames (see, e.g., Schutz and Buitelaar, 2005 on sports text and Ciaramitaetal.,2005onbiomedicaltext).Relationextractionisthereforealsoverymuchrelatedtotheproblemofacquiring selection restrictions for verb arguments as witnessed for instance by the ASIUM system thatenables an integrated acquisition of relations and subcategorization frames for the verbs that underlie
+
+596 HandbookofNaturalLanguageProcessing
+these relations (Faure and Poibeau, 2000). A major challenge in this is however the identiﬁcation of theright level of abstraction in determining the most speciﬁc restrictions for the arguments (domain andrangeinRDF/OWL)oftheextractedrelation(seeCimianoetal.,2006forsomesolutions).
+Other methods for relation extraction include work based on association rules (Mädche and Staab,
+2000; Antunes, 2007), in combination with shallow linguistic analysis on the level of part of speech andchunking,andcollocations(Heyeretal.,2001).Suchapproachesrequirehoweverahigherdegreeofuserinteractionasthegeneratedrelationslackanymeaningfulinterpretationaswellasnamingor“labeling”oftherelation(butseeKavalecandSvátek,2005forsomerelationlabelingexperiments).
+Finally,asitisoneofthemostfrequentlyusedrelationsinontologymodeling,theextractionofpart-of
+(“meronymy”)relationsissupportedbymanyontologylearningframeworks,suchasOntoLearn(Velardietal.,2005)andTextToOnto(MädcheandVolz,2001).Mostoftheapproachesformeronymyextractionareagainbasedonlexico-syntacticpatterns(Girjuetal.,2006;vanHageetal.,2006)asproposedoriginallybyBerlandandCharniak(1999).24.4.1.6 Axiom Schemata and General AxiomsThetaskoflearninggeneralaxiomsandaxiomschematahasnotattractedmuchattentionintheontologylearning community so far. Some early work includes the automatic generation of disjointness axioms(Haase and Völker, 2005; Völker et al., 2007) and complex class descriptions (Völker et al., 2007). Inaddition, semiautomatic approaches to taxonomy reﬁnement (Völker and Rudolph, 2008b) and theacquisitionofgeneraldomain-rangerestrictions(VölkerandRudolph,2008a)basedonFormalConceptAnalysis have been proposed in recent years. Closely related is also work on learning paraphrases (LinandPantel,2001a)andlexicalentailmentsaswellasonconceptlearninginInductiveLogicProgramming(see,e.g.,CohenandHirsh,1994;Espositoetal.,2004;Fanizzietal.,2004).ApproachestotheautomaticaxiomatizationofWordNethavebeenproposed,forexample,byNavigliandVelardi(2006)aswellasbyMoldovanetal.(2007),whoevaluatedtheirapproachinthecontextofaquestionansweringapplication.
+24.5 Summary
+Inthischapterwehaveprovidedanoverviewofthecurrent stateoftheart inontologyconstructionwithan
+emphasisonNLP-relatedissuessuchastext-drivenontologyengineeringandontologylearningmethods.Inordertoputthesemethodsintothebroaderperspectiveofknowledgeengineeringapplicationsofthiswork, we also presented a discussion of ontology research itself, in its philosophical origins and historicbackground as well as in terms of methodologies in ontology engineering. We feel that a thoroughdiscussionoftheseaspectsoftheresearchisneededinordertoappreciatetheunderlyingdiﬃcultiesandchallengesintheﬁeldofdata(text)-drivenontologyconstruction.
+In essence, most of the techniques needed for text-driven ontology construction are already available
+andwell-understoodasdiscussedinSection24.4.However,themostimportantchallengeistointegratethesediﬀerenttechniquesinsuchawaythateﬀective(highperformance) andeﬃcient(robust andfast)ontology engineering systems can be designed, with the underlying NLP technique being seamlesslyintegrated and transparent to the domain knowledge engineer. However, as we are realistically still faraway from such integrated systems, it is currently much more worthwhile to take stock of the diﬀerentunderlyingtechnologiesthatarecentraltotheintegratedtext-drivenontologyconstructiontask.
+Acknowledgments
+WewouldliketothankNathalieAussenac-GillesandEduardHovyfortheirextensiveandconstructivereviewing, as well as Soﬁa Pinto and Sebastian Rudolph for providing further feedback, all of which
+
+OntologyConstruction 597
+helpedinimprovingthischapter.Howeverasalways,anyerrorsorshortcomingsthatremainarethesoleresponsibilityoftheauthors.
+TheworkpresentedinthispaperhasbeenfundedinpartbyScienceFoundationIrelandunderGrant
+No. SFI/08/CE/I1380 for the Lion-2 project, the Multipla project sponsored by the German ResearchFoundation (DFG) under grant number 38457858 as well as by the European Commission under grantnumberIST-2005-027595(NeOnproject).
+References
+Alani, H., Ch. Brewster, and N. Shadbolt. Ranking ontologies with AKTiveRank. In Proceedings of the
+FifthInternationalSemanticWebConference(ISWC) ,Athens,GA,pp.1–15,2006.
+Alexopoulou, D., T. Wächter, L. Pickersgill, C. Eyre, and M. Schroeder. Terminologies for text-mining;
+an experiment in the lipoprotein metabolism domain. BMC Bioinformatics, 9(Suppl 4):S2, April
+2008.
+Antunes,C.MiningrulesintheOnto4ARframeworkforupdatingdomainontologies.In Proceedingsof
+theIADIS EuropeanConferenceon DataMining (IADIS-ECDM’07) , Lisbon, Portugal, pp.95–101.
+IADISPress,2007.
+Artale, A., E. Franconi, N. Guarino, and L. Pazzi. Part-whole relations in object-centered systems: An
+overview. DataKnowledgeEngineering ,20(3):347–383,1996.
+Auger, A. and C. Barriere. Pattern based approaches to semantic relation extraction: A state-of-the-art.
+Terminology, 14(1):1–19, 2008. (Special issue on Pattern-based approaches to semantic relationextraction.)
+Aussenac-Gilles, N. and M.-P. Jacques. Designing and evaluating patterns for relation acquisition
+from texts with CAMALEON. Terminology, 14(1):45–73, 2008. (Special issue on Pattern-based
+approachestosemanticrelationextraction.)
+Aussenac-Gilles, N., B. Biebow, and S. Szulman. Revisiting ontology design: A methodology based
+on corpus analysis. In Proceedings of the International Conference on Knowledge Engineering and
+KnowledgeManagement(EKAW),Juan-les-Pins,France,pp.172–188,2000.
+Baader,F.,D.Calvanese,D.McGuiness,D.Nardi,andP.Patel-Schneider,editors. TheDescriptionLogic
+Handbook.CambridgeUniversityPress,Cambridge,U.K.,2003.
+Bachimont, B., A. Isaac, and R. Troncy. Semantic commitment for designing ontologies: A proposal.
+InProceedings of the 13th International Conference on Knowledge Engineering and Knowledge
+Management(EKAW) ,Siguenza,Spain,pp.114–121,2002.
+Baroni,M.andS.Bisi.Usingcooccurrencestatisticsandthewebtodiscoversynonymsinatechnicallan-
+guage.In ProceedingsoftheFourthInternationalConferenceonLanguageResourcesandEvaluation
+(LREC),Lisbon,Portugal,pp.1725–1728,2004.
+Basili,R.,A.Moschitti,M.T.Pazienza,andF.M.Zanzotto.Acontrastiveapproachtotermextraction.In
+Proceedings of the Fourth Terminology and Artiﬁcial Intelligence Conference (TIA) ,N a n c y ,F r a n c e ,
+2001.
+Bechhofer,S.AnintroductiontoOWL.TutorialslidesfortheSemanticWebTutorialatISWC’08,2008.
+http://kmi.open.ac.uk/events/iswc08-semantic-web-intro/
+Bechhofer,S.,F.vanHarmelen,J.Hendler,I.Horrocks,D.L.McGuinees,P.F.Patel-Schneider,andL.A.
+Stein.OWLWebOntologyLanguageReference.http://www.w3.org/TR/owl-ref,2004.
+Berland, M. and E. Charniak. Finding parts in very large corpora. In Proceedings of the 37th Annual
+MeetingoftheAssociationforComputationalLinguistics(ACL) ,CollegePark,MD,pp.57–64,1999.
+Berners-Lee,T.,J.Hendler,andO.Lassila.TheSemanticWeb. ScientiﬁcAmerican,284(5):34–43,2001.
+Biebow,B.andS.Szulman.TERMINAE:Alinguistic-basedtoolforthebuildingofadomainontology.In
+Proceedingsofthe11thWorkshoponKnowledgeAcquisition,ModelingandManagement(EKAW) ,
+Dagstuhl,Germany,pp.49–66,1999.
+
+598 HandbookofNaturalLanguageProcessing
+Blohm, S. and P. Cimiano. Using the web to reduce data sparseness in pattern-based information
+extraction.In Proceedingsofthe11thEuropeanConferenceonPrinciplesandPracticeofKnowledge
+DiscoveryinDatabases(PKDD),Warsaw,Poland,pp.18–29,2007.
+Blohm, S., P. Cimiano, and E. Stemle. Harvesting relations from the web—Quantiﬁying the impact
+of ﬁltering functions. In Proceedings of the 22nd Conference on Artiﬁcial Intelligence (AAAI-07),
+Vancouver,Canada,pp.1316–1323,2007.
+Bouaud, J., B. Bachimont, J. Charlet, and P. Zweigenbaum. Methodological principles for structuring
+an “ontology.” In Proceedings of the IJCAI’95 Workshop on Basic Ontological Issues in Knowledge
+Sharing,Montreal,Canada,1995.
+Brewster,C.,J.Iria,Z.Zhang,F.Ciravegna,L.Guthrie,andY.Wilks.Dynamiciterativeontologylearning.
+InProceedingsof the International Conferenceon RecentAdvances in Natural LanguageProcessing
+(RANLP),Borovets,Bulgaria,September2007.
+Brickley,D.andR.V.Guha.RDFVocabularyDescriptionLanguage1.0:RDFSchema.Technicalreport,
+W3C,2002.W3CWorkingDraft.http://www.w3.org/TR/rdf-schema/.
+Brunzel, M. The XTREEM methods for ontology learning from web documents. In P. Buitelaar and P.
+Cimiano, editors, Ontology Learning and Population: Bridging the Gap between Text and Knowl-
+edge,Frontiers in Artiﬁcial Intelligence and Applications , 167:3–26. IOS Press, Amsterdam, the
+Netherlands,2008.
+Buitelaar, P. and T. Eigner. Ontology search with the OntoSelect Ontology Library. In Proceedings of
+the International Conference on Lexical Resources and Evaluation (LREC) , Marrakech, Morocco,
+pp.1030–1033.ELRA,2008.
+Buitelaar, P. and B. Sacaleanu. Extending synsets with medical terms. In Proceedings of the First
+InternationalWordNetConference ,Mysore,India,January21–25,2002.
+Caraballo,S.A.Automaticconstructionofahypernym-labelednounhierarchyfromtext.In Proceedings
+of the 37th Annual Meeting of the Association for Computational Linguistics (ACL) , College Park,
+MD,pp.120–126,1999.
+Ciaramita,M.,A.Gangemi,E.Ratsch,J.Saric,andI.Rojas.Unsupervisedlearningofsemanticrelations
+between concepts of a molecular biology ontology. In Proceedings of the 19th International Joint
+ConferenceonArtiﬁcialIntelligence(IJCAI) ,Edinburg,U.K.,pp.659–664,2005.
+Cimiano, P. Ontology Learning and Population from Text: Algorithms, Evaluation and Applications .
+SpringerVerlag,NewYork,2006.
+Cimiano, P., S. Handschuh, and S. Staab. Towards the self-annotating web. In Proceedings of the 13th
+WorldWideWebConference(WWW),NewYork,pp.462–471,2004.
+Cimiano,P.,M.Hartung,andE.Ratsch.Findingtheappropriategeneralizationlevelforbinaryrelations
+extracted from the Genia corpus. In Proceedings of the International Conference on Language
+ResourcesandEvaluation(LREC) ,Genoa,Italy,pp.161–169,2006.
+Cimiano, P., A. Hotho, and S. Staab. Comparing conceptual, divisive and agglomerative clustering for
+learningtaxonomiesfromtext. In ProceedingsoftheEuropeanConferenceonArtiﬁcialIntelligence
+(ECAI),Valencia,Spain,pp.435–439,2004.
+Cimiano,P.,G.Ladwig,andS.Staab.Gimme’thecontext:Context-drivenautomaticsemanticannotation
+withC-PANKOW.In Proceedingsofthe14thWorldWideWebConference(WWW) ,Chiba,Japan,
+pp.332–341,2005.
+Cohen,W.andH.Hirsh.Learningtheclassicdescriptionlogic:Theoreticalandexperimentalresults.In
+Proceedings of the Fourth International Conference on Principles of Knowledge Representation andReasoning(KR),Bonn,Germany,pp.121–133.MorganKaufmann,1994.
+Conolly, D., F. van Harmelen, I. Horrocks, D.L. McGuiness, P.F. Patel-Schneider, and L.A. Stein.
+Daml+oil reference description. W3C Note, December 2001. Available at http://www.w3.org/TR/2001/NOTE-daml+oil-reference-20011218
+Corcho, O., M. Fernández-López, A. Gómez-Pérez, and A. López-Cima. Building legal ontologies with
+METHONTOLOGY and WebODE. In R. Benjamins, P. Casanovas, A. Gangemi, and B. Selic,
+
+OntologyConstruction 599
+editors,Law and the Semantic Web: Legal Ontologies, Methodologies, Legal Information Retrieval,
+and Applications , volume 3369 of Lecture Notes in Computer Science. Springer, Berlin, Germany,
+pp.142–157,2005.
+Cruse,D.A. LexicalSemantics .CambridgeUniversityPress,Cambridge,U.K.,1986.
+Drouin, P. Detection of domain speciﬁc terminology using corpora comparison. In Proceedings of the
+Fourth International Conference on Language Resources and Evaluation (LREC) , Lisbon, Portugal,
+pp.79–82,2004.
+Esposito, F., N. Fanizzi, L. Iannone, I. Palmisano, and G. Semeraro. Knowledge-intensive induction of
+terminologies from metadata. In Proceedings of the Third International Semantic Web Conference
+(ISWC), Hiroshima, Japan, volume 3298 of Lecture Notes in Computer Science, pp. 441–455.
+Springer,Berlin,Germany,2004.
+Etzioni, O., M. Cafarella, D. Downey, S. Kok, A.-M. Popescu, T. Shaked, S. Soderland, D.S. Weld, and
+A. Yates. Web-scale information extraction in KnowItAll (preliminary results). In Proceedings of
+the13thWorldWideWebConference(WWW),NewYork,pp.100–109,2004.
+Euzenat,J.andP.Shvaiko. OntologyMatching .Springer,Heidelberg,Germany,2007.
+Evans, R. Aframework for named entityrecognition intheopen domain. In Proceedings of the Interna-
+tionalConferenceonRecentAdvancesinNaturalLanguageProcessing(RANLP) ,Borovets,Bulgaria,
+pp.137–144,2003.
+Fanizzi, N., L. Iannone, I. Palmisano, and G. Semeraro. Concept formation in expressive description
+logics. In Proceedings of the 15th European Conference on Machine Learning (ECML) , Pisa, Italy
+pp.99–110.SpringerVerlag,2004.
+Faure, D.andC.Nédellec. Knowledgeacquisitionofpredicateargumentstructuresfromtechnicaltexts
+using machine learning: The system asium. In Proceedings of the International Conference on
+Knowledge Engineering and Knowledge Management (EKAW), Dagstuhl Castle, Germany, Lecture
+NotesinComputerScience,1621:329–334.Springer,1999.
+Faure,D.andT.Poibeau.FirstexperiencesofusingsemanticknowledgelearnedbyASIUMforinforma-
+tion extraction task using INTEX. In S. Staab, A. Mädche, C. Nedellec, and P. Wiemer-Hastings,editors,Proceedings of the First Workshop on Ontology Learning (OL) at the 14th European Con-
+ference on Artiﬁcial Intelligence (ECAI), Berlin, Germany, vol. 31 of CEUR Workshop Proceedings.
+CEUR-WS.org,2000.
+Fellbaum,C. WordNet,anElectronicLexicalDatabase .MITPress,Cambridge,MA,1998.
+Fensel, D., F. van Harmelen, I. Horrocks, D.L. McGuiness, and P.F. Patel-Schneider. OIL: An ontology
+infrastructureforthesemanticweb. IEEEIntelligentSystems,16(2):38–45,2001.
+Frantzi,K.andS.Ananiadou.TheC-value/NC-valuedomainindependentmethodformulti-wordterm
+extraction. JournalofNaturalLanguageProcessing ,6(3):145–179,1999.
+Frantzi,K.,S.Ananiadou,andJ.Tsuji.TheC-value/NC-valuemethodofautomaticrecognitionformulti-
+word terms. In Proceedings of the European Conference on Digital Libraries (ECDL),H e r a k l i o n ,
+Crete,Greece,pp.585–604,1998.
+Ganter, B. and R. Wille. Formal Concept Analysis—Mathematical Foundations . Springer Verlag,
+Heidelberg,Germany,1999.
+Genesereth,M.R.andR.E.Fikes.Knowledgeinterchangeformatversion3.0referencemanual.Technical
+ReportLogic-92-1,ComputerScienceDepartment,StanfordUniversity,Stanford,CA,1992.
+Girju, R., A. Badulescu, and D. Moldovan. Automatic discovery of part-whole relations. Computational
+Linguistics ,32(1):83–135,2006.
+Göckel,R. Lexiconphilosophicum,quotanquamclavephilosophicaeforesaperiuntur .GeorgOlmsVerlag,
+Hildesheim,Germany,1613.
+Gray,R.M. EntropyandInformationTheory.Springer,NewYork,1990.
+Grenon, P., B. Smith, and L. Goldberg. Biodynamic ontology: Applying bfo in the biomedical domain.
+In D.M. Pisanelli, editor, Ontologies in Medicine, Studies in Health Technology and Informatics ,
+102:20–38.IOSPress,Amsterdam,theNetherlands,2004.
+
+600 HandbookofNaturalLanguageProcessing
+Gruber,T.R.Towardprinciplesforthedesignofontologiesusedforknowledgesharing.In FormalAnalysis
+inConceptualAnalysisandKnowledgeRepresentation .Kluwer,Amsterdam,theNetherlands,1993.
+Grüninger, M. and M. Fox. The logic of enterprise modelling. In J. Brown and D. O’Sullivan, editors,
+ReengineeringtheEnterprise .Chapman&Hall,London,U.K.,1995.
+Guarino, N. Understanding, building and using ontologies. International Journal of Human Computer
+Studies,46(2):293–310,1997.
+Guarino,N.Formalontologyandinformationsystems.In ProceedingsofFormalOntologyinInformation
+Systems(FOIS),Trento,Italy,pp.3–15,1998a.
+Guarino, N. Some ontological principles for designing upper level lexical resources. In Proceedings of
+First International Conference on Language Resources and Evaluation (LREC) , Granada, Spain,
+pp.527–534,1998b.
+Guarino,N.andP.Giaretta.Ontologiesandknowledgebases:Towardsaterminologicalclariﬁcation.In
+N.J.I.Mars,editor, TowardsVeryLargeKnowledgeBases.IOSPress,Amsterdam,theNetherlands,
+1995.
+Haase,P.andJ.Völker. Ontologylearningandreasoning—Dealingwithuncertaintyandinconsistency.
+InProceedings of the Workshop on Uncertainty Reasoning for the Semantic Web (URSW) , Galway,
+Ireland,pp.45–55,2005.
+Hamon, T. and A. Nazarenko. Detection of synonymy links between terms: Experiments and results.
+In D. Bourigault, C. Jacquemin, and M.-C. L’Homme, editors, Recent Advances in Computational
+Terminology,Chapter18,pp.185–208.JohnBenjamins,Amsterdam,theNetherlands,2001.
+Harris,Z.Distributionalstructure. Word,10(2/3):146–162,1954.
+Harris,Z. MathematicalStructuresofLanguage .JohnWiley&Sons,NewYork,1968.
+Hearst, M.A. Automatic acquisition of hyponyms from large text corpora. In Proceedings of the 14th
+International Conference on Computational Linguistics (COLING) , Nantes, France, pp. 539–545,
+1992.
+Heyer, G., M. Läuter, U. Quasthoﬀ, T. Wittig, and C. Wolﬀ. Learning relations using collocations. In
+ProceedingsoftheSecondWorkshoponOntologyLearning(OL)atthe17thInternationalConferenceonArtiﬁcialIntelligence(IJCAI) ,Seattle,WA,2001.
+Hindle, D. Noun classiﬁcation from predicate-argument structures. In Proceedings of the Annual
+Meeting of the Association for Computational Linguistics (ACL) , Pittsburgh, PA, pp. 317–322,
+1990.
+Hirst, G. Ontology and the lexicon. In S. Staab and R. Studer, editors, Handbook on Ontologies,
+pp.209–229.SpringerVerlag,Berlin,Germany,2004.
+Hitzler, P., M. Krötzsch, S. Rudolph, and Y. Sure. Semantic Web Grundlagen. Examen.press, Springer,
+Berlin,Germany,2008.
+Horrocks,I.,P.F.Patel-Schneider,andF.vanHarmelen.FromSHIQandRDFtoOWL:Themakingofa
+webontologylanguage. JournalofWebSemantics,1(1):7–26,2003.
+Hovy, E. Methodologies for the reliable construction of ontological knowledge. In F. Dau,
+M.-L.Mugnier,andG.Stunmer,editors, ProceedingsoftheInternationalConferenceonConceptual
+Structures(ICCS),Kassel,Germany, LectureNotesinComputerSciences ,3596:91–106,2005.
+Hovy, E. and S. Nirenburg. Approximating an interlingua in a principled way. In Proceedings of the
+WorkshoponSpeechandNaturalLanguage ,Harriman,NY,1992.
+Hovy,E.,A.Philpot,J.Klavans,U.Germann,P.Davis,andS.Popper.Extendingmetadatadeﬁnitionsby
+automaticallyextractingandorganizingglossarydeﬁnitions.In ProceedingsoftheAnnualNational
+ConferenceonDigitalGovernmentResearch,Boston,MA,pp.1–6,2003.
+Ibekwe-SanJuan, F., A. Condamines, and M.T. Cabré, editors. Application-Driven Terminology
+Engineering.JohnBenjamins,Amsterdam,theNetherlands,2007.
+Jacquemin, C. Spotting and Discovering Terms Through Natural Language Processing . MIT Press,
+Cambridge,MA,2001.
+
+OntologyConstruction 601
+Kashyap,V.,C.Ramakrishnan,C.Thomas,andA.Sheth.Taxaminer:Anexperimentationframeworkfor
+automatedtaxonomybootstrapping. InternationalJournalofWebandGridServices ,1(2):240–266,
+2005.
+Kavalec,M.andV.Svátek.Astudyonautomatedrelationlabellinginontologylearning.InP.Buitelaar,
+P. Cimiano, and B. Magnini, editors, Ontology Learning from Text: Methods, Evaluation and
+Applications, FrontiersinArtiﬁcialIntelligenceandApplications ,123:44–58.IOSPress,Amsterdam,
+theNetherlands,2005.
+Kilgarriﬀ,A.Comparingcorpora. InternationalJournalofCorpusLinguistics ,1(6):97–103,2001.
+Knight,K.andS.Luk.Buildingalargeknowledgebaseformachinetranslation.In Proceedingsofthe12th
+NationalConferenceonArtiﬁcialIntelligence(AAAI) ,Seattle,WA,pp.773–778,1994.
+Kozareva,Z.,E.Riloﬀ,andE.Hovy.Semanticclasslearningfromthewebwithhyponympatternlinkage
+graphs.In Proceedingsofthe46thAnnualMeetingoftheAssociationforComputationalLinguistics
+(ACL)andtheInternationalHumanLanguageTechnology(HLT)Conference ,Columbus,OH,2008.
+Landauer, T.K. and S.T. Dumais. A solution to Plato’s problem: The latent semantic analysis theory of
+acquisition,inductionandrepresentationofknowledge. PsychologicalReview ,104:211–240,1997.
+Lassila,O.andR.Swick.Resourcedescriptionframework(RDF)modelandsyntaxspeciﬁcation.Technical
+report,W3C,1999.W3CRecommendation.http://www.w3.org/TR/REC-rdf-syntax
+Lesk, M. Automatic sense disambiguation using machine readable dictionaries: How to tell a pine cone
+from an ice cream cone. In Proceedings of the Fifth Annual International Conference on Systems
+Documentation,Toronto,Canada,pp.24–26,1986.
+Lin,D.andP.Pantel.DIRT—DiscoveryofInferenceRulesfromText.In ProceedingsoftheACMSIGKDD
+InternationalConferenceonKnowledgeDiscoveryandDataMining ,SanFrancisco,CA,pp.323–328,
+2001a.
+Lin, D. and P. Pantel. Induction of semantic classes from natural language text. In Proceedings of the
+Seventh ACM SIGKDD International Conference on Knowledge Discovery and Data Mining ,S a n
+Francisco,CA,pp.317–322,2001b.
+Lin, D. and P. Pantel. Concept discovery from text. In Proceedings of the International Conference on
+ComputationalLinguistics(COLING) ,Taipei,Taiwan,pp.1–7,2002.
+Lorhard,J. OgdoasScholastica .SaintGallen,Switzerland,1606.
+Mädche,A. OntologyLearningfortheSemanticWeb .KluwerAcademicPublishers,Norwell,MA,2002.
+Mädche,A.andS.Staab.Discoveringconceptualrelationsfromtext.In Proceedingsofthe14thEuropean
+ConferenceonArtiﬁcialIntelligence(ECAI) ,Berlin,Germany,pp.321–325.IOSPress,2000.
+Mädche, A. and S. Staab. Ontology learning. In Steﬀen Staab and Rudi Studer, editors, Handbook
+on Ontologies, International Handbooks on Information Systems , pp. 173–190. Springer, Berlin,
+Germany,2004.
+Mädche,A.andR.Volz.TheText-To-Ontoontologyextractionandmaintenancesystem.In Proceedings
+of the ICDM Workshop on Integrating Data Mining and Knowledge Management , San Jose, CA,
+2001.
+Mann, W.C. and S.A. Thompson. Rhetorical structure theory: Toward a functional theory of text
+organization. Text,8(3):243–281,1988.
+Marhsman, E., T.Morgan, andI.Meyer. Frenchpatternsforexpressingconceptrelations. Terminology,
+8(1):1–30,2002.
+Masolo, C., S.Borgo, A.Gangemi, N.Guarino, andA.Oltramari. Ontologylibrary(ﬁnal). WonderWeb
+deliverable D18, December 2003. http://wonderweb.semanticweb.org/deliverables/documents/D18.pdf
+Maynard, D. and S. Ananiadou. TRUCKS: A model for automatic term recognition. Journal of Natural
+LanguageProcessing ,8(1):101–125,2001.
+McGuiness, D.L., R. Fikes, L.A. Stein, and J.A. Hendler. DAML-ONT: An ontology language for the
+semantic web. In D. Fensel, J. Hendler, H. Lieberman, and W. Wahlster, editors, Spinning the
+SemanticWeb:BringingtheWorldWideWebtoItsFullPotential.MITPress,Cambridge,MA,2002.
+
+602 HandbookofNaturalLanguageProcessing
+McIlraith, S., T.C. Son, and H. Zeng. Semantic web services. IEEE Intelligent Systems, 16(2):46–53,
+March/April2001.
+Meyer, I. Extracting knowledge-rich contexts for terminography: A conceptual and methodological
+framework. Recent Advances in Computational Terminology, John Benjamins, Amsterdam, the
+Netherlands,pp.279–302,2001.
+Moldovan,D.,C.Clark,S.M.Harabagiu,andD.Hodges.Cogex:Asemanticallyandcontextuallyenriched
+logicproverforquestionanswering. JournalofAppliedLogic,5(1):49–69,2007.
+Navigli,R.andP.Velardi.Ontologyenrichmentthroughautomaticsemanticannotationofon-lineglos-
+saries.InProceedingsofthe15thInternationalConferenceonKnowledgeEngineeringandKnowledge
+Management(EKAW) ,Prague,CzechRepublic, LectureNotesinComputerScience,4248:126–140.
+Springer,2006.
+Newell,A.Theknowledgelevel. ArtiﬁcialIntelligence,18(1),87–127,1982.
+Nirenburg, S. and V. Raskin. Ontological semantics, formal ontology and ambiguity. In Proceedings of
+FormalOntologyinInformationSystems(FOIS) ,Ogunquit,MI,pp.151–161,2001.
+Nirenburg,S.andV.Raskin. OntologicalSemantics.MITPress,Cambridge,MA,2004.
+Noy, N.F. and D.L. McGuiness. Ontology development 101: A guide to creating your ﬁrst ontology.
+TechnicalReportSMI-2001-0880,StanfordMedicalInformatics,Stanford,CA,2001.
+Ogata,N.andN.Collier.Ontologyexpress:Statisticalandnon-monotoniclearningofdomainontologies
+from text. In Proceedings of the Workshop on Ontology Learning and Population (OLP) at the 16th
+EuropeanConferenceonArtiﬁcialIntelligence(ECAI) ,Valencia,Spain,August22–24,2004.
+Ohrstrom,O.,J.Andersen,andH.Schärfe.Whathashappenedtoontology.InF.Dau,M.-L.Mugnier,and
+G.Stumme,editors, ConceptualStructures:CommonSemanticsforSharingKnowledge,Proceedings
+ofthe13thInternationalConferenceonConceptualStructures(ICCS’05) ,Kassel,Germany,pp.425–
+438,2005.
+Pantel, P. and M. Pennacchiotti. Espresso: Leveraging generic patterns for automatically harvesting
+semanticrelations.In Proceedingsofthe21stInternationalConferenceonComputationalLinguistics
+(COLING)and44thAnnualMeetingoftheAssociationforComputationalLinguistics(ACL) ,Sydney,
+Australia,2006.
+Paolucci,M.,T.Kawamura,T.R.Payne,andK.Sycara.Semanticmatchingofwebservicecapabilities.In
+ProceedingsoftheFirstInternationalSemanticWebConference(ISWC) ,Sardinia,Italy,pp.333–347,
+2001.
+Pearson,J. TermsinContext .JohnBenjamins,Amsterdam,theNetherlands,1998.
+Philpot, A., E. Hovy, and P. Pantel. The Omega ontology. In C.-R. Huang, N. Calzolari, A. Gangemi,
+A.Lenci,A.Oltramari,andL.Prévot,editors, OntologiesandLexicalResourcesforNaturalLanguage
+Processing ,CambridgeUniversityPress,Cambridge,U.K.,pp.309–322,2008.
+Pinto,H.S.,A.Gomez-Perez,andJ.P.Martins.Someissuesonontologyintegration.In Proceedingsofthe
+IJCAI99WorkshoponOntologiesandProblemSolvingMethods ,Stockholm,Sweden,1999.
+Pinto,H.S.andJ.P.Martins.Reusingontologies.In ProceedingsoftheAAAISpringSymposiumonBringing
+KnowledgetoBusinessProcesses,Stanford,CA,pp.77–84,2000.
+Pinto, H.S. and J.P. Martins. Ontologies: How can they be built? Knowledge and Information Systems ,
+6(4):441–464,2004.
+Pinto, H.S. and C. Tempich. Diligent: Towards a ﬁne-grained methodology for distributed, loosely-
+controlled and evolving engineering of ontologies. In Proceedings of the European Conference on
+ArtiﬁcialIntelligence(ECAI) ,Valencia,Spain,pp.393–397,2004.
+Pinto,H.S.,S.Staab,andC.Tempich.DILIGENT:Towardsaﬁne-grainedmethodologyfordistributed,
+loosely-controlledandevolvingengineeringofontologies.In ProceedingsoftheEuropeanConference
+onArtiﬁcialIntelligence(ECAI) ,Valencia,Spain,pp.393–397,2004.
+Resnik,P.andN.Smith.Thewebasaparallelcorpus. ComputationalLingusitics ,29(3):349–380,2003.
+
+OntologyConstruction 603
+Reynaud, C. and B. Safar. Representation of ontologies for information integration. In Proceedings of
+theEuropeanWorkshoponKnowledgeAcquisition,ModelingandManagement(EKAW) ,Siguenza,
+Spain,2002.
+Ruiz-Casado,M.,E.Alfonseca,andP.Castells.AutomaticextractionofsemanticrelationshipsforWord-
+Net by means of pattern learning from Wikipedia. In Proceedings of the International Conference
+onNaturalLanguageforInformationSystems(NDLB) ,Alicante, Spain, LectureNotesinComputer
+Science,3513:67–79.SpringerVerlag,NewYork,2005.
+Russel, S.J. and P. Norvig. Artiﬁcial Intelligence: A Modern Approach, chapter Knowledge Engineering.
+PrenticeHall,UpperSaddleRiver,NJ,2003.
+Sabou,M.,V.Lopez,andE.Motta.Ontologyselectionontherealsemanticweb:Howtocoverthequeens
+birthdaydinner?In Proceedingsofthe15thInternationalConferenceonKnowledgeEngineeringand
+KnowledgeManagement(EKAW),Podebrady,CzechRepublic,pp.96–111,2006.
+Salton,G.Developmentsinautomatictextretrieval. Science,253:974–979,1991.
+Salton,G.andC.Buckley.Term-weightingapproachesinautomatictextretrieval. InformationProcessing
+andManagement,24(5):515–523,1988.
+Schutz, A. and P. Buitelaar. RelExt: A tool for relation extraction from text in ontology extension. In
+Proceedings of the International Semantic Web Conference (ISWC) , Sardinia, Italy, pp. 593–606,
+2005.
+Schütze,H.Wordspace. AdvancesinNeuralInformationProcessingSystems ,5,895–902,1993.
+Shortliﬀe,E. Computer-BasedMedicalConsultations:MYCIN .Elsevier,NewYork,2001.
+Sirin, E., J. Hendler, and B. Parsia. Semi-automatic composition of web services using semantic
+descriptions. In Proceedings of the ICEIS Workshop on Web Services: Modeling, Architecture and
+Infrastructure ,Angers,France,2003.
+Smith,B.Ontology.InL.Floridi,editor, BlackwellGuidetothePhilosophyofComputingandInformation ,
+Blackwell,Malden,MA,pp.155–166,2003.
+Sowa, J.F. Knowledge Representation: Logical, Philosophical and Computational Foundations .
+Brooks/Cole,PaciﬁcGrove,CA,2000.
+Spyns, P., Y. Tang, and R. Meersman. An ontology engineering methodology for DOGMA. Applied
+Ontology,3(1-2):13–39,2008.
+Studer, R., V.R. Benjamins, and D. Fensel. Knowledge engineering: Principles and methods. Data
+KnowledgeEngineering,25(1–2):161–197,1998.
+Studtmann,P.Aristotle’scategories. StanfordEncyclopediaofPhilosophy ,2007.http://plato.stanford.edu/
+Suh, S., H. Halpin, and E. Klein. Extracting common sense knowledge from Wikipedia. In Proceedings
+oftheWorkshoponWebContentMiningwithHumanLanguageTechnologiesatISWC’06 ,Athens,
+GA,2006.
+Sure, Y., S. Bloehdorn, P. Haase, J. Hartmann, and D. Oberle. The SWRC ontology—Semantic web for
+researchcommunities.In Proceedingsofthe12thPortugueseConferenceonArtiﬁcialIntelligence—
+ProgressinArtiﬁcialIntelligence(EPIA2005) ,Corilha,Portugal, LectureNotesinComputerScience,
+3803:218–231,2005.
+Sure, Y., S. Staab, and R. Studer. On-To-Knowledge Methodology (OTKM). In S. Staab and R. Studer,
+editors,HandbookofOntologies,InternationalHandbooksonInformationSystems .SpringerVerlag,
+Berlin,Germany,2004.
+Tempich, C., H.S. Pinto, Y. Sure, and S. Staab. An argumentation ontology for distributed, loosely-
+controlled and evolving engineering processes of ontologies (DILIGENT). In Proceedings of the
+EuropeanSemanticWebConference(ESWC),Heraklion,Crete,Greece,pp.241–256,2005.
+The Gene Ontology Consortium. Gene ontology: Tool for the uniﬁcation of biology. Nature Genetics ,
+25:25–29,2000.
+The Gene Ontology Consortium. Creating the gene ontology resource: Design and implementation.
+GenomeResearch ,(11):1425–1433,2001.
+
+604 HandbookofNaturalLanguageProcessing
+Turcato, D., F. Popowich, J. Toole, D. Fass, D. Nicholson, and G. Tisher. Adapting a synonym database
+tospeciﬁcdomains.In ProceedingsoftheACLWorkshoponRecentAdvancesinNaturalLanguage
+ProcessingandInformationRetrieval ,HongKong,China,2000.
+Turney, P.D. Mining the web for synonyms: PMI-IR versus LSA on TOEFL. In Proceedings of the 12th
+EuropeanConferenceonMachineLearning ,Freiburg,Germany,pp.491–502,2001.
+Uschold, M. Building ontologies: Towards a uniﬁed methodology. In Proceedings of the 16th Annual
+ConferenceoftheBritishComputerSocietySpecialistGrouponExpertSystems(ExpertSystems’96) ,
+Cambridge,U.K.,1996.
+Uschold, M. and M. King. Towards a methodology for building ontologies. In Proceedings of the IJCAI
+WorkshoponBasicOntologicalIssuesinKnowledgeSharing ,Montreal,Canada,1995.
+van Hage, W.R., H. Kolb, and G. Schreiber. A method for learning part-whole relations. In Proceedings
+of the 5th International Semantic Web Conference (ISWC) ,Lecture Notes in Computer Science,
+4273:723–735.Springer,Athens,GA,2006.
+van Heijst, G., A.T. Schreiber, and B.J. Wielinga. Using explicit ontologies in KBS development.
+InternationalJournalofHuman-ComputerStudies ,45:183–292,1997.
+Velardi,P.,R.Navigli,A.Cucchiarelli,andF.Neri.EvaluationofOntoLearn,amethodologyforautomatic
+learning of domain ontologies. In P. Buitelaar and P. Cimiano, editors, Ontology Learning from
+Text: Methods, Evaluation and Applications, Frontiers in Artiﬁcial Intelligence and Applications ,
+Vol.123.IOSPress,Amsterdam,theNetherlands,2005.
+Völker, J., P. Hitzler, and P. Cimiano. Acquisition of OWL DL axioms from lexical resources. In
+Proceedings of the Fourth European Semantic Web Conference (ESWC’07) , Innsbruck, Austria,
+LectureNotesinComputerScience,4519:670–685.Springer,2007.
+Völker, J., and S. Rudolph. Fostering web intelligence by semi-automatic OWL ontology reﬁnement. In
+ProceedingsoftheSeventhInternationalConferenceonWebIntelligence(WI’08) ,Sydney,Australia,
+pp.454–460,2008a.
+Völker, J. and S. Rudolph. Lexico-logical acquisition of OWL DL axioms—An integrated approach to
+ontologyreﬁnement.In ProceedingsoftheSixthInternationalConferenceonFormalConceptAnal-
+ysis (ICFCA’08) , Montreal, Canada, Lecture Notes in Artiﬁcial Intelligence , 4933:62–77. Springer,
+2008b.
+Völker, J., D. Vrandecic, Y. Sure, and A. Hotho. Learning disjointness. In Proceedings of the Fourth
+European Semantic Web Conference (ESWC’07) , Innsbruck, Austria, Lecture Notes in Computer
+Science,4519:175–189.Springer,2007.
+Wache,H.,T.Vögele,U.Visser,H.Stuckenschmidt,G.Schuster,H.Neumann,andS.Hubner.Ontology-
+basedintegrationofinformation:Asurveyofexistingapproaches.In ProceedingsoftheWorkshopon
+OntologiesandInformationSharing,CollocatedwiththeInternationalJointConferenceonArtiﬁcialIntelligence(IJCAI),Seattle,WA,pp.108–117,2001.
+Weber, N. and P. Buitelaar. Web-based ontology learning with ISOLDE. In Proceedings of the ISWC
+WorkshoponWebContentMiningwithHumanLanguageTechnologies ,Athens,GA,2006.
+Witschel,H.-F.Terminologyextractionandautomaticindexing—Comparisonandqualitativeevaluation
+ofmethods.In ProceedingsoftheSeventhInternationalConferenceonTerminologyandKnowledge
+Engineering(TKE),Copenhagen,Denmark,2005.
+Yarowsky, D. Word-sense disambiguation using statistical models of Roget’s categories trained on
+large corpora. In Proceedings of the 14th International Conference on Computational Linguistics
+(COLING),Nantes,France,pp.454–460,1992.
+

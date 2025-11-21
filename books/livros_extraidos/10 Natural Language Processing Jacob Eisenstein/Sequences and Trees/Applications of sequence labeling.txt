@@ -1,0 +1,511 @@
+Chapter 8 3869
+Applications of sequence labeling 3870
+Sequence labeling has applications throughout natural language processing. This chap- 3871
+ter focuses on part-of-speech tagging, morpho-syntactic attribute tagging, named entity 3872
+recognition, and tokenization. It also touches brieﬂy on two applications to interactive 3873
+settings: dialogue act recognition and the detection of code-switching points between 3874
+languages. 3875
+8.1 Part-of-speech tagging 3876
+The syntax of a language is the set of principles under which sequences of words are 3877
+judged to be grammatically acceptable by ﬂuent speakers. One of the most basic syntactic 3878
+concepts is the part-of-speech (POS), which refers to the syntactic role of each word in a 3879
+sentence. This concept was used informally in the previous chapter, and you may have 3880
+some intuitions from your own study of English. For example, in the sentence We like 3881
+vegetarian sandwiches , you may already know that weand sandwiches are nouns, likeis a 3882
+verb, and vegetarian is an adjective. These labels depend on the context in which the word 3883
+appears: in she eats like a vegetarian , the word likeis a preposition, and the word vegetarian 3884
+is a noun. 3885
+Parts-of-speech can help to disentangle or explain various linguistic problems. Recall 3886
+Chomsky’s proposed distinction in chapter 6: 3887
+(8.1) Colorless green ideas sleep furiously. 3888
+(8.2) *Ideas colorless furiously green sleep. 3889
+One difference between these two examples is that the ﬁrst contains part-of-speechtransitions 3890
+that are typical in English: adjective to adjective, adjective to noun, noun to verb, and verb 3891
+to adverb. The second example contains transitions that are unusual: noun to adjective 3892
+and adjective to verb. The ambiguity in a headline like, 3893
+185
+
+186 CHAPTER 8. APPLICATIONS OF SEQUENCE LABELING
+(8.3) Teacher Strikes Idle Children 3894
+can also be explained in terms of parts of speech: in the interpretation that was likely 3895
+intended, strikes is a noun and idleis a verb; in the alternative explanation, strikes is a verb 3896
+and idleis an adjective. 3897
+Part-of-speech tagging is often taken as a early step in a natural language processing 3898
+pipeline. Indeed, parts-of-speech provide features that can be useful for many of the 3899
+tasks that we will encounter later, such as parsing (chapter 10), coreference resolution 3900
+(chapter 15), and relation extraction (chapter 17). 3901
+8.1.1 Parts-of-Speech 3902
+The Universal Dependencies project (UD) is an effort to create syntactically-annotated 3903
+corpora across many languages, using a single annotation standard (Nivre et al., 2016). As 3904
+part of this effort, they have designed a part-of-speech tagset , which is meant to capture 3905
+word classes across as many languages as possible.1This section describes that inventory, 3906
+giving rough deﬁnitions for each of tags, along with supporting examples. 3907
+Part-of-speech tags are morphosyntactic , rather than semantic , categories. This means 3908
+that they describe words in terms of how they pattern together and how they are inter- 3909
+nally constructed (e.g., what sufﬁxes and preﬁxes they include). For example, you may 3910
+think of a noun as referring to objects or concepts, and verbs as referring to actions or 3911
+events. But events can also be nouns: 3912
+(8.4) . . . the howling of the shrieking storm. 3913
+Here howling and shrieking are events, but grammatically they act as a noun and adjective 3914
+respectively. 3915
+8.1.1.1 The Universal Dependency part-of-speech tagset 3916
+The UD tagset is broken up into three groups: open class tags, closed class tags, and 3917
+“others.” 3918
+Open class tags Nearly all languages contain nouns, verbs, adjectives, and adverbs.23919
+These are all open word classes , because new words can easily be added to them. The 3920
+UD tagset includes two other tags that are open classes: proper nouns and interjections. 3921
+•Nouns (UD tag: NOUN) tend to describe entities and concepts, e.g., 3922
+1The UD tagset builds on earlier work from Petrov et al. (2012), in which a set of twelve universal tags
+was identiﬁed by creating mappings from tagsets for individual languages.
+2One prominent exception is Korean, which some linguists argue does not have adjectives Kim (2002).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+8.1. PART-OF-SPEECH TAGGING 187
+(8.5) Toes are scarce among veteran blubber men . 3923
+In English, nouns tend to follow determiners and adjectives, and can play the subject 3924
+role in the sentence. They can be marked for the plural number by an -ssufﬁx. 3925
+•Proper nouns (PROPN) are tokens in names, which uniquely specify a given entity, 3926
+(8.6) “ Moby Dick ?” shouted Ahab . 3927
+•Verbs (VERB), according to the UD guidelines, “typically signal events and ac- 3928
+tions.” But they are also deﬁned grammatically: they “can constitute a minimal 3929
+predicate in a clause, and govern the number and types of other constituents which 3930
+may occur in a clause.”33931
+(8.7) “Moby Dick?” shouted Ahab. 3932
+(8.8) Shall we keep chasing this murderous ﬁsh? 3933
+English verbs tend to come in between the subject and some number of direct ob- 3934
+jects, depending on the verb. They can be marked for tense and aspect using sufﬁxes 3935
+such as -edand -ing. (These sufﬁxes are an example of inﬂectional morphology , 3936
+which is discussed in more detail in §9.1.4.) 3937
+•Adjectives (ADJ) describe properties of entities, 3938
+(8.9) Shall we keep chasing this murderous ﬁsh? 3939
+(8.10) Toes are scarce among veteran blubber men. 3940
+In the second example, scarce is a predicative adjective, linked to the subject by the 3941
+copula verb are. This means that In contrast, murderous and veteran are attribute 3942
+adjectives, modifying the noun phrase in which they are embedded. 3943
+•Adverbs (ADV) describe properties of events, and may also modify adjectives or 3944
+other adverbs: 3945
+(8.11) It is not down on any map; true places never are. 3946
+(8.12) . . . treacherously hidden beneath the loveliest tints of azure 3947
+(8.13) Not drowned entirely , though. 3948
+•Interjections (INTJ) are used in exclamations, e.g., 3949
+(8.14) Aye aye ! it was that accursed white whale that razed me. 3950
+3http://universaldependencies.org/u/pos/VERB.html
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+188 CHAPTER 8. APPLICATIONS OF SEQUENCE LABELING
+Closed class tags Closed word classes rarely receive new members. They are sometimes 3951
+referred to as function words — as opposed to content words — as they have little lexical 3952
+meaning of their own, but rather, help to organize the components of the sentence. 3953
+•Adpositions (ADP) describe the relationship between a complement (usually a noun 3954
+phrase) and another unit in the sentence, typically a noun or verb phrase. 3955
+(8.15) Toes are scarce among veteran blubber men. 3956
+(8.16) It is not down on any map. 3957
+(8.17) Give not thyself upthen. 3958
+As the examples show, English generally uses prepositions, which are adpositions 3959
+that appear before their complement. (An exception is ago, as in, we met three days 3960
+ago). Postpositions are used in other languages, such as Japanese and Turkish. 3961
+•Auxiliary verbs (AUX) are a closed class of verbs that add information such as 3962
+tense, aspect, person, and number. 3963
+(8.18) Shall we keep chasing this murderous ﬁsh? 3964
+(8.19) What the white whale was to Ahab, has been hinted. 3965
+(8.20) Ahab must use tools. 3966
+(8.21) Meditation and water arewedded forever. 3967
+(8.22) Toes arescarce among veteran blubber men. 3968
+The ﬁnal example is a copula verb, which is also tagged as an auxiliary in the UD 3969
+corpus. 3970
+•Coordinating conjunctions (CCONJ) express relationships between two words or 3971
+phrases, which play a parallel role: 3972
+(8.23) Meditation and water are wedded forever. 3973
+•Subordinating conjunctions (SCONJ) link two elements, making one syntactically 3974
+subordinate to the other: 3975
+(8.24) There is wisdom that is woe. 3976
+•Pronouns (PRON) are words that substitute for nouns or noun phrases. 3977
+(8.25) Be it what it will, I’ll go to itlaughing. 3978
+(8.26) Itry all things, Iachieve what I can. 3979
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+8.1. PART-OF-SPEECH TAGGING 189
+The example includes the personal pronouns Iand it, as well as the relative pronoun 3980
+what . Other pronouns include myself ,somebody , and nothing . 3981
+•Determiners (DET) provide additional information about the nouns or noun phrases 3982
+that they modify: 3983
+(8.27) What thewhite whale was to Ahab, has been hinted. 3984
+(8.28) It is not down on any map. 3985
+(8.29) I try allthings . . . 3986
+(8.30) Shall we keep chasing this murderous ﬁsh? 3987
+Determiners include articles ( the), possessive determiners ( their ), demonstratives 3988
+(this murderous ﬁsh ), and quantiﬁers ( any map ). 3989
+•Numerals (NUM) are an inﬁnite but closed class, which includes integers, fractions, 3990
+and decimals, regardless of whether spelled out or written in numerical form. 3991
+(8.31) How then can this one small heart beat. 3992
+(8.32) I am going to put him down for the three hundredth . 3993
+•Particles (PART) are a catch-all of function words that combine with other words or 3994
+phrases, but do not meet the conditions of the other tags. In English, this includes 3995
+the inﬁnitival to, the possessive marker, and negation. 3996
+(8.33) Better tosleep with a sober cannibal than a drunk Christian. 3997
+(8.34) So man ’sinsanity is heaven ’ssense 3998
+(8.35) It is notdown on any map 3999
+As the second example shows, the possessive marker is not considered part of the 4000
+same token as the word that it modiﬁes, so that man’s is split into two tokens. (Tok- 4001
+enization is described in more detail in §8.4.) A non-English example of a particle 4002
+is the Japanese question marker ka, as in,44003
+(8.36) Sensei
+Teacherdesu
+areka
+?4004
+Is she a teacher? 4005
+4In this notation, the ﬁrst line is the transliterated Japanese text, the second line is a token-to-token gloss ,
+and the third line is the translation.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+190 CHAPTER 8. APPLICATIONS OF SEQUENCE LABELING
+Other The remaining UD tags include punctuation (PUN) and symbols (SYM). Punc- 4006
+tuation is purely structural — e.g., commas, periods, colons — while symbols can carry 4007
+content of their own. Examples of symbols include dollar and percentage symbols, math- 4008
+ematical operators, emoticons, emojis, and internet addresses. A ﬁnal catch-all tag is X, 4009
+which is used for words that cannot be assigned another part-of-speech category. The X 4010
+tag is also used in cases of code switching (between languages), described in §8.5. 4011
+8.1.1.2 Other tagsets 4012
+Prior to the Universal Dependency treebank, part-of-speech tagging was performed us- 4013
+ing language-speciﬁc tagsets. The dominant tagset for English was designed as part of 4014
+thePenn Treebank (PTB), and it includes 45 tags — more than three times as many as 4015
+the UD tagset. This granularity is reﬂected in distinctions between singular and plural 4016
+nouns, verb tenses and aspects, possessive and non-possessive pronouns, comparative 4017
+and superlative adjectives and adverbs (e.g., faster ,fastest ), and so on. The Brown corpus 4018
+includes a tagset that is even more detailed, with 87 tags Francis (1964), including special 4019
+tags for individual auxiliary verbs such as be,do, and have. 4020
+Different languages make different distinctions, and so the PTB and Brown tagsets are 4021
+not appropriate for a language such as Chinese, which does not mark the verb tense (Xia, 4022
+2000); nor for Spanish, which marks every combination of person and number in the 4023
+verb ending; nor for German, which marks the case of each noun phrase. Each of these 4024
+languages requires more detail than English in some areas of the tagset, and less in other 4025
+areas. The strategy of the Universal Dependencies corpus is to design a coarse-grained 4026
+tagset to be used across all languages, and then to additionally annotate language-speciﬁc 4027
+morphosyntactic attributes , such as number, tense, and case. The attribute tagging task 4028
+is described in more detail in §8.2. 4029
+Social media such as Twitter have been shown to require tagsets of their own (Gimpel 4030
+et al., 2011). Such corpora contain some tokens that are not equivalent to anything en- 4031
+countered in a typical written corpus: e.g., emoticons, URLs, and hashtags. Social media 4032
+also includes dialectal words like gonna (‘going to’, e.g. We gonna be ﬁne ) and Ima (‘I’m 4033
+going to’, e.g., Ima tell you one more time ), which can be analyzed either as non-standard 4034
+orthography (making tokenization impossible), or as lexical items in their own right. In 4035
+either case, it is clear that existing tags like NOUN and VERB cannot handle cases like Ima, 4036
+which combine aspects of the noun and verb. Gimpel et al. (2011) therefore propose a new 4037
+set of tags to deal with these cases. 4038
+8.1.2 Accurate part-of-speech tagging 4039
+Part-of-speech tagging is the problem of selecting the correct tag for each word in a sen- 4040
+tence. Success is typically measured by accuracy on an annotated test set, which is simply 4041
+the fraction of tokens that were tagged correctly. 4042
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+8.1. PART-OF-SPEECH TAGGING 191
+8.1.2.1 Baselines 4043
+A simple baseline for part-of-speech tagging is to choose the most common tag for each 4044
+word. For example, in the Universal Dependencies treebank, the word talkappears 96 4045
+times, and 85 of those times it is labeled as a VERB : therefore, this baseline will always 4046
+predict VERB for this word. For words that do not appear in the training corpus, the base- 4047
+line simply guesses the most common tag overall, which is NOUN . In the Penn Treebank, 4048
+this simple baseline obtains accuracy above 92%. A more rigorous evaluation is the accu- 4049
+racy on out-of-vocabulary words , which are not seen in the training data. Tagging these 4050
+words correctly requires attention to the context and the word’s internal structure. 4051
+8.1.2.2 Contemporary approaches 4052
+Conditional random ﬁelds and structured perceptron perform at or near the state-of-the- 4053
+art for part-of-speech tagging in English. For example, (Collins, 2002) achieved 97.1% 4054
+accuracy on the Penn Treebank, using a structured perceptron with the following base 4055
+features (originally introduced by Ratnaparkhi (1996)): 4056
+•current word, wm 4057
+•previous words, wm−1,wm−2 4058
+•next words, wm+1,wm+2 4059
+•previous tag, ym−1 4060
+•previous two tags, (ym−1,ym−2) 4061
+•for rare words: 4062
+–ﬁrstkcharacters, up to k= 4 4063
+–lastkcharacters, up to k= 4 4064
+–whetherwmcontains a number, uppercase character, or hyphen. 4065
+Similar results for the PTB data have been achieved using conditional random ﬁelds (CRFs; 4066
+Toutanova et al., 2003). 4067
+More recent work has demonstrated the power of neural sequence models, such as the 4068
+long short-term memory (LSTM) (§7.6). Plank et al. (2016) apply a CRF and a bidirec- 4069
+tional LSTM to twenty-two languages in the UD corpus, achieving an average accuracy 4070
+of 94.3% for the CRF, and 96.5% with the bi-LSTM. Their neural model employs three 4071
+types of embeddings: ﬁne-tuned word embeddings, which are updated during training; 4072
+pre-trained word embeddings, which are never updated, but which help to tag out-of- 4073
+vocabulary words; and character-based embeddings. The character-based embeddings 4074
+are computed by running an LSTM on the individual characters in each word, thereby 4075
+capturing common orthographic patterns such as preﬁxes, sufﬁxes, and capitalization. 4076
+Extensive evaluations show that these additional embeddings are crucial to their model’s 4077
+success. 4078
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+192 CHAPTER 8. APPLICATIONS OF SEQUENCE LABELING
+word PTB tag UD tag UD attributes
+The DT DET DEFINITE =DEFPRON TYPE=ART
+German JJ ADJ DEGREE =POS
+Expressionist NN NOUN NUMBER =SING
+movement NN NOUN NUMBER =SING
+was VBD AUX MOOD =INDNUMBER =SING PERSON =3
+TENSE =PAST VERBFORM =FIN
+destroyed VBN VERB TENSE =PAST VERBFORM =PART
+VOICE =PASS
+as IN ADP
+a DT DET DEFINITE =INDPRON TYPE=ART
+result NN NOUN NUMBER =SING
+. . PUNCT
+Figure 8.1: UD and PTB part-of-speech tags, and UD morphosyntactic attributes. Example
+selected from the UD 1.4 English corpus.
+8.2 Morphosyntactic Attributes 4079
+There is considerably more to say about a word than whether it is a noun or a verb: in En- 4080
+glish, verbs are distinguish by features such tense and aspect, nouns by number, adjectives 4081
+by degree, and so on. These features are language-speciﬁc: other languages distinguish 4082
+other features, such as case (the role of the noun with respect to the action of the sen- 4083
+tence, which is marked in languages such as Latin and German5) and evidentiality (the 4084
+source of information for the speaker’s statement, which is marked in languages such as 4085
+Turkish). In the UD corpora, these attributes are annotated as feature-value pairs for each 4086
+token.64087
+An example is shown in Figure 8.1. The determiner theis marked with two attributes: 4088
+PRON TYPE=ART, which indicates that it is an article (as opposed to another type of deter- 4089
+5Case is marked in English for some personal pronouns, e.g., Shesawher,They saw them .
+6The annotation and tagging of morphosyntactic attributes can be traced back to earlier work on Turk-
+ish (Oﬂazer and Kuru ¨oz, 1994) and Czech (Haji ˇc and Hladk ´a, 1998). MULTEXT-East was an early multilin-
+gual corpus to include morphosyntactic attributes (Dimitrova et al., 1998).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+8.3. NAMED ENTITY RECOGNITION 193
+miner or pronominal modiﬁer), and D EFINITE =DEF, which indicates that it is a deﬁnite 4090
+article (referring to a speciﬁc, known entity). The verbs are each marked with several 4091
+attributes. The auxiliary verb wasis third-person, singular, past tense, ﬁnite (conjugated), 4092
+and indicative (describing an event that has happened or is currently happenings); the 4093
+main verb destroyed is in participle form (so there is no additional person and number 4094
+information), past tense, and passive voice. Some, but not all, of these distinctions are 4095
+reﬂected in the PTB tags VBD (past-tense verb) and VBN (past participle). 4096
+While there are thousands of papers on part-of-speech tagging, there is comparatively 4097
+little work on automatically labeling morphosyntactic attributes. Faruqui et al. (2016) 4098
+train a support vector machine classiﬁcation model, using a minimal feature set that in- 4099
+cludes the word itself, its preﬁxes and sufﬁxes, and type-level information listing all pos- 4100
+sible morphosyntactic attributes for each word and its neighbors. Mueller et al. (2013) use 4101
+a conditional random ﬁeld (CRF), in which the tag space consists of all observed com- 4102
+binations of morphosyntactic attributes (e.g., the tag would be DEF+ART for the word 4103
+thein Figure 8.1). This massive tag space is managed by decomposing the feature space 4104
+over individual attributes, and pruning paths through the trellis. More recent work has 4105
+employed bidirectional LSTM sequence models. For example, Pinter et al. (2017) train 4106
+a bidirectional LSTM sequence model. The input layer and hidden vectors in the LSTM 4107
+are shared across attributes, but each attribute has its own output layer, culminating in 4108
+a softmax over all attribute values, e.g. yNUMBER
+t∈{SING,PLURAL,...}. They ﬁnd that 4109
+character-level information is crucial, especially when the amount of labeled data is lim- 4110
+ited. 4111
+Evaluation is performed by ﬁrst computing recall and precision for each attribute. 4112
+These scores can then be averaged at either the type or token level to obtain micro- or 4113
+macro-F-MEASURE . Pinter et al. (2017) evaluate on 23 languages in the UD treebank, 4114
+reporting a median micro- F-MEASURE of 0.95. Performance is strongly correlated with the 4115
+size of the labeled dataset for each language, with a few outliers: for example, Chinese is 4116
+particularly difﬁcult, because although the dataset is relatively large ( 105tokens in the UD 4117
+1.4 corpus), only 6% of tokens have any attributes, offering few useful labeled instances. 4118
+8.3 Named Entity Recognition 4119
+A classical problem in information extraction is to recognize and extract mentions of 4120
+named entities in text. In news documents, the core entity types are people, locations, and 4121
+organizations; more recently, the task has been extended to include amounts of money, 4122
+percentages, dates, and times. In item 8.37 (Figure 8.2), the named entities include: The 4123
+U.S. Army , an organization; Atlanta , a location; and May 14, 1864 , a date. Named en- 4124
+tity recognition is also a key task in biomedical natural language processing , with entity 4125
+types including proteins, DNA, RNA, and cell lines (e.g., Collier et al., 2000; Ohta et al., 4126
+2002). Figure 8.2 shows an example from the GENIA corpus of biomedical research ab- 4127
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+194 CHAPTER 8. APPLICATIONS OF SEQUENCE LABELING
+(8.37) The
+B-ORGU.S.
+I-ORGArmy
+I-ORGcaptured
+OAtlanta
+B-LOCon
+OMay
+B-DATE14
+I-DATE,
+I-DATE1864
+I-DATE
+(8.38) Number
+Oof
+Oglucocorticoid
+B-PROTEINreceptors
+I-PROTEINin
+Olymphocytes
+B-CELLTYPEand
+O. . .
+. . .
+Figure 8.2: BIO notation for named entity recognition. Example (8.38) is drawn from the
+GENIA corpus of biomedical documents (Ohta et al., 2002).
+stracts. 4128
+A standard approach to tagging named entity spans is to use discriminative sequence 4129
+labeling methods such as conditional random ﬁelds. However, the named entity recogni- 4130
+tion (NER) task would seem to be fundamentally different from sequence labeling tasks 4131
+like part-of-speech tagging: rather than tagging each token, the goal in is to recover spans 4132
+of tokens, such as The United States Army . 4133
+This is accomplished by the BIO notation , shown in Figure 8.2. Each token at the 4134
+beginning of a name span is labeled with a B- preﬁx; each token within a name span is la- 4135
+beled with an I- preﬁx. These preﬁxes are followed by a tag for the entity type, e.g. B-L OC 4136
+for the beginning of a location, and I-P ROTEIN for the inside of a protein name. Tokens 4137
+that are not parts of name spans are labeled as O. From this representation, the entity 4138
+name spans can be recovered unambiguously. This tagging scheme is also advantageous 4139
+for learning: tokens at the beginning of name spans may have different properties than 4140
+tokens within the name, and the learner can exploit this. This insight can be taken even 4141
+further, with special labels for the last tokens of a name span, and for unique tokens in 4142
+name spans, such as Atlanta in the example in Figure 8.2. This is called BILOU notation, 4143
+and it can yield improvements in supervised named entity recognition (Ratinov and Roth, 4144
+2009). 4145
+Feature-based sequence labeling Named entity recognition was one of the ﬁrst applica-
+tions of conditional random ﬁelds (McCallum and Li, 2003). The use of Viterbi decoding
+restricts the feature function f(w,y)to be a sum of local features,∑
+mf(w,ym,ym−1,m),
+so that each feature can consider only local adjacent tags. Typical features include tag tran-
+sitions, word features for wmand its neighbors, character-level features for preﬁxes and
+sufﬁxes, and “word shape” features for capitalization and other orthographic properties.
+As an example, base features for the word Army in the example in (8.37) include:
+(CURR -WORD :Army,PREV -WORD :U.S.,NEXT -WORD :captured,PREFIX -1:A-,
+PREFIX -2:Ar-,SUFFIX -1:-y,SUFFIX -2:-my,SHAPE :Xxxx )
+Another source of features is to use gazzeteers : lists of known entity names. For example, 4146
+the U.S. Social Security Administration provides a list of tens of thousands of given names 4147
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+8.4. TOKENIZATION 195
+(1)日文
+Japanese章魚
+octopus怎麼
+how說?
+say
+How to say octopus in Japanese?
+(2)日
+Japan文章
+essay魚
+ﬁsh怎麼
+how說?
+say
+Figure 8.3: An example of tokenization ambiguity in Chinese (Sproat et al., 1996)
+— more than could be observed in any annotated corpus. Tokens or spans that match an 4148
+entry in a gazetteer can receive special features; this provides a way to incorporate hand- 4149
+crafted resources such as name lists in a learning-driven framework. 4150
+Neural sequence labeling for NER Current research has emphasized neural sequence 4151
+labeling, using similar LSTM models to those employed in part-of-speech tagging (Ham- 4152
+merton, 2003; Huang et al., 2015; Lample et al., 2016). The bidirectional LSTM-CRF (Fig- 4153
+ure 7.4 in§7.6) does particularly well on this task, due to its ability to model tag-to-tag 4154
+dependencies. However, Strubell et al. (2017) show that convolutional neural networks 4155
+can be equally accurate, with signiﬁcant improvement in speed due to the efﬁciency of 4156
+implementing ConvNets on graphics processing units (GPUs) . The key innovation in 4157
+this work was the use of dilated convolution , which is described in more detail in §3.4. 4158
+8.4 Tokenization 4159
+A basic problem for text analysis, ﬁrst discussed in §4.3.1, is to break the text into a se- 4160
+quence of discrete tokens. For alphabetic languages such as English, deterministic scripts 4161
+sufﬁce to achieve accurate tokenization. However, in logographic writing systems such 4162
+as Chinese script, words are typically composed of a small number of characters, with- 4163
+out intervening whitespace. The tokenization must be determined by the reader, with 4164
+the potential for occasional ambiguity, as shown in Figure 8.3. One approach is to match 4165
+character sequences against a known dictionary (e.g., Sproat et al., 1996), using additional 4166
+statistical information about word frequency. However, no dictionary is completely com- 4167
+prehensive, and dictionary-based approaches can struggle with such out-of-vocabulary 4168
+words. 4169
+Chinese tokenization has therefore been approached as a supervised sequence label- 4170
+ing problem. Xue et al. (2003) train a logistic regression classiﬁer to make independent 4171
+segmentation decisions while moving a sliding window across the document. A set of 4172
+rules is then used to convert these individual classiﬁcation decisions into an overall tok- 4173
+enization of the input. However, these individual decisions may be globally suboptimal, 4174
+motivating a structure prediction approach. Peng et al. (2004) train a conditional random 4175
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+196 CHAPTER 8. APPLICATIONS OF SEQUENCE LABELING
+ﬁeld to predict labels of S TART or N ONSTART on each character. More recent work has 4176
+employed neural network architectures. For example, Chen et al. (2015) use an LSTM- 4177
+CRF architecture, as described in §7.6: they construct a trellis, in which each tag is scored 4178
+according to the hidden state of an LSTM, and tag-tag transitions are scored according 4179
+to learned transition weights. The best-scoring segmentation is then computed by the 4180
+Viterbi algorithm. 4181
+8.5 Code switching 4182
+Multilingual speakers and writers do not restrict themselves to a single language. Code 4183
+switching is the phenomenon of switching between languages in speech and text (Auer, 4184
+2013; Poplack, 1980). Written code switching has become more common in online social 4185
+media, as in the following extract from Justin Trudeau’s website:74186
+(8.39) Although everything written on this site est
+isdisponible
+availableen
+inanglais
+English4187
+and in French, my personal videos seront
+will bebilingues
+bilingual4188
+Accurately analyzing such texts requires ﬁrst determining which languages are being 4189
+used. Furthermore, quantitative analysis of code switching can provide insights on the 4190
+languages themselves and their relative social positions. 4191
+Code switching can be viewed as a sequence labeling problem, where the goal is to la- 4192
+bel each token as a candidate switch point. In the example above, the words est,and, and 4193
+seront would be labeled as switch points. Solorio and Liu (2008) detect English-Spanish 4194
+switch points using a supervised classiﬁer, with features that include the word, its part-of- 4195
+speech in each language (according to a supervised part-of-speech tagger), and the prob- 4196
+abilities of the word and part-of-speech in each language. Nguyen and Dogru ¨oz (2013) 4197
+apply a conditional random ﬁeld to the problem of detecting code switching between 4198
+Turkish and Dutch. 4199
+Code switching is a special case of the more general problem of word level language 4200
+identiﬁcation, which Barman et al. (2014) address in the context of trilingual code switch- 4201
+ing between Bengali, English, and Hindi. They further observe an even more challenging 4202
+phenomenon: intra-word code switching, such as the use of English sufﬁxes with Bengali 4203
+roots. They therefore mark each token as either (1) belonging to one of the three languages; 4204
+(2) a mix of multiple languages; (3) “universal” (e.g., symbols, numbers, emoticons); or 4205
+(4) undeﬁned. 4206
+7As quoted in http://blogues.lapresse.ca/lagace/2008/09/08/
+justin-trudeau-really-parfait-bilingue/ , accessed August 21, 2017.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+8.6. DIALOGUE ACTS 197
+Speaker Dialogue Act Utterance
+A Y ES-NO-QUESTION So do you go college right now?
+A A BANDONED Are yo-
+B Y ES-ANSWER Yeah,
+B S TATEMENT It’s my last year [laughter].
+A D ECLARATIVE -QUESTION You’re a, so you’re a senior now.
+B Y ES-ANSWER Yeah,
+B S TATEMENT I’m working on my projects trying to graduate [laughter]
+A A PPRECIATION Oh, good for you.
+B B ACKCHANNEL Yeah .
+Figure 8.4: An example of dialogue act labeling (Stolcke et al., 2000)
+8.6 Dialogue acts 4207
+The sequence labeling problems that we have discussed so far have been over sequences 4208
+of word tokens or characters (in the case of tokenization). However, sequence labeling 4209
+can also be performed over higher-level units, such as utterances .Dialogue acts are la- 4210
+bels over utterances in a dialogue, corresponding roughly to the speaker’s intention — 4211
+the utterance’s illocutionary force (Austin, 1962). For example, an utterance may state a 4212
+proposition ( it is not down on any map ), pose a question ( shall we keep chasing this murderous 4213
+ﬁsh? ), or provide a response ( aye aye! ). Stolcke et al. (2000) describe how a set of 42 dia- 4214
+logue acts were annotated for the 1,155 conversations in the Switchboard corpus (Godfrey 4215
+et al., 1992).84216
+An example is shown in Figure 8.4. The annotation is performed over UTTERANCES , 4217
+with the possibility of multiple utterances per conversational turn (in cases such as inter- 4218
+ruptions, an utterance may split over multiple turns). Some utterances are clauses (e.g., So 4219
+do you go to college right now? ), while others are single words (e.g., yeah). Stolcke et al. (2000) 4220
+report that hidden Markov models (HMMs) achieve 96% accuracy on supervised utter- 4221
+ance segmentation. The labels themselves reﬂect the conversational goals of the speaker: 4222
+the utterance yeah functions as an answer in response to the question you’re a senior now , 4223
+but in the ﬁnal line of the excerpt, it is a backchannel (demonstrating comprehension). 4224
+For task of dialogue act labeling, Stolcke et al. (2000) apply a hidden Markov model. 4225
+The probability p (wm|ym)must generate the entire sequence of words in the utterance, 4226
+and it is modeled as a trigram language model ( §6.1). Stolcke et al. (2000) also account 4227
+for acoustic features, which capture the prosody of each utterance — for example, tonal 4228
+and rhythmic properties of speech, which can be used to distinguish dialogue acts such 4229
+8Dialogue act modeling is not restricted to speech; it is relevant in any interactive conversation. For
+example, Jeong et al. (2009) annotate a more limited set of speech acts in a corpus of emails and online
+forums.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+198 CHAPTER 8. APPLICATIONS OF SEQUENCE LABELING
+as questions and answers. These features are handled with an additional emission distri- 4230
+bution, p (am|ym), which is modeled with a probabilistic decision tree (Murphy, 2012). 4231
+While acoustic features yield small improvements overall, they play an important role in 4232
+distinguish questions from statements, and agreements from backchannels. 4233
+Recurrent neural architectures for dialogue act labeling have been proposed by Kalch- 4234
+brenner and Blunsom (2013) and Ji et al. (2016), with strong empirical results. Both models 4235
+are recurrent at the utterance level, so that each complete utterance updates a hidden state. 4236
+The recurrent-convolutional network of Kalchbrenner and Blunsom (2013) uses convolu- 4237
+tion to obtain a representation of each individual utterance, while Ji et al. (2016) use a 4238
+second level of recurrence, over individual words. This enables their method to also func- 4239
+tion as a language model, giving probabilities over sequences of words in a document. 4240
+Exercises 4241
+1. [todo: exercises tk] 4242
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+

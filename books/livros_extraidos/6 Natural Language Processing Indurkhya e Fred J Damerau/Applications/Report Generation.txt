@@ -1,0 +1,557 @@
+22
+Report Generation
+Leo Wanner
+InstitucióCatalanadeRecercaiEstudisAvançatsandUniversitatPompeuFabra22.1 Introduction ..........................................................53322.2 WhatMakesReportGenerationaDistinctTask? ................534
+WhatMakesaTextaReport? •ReportasTextGenre •Characteristic
+FeaturesofReportGeneration
+22.3 WhatDoesReportGenerationStartFrom?.......................537
+DataandKnowledgeSources •DataAssessmentandInterpretation
+22.4 TextPlanningforReportGeneration..............................540
+ContentSelection •DiscoursePlanning
+22.5 LinguisticRealizationforReportGeneration.....................541
+InputandLevelsofLinguisticRepresentation •TasksofLinguistic
+Realization
+22.6 SampleReportGenerators ..........................................54422.7 EvaluationinReportGeneration...................................55122.8 Conclusions:ThePresentandtheFutureofRG..................551Acknowledgments ..........................................................552References....................................................................552
+22.1 Introduction
+The ﬁrst sense of the term reportin theLongman Dictionary of Contemporary English is “a written or
+spoken description of a situation or event, giving people the information they need.” This is preciselywhatreporthas come to mean in NLP—with the restriction that it is, as a rule, written information.
+∗
+Report generation (RG) thus stands for the automatic production of written material required by the
+users.Usually,thismaterialisproducedfromstructureddata—numericaltimeseriesoraformalcontentrepresentation;itslengthmayrangefromoneparagraphtoseveralpages.
+RG is a domain-speciﬁc application of Natural Language Generation (NLG). Since the early days of
+NLG, report generators have been developed for a number of diﬀerent domains—among them labormarket (Rösner, 1986; Iordanskaja et al., 1992), stock market (Kukich, 1983; Reiter and Dale, 2000),weather (Elhadad and Robin, 1996; Coch, 1998; Yao et al., 1998; Sripada et al., 2003), air quality(BusemannandHoracek,1997;Wanneretal.,2007),patienthistories(BontchevaandWilks,2004),andteamgamecommentaries(Robin,1994).Anumberofreportgeneratorspassedbeyondtheprototypicalimplementation; some of them reached an operational state; see, e.g., FoG (Goldberg et al., 1994),
+∗See for reference a deﬁnition of reportin the context of NLP: “The most basic form of narration recounts events in their
+temporalorderofoccurrence.Thisoccursinajournal,record,account,orchronicle,collectivelytermedareport.Reportstypically consist of the most important or salient events in some domain during one period of time (e.g., stock marketreport,weatherreport,newsreport,battlereport).Sometimesreportsfocusoneventsandstatesinvolvingonedimensionofanagentasinamedicalrecord,orapoliticalrecord”(Maybury,1990).
+533
+
+534 HandbookofNaturalLanguageProcessing
+MultiMeteo(Coch,1998),AutoText(Bohnetetal.,2001),andNarrativeEngine(Harris,2008).Nowadays,RGiscommerciallythemostpromisingNLGapplication.
+Eachreportgeneratorcanbecharacterizedalongthefollowingeightdimensionswhichconstitutethe
+leitmotifofthechapter:(1)thedomaincoveredbythegenerator,(2)theinputdataittakes,(3)language(s)
+itcovers,(4)thekindofusermodelituses(ifatall),(5)thetypeofdatapreprocessingitdoes,(6)thetextplanning model it implements, (7) the linguistic model underlying it, and, (8) the linguistic realization(incl.sentenceplanning)tasksitcarriesout.
+The structure of this chapter follows as much as possible the structure of Kittredge and Polguère’s
+chapter in the ﬁrst edition of the Handbook. However, given that since then the state of the art in RGadvancedandnewthemeshavecometothefore, itwasnecessarytorestructurethischapterinordertoreﬂecttheseadvances.Inparticular,wefeltthatitisnecessarytogivemoreprominencetotheindividualtasks in RG—input and background data assessment and interpretation, user modeling, text planning,linguisticrealization—andtheevaluationofreportgenerators.InSection22.2,wediscussthefeaturesthatmake RG distinct from other NLG applications. Section 22.3 analyzes the types of data and knowledgeresources that report generators tend to use as input and the preprocessing tasks thatare carried out ontheinputpriortogenerationproper.Sections22.4and22.5discusshowthemainNLGtasks,namely,textplanningandsentenceplanning,aredealtwithinRG.Section22.6presentsanumberofstate-of-the-artreport generators. In Section 22.7, the current evaluation techniques of report generators are brieﬂyreviewed.Section22.8,ﬁnallyassessesthepresentandthefutureofRG.
+22.2 What Makes Report Generation a Distinct Task?
+With the advance of the state of the art in NLG, the horizon of RG widened as well. Thus, while someyearsago,theobjectivesingle-viewstatementoffactwasstillanessentialcharacteristicofRG(KittredgeandPolguère,2000),inmorerecentapplications,addressee-tailoredreporting,whichearlierusedtobeafeatureofgeneraldiscourseNLG,andevensubjectivereporting,isincreasinglyondemand.LetusdiscusswhyitremainsmeaningfultomakeacleardistinctionbetweenRGandotherapplicationsofNLG.
+22.2.1 What Makes a Text a Report?
+If we cast the deﬁnition of reportin the Longman dictionary into more formal and more precise terms
+(and restrict it to written material), we obtain the following three properties that can be assumed tounderly any report generated by automatic means: (1) be informative, (2) imply the notion of relevancetotheaddresseeinquestion,(3)targetanevent,asituationor,ingeneral,astateofaﬀairsthattakesplaceintime.
+A whole range of automatically generated material does not necessarily show some or all of these
+properties. Thus, automaticallygeneratednarrations(Kimetal., 2002; CheongandYoung, 2006; Szilas,2007), poetry (Gervás, 2001), or humoristic stories (Binsted and Ritchie, 1996) are not meant to informtheaddressees,butrathertoentertainthem.
+The notion of relevance implies a prior assessment of the input data with respect to the information
+needs of the addressee and, thus, indirectly, user-oriented content selection and, in some cases, alsocontentsummarization.Applicationswhosesolepurposeistorenderagivenabstractrepresentationintowordingdonothavethisproperty,eveniftheproducedinformationisjudgedusefultotheaddresseeandis informative. Exclass (Caldwell and Korelsky, 1994), which generates job descriptions, and AlethGen(Coch,1996),whichgeneratesrepliestocomplaintsofclientsofacataloguesellingservice,areexamplesofsuchapplications.
+Technical instructions (Rösner, 1994; Paris et al., 1995) and travel guides (Lu et al., 2000) are also
+informative.Theymayalsoinvolveuser-tailoredcontentselectionandsummarization:imaginethecasewhereatouristleaﬂetistailoredtoanindividualinhis50sinterestedinopera;obviously,thisleaﬂetwill
+
+ReportGeneration 535
+notsupposetocontaindetailsonanightbarpopularamongteenagers.Buttheydonothavethethirdofthepropertiesofareport:theydonotdescribeaneventorasituationthatislocatedonatemporalaxis.
+To these three properties, we may add a fourth property that is not deﬁnitorial, but nonetheless
+characteristicofthemajorityofthereports,namely(4)describearecurrentstateofaﬀairs.Therecurrencycriterion is of practical (rather than theoretical) nature: automatic RG becomes justiﬁed if the state ofaﬀairsinquestionoccurswithacertainfrequency.
+As mentioned above, in the past, automatically generated reports were assigned a further property:
+reﬂectionofanobjectivesingle-viewstatement.However,thispropertydoesnotalwaysapply.Inthecaseofagasturbinemonitoringbulletinasproduced,e.g.,bySumTime-Turbine(Yuetal.,2007),indeedonlyoneviewisrequired: theviewoftheexpertwhohastojudgewhetherthereisaneedforinterventionornot.Similarly,inthecaseofthegenerationofweatherforecastsforoﬀshoreoilrigsasdonebySumTime-Mousam(Sripadaetal.,2003),onlytheperspectiveoftheworkersstationedontheoilrigsisrequired.Butin the case of air quality bulletins as produced by MARQUIS (Wanner et al., 2007), diﬀerent views areclearly disirable: air quality information is relevant to joggers, individuals with weak health conditions,air quality experts, public administrations, etc.; each of them is interested in speciﬁc details that do notneed to coincide with the details the others are interested in; nor is the presentation of the details in thebulletinthesameforallofthem.
+22.2.2 Report as Text Genre
+Byitsnature,anyreportdrawsonastateofaﬀairsinaparticulardomain—beitstockmarketexchange,meteorology,airquality,soccer,oranyotherﬁeld.Eachofthesedomainspossessesitsownlanguage,inlinguisticsstudiedundertheheadingof specializeddiscourse (Gotti,2003).
+∗InNLP,specializeddiscourse
+iscommonlyreferredtoas sublanguage (KittredgeandLehrberger,1982).
+Thenotionofsublanguageimpliesidiosyncrasyinlayout,textstructure,discoursestructure,syntactic
+patterns,andvocabulary.Thus, layoutconventions mayrequireaheadertobecontrastedtothetextbody
+byparticulartypographicalfeatures(e.g.,beinboldand/orincapitals),theuseofaspeciﬁcfontforthemaintext,theplacementofgraphicalillustrativematerialinapredeﬁnedplacerelativelytothetext,predeﬁnedspace between text paragraphs, etc. Thus, any weather or air quality bulletin contains a header with thedate,time,thecoveredregion,andtimeperiod.Anadditionallabelmayspecifytheauthoringagency.
+Textstructureconventions predeterminewhetherthetextbodyistobedividedintoseveralparagraphs
+andifyeswhichcontentissupposedtogointowhichparagraphandhowtheparagraphsaretobeordered.For instance, weather bulletins require a summary of the global atmospheric conditions that determinetheweathertoappearintheﬁrstparagraph,followedbythereviewoftheweatherintherecentpastandthepresent,whichisthenfollowedbyaforecast.
+Discourse structure conventions predetermine the order of the messages within a paragraph and
+the discourse relations between the messages. For example, a soccer game commentary begins with thementionoftheteamsandtheresultofthegame,ofwhichthenusuallyanelaborationisgiven.
+Conventions on the syntactic patterns may require that several relative clauses and subordinate
+constructionsbeavoidedinasinglesentence(as,e.g.,inthecaseofthegenerationofairqualitybulletins);thatnopronominalizationbeapplied(as,e.g.,inthecaseofinventionsummaries);etc.
+Conventionsonthevocabulary arethemostprominentcharacteristicsofspecializeddiscourse.These
+conventionsconcern,ontheonehand,theuseofspeciﬁctermsthatarenotcommonorhaveadiﬀerentmeaning in generalized discourse. For instance, goal,corner,pass, etc., have speciﬁc meanings in the
+soccerdiscourse; drop,high,impliedvolatility ,etc.,havespeciﬁcmeaningsinthestockmarketdiscourse.
+Ontheotherhand,theyimplytheuseofdomain-speciﬁcwordcombinatorics(or collocations)(Wanner,
+1996), such as cut[the]forecastandshares close [at] in the stock market discourse, shoot[a]goaland
+∗The most prominent aspect of specialized discourse is terminology, which deals with the compilation, organization and
+useofspecializedvocabulary(Cabré,1998).InthecontextofRG,terminologyisessentialforthetaskoflexicalization;seebelow.
+
+536 HandbookofNaturalLanguageProcessing
+collect[a]passinthesoccerdiscourse,and outbreak[of]rainandmist/fogthins intheweatherdiscourse.
+While in general NLG, the use of collocations can still be limited in order to avoid the problem of theircodiﬁcation and their motivated selection, in RG, collocations express “how it is being talked” in thedomaininquestion.Theproblemofanadequatetreatmentofcollocationsisthusimminent.
+ThefactthatRGdealswithspecializeddiscourseoftenhasdirectconsequencesforthearchitectureof
+thereportgeneratorandtheapproachtotheindividualtasks—especiallyifthediscourseinquestionshowslimited variation at the diﬀerent stages of processing and thus does not require a strict modularizationof the tasks or the use of a formal theoretical framework. However, we should be aware that for manydomains the complexity of the linguistic style is higher than it appears at the ﬁrst glance such that athorough study of the requirements is advisable prior to making decisions concerning the architectureandprocessingstrategiesofthegenerator.
+22.2.3 Characteristic Features of Report Generation
+RG reveals the following characteristics, which are in accordance with the properties of a report andidiosyncrasiesofspecializeddiscoursediscussedabove:
+(1) its input is composed of structured data: numerical data time series or an abstract content
+representation;
+(2) it implies assessment and interpretation of the input data, which can involve summarization in
+accordancewithsome(possiblyimplicit)criteriaofrelevance;
+(3) ittakestherestrictionsofthesublanguageoftheﬁeldinquestionintoaccount.
+Report generators are typical “data-to-text” and “concept-to-text” applications. They take as input
+structured data (e.g., one or several numerical time series measured by external devices or an abstractcontentrepresentation),whichrequire,atleasttoacertainextent,assessmentandinterpretation.Guidedby criteria of relevance to established norms or to the addressee, assessment and interpretation ofteninvolvesummarizationofthedata/content.
+Strictlyspeaking,dataassessmentandinterpretationisnotnecessarilyanRGtask:itisneededforany
+content presentation mode—be it a text, a table, a curve, or a diagram. In AI, this task has often beenattributedto expertsystems (GiarratanoandRiley,2005).Therefore,inmanyadvancedreportgenerators,
+the data assessment and interpretation module is not considered part of the generator. However, someauthors also argue for the inclusion of assessment and interpretation into the RG system architecture(Reiter,2007).
+While assessment converts data into content or makes inferences in a knowledge base, it does not
+includetheselectionofthecontentthatistobecommunicatedinareportinordertosatisfytheneedsofthe user. Content selection constitutes a separate task, which can be omitted if the content of the entireinput structure is to be verbalized, as in the case of SEMTEX (Rösner, 1986), LFS (Iordanskaja et al.,1992), and FoG (Goldberg et al., 1994). In a few report generators, user proﬁle or context criteria aretaken into account to drive the selection; compare, for instance, MARQUIS and SumTime-Mousam. InTEMSIS(BusemannandHoracek,1997),theuserselectsthecontentdirectlyviaaninteractiveinterface.
+From the discussion in Subsection 22.2.2 of the idiosyncrasies of sublanguages with which RG has
+to deal at all levels of the linguistic description, it is obvious that report generators need to take theseidiosyncrasiesintoaccountinordertoproduceanaturallysoundingtext.
+As far as the architecture of report generators is concerned, it is not diﬀerent from the architecture
+common in general discourse NLG. Most often, this is a pipeline architecture (Reiter and Dale, 2000).The number of modules and the distribution of tasks among the modules varies (which is not diﬀerentfrom general discourse NLG generators). However, as already indicated above, the nature of the tasksaddressed by report generators is nearly always the same: (1) data assessment and interpretation, (2)content selection, (3) discourse planning, and (4) linguistic realization. In the following sections, wediscusswhatRGstartsfromandhowthetasks(1)through(4)tendtobeaddressedinRG.
+
+ReportGeneration 537
+22.3 What Does Report Generation Start From?
+RGusesanumberofdataandknowledgesourcesandimpliescertainpreprocessingstages,notablysomedatapreprocessinganddatainterpretation.
+22.3.1 Data and Knowledge Sources
+Ingeneral,RGdrawsuponthreediﬀerentdataandknowledgesources:inputdata,backgroundknowledgeofthedomain,andusermodels.However,notallgeneratorsuseallthreesources.Especiallyusermodelsmaybeabsentinsimplerreportgenerators.22.3.1.1 Input DataAs pointed out above, the input to RG are structured data. The data format and the level of abstractionmay be rather diﬀerent. Thus, LFS (Iordanskaja et al., 1992), MARQUIS, TEMSIS, SumTime-Turbine(Yu et al., 2007), etc., take numerical time series; MIAKT (Bontcheva and Wilks, 2004) starts from astructure related to an ontology; PLANDOC (McKeown et al., 1995), BT-45 (Portet et al., 2009), etc.,draw upon both numerical time series and ontologies. In contrast to general discourse NLG, RG hardlyeverstartsfromlinguistic,semantic,orsyntacticstructures.
+Numericaltimeseriesareverycommonasinputtoreportgenerators, whichclearlyliesinthenature
+of the task: numerical series monitored over time call for an interpretation, an assessment of relevance,and a summarized verbal presentation. Consider, for illustration, a sample of the input received bySumTime-Turbine in Figure 22.1. Analogous, although smaller, time series are used by FoG (Goldbergetal.,1994),MARQUISandothertime-seriesbasedgenerators.
+Thesizeoftheseries,i.e.,theamountofdatatobepreprocessedbytheassessmentandinterpretation
+module, mayvarysigniﬁcantly. Thus, turbinemonitoringseriesaremuchlargerthan, e.g., airpollutantseries.However,thecomplexityoftheassessmentisnotnecessarilyproportionaltothesizeoftheseries.Thus, a major share of the assessment of any numerical series is a mathematicalcurve analysis in that itcontains, e.g., (1) determination of the start and end values within the considered interval of the series,(2)detectionofthesigniﬁcantrelativeandabsoluteminimaandmaxima;(3)identiﬁcationofsigniﬁcant
+Date Time TTXD-1 TTXD-2 TTXD-3 TTXD-4 TTXD-5 TTXD-6
+27/11/1999 12:02:19 430.56 450.88 429.27 481.40 452.13 463.3827/11/1999 12:02:20 430.98 451.15 429.27 481.68 451.99 463.9327/11/1999 12:02:21 430.84 451.29 429.59 481.09 452.27 463.8027/11/1999 12:02:22 431.12 451.15 429.27 481.40 452.27 464.2127/11/1999 12:02:23 431.25 451.85 429.59 481.68 452.27 464.3527/11/1999 12:02:24 431.53 452.40 429.00 481.40 451.85 464.0727/11/1999 12:02:25 431.39 451.57 429.27 481.40 451.71 463.6627/11/1999 12:02:26 431.25 451.57 429.41 481.26 451.99 463.5227/11/1999 12:02:27 430.28 449.73 429.14 480.53 451.85 464.0727/11/1999 12:02:28 430.00 449.59 429.73 480.81 452.54 464.0727/11/1999 12:02:29 430.56 450.74 429.59 480.95 452.54 464.2127/11/1999 12:02:30 430.56 450.74 429.41 481.68 452.40 463.8027/11/1999 12:02:31 430.56 451.15 429.27 481.09 452.40 463.3827/11/1999 12:02:32 431.25 451.85 429.41 481.82 452.27 463.5227/11/1999 12:02:33 431.39 452.40 430.14 481.82 452.27 463.6627/11/1999 12:02:34 431.25 452.13 430.28 481.82 452.82 464.8027/11/1999 12:02:35 430.98 450.88 429.59 481.96 451.99 464.2127/11/1999 12:02:36 430.28 450.15 429.00 481.82 452.13 463.38
+FIGURE 22.1 Sample of the input as used by SumTime-Turbine. TTXD-i are temperatures (in◦C) measured by
+theexhaustthermocouple i.(ReproducedfromYu,J.etal., Nat.Lang.Eng.,13,25,2007.)
+
+538 HandbookofNaturalLanguageProcessing
+positive and negative gradients; (4) evaluation of the diﬀerence between the maxima/minima and thepredeﬁnedthresholdswithintheconsideredinterval,etc.
+Conceptualstructuresinstantiatedfromontologiesorinspiredbyontologyrepresentationformalisms
+areother“natural”inputstructuresinRG.Somereportgeneratorsuseontologies,eitheralreadyasinitialinput,asMIAKTorforintermediatestructures,asBT-45.22.3.1.2 Background Domain KnowledgeInadditiontothedynamicinput,mostofthereportgeneratorsdrawuponsomestaticbackgroundknowl-edge, which is either represented explicitly in terms of a knowlede base, lists or tables, or incorporatedinto the processing procedures. This knowledge may concern domain-speciﬁc content interpretation,staticinformationtobeincludedwhencertaincontextualconditionsaremetandlanguageconventionsthataretobeobserved.
+A typical example of static background information are legal notices in the air quality bulletins as
+produced by TEMSIS and MARQUIS: speciﬁc threshold pollutant concentrations are assigned legalnotices, which must be included without modiﬁcation into the report when these concentrations arereached.Refertothefollowinglegalnoticefortheozonethresholdof180 μg/m
+3:
+Active children and adults, and people with respiratory disease, such as asthma, should avoidall outdoor exertion; everyone else, especially children, should limit prolonged or heavy exertionoutdoors.The language conventions concern all levels of RG; they can be domain-oriented or cultural. Thus,
+domain communication knowledge can be instrumental for the realization of the discourse structure
+(Rambow,1990)andalsoinﬂuencethesyntacticstructuresofthesentencesinthereport.However,mostillustrativeisthedomainandculturedependencyofthevocabulary.Forinstance,intheweatherdomain,the notion of ‘hot’ depends on the cultural perception (coined by the geographical location); in the airqualitydomain,theperceptionofairqualityingeneralandofpollutantconcentrationsinparticularvariesfrom one region to another—which is even reﬂected in the environmental regulations of each countrythatassociateairqualityindexscaleswithlabelssuchas“good,”“bad,”“satisfactory,”etc.
+Theinterpretationandnamingofthetimeintervalsofadayisalsocultural.Forexample,theSpanish
+mañana‘morning’ extends more or less until 2:00 p.m. and the tarde‘afternoon’ until 8:00 or 9:00 p.m.
+The German Morgen‘morning’ can go until 12:00 p.m., and the Nachmittag ‘afternoon’ until 5:00 p.m.
+at the latest. The diverging interpretation is occasionally reﬂected by the vocabulary; for instance, inGerman, a special term for ‘time before noon’— Vormittag—is available, while in English, French, etc.,
+thisisstill morning.
+22.3.1.3 User ModelsAdvanced RG is increasingly applied to domains that require a variation of the content and a languagestyleinwhichthiscontentispresenteddependingontheusermodel.
+Ingeneral,ausermodelinNLGcanbeconsideredasbeingcomposedoftheproﬁleoftheuserandthe
+historyofgeneration.Theproﬁlecapturestheuser’scharacteristicfeaturesthatarerelevanttogeneration;thehistorycontainstheinformationthathasalreadybeencommunicatedtotheuser(eitherinthecurrentorintheprevioussessions).Asarule,reportgeneratorsdonotprotocolthehistory.Therefore,wefocusontheproﬁle.
+The proﬁle of a user may have the following dimensions: (1) expertise, (2) need for speciﬁc informa-
+tion, (3) cultural background, and (4) interpersonal content bias, i.e., personal content interpretationpreferences.
+TheexpertisedimensionisthemostobviousandtheoldestdimensioninNLG;see, e.g.,(Paris, 1993;
+Zukerman and Litman, 2001). The standard range is ‘expert–intermediate–novice’ or a more detailedvariantthereof.InRG,insteadofaclearrange,other(domain-speciﬁc)typologiesthataretailoredtothe
+
+ReportGeneration 539
+diﬀerentusertypesmaybemoreappropriate.Forinstance,theMARQUISusertypologydistinguishesinthisrespectbetweenairqualityexperts,healthprofessionals,publicadministrations,andaveragecitizens.
+Theexpertisedimensionis,asarule,usedtoguidecontentselectiononthedetailscale.Thus,anovice
+iscontentedwithanoverviewwhileanexpertrequiresdetails. Ontheotherhand, anexpertknowsthatbetween the concentration of ozone and the concentration of nitrogen dioxyde a reciproke correlationholds(andthusdoesnotneedanexplicitmentionofit),whileanaveragecitizendoesnot.Theexpertisedimension may also constrain lexicalization and inﬂuence the discourse structure. For instance, for anexpert,therelationbetweenthestatementontheconcentrationofapollutantandthestatementthattheairqualityreachedahealththreateninglevelisappropriatelyrealizedas
+IMPLICATURE ,whileforanaverage
+citizenas ELABORATION .
+The dimension that speciﬁes the need for speciﬁc information is supposed to capture the distinct
+content aspects that are of relevance to diﬀerent users. In MARQUIS, a jogger, an individual with weakheart conditions, and an individual with a respiratory disease will receive an air quality bulletin of thesamedegreeofdetail,butwithdeviatingcontent.Thisisbecauseozoneisespeciallycriticaltoindividualswith weak heart conditions (even if its concentration is only moderately elevated), ﬁne dust particles(PM
+10) are of particular relevance to patients with asthma, and a jogger must be made aware of high
+concentrationsofozone,carbondioxyde,andPM 10.InSumTime-Mousam,theneedforspeciﬁcweather
+forecastinformationiscorrelatedwiththelocationoftheoilrigonwhichtheuserislocated.∗
+Thedimensionofculturalbackgroundmayberatherimportantinreportgeneratorsthataddressusers
+from diﬀerent cultural regions. For instance, in Spain, users are less sensitive to the topic of air qualitythaninFinlandandusersinFinlandhaveadiﬀerentperceptionoflowtemperaturesthanusersinSpain.SuchculturalidiosyncrasiesmustbeconsideredinRGduringcontentselection,discourseplanning,andlexicalization.
+Thedimensionoftheinterpersonalcontentbiasisadimensionthatcanbedispensedwithin“objective”
+reporting on, for instance, gas turbine monitoring, weather, stock market exchange, etc. However, itturned out to be essential for RG in domains that are per sesubjective—as, e.g., game commentaries.
+Thus,experimentsdemonstratedthatasoccergamecommentaryisjudgedbyanaddresseetobeofhigherquality if the content nuances and language are adapted to his personal preferences for a team—whichconﬁrmstheworkbyHovyinearlynon-reportNLG(Hovy,1988).
+Traditionally, any user is assigned a predeﬁned proﬁle. However, when the diversity of information
+that can be communicated is rather high and/or the user proﬁles cannot be unambiguously assignedinformation preferences, the possibility of a personiﬁcation of the proﬁle by the users is important. Forinstance, in MARQUIS, a new user is ﬁrst assigned a default proﬁle, which can be personalized duringtheregistrationprocedure.
+22.3.2 Data Assessment and Interpretation
+RG involves a data preprocessing stage that is ocassionally considered part of text planning (Kittredgeand Polguère, 2000). However, as pointed out in Section 22.2.3, it is very diﬀerent in nature from theothertasksrelatedtotextplanning,anditcouldbeevenconsideredasbeingoutsideRG.
+The ﬁrst, basic, task in this stage that may be needed is the transformation of the input data format
+intoamoreconvenientformatortherelationoftheinputdatatodataalreadyavailabletothegenerator.For instance, quantitative time series tables may be mapped onto equivalent XML-strucures (as, e.g., inAutoText(Bohnetetal.,2001)orMARQUIS).Strictlyspeaking,thistaskdoesnotinvolveanyassessmentorinterpretation.
+The second task is the reinterpretation of the input data in terms of a diﬀerent scale or with respect
+to a predeﬁned reference date. For instance, in the weather domain, the numerical value of the speed ofthe wind in km/h may be mapped onto a qualitative scale (‘light,’ ‘moderate,’ ‘strong,’ ...)orontothe
+∗SumTime-Mousamgeneratedmarineweatherforecastsforoﬀshoreoilrigs,seealsoSection22.6.
+
+540 HandbookofNaturalLanguageProcessing
+Beaufortscale—dependingontheuser.Similarly,intheairqualitydomain,theactualconcentrationofapollutantsubstance(measuredin μg/m
+3)mustbeprojectedontothecorrespondingindexscale(ranging,
+for instance, from 1 to 6) and onto a qualitative scale (‘low,’ ‘moderate,’ ...). Furthermore, a givenconcentration, temperature, labor market ﬁgure, etc., is often compared to either a prominent ﬁguredetectedinthepast(as,e.g.,thenumberofunemployedinSEMTEX(Rösner,1986)andLFS(Iordanskajaetal.,1992))ortoapredeﬁnedreference(as,e.g.,alegallyﬁxedthresholdconcentrationinTEMSISandMARQUIS)andtheresultofthecomparisonisincorporatedintothecontent.
+Thethirdtaskistheidentiﬁcationofpatternswithintheinputdataandtheassignmentofmeaningto
+thesepatterns.Thus,ANA(Kukich,1983)derivesfromahalf-hourlypricetimeseriesofastock‘decrease’and ‘increase’ patterns. Similarly, in LFS the increase or decrease of the employment rate is determinedvia the evaluation of the numerical change between two consecutive months. MARQUIS’s assessmentmodule performs a mathematical curve analysis on the pollutant concentration time series in order toidentifythedecreases/increasesandthegradientsthereof,localmaximaandminima, etc.,andidentiﬁessemanticrelations(suchas‘cause,’‘part-of,’‘sequence,’etc.)betweenconceptualconﬁgurations—similarto BT-45, which also detects ‘cause,’ ‘includes,’ and ‘associates’ relations. In SumTime-Mousam, theinputdataaresegmentedinthatlinearintervalsinthedataareidentiﬁedbeforethesegmenteddataaremappedontoaconceptualrepresentation. IntheStreakgenerator(Robin, 1994; McKeownetal., 1995),no patterns are identiﬁed, but quantitative data are assigned conceptual fact structures that explicitly
+representtheirmeaning(e.g.,thatagivennumericscoreisawinoraloss).
+The fourth task is the abstraction of patterns—as, e.g., in ANA, where from the elementary ‘increase’
+and‘decrease’patternsofanumberofstocks,suchcomplexconceptualconﬁgurationsas‘broadlybaseddecline in the market’ are derived. SumTime-Turbine contains several pattern abstraction algorithmsalongthetemporaldimension.
+The ﬁfth task, which may be interrelated with the previous four, is the assessment of the relevance
+of the derived content to the users. In MARQUIS, the task consists in distilling all content that may berelevanttoanyoftheusersregisteredtothesystem.InBT-45,explicitimportanceratingsareassignedtothederivedcontent.
+22.4 Text Planning for Report Generation
+TextplanninginNLGtraditionallyinvolvescontentselectionanddiscourseplanning.Thisisnotdiﬀerentin RG—although in the past, it has often been assumed that the report genre has a stereotype discoursestructure, which is best captured in terms of text schemas (McKeown, 1985) that are rigid to a majorextentandthatreducethetaskoftextplanningtotheminimum.Thisisabouttochange.
+Depending on the concrete report generator, both tasks are dealt with in separate (sub)modules or
+together in one single module; as a matter of fact, in most RG-systems, it is one module. The result oftextplanningisa textplan,whichisusuallyalreadypackagedsentence-wise,althoughitsdegreeofdetail
+dependsonhowelaboratedthelinguisticrealizationmoduleis(seeSection22.5.1).
+22.4.1 Content Selection
+Thetaskofcontentselectioncanbeobsoleteiftheentirecontentstructureobtainedfromtheinputdatais communicated, as, e.g., in AutoText. However, in more advanced report generators, which deal withlargersetsofinputdataorwhichserveseveraltypesofusers,itassumesaprominentrole.
+Contentselectionisguidedbycontentrelevancecriteria,whichmaybevalidingeneralorbespeciﬁcto
+theuser, andbythepersonalpreferencesoftheuser. Thecontentselectionmechanismsusuallyoperateon the output of the data assessment and interpretation task. If no such task is foreseen, they navigatedirectlyonthecontentrepository(e.g.,ontologyorknowledgebase).
+
+ReportGeneration 541
+In BT-45 (Portet et al., 2009), the content selection algorithm selects from the content repository a
+number of “key events” that have received a suﬃciently high relevance rating in the assessment stage.Along with a key event, events that are co-temporal with it or that are explicitly related to it by one ofthe predeﬁned relations are selected. The algorithm is controlled by a set of parameters and a numberof domain-speciﬁc rules that determine the relevance threshold for key events, the maximal number ofmessages that can be selected for communication, and so on. In MARQUIS, content selection is drivenby domain criteria (such as, e.g., the relation of the measured or forecasted pollutant concentrations tolegal or system-deﬁned threshold concentrations, the values of the concentration increase or decreasegradients, the primacy of the individual pollutants in the given region, etc.) and by user preferences.MIAKT (Bontcheva and Wilks, 2004) starts from the description of the case of the patient encoded bya medical expert in RDF. In principle, the entire case description (enriched by concepts from a medicaldomain ontology) is to be verbalized, such that no content selection is involved. However, the casedescription may contain duplicated RDF-triples and pairs of inverse triples. The content selection taskconsiststhusinremovingrepetitiveandinversetriples.
+22.4.2 Discourse Planning
+TheprimarytaskofdiscourseplanninginRGis discoursestructuring ,i.e.,thedeterminationoftheorder
+between the paragraphs as well as between the messages within the individual paragraphs. FoG, ANA,AutoText, and anumber of othergenerators implementarigid schema-orientedplanning suchthattheorderoftheparagraphsinareporttheyproduceandtheorderofthestatementswithineachparagrapharepredetermined.However,inapplicationswherecontentselectionisdynamictoalargeextent,thisstrategycanbeproblematic. Therefore, inmorerecentreportgenerators, moreﬂexiblestructuringstrategiesareused. For instance, in BT-45, key events (see above) are always mentioned ﬁrst. They are followed byevents that are explicitly linked to the key event, which are in their turn followed by other co-temporalevents.Themessagesonakeyeventwiththemessagesontheeventsthatarerelatedtoitformaparagraphin the report. The key event paragraphs are ordered by the start time of their respective key event. InLFS, statements are ordered according to their relative salience; a global salience assessment procedureensuresthatstatementsonthemostsigniﬁcanteconomicchangesaremovedtothebeginningofthetextplan.InMARQUIS,amixtureofschema-basedplanningattheparagraphlevelandtop-downdiscoursestructurebasedplanningwithintheindividualparagraphsisrealized(Wanneretal.,2007)—whichmakes,as in TechDoc (Rösner and Stede, 1992), a prior (context- and user-tailored) identiﬁcation of discourserelationsthatholdbetweenstatementsnecessary.
+22.5 Linguistic Realization for Report Generation
+The importance of the linguistic realization for RG is controversial. Thus, some report generators,such as TEMSIS, use templates, with gaps left open for words to be ﬁlled in. In SumTime-Mousam,SumTime-Turbine, and BT-45, linguistic realization plays a minor role; some attention is given only tolexicalizationandaggregation.Ontheotherside,weobserveratherelaboratelinguisticmodulesinGossip(Iordanskaja et al., 1991), FoG (Goldberg et al., 1994), LFS (Iordanskaja et al., 1992), Project Reporter(Korelskyetal.,1993),PLANDOC,andMARQUIS.McDonald(McDonald,1993)arguesthatrealizationis a relatively trivial task in generation. In reality, the importance and complexity of the linguisticrealization decisively depends on a variety of criteria into which we cannot delve here. It suﬃces to cite(Reiter,1995)thatathoroughcost-beneﬁtanalysisisneededtodecideuponthemostadequatelinguisticrealization.
+
+542 HandbookofNaturalLanguageProcessing
+22.5.1 Input and Levels of Linguistic Representation
+The nature and degree of concretization of the text plan that serves as input to the linguistic realizationmodule depends on the linguistic framework that underlies a report generator. It can be more or lessabstract.ConsiderinFigure22.2theinputstructuretoStreak’s(Robin,1994;ElhadadandRobin,1996)linguisticmodulethatisbasedon SystemicFunctionalLinguistics (SFL)(HallidayandMatthiessen,1999;
+Halliday and Matthiessen, 2004); PLANDOC, which is also based on SFL, deals with similar inputstructures.
+Thelinguisticmodelsofreportgeneratorsthatarebasedonthe Meaning-TextTheory,MTT(Mel’čuk,
+1988), among them Gossip, LFS, FoG, MultiMeteo, and MARQUIS, take as input either conceptualgraphsinthesenseofSowa(Sowa,2000)orsemanticpredicate-argumentstructuresofthekinddisplayedinFigure22.3.
+Dependingonthelinguisticframeworkandthecomplexityofthelinguisticphenomenaofthedomain,
+a message received as input to the linguistic realization module can undergo concretization in severalstages.Thenumberofstages(orlevelsoflinguisticrepresentation)varies.Thus,anumberofgenerators(amongthem,e.g.,TEMSISandtheSumTimegenerators)realizeadirectprojectionofcontentstructurestolexicalizedsyntacticstructures.Thisdoesnotexcludethatthelattercanbefurthermodiﬁed,aggregated,orparaphrased—butthelevelofabstractionremainsalwaysthesame.MTTdistinguishes,apartfromthesemanticstructure(SemS),adeep-syntactic(DSyntS),asurface-syntactic(SSyntS),adeep-morphological(DMorphS),andasurface-morphologicalstructure(SMorphS).Often,aconceptualstructureasaninter-face representation between content-oriented text plan codiﬁcation and semantic message codiﬁcationis added. Conceptual structures are language independent, while all the other structures are language-speciﬁc. But not all MTT-based generators use all of them. Thus, while MARQUIS uses indeed all, LFSuniﬁesDMorphSandSMorphS,andFoGalsoskipsSemS.
+Inordertofacilitatethechoicebetweensemanticallyequivalentbutsyntacticallyandlexicallydeviating
+variants (see, e.g., The high ozone concentration made the AQ index rise vs.T h eA Qi n d e xr o s ed u et o
+the high ozone concentration in MARQUIS), some generators use the information (or, in the MTT
+terminology, communicative )structure.Theinformationstructuredeﬁnesthedistributionofinformation
+(cat clause
+(process (type material) (effect-type creative) (lex “score”) (tense past)
+(participants (agent (cat proper)
+(head (cat person-name)
+(first-name (lex “Michael”))(last-name (lex “Jordan”))))
+(created (cat np) (cardinal (value 36))
+(head (lex “point”) (definite no))))))
+FIGURE 22.2 Lexicalized input structure to Streak. (From Elhadad, M. and Robin, J., An overview of SURGE:
+A reusable comprehensive syntactic realization component. Technical report, Ben Gurion University in the Negev,Beersheba,Israel,1996.Withpermission.)
+mean{sem=‘mean’
+1→index{sem=‘index’
+1→quality{sem=‘quality’
+1→air{sem=‘air’}}
+2→6{sem=‘six’}}
+2→quality{sem=‘quality’
+1→air{sem=‘air’}2→poor{sem=‘poor’}}}
+very{sem=‘very’
+1→poor}
+FIGURE22.3 Samplesemanticstructureforthemessage‘Theairqualityindexis6,whichmeansthattheairquality
+isverypoor’producedbyMARQUISasinputtotheMTT-basedlinguisticmodule.
+
+ReportGeneration 543
+in a propositional structure in terms of oppositions such as Theme vs. Rheme, Given vs. New, etc.(Lambrecht, 1994; Mel’čuk, 2001). See (Iordanskaja et al., 1991) for the illustration of the use of theinformationstructureinRG.
+Current report generators that are not based on any formal linguistic framework tend to neglect the
+information structure, but keep track of the anaphoric structure that contains the co-reference linksbetween units in order to be able to generate appropriate referring expressions by pronominalizing,choosingthedeﬁnitearticle,orahyperonym.
+22.5.2 Tasks of Linguistic Realization
+IngeneraldiscourseNLG,linguisticrealizationisoftendividedintothetasksofmicro-(sentence)planningand surface realization. Microplanning deals with such tasks as sentence packaging, syntactic structuredetermination,aggregation,lexicalization,andreferringexpressiongeneration.Surfacerealizationisthenaratherstraightforwardinstantiationoftheresultingstructureofmicroplanning.
+In RG, usually only a subset of the microplanning tasks is addressed. Most of sentence packaging is,
+as a rule, avoided in that each message is a priori considered a clause. Some generators use rule-basedalgorithms to merge either already available messages or clauses to obtain a more ﬂuid text (as, e.g.,BT-45).InStreakandPLANDOC,specialattentionisgiventolexicalization.22.5.2.1 Syntactic Structure DeterminationA number of generators use syntactic structure templates on which the content structures are mappeddirectly—as, e.g., SumTime-Turbine. These templates can be rather abstract and formal (in the case ofBT-45,inaHPSG-likeformat).
+MostMTT-basedgenerators(e.g.,Gossip,LFS,MARQUIS)usetheTheme/Rhemedistributiondeﬁned
+over the semantic (or conceptual) structures and the dominant orentrynode of the latter to determine
+“deep-syntactic” structures. The dominant node, comparable to the key event in BT-45, becomes theroot of the syntactic tree; a Theme/Rheme partition embedded into another Theme or Rheme partitionbecomesasubordinateorrelativeclause.22.5.2.2 AggregationAggregation,i.e.,thefusionofpartlyoverlappingstructureswiththepurposetoavoidredundanciesandachieve a more ﬂuid text, can be carried out at diﬀerent levels of a linguistic representation (as, e.g.,in PLANDOC). Most often, however, it is done either prior to the linguistic realization proper at themessage (content) level (as in BT-45) or during the transition between the semantic and syntacticlevels(as in MARQUIS). However, it is important to be aware that aggregation can be semantic, syntactic, orlexical(Dalianis,1999),andthatformorecomplexRG,adiﬀerentiationmightbeneeded.22.5.2.3 LexicalizationLexicalization, i.e., the mapping of content or semantic units onto lexical units (LUs), is traditionallygivenamoreprominentroleinRG.Thisis,ontheonehand,duetotheprominentplaceoflexicalizationingeneraldiscourseNLG,and,ontheotherhand,duetotheidiosyncraticvocabularyofthesublanguagesinreportdomains.
+Fourtypesoflexicalizationneedtobedealtwith:
+(1) Full LUs, i.e., content words that correspond to one or several units in a message that is to be
+lexicalized;
+(2) Collocationalunitssuchas heavy storm ,dramatic loss, sharp rise , etc., wherethechoiceofoneof
+theLUsiscontingentontheotherLU;
+
+544 HandbookofNaturalLanguageProcessing
+(3) Functional words whose introduction is controlled by either subcategorization or idiosyncratic
+lexical restrictions of an LU, as, e.g., relevant to (and not *relevant for )a n dat[a]am e a s u r i n g
+station(andnot*in [a]measuringstation);
+(4) Discourse markers that connect messages and make explicit temporal, causal, and other types of
+relationsthatholdbetweenthesemessages.
+The majority of the report generators focuses on the choice of full LUs. For instance, BT-45 maps
+messages onto case frame like representations with a verbal predication as the head and thematic rolesasarguments.Thelexicalizationisstraight-forwardlylinkedtotheontology.InSumTime-Mousam, theinput to microplanning are tuples of the kind (0600, 8, 13, W, nil): time, wind speed lower range, windspeed higher range, wind direction, “modiﬁer” (such as ‘gust,’ ‘shower’); each element in the tuple hasanumberoflexicalizedphrasetemplatesassociatedwithit. InMARQUIS,the semanticdictionary gives
+foreachsemantemeallitspossiblelexicalizations.Forinstance,themeaning‘cause’ismappedtotheLUs
+CAUSE[V],CAUSE[N],RESULT [V],RESULT [N],DUE,BECAUSE,CONSEQUENCE ,etc.
+Most of the MTT generators use the advanced lexicalization instrument oﬀered by the theory—the
+lexical functions , LFs (Mel’čuk, 1996). LFs are a formal means to encode idiosyncratic names and
+collocationsinagenericway.Inafunctionalnotation,theyarewrittenasfollows:Magn(storm)= heavy,
+Magn(loss)=dramatic ,Oper1(concentration)=have,IncepFunc 2(concentration)=reach ,etc.TheLFsof
+anLUmaybereferencedinthesemanticdictionaryforlexicalization(asinMARQUIS)orbechoseninaparaphrasingstagethatfollowsthedefaultlexicalization(asinLFS).
+With a few exceptions, as, e.g., ANA (Kukich, 1983), other report generators that are not based on
+MTTdonotdealwithcollocations.ANAencodesthemina phrasallexicon (Becker,1975).Theproblem
+ofencodingphraseologicalinformationinalexiconofthistypeisthatitishardtoextendandmaintain.Thatis,itmightmeanarichvarietyoflexicalizationinsmalldomains(suchasinstockmarketreportsinthecaseofANA),butcanhardlysustainalargescalegeneratorinanoperationalmode.
+Astheonlyreportgenerator,Streakimplements“reitiﬁedlexicalization”:therevisionoflexicalchoices
+based,forinstance,onaggregationcriteria.Thus,havingplannedontheﬁrstpasstwoseparatesentencestructures,whichwouldresult,e.g.,in KarlMalonescored39points andKarlMalone’s39pointperformance
+is equal to his season high , respectively, Streak would conﬂate them in order to obtain Karl Malone tied
+hisseasonhighwith39points .
+22.6 Sample Report Generators
+AsalreadypointedoutintheIntroduction,reportgeneratorshavebeenbuiltsincetheearlydaysofNLG.Anincreasingnumberofthemarebuiltforoperationaluse—evenifbyfarnotallarethenputintoservice.Thereasonsforthis“failure”aremanifold(Reiteretal.,2003)and,unfortunately,itisbeyondthescopeofthischaptertogointodetailshere. So, letussimplyobservethatinordertobeacceptedbytheusers,RGmust,ontheonehand,serveaclearlyidentiﬁedneed,and,ontheotherhand,fulﬁllincreasinglyhighqualitystandards.
+In this section, we survey 10 report generators. These are generators that are either recent (and thus
+showthetendencyintheﬁeld)orofwhichwebelievethattheyinﬂuencedtheresearchandthestateoftheartinRG.SevenofthetengeneratorscomefromtwogroupsthataremostactiveintheﬁeldofRG:Gossip,FoG,LFS,andProjectReporterstemfromGoGenTexInc.,andSumTime-Mousam,SumTime-Turbine,and BT-45 from the Aberdeen Natural Language Generation Group. Note also that there is a certainoverlap with the list of generators discussed in Kittredge and Polguère (2000), which shows that someearlierworksalreadysetthecourseintheﬁeldofRG.GossipGossip (Generating Operating SystemSummaries in Prolog) (Iordanskaja and Polguère, 1988;
+Iordanskaja et al., 1991) provides computer operating system (OS) reports. The input to Gossip are OS
+
+ReportGeneration 545
+ee(martin, ttyp0, editor, [f1], 8:30:00,9:10:32,0:40:32,240) The system was usedfor 7 hours 32 minutes and 12 seconds. The users of the system ran compilers andeditors during this time. Compilers were run six times (the cpu-time equal to 46%of the total cpu-time). Editors were run twelve times (the cpu-time equal to 53%of the total cpu-time). Two users, Martin and Jessie, logged on to the system.Martin used the system for 63% of the time in use. Jessie used the system for 40%of the time in use.
+FIGURE 22.4 Input and output of the Gossip system. (From Kittredge, R.I. and Polguère, A., The generation of
+reports from databases, in Handbook of Natural Language Processing , Dale, R., Moisl, H., and Somers, H. (eds.),
+Taylor&Francis,NewYork,2000,261–304.)
+audit log records of the kind shown in the ﬁrst line of Figure 22.4. Each input data record is composedof the parameter list of an elementary event ‘ ee’ :t h eu s e rn a m e( Martin), terminal ID (ttyp0), OS
+program execution command ( editor), and its parameter list ([f1]), as well the time for the start,
+stopanddurationoftheexecutionoftheprogram.
+Theinputdatarecordtrailsareprocessedbythe TextStructuringandContentDeterminationModule
+(TSCDM) (Carcagno and Iordanskaja, 1992). The backbone of the TSCDM is the Topic Tree (TT)—a
+predeﬁnedhierarchicalorderingofthepotentialtopicsinthedomainofOSreports.Forcontentselection,the TT is traversed and the individual topics are instantiated accessing the data trails (in the DB) andmakinginferences; ifnoinformationisavailableonthetopic, thetopicisdropped. TheinstantiatedTTundergoes some further transformations before it is mapped onto conceptual-communicative represen-
+tations(conceptual graphs a la Sowa (Sowa, 2000), enriched by the Theme/Rheme structure), which in
+their turn are mapped onto semantic representations (semantic structures enriched by Theme/Rhemestructures) in the sense of the MTT. Semantic representations are then used as input to the linguisticrealizationmoduletogeneratereportsofthetypeshowninFigure22.4.
+Gossip was one of the ﬁrst report generators to use fully spelled out text planning and linguistic
+realizationmodules.Inparticular,italreadyusestheTheme/Rhemestructureasaguidancecriterionforchoice at all levels of generation. It did not become operational—as its developers point out, due to thelackofalargeenoughusercommunity.FoGFoG (ForecastGenerator) is one of the few operational report generators (Goldberg et al., 1994;
+Kittredge et al., 1986). It produces two types of bilingual (English and French) weather bulletins: public
+andmarineforecasts. The input to FoG are meteorological data time series (such as wind direction and
+speed, precipitation (type) and temperature). The ﬁrst processing stage of the input data is “space andtime merging”—the segmentation of the individual data along the temporal and geographical axes (seealso SumTime-Mousam below). For instance,
+∗in the case of a continuous range of wind direction and
+wind speed in a speciﬁc time interval as in the case of (1100Z, 170, 4, 0, -22) ,(1200Z, 180, 5,
+0, -21),(1300Z, 180, 4, 0, -21) , where from 11:00 to 13:00 the wind direction is predicted to be
+between 170 and 180 (compass) degrees, with a wind speed between 4 and 5, the time merger wouldproduce a tuple of the type:
+winds, (1 3 di s sp 4 5) , where the ﬁrst two elements of the tuple (‘1’
+and‘3’)specifythetimeinterval(inhoursaftertheissueoftheforecast),‘di’standsfor“direction,”‘s’for“sourth,”‘sp’for“speed,”andthelasttwoelements(‘4’and‘5’)specifythewindspeed.Themergeofdatafor geographically continuous areas (space merging) is done in a similar way. The obtained tuples arepassed to the text planner, which outputs a conceptual (language-independent) structure similar to theoneproducedinGossip.Theconceptualstructureisthenprocessedbythelinguisticrealizationmodule,which is based on a simpliﬁed MTT-model. Refer to Figure 22.5 for a report produced by FoG for twomergedareas, BELLE ISLE andNORTHEAST COAST.
+∗Dataoriginallycitedin(KittredgeandPolguère,2000).
+
+546 HandbookofNaturalLanguageProcessing
+BELLE ISLENORTHEAST COAST.WINDS LIGHT INCREASING TO NORTHWEST 25 TO 30 KNOTS EARLY THISAFTERNOON THEN DIMINISHING TO NORTHWEST 15 BY EVENING.WINDS DIMINISHING TO LIGHT WEDNESDAY AFTERNOON.SNOW BEGINNING EARLY THIS AFTERNOON THEN ENDING LATE THIS EVENING.VISIBILITY FAIR IN SNOW. MODERATE FREEZING SPRAYDEVELOPING NEAR DAWN THEN BECOMING SEVERE EARLY THIS EVENING.SEVERE FREEZING SPRAY ENDING WEDNESDAY MORNINGTEMPERATURES MINUS 23 TO MINUS 19.OUTLOOK FOR THURSDAY ...LIGHT WINDS.
+FIGURE22.5 EnglishreportgeneratedbyFoG.
+BasedontheexperiencewithFoG,GoGenTexdevelopedtheconﬁgurabletoolkitMeteoCogentforthe
+implementation, the customization, and the maintenance of weather forecast generators (Kittredge andLavoie,1998).LFSLFS(Labor ForceStatistics)(Iordanskajaetal.,1992)isoneofthethreebilingual(English,French)
+generators developed at CoGenTex in the early 1990s to produce summaries from Canadian economystatistics:LFSonlaborforce,RTSonretailtrade,andCPISontheconsumerpriceindex.
+TheinputtoLFSareemploymentstatisticstablespublishedmonthlybyStatisticsCanada.Theoutput
+are summaries on the labor market (of up to 3 pages in length) of the kind shown in Figure 22.6. Thesummariesmaybeaccompaniedbygraphics.
+LFS (as its two sister generators RTS and CPIS) comes with a graphical user interface that allows for
+thecontrolofthedatadisplay,ofthelinguisticgeneration(suchaslengthofthesentences),andofotheroutputfeatures.
+LFS was successfully tested by analysts from Statistics Canada. However, for its practical use, the
+inclusionofadditionaltypesofstatisticaldatahadbeenrequested.PLANDOC PLANDOChasbeendevelopedforoperationaluseatBellcorebyateamofBellcoreResearch
+and Columbia University (McKeown et al., 1994, 1995). It generates summaries of the activities oftelephonenetworkplanningengineers.Asinput,PLANDOCtakesplantrackinginformationofthekind
+COMMENTARYOverviewEstimates for November 1989 from Statistics Canada’s Labour Force Survey show thatthe seasonally adjusted level of employment rose by 32000 and that the level ofunemployment increased by 30000. The unemployment rate increased by 0.2 to 7.6.EmploymentFor the week ended November 3, 1989, the seasonally adjusted level of employmentwas estimated at 12568000, up 32000 from October. The increase was concentratedamong women aged 25 and over. The employment/population ratio remained virtuallyunchanged (62.1).Employment among women aged 25 and over rose by 44000 and theiremployment/population ratio increased by 0.5 to 52.3.Employment among men aged 25 and over fell by 12000 and theiremployment/population ratio decreased by 0.3 to 72.5....Employment fell by 10000 in agriculture, by 12000 in transportation, communicationand other utilities and by 12000 in primary industries other than agriculture.Employment rose by 68000 in servises and by 20000 in trade. It remained virtuallyunchanged in the other sectors....
+FIGURE22.6 LFSoutputtextfragment.
+
+ReportGeneration 547
+1. RUNID fiberall FIBER 6/19/93 act yes2. FA 1301 2 19953. FA 1201 2 19954. FA 1401 2 19955. FA 1501 2 19956. ANF co 1103 2 1995 487. ANF 1201 1301 2 1995 248. ANF 1401 1501 2 1995 24END. 856.0 670.2RUN-ID: FIBERALLThis saved fiber refinement included all DLC changes in RUNID ALLDLC. RUNIDFIBERALL demanded that PLAN activate fiber for CSAs 1201, 1301, 1401 and 1501 in1995 Q2. It requested the placement of a 48-fiber cable from the CO to section1103 and the placement of 24-fiber cables from section 1201 to section 1301and from section 1401 to section 1501 in the second quarter of 1995. For thisrefinement, the resulting 20 year route PWE was $856.00K, a $64.11K savings overthe BASE plan and the resulting 5 year IFC was $670.20K, a $60.55K savings overthe BASE plan.
+FIGURE 22.7 Input and output of PLANDOC. (From McKeown, K. et al., Info. Process. Manage ., 31, 703, 1995.
+Withpermission.)
+displayed in the upper half of Figure 22.7 (originally cited in McKeown et al., 1995, p. 710). Lines 1–5containinformationon“ﬁberactivation”(thesite,thequarteroftheyear,andtheyear);lines6–8containinformation on “cable placement” (cable starting site, cable ending site, the quarter, the year, and thenumberofﬁbersinthecable).ThelowerpartofFigure22.7displaysasamplePLANDOCsummary.
+AsinANA(Kukich,1983),theinputdatainPLANDOCarepassedtothe factgenerator,whichmaps
+themontosemanticfeaturestructures(=facts)thatdonotcontainanynewinformation, butwhichareeasiertohandlebyPLANDOC.Thenextmodule,the ontologizer,enricheseachfactwithfurtherdomain-
+speciﬁc knowledge. The enriched facts are then handed over to the discourse planner, which organizesthe content and the overall structure of the summary. The text plan is processed by the lexicalizer andthenbythesurfacegeneratorSURGE(ElhadadandRobin,1996).ProjectReporter ProjectReporterisacommercialtoolkitdevelopedbyCoGenTexforthegenerationof
+project management reports from standardized databases of commercial project management softwaresuchas,e.g.,MicrosoftProject.Itrunsasaplug-intoaWebserver,integratingtextualstatussummarieswithtablesandgraphics.Thesummariesofthelengthofafewsentenceseacharesupposedtohighlightimportantinformationthatisnoteasilyconveyedbythegraphics.Theirgenerationisinitiatedbyamouseclickontheitemofinterest(project,task,etc.)inthegraphicaldisplay.
+The linguistic model in Project Reporter is based on ﬂexible sentence templates, called Exemplars
+(White and Caldwell, 1998). All more recent CoGenTex commercial generators use the Exemplarsframework.ThemostrecentofthemisARNS,whichisnowproducingsummariesofharborconditionsin18diﬀerentU.S.ports,usingreal-timesensordataontides,currents,winds,etc.Thedataarerefreshedevery6min;seeFigure22.8forasampleoutput.SumTime-Mousam SumTime-Mousam produces marine weather forecasts for oﬀshore oilrigs from
+forecast data obtained from a numerical weather prediction model and edited by a human forecaster.In total, about 40 basic weather parameters are captured in a 3h interval; the prediction extends over72h. The forecasters, i.e., domain experts, play an important role in that they intervene to tune theparameter settings of the system (see below), edit the input data (if needed twice, before the start ofSumTime-Mousamandafteranintermediaterun),andpost-edittheoutputofthegeneratortoproducetheﬁnalforecast.
+
+548 HandbookofNaturalLanguageProcessing
+Observations for Upper Chesapeake Bay 2009-04-19 13:39:07 EDTWater levels are falling at Lewisetta, Reedy Point, and Solomons Island. Levelsare rising at Annapolis, Baltimore, and Washington-DC. Water level at TolchesterBeach is 1.2 feet, with no trend data available.Currents are flooding at Chesapeake Channel LBB ’92’ and Tolchester Front Range,and slack at Cove Point LNG Pier and Potomac River Mid-channel Buoy B. Speeds arebetween 0 and 0.6 knots.Reported winds are generally from the east, between 2 and 15 knots with gusts to18 knots.Reported air temperatures range from the high 50s to the high 60s ˚F, and reportedwater temperatures are in the low to mid 50s ˚F.Barometric pressure is falling at Cape Henry, Chesapeake City, Cove Point LNGPier, Lewisetta, Rappahannock Lt. Front Range, Reedy Point, Solomons Island, andTolchester Beach. Pressure is rising at Baltimore and Francis Scott Key Bridge NETower.Air gap is 188.5 feet and increasing at Bay Bridge Air Gap, 143.3 feet and steadyat Chesapeake City Air Gap, and 140.3 feet and increasing at Reedy Point Air Gap.
+FIGURE 22.8 Summaries generated by ARNS, a report generator based on the same technology as the Project
+Reporter.
+2. FORECAST 6 - 24 GMT, Wed 12-Jun 2002
+WIND(KTS)
+10M: W 8-13 backing SW by mid afternoon and S 10-15 by midnight.50M: W 10-15 backing SW by mid afternoon and S 13-18 by midnight.
+WAVES(M)
+SIG HT:0.5-1.0 mainly SW swell.MAX HT: 1.0-1.5 mainly SW swell falling 1.0 or less mainly SSW swell
+by afternoon, then rising 1.0-1.5 by midnight.
+PER(SEC)
+WAVE PERIOD: Wind wave 2-4 mainly 6 second SW swell.WINDWAVE PERIOD: 2-4.SWELL PERIOD: 5-7.
+WEATHER: Mainly cloudy with light rain showers becoming overcast around
+midnight.
+VIS(NM): Greater than 10.AIR TEMP(C): 8-10 rising 9-11 around midnight.CLOUD(OKTAS/FT): 4-6 ST/SC 400-600 lifting 6-8 ST/SC 700-900 around
+midnight.
+FIGURE22.9 ReportgeneratedbySumTime-Mousam.(FromSripada,S., ExpertUpdate,6,4,2003.)
+SumTime-Mousam tailors the forecasts to the preferences of the end users, or more precisely, to
+diﬀerent contexts in which the end users can be situated (Williams et al., 2003). The preferences arecontrolled by forecasters and can thus be dynamically adjusted (also, for instance, with respect to thedesireddetailandstyle).
+From the input data, SumTime-Mousam derives representations of the kind (0600, 8, 13, W, nil),
+(1500, 8, 13, SW, nil), (2400, 10, 15, S, nil)—with the ﬁrst element of each tuple as time, the second andthird as the forcasted wind range, the fourth as wind direction, and ﬁfth as additional information ofthe type ‘gust,’ ‘shower,’ etc. Each tuple element is associated with a predeﬁned phrase template that isinstantiatedwithit.Figure22.9showsasamplereportgeneratedbySumTime-Mousam.MIAKT MIAKT (Medical Imaging and Advanced Knowledge Technologies) is one of the few report
+generatorsthatgenerateinformationexclusivelyfromanontology(BontchevaandWilks,2004).MIAKTgeneratesmedicalreportsofthetypeshowninFigure22.10fromcasedescriptionswrittenbyattendingphysiciansandamedical(backgroundandhistory)ontology.
+ThecasedescriptionsappearinRDF.First,theinputRDF-statmentsareﬁlteredtoremoverepetitions,
+which might occur due to inverse relations in the ontology or due to entailments of relations, andstructuredinaccordancewithapredeﬁnedrecursivediscourseschema. Inthenextstage, aggregationis
+
+ReportGeneration 549
+The 68 years old patient is involved in a triple assessment procedure. The tripleassessment procedure contains a mammography exam. The mammography exam is carriedout on the patient on 2 9 1995. The mammography exam produced a right CC image.The right CC image contains an abnormality and the right CC image has a rightlateral side and a craniocaudal view. The abnormality has a mass, a probablymalignant assessment, a microlobulated margin, and a round shape.
+FIGURE22.10 MedicalreportasgeneratedbyMIAKT.
+performed.Aggregationjoinsadjacentstatementsthathavethesameﬁrstelementandthesamepropertyname, or if they are sub-properties of attribute orpart-whole relations, as, e.g. (see also the
+consequencesforverbalizationinFigure22.10):
+ATTR(Abnormality: 01401_abnormality, Mass: 01401_mass)ATTR(Abnormality: 01401_abnormality, Margin: inst_margin_microlob)ATTR(Abnormality: 01401_abnormality, Shape: inst_shape_round)ATTR(Abnormality: 01401_abnormality, Diagnose: inst_ass_prob_malig)
+The structured and aggregated RDF-statements are transformed into conceptual graphs, which serve
+asinputtotheHYLITE+linguisticrealizationmodule(Bontcheva,1997).MARQUIS: Generation of multilingual air quality reports MARQUIS is another generator that is
+based on MTT (Wanner et al., 2007). MARQUIS produces user-tailored air quality information for ﬁveEuropeanregionsinCatalan,English,Finnish,French,German,Polish,Portuguese,andSpanish.Whenappropriate,thereportscontaintablesandgraphicstocomplementthetext.
+MARQUIS takes as input times series of the major air pollution substances delivered by regional
+air quality measurement networks. The size of the networks (and thus also the size of the time series)varies between 7 and 65 monitoring stations. The time series are interpreted by the Assessment andInterpretation Module (AIM), which identiﬁes the global and local minima and maxima, the gradientsof the changes of pollutant concentrations, the relation of the measured concentrations to predeﬁnedthreshold concentrations, etc., and assesses the results of the analysis with respect to their relevance toanyoftheuserscapturedinMARQUIS’susertypology.TheusertypologyinMARQUISisratherdetailedandcanbefurtherpersonalizedbyregisteredusers(seeSection22.3.1.3).
+The output of the AIM is an XML content structure, which is processed by the Document Planning
+Module(DPM).TheDPMselectsthecontentrelevanttotheaddresseeinquestion,choosesthemodeofpresentationforeachchunkofcontent,andcreatesatextplanusingastrategythatattemptstointegratetheadvantagesofschema-basedanddynamicplanning.Thetextplanismappedontoaconceptualgraphstructure, which serves as input to the linguistic realization module (Bohnet et al., 2007). Figure 22.11showsanEnglishreportproducedbyMARQUIS.
+The air quality index is 3, which means that the air quality is satisfactory.This is due to the ozone concentration. The NO
+2concentration and the PM10
+concentration do not contribute to the index.The current air quality index is the highest of the whole day. The lowest indexwas 2 (at midnight). Between midnight and 9am, the air quality index remainedstable at 2, and between 10am and 3pm it remained stable at 3.The ozone concentration (70μgr/m3) is relatively low. As a result, noharmful effects to human health are expected. Between 4am and 10am, the ozoneconcentration increased considerably from 22 to 76 μgr/m3. The current ozone
+concentration is close to the highest of 76μgr/m3.
+FIGURE22.11 EnglishAQreportasproducedbyMARQUIS.
+
+550 HandbookofNaturalLanguageProcessing
+MARQUIS continues to be operational for the generation in Polish and in Finnish for the region of
+SilesiainPolandandforFinland,respectively.SumTime-Turbine SumTime-Turbineisaprototypeforthegenerationofsummariesfromgasturbine
+monitoring data time series (Yu et al., 2007). One of the distinctive features of SumTime-Turbine iscertainly the size of the time series it has to handle: several hundreds of MB daily of data of the kinddisplayed in Figure 22.1. From such time series, SumTime-Turbine generates summaries illustrated inFigure22.12.
+Given the size of the time series, it is not surprising that the focus of the work in SumTime-Turbine
+has been on the assessment and interpretation of the data, which consists of three stages: (1) patternrecognition, (2) pattern abstraction, and (3) relevant pattern selection. Typical patterns (captured in anontology)arespikesandoscillations.Aggregationisdoneatthelevelofpatterns(ratherthanattheleveloflinguisticstructures).ThelinguisticrealizationinSumTime-Turbineistemplate-based.BT-45BT-45 is the ﬁrst prototype of the BabyTalk project, which targets the generation of textual
+summaries of neonatal clinical data time series for diﬀerent purposes and diﬀerent target users (Portetetal.,2009).Figure22.13showsareportgeneratedbyBT-45.
+The purpose of BT-45 is to present information in a narrative form, highlighting aspects assessed to
+besalient.ComparedtothetwoSumTimegenerators,BT-45isconsiderablymoreadvancedwithrespectto the assessment of data, document planning and linguistic realization. The assessment is divided into
+[Background information]Gas turbine: aylesfordSubsystem: exhaust temperatureMonitoring channels: TTXD-1, TTXD-2, TTXD-3, TTXD-4, TTXD-5 and TTXD-6Turbine running state: part loadTime interval of these channels: from 12 to 15 on 27 Nov 99[Overview information]There were large erratic spikes in all channels at 12:59, 13:01, 13:41 and 14:40.[Most significant patterns]At 12:59, there were large erratic spikes in TTXD-1, TTXD-2, TTXD-3, TTXD-4,TTXD-5 and TTXD-6. These patterns violated the pairs and follows check. In moredetail, there were dips with oscillatory recoveries in TTXD-3 and TTXD-4, followed1s later by dips with oscillatory recoveries in TTXD-1, TTXD-2, TTXD-5, andTTXD-6. This occurred between 12:59:17 and 12:59:54.
+FIGURE22.12 AnexamplesummarygeneratedbySumTime-Turbine, fromthedatasetdisplayedinFigure22.1.
+(FromYu,J. Nat.Lang.Eng.,13,25,2007.)
+You saw the baby between 14:10 and 14:50. Heart Rate (HR) = 159. Core Temperature(T1) = 37.7. Peripheral Temperature (T2) = 34.3. Transcutaneous Oxygen (TcPO2) =5.8. Transcutaneous CO2 (TcPCO2) = 8.5. Oxygen Saturation (SaO2) = 89. Overthe next 30 minutes T1 gradually increased to 37.3. By 14:27 there had been 2successive desaturations down to 56. As a result, Fraction of Inspired Oxygen(FIO2) was set to 45%. Over the next 20 minutes T2 decreased to 32.9. A heelprick was taken. Previously the spo2 sensor had been re-sited. At 14:31 FIO2 waslowered to 25%. Previously TcPO2 had decreased to 8.4. Over the next 20 minutes HRdecreased to 153. By 14:40 there had been 2 successive desaturations down to 68.Previously FIO2 had been raised to 32%. TcPO2 decreased to 5.0. T2 had suddenlyincreased to 33.9. Previously the spo2 sensor had been re-sited. The temperaturesensor was re-sited.
+FIGURE22.13 ABT-45text.(FromPortet,F.etal., Artif.Intell.,173,789,2009.Withpermission.)
+
+ReportGeneration 551
+twostages:(1)dataanalysis,pattern/eventidentiﬁcationandcomputingoftheimportanceoftheevents,and (2) data interpretation, which consists in detecting temporal, causal, and other relations betweenevents.TheDPMisresponsibleforthecontentselection(seeSection22.4.1forBT-45’scontentselectionstrategy)andtheconstructionofadiscoursetreewhoseedgesareannotatedwithrhetoricalrelations.
+Themessagesinthediscoursetreearemappedontolexicalizedeventcaseframes.Therelationsbetween
+eventsdetectedduringthedatainterpretationstagepredeterminethesyntacticstructureofthesentencesintowhichtheinterrelatedcaseframesarecasted.
+TheevaluationofBT-45revealedsomedeﬁciencesindataanalysisandinterpretationand,inparticular,
+indiscoursestructureplanning.Astheauthorspointout,themainvalueofBT-45isthatitdemonstratesthatthegenerationoftextualsummariesfromcomplex(clinical)dataispossible.
+22.7 Evaluation in Report Generation
+Due to the ultimate purpose of any report generator—the operational use—the issue of evaluationbecomesincreasinglyimportantinRG.Tobeevaluatedis,ontheonehand,thecoverageoftherelevantinformation communicated in reports produced by a generator, i.e., whether the information oﬀered isrelevant and whether relevant information has been ommitted, and, on the other hand, the (linguistic)qualityofthepresentationoftheinformation.Themoststandardevaluationpracticeistheassessmentoftheproducedsummariesbydomainandlanguageexpertswithrespecttocriteriaconcerningusefulnessand linguistic quality outlined in a questionnaire. Such a technique has been applied, e.g., in AutoTextand MARQUIS. However, other, more purpose-oriented, evaluation techniques can also be applied.For instance, in SumTime-Mousam, the evaluation metrics has been the number of amendment editsof a professional weather forecaster (recall that SumTime-Mousam generates weather forecasts) in aSumTime-Mousam generated report. In the case of BT-45, the utility of the automatically generatedreports for decision support making by medical personnel has been evaluated: the participants of theevaluationexperimentwereconfrontedwithanumberofdiﬀerentscenarios, writteneitherbyahumanorgeneratedbyBT-45, andaskedtochoosetheappropriateactionfromanumberofoﬀeredoptionstorespondtothesituationdescribedinthescenario.ThechoicesmadeinconnectionwithBT-45summarieswere compared with the reference choices and the choices made in connection with human writtensummaries.
+A further evaluation technique is the use of metrics (such as BLEU) to compare the proximity of
+the automatically generated reports with human written reports from the same input data. However,in contrast to, e.g., Machine Translation, automatic metrics are not yet widely used in RG. This islikely to change. Recently, research of adequate evaluation methods in NLG became a prominent issueaddressedinshared-taskchallengesandotherevents. AdvancesinthisdirectionwillwithoutanydoubtbeneﬁtRG.
+22.8 Conclusions: The Present and the Future of RG
+We discussed the tasks related to RG and presented a number of representative report generators. Alook into Kittredge and Polguère’s chapter in the ﬁrst edition of the Handbook shows that within thelast 8 years, the ﬁeld of RG experienced some signiﬁcant changes. First, the context of the work on RGshiftedfromthesisprojectstomultiplepartnerorcommercialinitiatives,withtheparticipationofdomainexperts.ThisisaclearsignthatthepotentialofRGhasbeenrecognizedbytheusers.Itistoexpectedthatthis trend will be further strengthened. Second, some tasks are about to receive a higher weight than itusedtobeinthepast.Thisisespeciallythecasefordataassessmentandinterpretationandevaluation.Inasense,thisisconsistentwiththeﬁrstchangesincebothtasksimplytheparticipationofdomainexperts.
+
+552 HandbookofNaturalLanguageProcessing
+In a series of recent report generators, linguistic realization is given rather little attention, which
+automatically leads to limited ﬂuency and variation of the generated summaries. However, disturbingrepetition of both word choices and syntactic structures can be also observed in applications with moredeveloped linguistic realization modules. We believe that this is a sign that RG needs more powerfulsentenceplanningmechanismsthanthosethatareusedsofar.
+On the negative side of RG, it can be furthermore observed that currently RG is still dominated
+by English—although, for instance, AutoText generates German air quality summaries, the CoGenTexgenerators traditionally work with English and French, and some generators are multilingual (as, e.g.,MultiMeteo,TEMSIS,andMARQUIS).InparticularAsianreportgeneratorssuchas,forinstance,(Yaoetal.,1998)forweatherreportgenerationinChinese,arestillveryrare.Thesituationwillcertainlychangein the near future. Especially in Europe multilinguality is about to become a prominent issue, and withthesocietygoingmultilingual,RGwillneedtoreactaccordingly.
+Acknowledgments
+This chapter is a new version of Richard Kittredge and Alain Polguère’s chapter in the ﬁrst edition oftheHandbook. (KittredgeandPolguère, 2000)wasmorethanablueprint; wherepossible, Ifolloweditsargumentationlineandtookoverpassagesfromit—whichtremendouslyfacilitatedthewriting.IwouldliketothankRobertDaleandRichard,whoreviewedtheﬁrstdraftandprovidedmanyhelpfulcommentsandsuggestions.
+References
+Becker, J.D. The phrasal Lexicon. In R.C. Schank and B.L. Nash-Webber, editors, Theoretical Issues in
+NaturalLanguageProcessing (TINLAP):1,pp.70–73.Bolt,Cambridge,MA,1975.
+Binsted, K. and G. Ritchie. Speculations on story puns. In Proceedings of the International Workshop on
+ComputationalHumour ,pp.151–159,Enschede,NL,1996.
+Bohnet,B.,F.Lareau,andL.Wanner.Automaticproductionofmultilingualenvironmentalinformation.
+InProceedingsoftheEnviroInfoConference ,Warsaw,Poland,2007.
+Bohnet, B., L. Wanner, R. Ebel, B. Knoerzer, M. Tauber, W. Weiss and H. Scheu-Hachtel. Autotext-
+UIS: Automatische Produktion von Ozonkurzberichten im Umweltinformationssystem Baden-Württemberg.In ProceedingsoftheWorkshopHypermediaundUmweltschutz ,Ulm,Germany,2001.
+Bontcheva, K. Generation of multilingual explanations from conceptual graphs. In Recent Advances in
+NaturalLanguageProcessing ,pp.365–376.Benjamins,Amsterdam,theNetherlands,1997.
+Bontcheva, K. and Y.Wilks. Automatic generation from ontologies: The MIAKTapproach. In Proceed-
+ings of the International Conference on Applications of Natural Language to Information Systems ,
+pp.324–335,Salford,U.K.,2004.
+Bouayad-Agha,N.,L.Wanner,andD.Nicklaß.Discoursestructuringofdynamiccontent.In Proceedings
+oftheSpanishConferenceonComputationalLinguistics(SEPLN) ,Zaragoza,Spain,2006.
+Busemann, S. and H. Horacek. Generating air-quality reports from environmental data. In Proceedings
+oftheDFKIWorkshoponNaturalLanguageGeneration ,pp.15–21,Saarbrücken,Germany,1997.
+Cabré, M.T. Terminology. Theory, Methods and Applications. Benjamins, Amsterdam, the Netherlands,
+1998.
+Caldwell, D. and T. Korelsky. Bilingual generation of job descriptions from quasiconceptual forms. In
+FourthConferenceonAppliedNaturalLanguageProcessing ,pp.1–6,Stuttgart,Germany,1994.
+Carcagno,D.andI.Iordanskaja.Contentdeterminationandtextstructuring:Twointerrelatedprocesses.
+In H. Horacek and M. Zock, editors, New Concepts in Natural Language Generation , pp. 10–26.
+PinterPublishers,London,U.K.,1992.
+
+ReportGeneration 553
+Cheong, Y.-G. and R.M. Young. A computational model of narrative generation for suspense. In
+ProceedingsoftheAAAI2006ComputationalAesteticWorkshop ,Boston,MA,2006.
+Coch,C.OverviewofALETHGEN.In Proceedingsofthe8thInternationalWorkshoponNaturalLanguage
+Generation,Herstmonceux,Volume2,pp.25–28,Sussex,U.K.,1996.
+Coch, J. Interactive generation and knowledge administration in MultiMeteo. In Ninth International
+WorkshoponNaturalLanguageGeneration ,pp.300–303,Niagara-on-the-Lake,Canada,1998.
+Dalianis, H. Aggregation in natural language generation. Computational Intelligence , 15(4):384 – 414,
+1999.
+Elhadad, M. and J. Robin. An overview of SURGE: A reusable comprehensive syntactic realization
+component.TechnicalReport,BenGurionUniversityintheNegev,Beersheba,Israel,1996.
+Gervás, P. Modeling literary style for semi-automatic generation of poetry. In Proceedings of the 8th
+InternationalConferenceonUserModeling ,Sonthofen,Germany,2001.
+Giarratano, J. and G. Riley. Expert Systems: Principles and Programming. PWS Publishing Company,
+Boston,MA,2005.
+Goldberg, E., N. Driedger, and R. Kittredge. Using natural language processing to produce weather
+forecasts. IEEEExpert,9:45–53,April1994.
+Gotti, M. Specialized Discourse. Linguistic Features and Changing Conventions . Peter Lang, Bern,
+Switzeland,2003.
+Halliday,M.A.K.andC.M.I.M.Matthiessen. ConstruingExperiencethroughMeaning:ALanguage-Based
+ApproachtoCognition.Continuum,London,U.K.,1999.
+Halliday, M.A.K. and C.M.I.M. Matthiessen. Introduction to Functional Grammar . Oxford University
+Press,Oxford,U.K.,2004.
+Harris,M.D.Buildingalarge-scalecommercialNLGsystemforanEMR.In ProceedingsoftheInternational
+NaturalLanguageGenerationConference,pp.157–160,SaltFork,OH,2008.
+Hovy,E.H. GeneratingNaturalLanguageunderPragmaticConstraints .LawrenceErlbaum,Hillsdale,NJ,
+1988.
+Iordanskaja, L.N. and A. Polguère. Semantic processing for text generation. In Proceedings of the
+InternationalComputerScienceConference,HongKong,1988.
+Iordanskaja,L.N.,R.Kittredge,andA.Polguère.LexicalselectionandparaphraseinaMeaning-Textgen-
+erationmodel.InC.L.Paris,W.R.Swartout,andW.C.Mann,editors, NaturalLanguageGeneration
+in Artiﬁcial Intelligence and Computational Linguistics . Kluwer Academic Publishers, Dordrecht,
+theNetherlands,1991.
+Iordanskaja, L.N., M. Kim, R. Kittredge, B. Lavoie, and A. Polguère. Generation of extended bilingual
+statisticalreports.In COLING-92 ,pp.1019–1022,Nantes,France,1992.
+Kim,S.,H.Alani,W.Hall,P.Lewis,D.Millard,N.Shadbolt,andM.Weal.Antequakt:Generatingtailored
+biographies with automatically annotated fragments from the web. In Proceedings of the Semantic
+Authoring,AnnotationandKnowledgeMarkupWorkshopatECAI2002 ,Lyon,France,2002.
+KittredgeR.andJ.Lehrberger,editors. Sublanguage:StudiesofLanguageinRestrictedSemanticDomains .
+deGruyter,Berlin,Germany,1982.
+Kittredge,R.andB.Lavoie.MeteoCogent:Aknowledge-basedtoolforgeneratingweatherforecasttexts.
+InProceedingsoftheAmericanMeteorologicalSocietyAIConference(AMS-98) ,Phoenix,AZ,1998.
+Kittredge, R.I. and A. Polguère. The generation of reports from databases. In R. Dale, H. Moisl, and
+H.Somers,editors, HandbookofNaturalLanguageProcessing,pp.261–304.Taylor&Francis,New
+York,2000.
+Kittredge,R.,A.Polguère,andE.Goldberg.Synthesizingweatherforecastsfromformatteddata.In Pro-
+ceedingsoftheComputationalLinguisticsConference(COLING)’86 ,pp.563–565,Bonn,Germany,
+1986.
+Korelsky, T., D. McCullough, and O. Rambow. Knowledge requirements for the automatic generation
+ofprojectmanagementreports.In ProceedingsoftheEighthKnowledge-BasedSoftwareEngineering
+Conference,Chicago,ILpp.2–9.IEEEComputerSocietyPress,1993.
+
+554 HandbookofNaturalLanguageProcessing
+Kukich, K. Knowledge-based report generation: A technique for automatically generating natural lan-
+guage reports from databases. In Proceedings of the Sixth International ACM SIGIR Conference ,
+WashingtonD.C.,1983.
+Lambrecht,K. InformationStructureandSentenceForm: Topic, Focus, andtheMentalRepresentationof
+DiscourseReferents .CambridgeStudiesinLinguistics71.CambridgeUniversityPress,Cambridge,
+U.K.,1994.
+Lu,S.,F.Paradis,C.Paris,S.Wan,R.Wilkinson,andM.Wu.Generatingpersonaltravelguidesfromdis-
+courseplans.In ProceedingsoftheInternationalConferenceonAdaptiveHypermediaandAdaptive
+Web-basedSystems,Trento,Italy2000.
+Maybury,M.Usingdiscoursefocus,temporalfocus,andspatialfocustogeneratemultisententialtext.In
+Proceedingsofthe5thInternationalWorkshoponNaturalLanguageGeneration ,pp.70–78,Dawson,
+PA,1990.
+McDonald,D.Issuesinthechoiceofasourcefornaturallanguagegeneration. ComputationalLinguistics ,
+19:191–197,1993.
+McKeown, K. Text Generation: Using Discourse Strategies and Focus Constraints to Generate Natural
+LanguageText .CambridgeUniversityPress,Cambridge,U.K.,1985.
+McKeown, K., K. Kukich, and J. Shaw. Practical issues in automatic documentation generation. In
+Proceedings of the Fourth Conference on Applied Natural Language Processing, pp. 7–14, Stuttgart,Germany,1994.
+McKeown, K., J. Robin, and K. Kukich. Generating concise natural language summaries. Information
+ProcessingandManagement ,31:703–733,1995.
+Mel’čuk,I.A. DependencySyntax:TheoryandPractice.SUNYPress,Albany,NY,1988.
+Mel’čuk, I.A. Lexical Functions: A tool for the description of lexical relations in a lexicon. In L. Wan-
+ner, editor, Lexical Functions in Lexicography and Natural Language Processing , pages 37–102.
+BenjaminsAcademicPublishers,Amsterdam,theNetherlands,1996.
+Mel’čuk,I.A. CommunicativeOrganizationinNaturalLanguage(TheSemantic-CommunicativeStructure
+ofSentences) .BenjaminsAcademicPublishers,Amsterdam,theNetherlands,2001.
+Paris,C.UserModellinginTextGeneration.FrancesPinterPublishers,London,U.K.,1993.
+Paris,C.,K.VanderLinden,M.Fischer,A.Hartley,L.Pemberton,R.Power,andD.Scott.Asupporttool
+forwritingmultilingualinstructions.In ProceedingsoftheFourteenthInternationalJointConference
+onArtiﬁcialIntelligence(IJCAI-95) ,Montreal,Canada,1995.
+Portet,F.,E.Reiter,A.Gatt,J.Hunter,S.Sripada,Y.Freer,andC.Sykes.Automaticgenerationoftextual
+summariesfromneonatalintensivecaredata. ArtiﬁcialIntelligence,173(7–8):789–916,2009.
+Rambow,O.Domaincommunicationknowledge.In Proceedingsofthe5thNaturalLanguageGeneration
+Workshop,June1990,pp.87–94,Dawson,PA,1990.
+Reiter, E. NLG vs. Templates. In Proceedings of the 5th European Workshop on Natural Language
+Generation,pp.95–104,Leiden,theNetherlands,1995.
+Reiter, E. An architecture for data-to-text systems. In Proceedings of the 11th European Workshop on
+NaturalLanguageGeneration ,pp.97–104,SchlossDagstuhl,Germany,2007.
+Reiter, E. and R. Dale. Building Natural Language Generation Systems. Cambridge University Press,
+Cambridge,U.K.,2000.
+Reiter, E., R. Robertson, and L. Osman. Lessons from a failure: Generating tailored smoking cessation
+letters.ArtiﬁcialIntelligence,144:41–58,2003.
+Robin, J. Revision-based generation of natural language summaries providing historical background.
+PhDthesis,GraduateSchoolofArtsandSciences,ColumbiaUniversity,NewYork,1994.
+Rösner,D.EinSystemzurGenerierungvondeutschenTextenaussemantischenRepräsentationen.PhD
+thesis,InstitutfürInformatik,StuttgartUniversity,Stuttgart,Germany,1986.
+Rösner,D.andM.Stede.CustomizingRSTfortheautomaticproductionoftechnicalmanuals.InR.Dale,
+E. Hovy, D. Rösner, and O. Stock, editors, Aspects of Automated Natural Language Generation.
+SpringerVerlag,Berlin,Germany,1992.
+
+ReportGeneration 555
+Rösner, D. and M. Stede. Generating multilingual documents from a knowledge base: The TechDoc
+project.In ProceedingsofCOLING-94,pp.339–346,Kyoto,Japan,1994.
+Sowa,J.KnowledgeRepresentation.BrooksCole,PaciﬁcGrove,CA,2000.
+Sripada, S., E.Reiter, andI.Davy. SumTime-Mousam: Conﬁgurablemarineweatherforecastgenerator.
+ExpertUpdate ,6(3):4–10,2003.
+Szilas, N. A computational model of an intelligent narrator for interactive narratives. Applied Artiﬁcial
+Intelligence ,21(8):753–801,2007.
+Wanner, L. Lexical choice in text generation and machine translation. Machine Translation,
+11(1–3):3-35,1996.
+Wanner, L., D. Nicklaß, B. Bohnet, N. Bouayad-Agha, J. Bronder, F. Ferreira, R. Friedrich,
+A.Karppinnen,F.Lareau,A.Lohmeyer,A.Panighi,S.Parisio,H.Scheu-Hachtel,andJ.Serpa.Frommeasurement data to environmental information: MARQUIS–A multimodal air quality informa-tion service for the general public. In A. Swayne and J. Hrebicek, editors, Proceedings of the 6th
+InternationalSymposiumonEnvironmentalSoftwareSystems ,Prague,CzechRepublic,2007.
+White,M.andT.Caldwell.EXEMPLARS:Apractical,extensibleframeworkfordynamictextgeneration.
+InProceedings of the Ninth International Natural Language Generation Workshop , pp. 266–275,
+Niagara-on-the-Lake,Canada,1998.
+Williams, S., E. Reiter, and L. Osman. Experiments with discourse-level choices and readability. In Pro-
+ceedingsofthe9thEuropeanNaturalLanguageGenerationWorkshopatthe10thConferenceoftheEACL,pp.127–134,Budapest,Hungary,2003.
+Yao,T.,D.Zhang,andQ.Wang.MLWFA:Multilingualweatherforecastingsystem.In Proceedingsofthe
+Ninth International Natural Language Generation Workshop, pp. 296–299, Niagara-on-the-Lake,Canada,1998.
+Yu,J.,E.Reiter,J.Hunter,andC.Mellish.Choosingthecontentoftextualsummariesoflargetime-series
+datasets. NaturalLanguageEngineering,13(1):25–49,2007.
+Zukerman,I.andD.Litman.Naturallanguageprocessingandusermodeling:Synergiesandlimitations.
+UserModelingandUser-AdaptedInteraction,11:129–158,2001.
+
+
+

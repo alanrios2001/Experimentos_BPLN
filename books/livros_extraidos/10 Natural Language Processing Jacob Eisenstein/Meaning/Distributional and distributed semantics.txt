@@ -1,0 +1,926 @@
+Chapter 14 7030
+Distributional and distributed 7031
+semantics 7032
+A recurring theme in natural language processing is the complexity of the mapping from 7033
+words to meaning. In chapter 4, we saw that a single word form, like bank , can have mul- 7034
+tiple meanings; conversely, a single meaning may be created by multiple surface forms, 7035
+a lexical semantic relationship known as synonymy . Despite this complex mapping be- 7036
+tween words and meaning, natural language processing systems usually rely on words 7037
+as the basic unit of analysis. This is especially true in semantics: the logical and frame 7038
+semantic methods from the previous two chapters rely on hand-crafted lexicons that map 7039
+from words to semantic predicates. But how can we analyze texts that contain words 7040
+that we haven’t seen before? This chapter describes methods that learn representations 7041
+of word meaning by analyzing unlabeled data, vastly improving the generalizability of 7042
+natural language processing systems. The theory that makes it possible to acquire mean- 7043
+ingful representations from unlabeled data is the distributional hypothesis . 7044
+14.1 The distributional hypothesis 7045
+Here’s a word you may not know: tezg¨ uino (the example is from Lin, 1998). If you do not 7046
+know the meaning of tezg¨ uino , then you are in the same situation as a natural language 7047
+processing system when it encounters a word that did not appear in its training data. 7048
+Now suppose you see that tezg¨ uino is used in the following contexts: 7049
+(14.1) A bottle of is on the table. 7050
+(14.2) Everybody likes . 7051
+(14.3) Don’t have before you drive. 7052
+(14.4) We make out of corn. 7053
+333
+
+334 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+(14.1) (14.2) (14.3) (14.4) ...
+tezg¨ uino 1 1 1 1
+loud 0 0 0 0
+motor oil 1 0 0 1
+tortillas 0 1 0 1
+choices 0 1 0 0
+wine 1 1 1 0
+Table 14.1: Distributional statistics for tezg¨ uino and ﬁve related terms
+What other words ﬁt into these contexts? How about: loud, motor oil, tortillas, choices, 7054
+wine ? Each row of Table 14.1 is a vector that summarizes the contextual properties for 7055
+each word, with a value of one for contexts in which the word can appear, and a value of 7056
+zero for contexts in which it cannot. Based on these vectors, we can conclude: wine is very 7057
+similar to tezg¨ uino ;motor oil and tortillas are fairly similar to tezg¨ uino ;loud is completely 7058
+different. 7059
+These vectors, which we will call word representations , describe the distributional 7060
+properties of each word. Does vector similarity imply semantic similarity? This is the dis- 7061
+tributional hypothesis , stated by Firth (1957) as: “You shall know a word by the company 7062
+it keeps.” The distributional hypothesis has stood the test of time: distributional statistics 7063
+are a core part of language technology today, because they make it possible to leverage 7064
+large amounts of unlabeled data to learn about rare words that do not appear in labeled 7065
+training data. 7066
+Distributional statistics have a striking ability to capture lexical semantic relationships 7067
+such as analogies. Figure 14.1 shows two examples, based on two-dimensional projections 7068
+of distributional word embeddings , discussed later in this chapter. In each case, word- 7069
+pair relationships correspond to regular linear patterns in this two dimensional space. No 7070
+labeled data about the nature of these relationships was required to identify this underly- 7071
+ing structure. 7072
+Distributional semantics are computed from context statistics. Distributed seman- 7073
+tics are a related but distinct idea: that meaning can be represented by numerical vectors 7074
+rather than symbolic structures. Distributed representations are often estimated from dis- 7075
+tributional statistics, as in latent semantic analysis and WORD 2VEC, described later in this 7076
+chapter. However, distributed representations can also be learned in a supervised fashion 7077
+from labeled data, as in the neural classiﬁcation models encountered in chapter 3. 7078
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.2. DESIGN DECISIONS FOR WORD REPRESENTATIONS 335
+Figure 14.1: Lexical semantic relationships have regular linear structures in two di-
+mensional projections of distributional statistics. From http://nlp.stanford.edu/
+projects/glove/ .[todo: redo to make words bigger?]
+14.2 Design decisions for word representations 7079
+There are many approaches for computing word representations, but most can be distin- 7080
+guished on three main dimensions: the nature of the representation, the source of contex- 7081
+tual information, and the estimation procedure. 7082
+14.2.1 Representation 7083
+Today, the dominant word representations are k-dimensional vectors of real numbers, 7084
+known as word embeddings . (The name is due to the fact that each discrete word is em- 7085
+bedded in a continuous vector space.) This representation dates back at least to the late 7086
+1980s (Deerwester et al., 1990), and is used in popular techniques such as WORD 2VEC (Mikolov 7087
+et al., 2013). 7088
+Word embeddings are well suited for neural networks, where they can be plugged 7089
+in as inputs. They can also be applied in linear classiﬁers and structure prediction mod- 7090
+els (Turian et al., 2010), although it can be difﬁcult to learn linear models that employ 7091
+real-valued features (Kummerfeld et al., 2015). A popular alternative is bit-string rep- 7092
+resentations, such as Brown clusters (§14.4), in which each word is represented by a 7093
+variable-length sequence of zeros and ones (Brown et al., 1992). 7094
+Another representational question is whether to estimate one embedding per surface 7095
+form (e.g., bank ), or to estimate distinct embeddings for each word sense or synset. In- 7096
+tuitively, if word representations are to capture the meaning of individual words, then 7097
+words with multiple meanings should have multiple embeddings. This can be achieved 7098
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+336 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+The moment one learns English, complications set in (Alfau, 1999)
+Brown Clusters (Brown et al.,
+1992){one}
+WORD 2VEC (Mikolov et al.,
+2013) (h= 2){moment, one, English, complications }
+Structured WORD 2VEC (Ling
+et al., 2015) (h= 2){(moment,−2),(one,−1),(English,+1),(complications ,+2)}
+Dependency contexts (Levy
+and Goldberg, 2014){(one,NSUBJ ),(English,DOBJ ),(moment,ACL−1)}
+Table 14.2: Contexts for the word learns , according to various word representations. For
+dependency context, (one,NSUBJ )means that there is a relation of type NSUBJ (nominal
+subject) tothe word one, and (moment,ACL−1)means that there is a relation of type ACL
+(adjectival clause) from the word moment .
+by integrating unsupervised clustering with word embedding estimation (Huang and 7099
+Yates, 2012; Li and Jurafsky, 2015). However, Arora et al. (2016) argue that it is unnec- 7100
+essary to model distinct word senses explicitly, because the embeddings for each surface 7101
+form are a linear combination of the embeddings of the underlying senses. 7102
+14.2.2 Context 7103
+The distributional hypothesis says that word meaning is related to the “contexts” in which 7104
+the word appears, but context can be deﬁned in many ways. In the tezg¨ uino example, con- 7105
+texts are entire sentences, but in practice there are far too many sentences. At the oppo- 7106
+site extreme, the context could be deﬁned as the immediately preceding word; this is the 7107
+context considered in Brown clusters. WORD 2VEC takes an intermediate approach, using 7108
+local neighborhoods of words (e.g., h= 5) as contexts (Mikolov et al., 2013). Contexts 7109
+can also be much larger: for example, in latent semantic analysis , each word’s context 7110
+vector includes an entry per document, with a value of one if the word appears in the 7111
+document (Deerwester et al., 1990); in explicit semantic analysis , these documents are 7112
+Wikipedia pages (Gabrilovich and Markovitch, 2007). 7113
+Words in context can be labeled by their position with respect to the target word wm 7114
+(e.g., two words before, one word after), which makes the resulting word representations 7115
+more sensitive to syntactic differences (Ling et al., 2015). Another way to incorporate 7116
+syntax is to perform parsing as a preprocessing step, and then form context vectors from 7117
+the dependency edges (Levy and Goldberg, 2014) or predicate-argument relations (Lin, 7118
+1998). The resulting context vectors for several of these methods are shown in Table 14.2. 7119
+The choice of context has a profound effect on the resulting representations, which 7120
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.2. DESIGN DECISIONS FOR WORD REPRESENTATIONS 337
+can be viewed in terms of word similarity. Applying latent semantic analysis ( §14.3) to 7121
+contexts of size h= 2 andh= 30 yields the following nearest-neighbors for the word 7122
+dog:17123
+•(h= 2) :cat, horse, fox, pet, rabbit, pig, animal, mongrel, sheep, pigeon 7124
+•(h= 30) :kennel, puppy, pet, bitch, terrier, rottweiler, canine, cat, to bark, Alsatian 7125
+Which word list is better? Each word in the h= 2list is an animal, reﬂecting the fact that 7126
+locally, the word dogtends to appear in the same contexts as other animal types (e.g., pet 7127
+the dog ,feed the dog ). In theh= 30 list, nearly everything is dog-related, including speciﬁc 7128
+breeds such as rottweiler and Alsatian . The list also includes words that are not animals 7129
+(kennel ), and in one case ( to bark ), is not a noun at all. The 2-word context window is more 7130
+sensitive to syntax, while the 30-word window is more sensitive to topic. 7131
+14.2.3 Estimation 7132
+Word embeddings are estimated by optimizing some objective: the likelihood of a set of 7133
+unlabeled data (or a closely related quantity), or the reconstruction of a matrix of context 7134
+counts, similar to Table 14.1. 7135
+Maximum likelihood estimation Likelihood-based optimization is derived from the 7136
+objective logp(w;U), where U∈RK×Vis matrix of word embeddings, and w= 7137
+{wm}M
+m=1is a corpus, represented as a list of Mtokens. Recurrent neural network lan- 7138
+guage models (§6.3) optimize this objective directly, backpropagating to the input word 7139
+embeddings through the recurrent structure. However, state-of-the-art word embeddings 7140
+employ huge corpora with hundreds of billions of tokens, and recurrent architectures are 7141
+difﬁcult to scale to such data. As a result, likelihood-based word embeddings are usually 7142
+based on simpliﬁed likelihoods or heuristic approximations. 7143
+Matrix factorization The matrix C={count (i,j)}stores the co-occurrence counts of
+wordiand context j. Word representations can be obtained by approximately factoring
+this matrix, so that count (i,j)is approximated by a function of a word embedding uiand
+a context embedding vj. These embeddings can be obtained by minimizing the norm of
+the reconstruction error,
+min
+u,v||C−˜C(u,v)||F, [14.1]
+1The example is from lecture slides by Marco Baroni, Alessandro Lenci, and Stefan Evert, who applied
+latent semantic analysis to the British National Corpus. You can ﬁnd an online demo here: http://clic.
+cimec.unitn.it/infomap-query/
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+338 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+where ˜C(u,v)is the approximate reconstruction resulting from the embeddings uand 7144
+v, and||X||Findicates the Frobenius norm,∑
+i,jx2
+i,j. Rather than factoring the matrix of 7145
+word-context counts directly, it is often helpful to transform these counts using information- 7146
+theoretic metrics such as pointwise mutual information (PMI), described in the next sec- 7147
+tion. 7148
+14.3 Latent semantic analysis 7149
+Latent semantic analysis (LSA) is one of the oldest approaches to distributed seman-
+tics (Deerwester et al., 1990). It induces continuous vector representations of words by
+factoring a matrix of word and context counts, using truncated singular value decompo-
+sition (SVD),
+min
+U∈RV×K,S∈RK×K,V∈R|C|×K||C−USV⊤||F [14.2]
+s.t.U⊤U=I [14.3]
+V⊤V=I [14.4]
+∀i̸=j,Si,j= 0, [14.5]
+whereVis the size of the vocabulary, |C|is the number of contexts, and Kis size of the 7150
+resulting embeddings, which are set equal to the rows of the matrix U. The matrix Sis 7151
+constrained to be diagonal (these diagonal elements are called the singular values), and 7152
+the columns of the product SV⊤provide descriptions of the contexts. Each element ci,jis 7153
+then reconstructed as a bilinear product , 7154
+ci,j≈K∑
+k=1ui,kskvj,k. [14.6]
+The objective is to minimize the sum of squared approximation errors. The orthonormal- 7155
+ity constraints U⊤U=V⊤V=Iensure that all pairs of dimensions in UandVare 7156
+uncorrelated, so that each dimension conveys unique information. Efﬁcient implemen- 7157
+tations of truncated singular value decomposition are available in numerical computing 7158
+packages such as scipy andmatlab .27159
+Latent semantic analysis is most effective when the count matrix is transformed before
+the application of SVD. One such transformation is pointwise mutual information (PMI;
+Church and Hanks, 1990), which captures the degree of association between word iand
+2An important implementation detail is to represent Cas asparse matrix , so that the storage cost is equal
+to the number of non-zero entries, rather than the size V×|C| .
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.4. BROWN CLUSTERS 339
+contextj,
+PMI(i,j) = logp(i,j)
+p(i)p(j)= logp(i|j)p(j)
+p(i)p(j)= logp(i|j)
+p(i)[14.7]
+= log count (i,j)−logV∑
+i′=1count (i′,j) [14.8]
+−log∑
+j′∈Ccount (i,j′) + logV∑
+i′=1∑
+j′∈Ccount (i′,j′). [14.9]
+The pointwise mutual information can be viewed as the logarithm of the ratio of the con- 7160
+ditional probability of word iin contextjto the marginal probability of word iin all 7161
+contexts. When word iis statistically associated with context j, the ratio will be greater 7162
+than one, so PMI(i,j)>0. The PMI transformation focuses latent semantic analysis on re- 7163
+constructing strong word-context associations, rather than on reconstructing large counts. 7164
+The PMI is negative when a word and context occur together less often than if they 7165
+were independent, but such negative correlations are unreliable because counts of rare 7166
+events have high variance. Furthermore, the PMI is undeﬁned when count (i,j) = 0 . One 7167
+solution to these problems is to use the Positive PMI (PPMI ), 7168
+PPMI (i,j) ={
+PMI(i,j),p(i|j)>p(i)
+0, otherwise.[14.10]
+Bullinaria and Levy (2007) compare a range of matrix transformations for latent se- 7169
+mantic analysis, using a battery of tasks related to word meaning and word similarity 7170
+(for more on evaluation, see §14.6). They ﬁnd that PPMI-based latent semantic analysis 7171
+yields strong performance on a battery of tasks related to word meaning: for example, 7172
+PPMI-based LSA vectors can be used to solve multiple-choice word similarity questions 7173
+from the Test of English as a Foreign Language (TOEFL), obtaining 85% accuracy. 7174
+14.4 Brown clusters 7175
+Learning algorithms like perceptron and conditional random ﬁelds often perform better 7176
+with discrete feature vectors. A simple way to obtain discrete representations from distri- 7177
+butional statistics is by clustering ( §5.1.1), so that words in the same cluster have similar 7178
+distributional statistics. This can help in downstream tasks, by sharing features between 7179
+all words in the same cluster. However, there is an obvious tradeoff: if the number of clus- 7180
+ters is too small, the words in each cluster will not have much in common; if the number 7181
+of clusters is too large, then the learner will not see enough examples from each cluster to 7182
+generalize. 7183
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+340 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+Figure 14.2: Some subtrees produced by bottom-up Brown clustering (Miller et al., 2004)
+on news text [todo: permission]
+A solution to this problem is hierarchical clustering : using the distributional statistics 7184
+to induce a tree-structured representation. Fragments of Brown cluster trees are shown in 7185
+Figure 14.2 and Table 14.3. Each word’s representation consists of a binary string describ- 7186
+ing a path through the tree: 0for taking the left branch, and 1for taking the right branch. 7187
+In the subtree in the upper right of the ﬁgure, the representation of the word conversation 7188
+is10; the representation of the word assessment is0001 . Bitstring preﬁxes capture similar- 7189
+ity at varying levels of speciﬁcity, and it is common to use the ﬁrst eight, twelve, sixteen, 7190
+and twenty bits as features in tasks such as named entity recognition (Miller et al., 2004) 7191
+and dependency parsing (Koo et al., 2008). 7192
+Hierarchical trees can be induced from a likelihood-based objective, using a discrete
+latent variable ki∈{1,2,...,K}to represent the cluster of word i:
+logp(w;k)≈M∑
+m=1logp(wm|wm−1;k) [14.11]
+≜M∑
+m=1logp(wm|kwm) + log p(kwm|kwm−1). [14.12]
+This is similar to a hidden Markov model, with the crucial difference that each word can 7193
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.4. BROWN CLUSTERS 341
+bitstring ten most frequent words
+01111010 0111 excited thankful grateful stoked pumped anxious hyped psyched
+exited geeked
+01111010 100 talking talkin complaining talkn bitching tlkn tlkin bragging rav-
+ing +k
+01111010 1010 thinking thinkin dreaming worrying thinkn speakin reminiscing
+dreamin daydreaming fantasizing
+01111010 1011 saying sayin suggesting stating sayn jokin talmbout implying
+insisting 5’2
+01111010 1100 wonder dunno wondered duno donno dno dono wonda wounder
+dunnoe
+01111010 1101 wondering wonders debating deciding pondering unsure won-
+derin debatin woundering wondern
+01111010 1110 sure suree suuure suure sure- surre sures shuree
+Table 14.3: Fragment of a Brown clustering of Twitter data (Owoputi et al., 2013). Each
+row is a leaf in the tree, showing the ten most frequent words. This part of the tree
+emphasizes verbs of communicating and knowing, especially in the present partici-
+ple. Each leaf node includes orthographic variants ( thinking, thinkin, thinkn ), semanti-
+cally related terms ( excited, thankful, grateful ), and some outliers ( 5’2, +k ). Seehttp:
+//www.cs.cmu.edu/ ˜ark/TweetNLP/cluster_viewer.html for more.
+be emitted from only a single cluster: ∀k̸=kwm,p(wm|k) = 0 . 7194
+Using the objective in Equation 14.12, the Brown clustering tree can be constructed
+from the bottom up: begin with each word in its own cluster, and incrementally merge
+clusters until only a single cluster remains. At each step, we merge the pair of clusters
+such that the objective in Equation 14.12 is maximized. Although the objective seems to
+involve a sum over the entire corpus, the score for each merger can be computed from
+the cluster-to-cluster co-occurrence counts. These counts can be updated incrementally as
+the clustering proceeds. The optimal merge at each step can be shown to maximize the
+average mutual information ,
+I(k) =K∑
+k1=1K∑
+k2=1p(k1,k2)×PMI(k1,k2) [14.13]
+p(k1,k2) =count (k1,k2)∑K
+k1′=1∑K
+k2′=1count (k1′,k2′),
+where p (k1,k2)is the joint probability of a bigram involving a word in cluster k1followed 7195
+by a word in k2. This probability and the PMI are both computed from the co-occurrence 7196
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+342 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+Algorithm 17 Exchange clustering algorithm. Assumes that words are sorted by fre-
+quency, and that M AXMI ﬁnds the cluster pair whose merger maximizes the mutual in-
+formation, as deﬁned in Equation 14.13.
+procedure EXCHANGE CLUSTERING ({count (·,·)},K)
+fori∈1...K do ⊿Initialization
+ki←i, i = 1,2,...,K
+forj∈1...K do
+ci,j←count (i,j)
+τ←{(i)}K
+i=1
+fori∈{K+ 1,K+ 2,...V}do⊿Iteratively add each word to the clustering
+τ←τ∪(i)
+fork∈τdo
+ck,i←count (k,i)
+ci,k←count (i,k)
+ˆi,ˆj←MAXMI(C)
+τ,C←MERGE (ˆi,ˆj,C,τ)
+repeat ⊿Merge the remaining clusters into a tree
+ˆi,ˆj←MAXMI(C,τ)
+τ,C←MERGE (ˆi,ˆj,C,τ)
+until|τ|= 1
+returnτ
+procedure MERGE (i,j,C,τ)
+τ←τ\i\j∪(i,j) ⊿Merge the clusters in the tree
+fork∈τdo ⊿Aggregate the counts across the merged clusters
+ck,(i,j)←ck,i+ck,j
+c(i,j),k←ci,k+cj,k
+returnτ,C
+counts between clusters. After each merger, the co-occurrence vectors for the merged 7197
+clusters are simply added up, so that the next optimal merger can be found efﬁciently. 7198
+This bottom-up procedure requires iterating over the entire vocabulary, and evaluat- 7199
+ingK2
+tpossible mergers at each step, where Ktis the current number of clusters at step t 7200
+of the algorithm. Furthermore, computing the score for each merger involves a sum over 7201
+K2
+tclusters. The maximum number of clusters is K0=V, which occurs when every word 7202
+is in its own cluster at the beginning of the algorithm. The time complexity is thus O(V5). 7203
+To avoid this complexity, practical implementations use a heuristic approximation 7204
+called exchange clustering . TheKmost common words are placed in clusters of their 7205
+own at the beginning of the process. We then consider the next most common word, and 7206
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.5. NEURAL WORD EMBEDDINGS 343
+vwm−2 vwm−1 vwmvwm+1 vwm+2
+wm−2 wm−1 wm wm+1 wm+2
+U
+(a) Continuous bag-of-words (CBOW)
+vwm
+wm wm−1 wm−2 wm+1 wm+2
+U (b) Skipgram
+Figure 14.3: The CBOW and skipgram variants of WORD 2VEC. The parameter Uis the
+matrix of word embeddings, and each vmis the context embedding for word wm.
+merge it with one of the existing clusters. This continues until the entire vocabulary has 7207
+been incorporated, at which point the Kclusters are merged down to a single cluster, 7208
+forming a tree. The algorithm never considers more than K+ 1clusters at any step, and 7209
+the complexity is O(VK+VlogV), with the second term representing the cost of sorting 7210
+the words at the beginning of the algorithm. 7211
+14.5 Neural word embeddings 7212
+Neural word embeddings combine aspects of the previous two methods: like latent se- 7213
+mantic analysis, they are a continuous vector representation; like Brown clusters, they are 7214
+trained from a likelihood-based objective. Let the vector uirepresent the K-dimensional 7215
+embedding for wordi, and letvjrepresent the K-dimensional embedding for context 7216
+j. The inner product ui·vjrepresents the compatibility between word iand context j. 7217
+By incorporating this inner product into an approximation to the log-likelihood of a cor- 7218
+pus, it is possible to estimate both parameters by backpropagation. WORD 2VEC (Mikolov 7219
+et al., 2013) includes two such approximations: continuous bag-of-words (CBOW) and 7220
+skipgrams. 7221
+14.5.1 Continuous bag-of-words (CBOW) 7222
+In recurrent neural network language models, each word wmis conditioned on a recurrently- 7223
+updated state vector, which is based on word representations going all the way back to the 7224
+beginning of the text. The continuous bag-of-words (CBOW) model is a simpliﬁcation: 7225
+the local context is computed as an average of embeddings for words in the immediate 7226
+neighborhood m−h,m−h+ 1,...,m +h−1,m+h, 7227
+vm=1
+2hh∑
+n=1vwm+n+vwm−n. [14.14]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+344 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+Thus, CBOW is a bag-of-words model, because the order of the context words does not 7228
+matter; it is continuous, because rather than conditioning on the words themselves, we 7229
+condition on a continuous vector constructed from the word embeddings. The parameter 7230
+hdetermines the neighborhood size, which Mikolov et al. (2013) set to h= 4. 7231
+The CBOW model optimizes an approximation to the corpus log-likelihood,
+logp(w)≈M∑
+m=1logp(wm|wm−h,wm−h+1,...,wm+h−1,wm+h) [14.15]
+=M∑
+m=1logexp (uwm·vm)∑V
+j=1exp (uj·vm)[14.16]
+=M∑
+m=1uwm·vm−logV∑
+j=1exp (uj·vm). [14.17]
+14.5.2 Skipgrams 7232
+In the CBOW model, words are predicted from their context. In the skipgram model, the
+context is predicted from the word, yielding the objective:
+logp(w)≈M∑
+m=1hm∑
+n=1logp(wm−n|wm) + log p(wm+n|wm) [14.18]
+=M∑
+m=1hm∑
+n=1logexp(uwm−n·vwm)
+∑V
+j=1exp(uj·vwm)+ logexp(uwm+n·vwm)
+∑V
+j=1exp(uj·vwm)[14.19]
+=M∑
+m=1hm∑
+n=1uwm−n·vwm+uwm+n·vwm−2 logV∑
+j=1exp (uj·vwm). [14.20]
+In the skipgram approximation, each word is generated multiple times; each time it is con- 7233
+ditioned only on a single word. This makes it possible to avoid averaging the word vec- 7234
+tors, as in the CBOW model. The local neighborhood size hmis randomly sampled from 7235
+a uniform categorical distribution over the range {1,2,...,h max}; Mikolov et al. (2013) set 7236
+hmax= 10 . Because the neighborhood grows outward with h, this approach has the effect 7237
+of weighting near neighbors more than distant ones. Skipgram performs better on most 7238
+evaluations than CBOW (see §14.6 for details of how to evaluate word representations), 7239
+but CBOW is faster to train (Mikolov et al., 2013). 7240
+14.5.3 Computational complexity 7241
+The WORD 2VEC models can be viewed as an efﬁcient alternative to recurrent neural net- 7242
+work language models, which involve a recurrent state update whose time complexity 7243
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.5. NEURAL WORD EMBEDDINGS 345
+0
+1 2
+3 4 Ahab
+σ(u0·vc)
+whale
+σ(−u0·vc)×σ(u2·vc)blubber
+σ(−u0·vc)×σ(−u2·vc)
+Figure 14.4: A fragment of a hierarchical softmax tree. The probability of each word is
+computed as a product of probabilities of local branching decisions in the tree.
+is quadratic in the size of the recurrent state vector. CBOW and skipgram avoid this 7244
+computation, and incur only a linear time complexity in the size of the word and con- 7245
+text representations. However, all three models compute a normalized probability over 7246
+word tokens; a na ¨ıve implementation of this probability requires summing over the entire 7247
+vocabulary. The time complexity of this sum is O(V×K), which dominates all other com- 7248
+putational costs. There are two solutions: hierarchical softmax , a tree-based computation 7249
+that reduces the cost to a logarithm of the size of the vocabulary; and negative sampling , 7250
+an approximation that eliminates the dependence on vocabulary size. Both methods are 7251
+also applicable to RNN language models. 7252
+14.5.3.1 Hierarchical softmax 7253
+In Brown clustering, the vocabulary is organized into a binary tree. Mnih and Hin-
+ton (2008) show that the normalized probability over words in the vocabulary can be
+reparametrized as a probability over paths through such a tree. This hierarchical softmax
+probability is computed as a product of binary decisions over whether to move left or
+right through the tree, with each binary decision represented as a sigmoid function of the
+inner product between the context embedding vcand an output embedding associated
+with the node un,
+Pr(left atn|c) =σ(un·vc) [14.21]
+Pr(right atn|c) =1−σ(un·vc) =σ(−un·vc), [14.22]
+whereσrefers to the sigmoid function, σ(x) =1
+1+exp(−x). The range of the sigmoid is the 7254
+interval (0,1), and 1−σ(x) =σ(−x). 7255
+As shown in Figure 14.4, the probability of generating each word is redeﬁned as the 7256
+product of the probabilities across its path. The sum of all such path probabilities is guar- 7257
+anteed to be one, for any context vector vc∈RK. In a balanced binary tree, the depth is 7258
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+346 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+logarithmic in the number of leaf nodes, and thus the number of multiplications is equal 7259
+toO(logV). The number of non-leaf nodes is equal to O(2V−1), so the number of pa- 7260
+rameters to be estimated increases by only a small multiple. The tree can be constructed 7261
+using an incremental clustering procedure similar to hierarchical Brown clusters (Mnih 7262
+and Hinton, 2008), or by using the Huffman (1952) encoding algorithm for lossless com- 7263
+pression. 7264
+14.5.3.2 Negative sampling 7265
+Likelihood-based methods are computationally intensive because each probability must
+be normalized over the vocabulary. These probabilities are based on scores for each word
+in each context, and it is possible to design an alternative objective that is based on these
+scores more directly: we seek word embeddings that maximize the score for the word that
+was really observed in each context, while minimizing the scores for a set of randomly
+selected negative samples :
+ψ(i,j) = logσ(ui·vj) +∑
+i′∈W neglog(1−σ(ui′·vj)), [14.23]
+whereψ(i,j)is the score for word iin contextj, andWnegis the set of negative samples. 7266
+The objective is to maximize the sum over the corpus,∑M
+m=1ψ(wm,cm), wherewmis 7267
+tokenmandcmis the associated context. 7268
+The set of negative samples Wnegis obtained by sampling from a unigram language 7269
+model. Mikolov et al. (2013) construct this unigram language model by exponentiating 7270
+the empirical word probabilities, setting ˆp(i)∝(count (i))3
+4. This has the effect of redis- 7271
+tributing probability mass from common to rare words. The number of negative samples 7272
+increases the time complexity of training by a constant factor. Mikolov et al. (2013) report 7273
+that 5-20negative samples works for small training sets, and that two to ﬁve samples 7274
+sufﬁce for larger corpora. 7275
+14.5.4 Word embeddings as matrix factorization 7276
+The negative sampling objective in Equation 14.23 can be justiﬁed as an efﬁcient approx- 7277
+imation to the log-likelihood, but it is also closely linked to the matrix factorization ob- 7278
+jective employed in latent semantic analysis. For a matrix of word-context pairs in which 7279
+all counts are non-zero, negative sampling is equivalent to factorization of the matrix M, 7280
+whereMij=PMI(i,j)−logk: each cell in the matrix is equal to the pointwise mutual 7281
+information of the word and context, shifted by logk, withkequal to the number of neg- 7282
+ative samples (Levy and Goldberg, 2014). For word-context pairs that are not observed in 7283
+the data, the pointwise mutual information is −∞, but this can be addressed by consid- 7284
+ering only PMI values that are greater than logk, resulting in a matrix of shifted positive 7285
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.6. EVALUATING WORD EMBEDDINGS 347
+pointwise mutual information , 7286
+Mij= max(0,PMI(i,j)−logk). [14.24]
+Word embeddings are obtained by factoring this matrix with truncated singular value 7287
+decomposition. 7288
+GloVe (“global vectors”) are a closely related approach (Pennington et al., 2014), in
+which the matrix to be factored is constructed from log co-occurrence counts, Mij=
+logcount (i,j). The word embeddings are estimated by minimizing the sum of squares,
+min
+u,v,b,˜bV∑
+j=1∑
+j∈Cf(Mij)(
+logMij⋀
+−logMij)2
+s.t. logMij⋀
+=ui·vj+bi+˜bj, [14.25]
+wherebiand˜bjare offsets for word iand context j, which are estimated jointly with the 7289
+embeddings uandv. The weighting function f(Mij)is set to be zero at Mij= 0, thus 7290
+avoiding the problem of taking the logarithm of zero counts; it saturates at Mij=mmax, 7291
+thus avoiding the problem of overcounting common word-context pairs. This heuristic 7292
+turns out to be critical to the method’s performance. 7293
+The time complexity of sparse matrix reconstruction is determined by the number of 7294
+non-zero word-context counts. Pennington et al. (2014) show that this number grows 7295
+sublinearly with the size of the dataset: roughly O(N0.8)for typical English corpora. In 7296
+contrast, the time complexity of WORD 2VEC is linear in the corpus size. Computing the co- 7297
+occurrence counts also requires linear time in the size of the corpus, but this operation can 7298
+easily be parallelized using MapReduce-style algorithms (Dean and Ghemawat, 2008). 7299
+14.6 Evaluating word embeddings 7300
+Distributed word representations can be evaluated in two main ways. Intrinsic evalu- 7301
+ations test whether the representations cohere with our intuitions about word meaning. 7302
+Extrinsic evaluations test whether they are useful for downstream tasks, such as sequence 7303
+labeling. 7304
+14.6.1 Intrinsic evaluations 7305
+A basic question for word embeddings is whether the similarity of words iandjis re- 7306
+ﬂected in the similarity of the vectors uianduj.Cosine similarity is typically used to 7307
+compare two word embeddings, 7308
+cos(ui,uj) =ui·uj
+||ui||2×||uj||2. [14.26]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+348 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+word 1 word 2 similarity
+love sex 6.77
+stock jaguar 0.92
+money cash 9.15
+development issue 3.97
+lad brother 4.46
+Table 14.4: Subset of the WS-353 (Finkelstein et al., 2002) dataset of word similarity ratings
+(examples from Faruqui et al. (2016)).
+For any embedding method, we can evaluate whether the cosine similarity of word em- 7309
+beddings is correlated with human judgments of word similarity. The WS-353 dataset (Finkel- 7310
+stein et al., 2002) includes similarity scores for 353 word pairs (Table 14.4). To test the 7311
+accuracy of embeddings for rare and morphologically complex words, Luong et al. (2013) 7312
+introduce a dataset of “rare words.” Outside of English, word similarity resources are 7313
+limited, mainly consisting of translations of WS-353. 7314
+Word analogies (e.g., king:queen :: man:woman ) have also been used to evaluate word 7315
+embeddings (Mikolov et al., 2013). In this evaluation, the system is provided with the ﬁrst 7316
+three parts of the analogy (i1:j1::i2:?), and the ﬁnal element is predicted by ﬁnding the 7317
+word embedding most similar to ui1−uj1+ui2. Another evaluation tests whether word 7318
+embeddings are related to broad lexical semantic categories called supersenses (Ciaramita 7319
+and Johnson, 2003): verbs of motion, nouns that describe animals, nouns that describe 7320
+body parts, and so on. These supersenses are annotated for English synsets in Word- 7321
+Net (Fellbaum, 2010). This evaluation is implemented in the qvec metric, which tests 7322
+whether the matrix of supersenses can be reconstructed from the matrix of word embed- 7323
+dings (Tsvetkov et al., 2015). 7324
+Levy et al. (2015) compared several dense word representations for English — includ- 7325
+ing latent semantic analysis, WORD 2VEC, and GloVe — using six word similarity metrics 7326
+and two analogy tasks. None of the embeddings outperformed the others on every task, 7327
+but skipgrams were the most broadly competitive. Hyperparameter tuning played a key 7328
+role: any method will perform badly if the wrong hyperparameters are used. Relevant 7329
+hyperparameters include the embedding size, as well as algorithm-speciﬁc details such 7330
+as the neighborhood size and the number of negative samples. 7331
+14.6.2 Extrinsic evaluations 7332
+Word representations contribute to downstream tasks like sequence labeling and docu- 7333
+ment classiﬁcation by enabling generalization across words. The use of distributed repre- 7334
+sentations as features is a form of semi-supervised learning , in which performance on a 7335
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.7. DISTRIBUTED REPRESENTATIONS BEYOND DISTRIBUTIONAL STATISTICS 349
+supervised learning problem is augmented by learning distributed representations from 7336
+unlabeled data (Miller et al., 2004; Koo et al., 2008; Turian et al., 2010). These pre-trained 7337
+word representations can be used as features in a linear prediction model, or as the input 7338
+layer in a neural network, such as a Bi-LSTM tagging model ( §7.6). Word representations 7339
+can be evaluated by the performance of the downstream systems that consume them: 7340
+for example, GloVe embeddings are convincingly better than Latent Semantic Analysis 7341
+as features in the downstream task of named entity recognition (Pennington et al., 2014). 7342
+Unfortunately, extrinsic and intrinsic evaluations do not always point in the same direc- 7343
+tion, and the best word representations for one downstream task may perform poorly on 7344
+another task (Schnabel et al., 2015). 7345
+When word representations are updated from labeled data in the downstream task, 7346
+they are said to be ﬁne-tuned . When labeled data is plentiful, pre-training may be un- 7347
+necessary; when labeled data is scare, ﬁne-tuning may lead to overﬁtting. Various com- 7348
+binations of pre-training and ﬁne-tuning can be employed. Pre-trained embeddings can 7349
+be used as initialization before ﬁne-tuning, and this can substantially improve perfor- 7350
+mance (Lample et al., 2016). Alternatively, both ﬁne-tuned and pre-trained embeddings 7351
+can be used as inputs in a single model (Kim, 2014). 7352
+In semi-supervised scenarios, pretrained word embeddings can be replaced by “con- 7353
+textualized” word representations (Peters et al., 2018). These contextualized represen- 7354
+tations are set to the hidden states of a deep bi-directional LSTM, which is trained as a 7355
+bi-directional language model, motivating the name ELMo (embeddings from language 7356
+models) . Given a supervised learning problem, the language model generates contextu- 7357
+alized representations, which are then used as the base layer in a task-speciﬁc supervised 7358
+neural network. This approach yields signiﬁcant gains over pretrained word embeddings 7359
+on several tasks, presumably because the contextualized embeddings use unlabeled data 7360
+to learn how to integrate linguistic context into the base layer of the supervised neural 7361
+network. 7362
+14.7 Distributed representations beyond distributional statistics 7363
+Distributional word representations can be estimated from huge unlabeled datasets, thereby 7364
+covering many words that do not appear in labeled data: for example, GloVe embeddings 7365
+are estimated from 800 billion tokens of web data,3while the largest labeled datasets for 7366
+NLP tasks are on the order of millions of tokens. Nonetheless, even a dataset of hundreds 7367
+of billions of tokens will not cover every word that may be encountered in the future. 7368
+Furthermore, many words will appear only a few times, making their embeddings un- 7369
+reliable. Many languages exceed English in morphological complexity, and thus have 7370
+lower token-to-type ratios. When this problem is coupled with small training corpora, it 7371
+3http://commoncrawl.org/
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+350 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+umillicuries ˜umillicuries
+u(M)
+milli+ u(M)
+curieu(M)
++s
+umillicuries
+umillicurie
+u(M)
+milli+ u(M)
+curieu(M)
++s
+Figure 14.5: Two architectures for building word embeddings from subword units. On the
+left, morpheme embeddings u(m)are combined by addition with the non-compositional
+word embedding ˜u(Botha and Blunsom, 2014). On the right, morpheme embeddings are
+combined in a recursive neural network (Luong et al., 2013).
+becomes especially important to leverage other sources of information beyond distribu- 7372
+tional statistics. 7373
+14.7.1 Word-internal structure 7374
+One solution is to incorporate word-internal structure into word embeddings. Purely 7375
+distributional approaches consider words as atomic units, but in fact, many words have 7376
+internal structure, so that their meaning can be composed from the representations of 7377
+sub-word units. Consider the following terms, all of which are missing from Google’s 7378
+pre-trained WORD 2VEC embeddings:47379
+millicuries This word has morphological structure (see§9.1.2 for more on morphology): 7380
+the preﬁx milli- indicates an amount, and the sufﬁx -sindicates a plural. (A millicurie 7381
+is an unit of radioactivity.) 7382
+caesium This word is a single morpheme, but the characters -ium are often associated 7383
+with chemical elements. ( Caesium is the British spelling of a chemical element, 7384
+spelled cesium in American English.) 7385
+IAEA This term is an acronym, as suggested by the use of capitalization. The preﬁx I-fre- 7386
+quently refers to international organizations, and the sufﬁx -Aoften refers to agen- 7387
+cies or associations. ( IAEA is the International Atomic Energy Agency.) 7388
+Zhezhgan This term is in title case, suggesting the name of a person or place, and the 7389
+character bigram zhindicates that it is likely a transliteration. ( Zhezhgan is a mining 7390
+facility in Kazakhstan.) 7391
+4https://code.google.com/archive/p/word2vec/ , accessed September 20, 2017
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.7. DISTRIBUTED REPRESENTATIONS BEYOND DISTRIBUTIONAL
+STATISTICS 351
+How can word-internal structure be incorporated into word representations? One 7392
+approach is to construct word representations from embeddings of the characters or mor- 7393
+phemes. For example, if word ihas morphological segments Mi, then its embedding can 7394
+be constructed by addition (Botha and Blunsom, 2014), 7395
+ui=˜ui+∑
+j∈Miu(M)
+j, [14.27]
+whereu(M)
+mis a morpheme embedding and ˜uiis a non-compositional embedding of the 7396
+whole word, which is an additional free parameter of the model (Figure 14.5, left side). 7397
+All embeddings are estimated from a log-bilinear language model (Mnih and Hinton, 7398
+2007), which is similar to the CBOW model ( §14.5), but includes only contextual informa- 7399
+tion from preceding words. The morphological segments are obtained using an unsuper- 7400
+vised segmenter (Creutz and Lagus, 2007). For words that do not appear in the training 7401
+data, the embedding can be constructed directly from the morphemes, assuming that each 7402
+morpheme appears in some other word in the training data. The free parameter ˜uadds 7403
+ﬂexibility: words with similar morphemes are encouraged to have similar embeddings, 7404
+but this parameter makes it possible for them to be different. 7405
+Word-internal structure can be incorporated into word representations in various other 7406
+ways. Here are some of the main parameters. 7407
+Subword units. Examples like IAEA and Zhezhgan are not based on morphological com- 7408
+position, and a morphological segmenter is unlikely to identify meaningful sub- 7409
+word units for these terms. Rather than using morphemes for subword embeddings, 7410
+one can use characters (Santos and Zadrozny, 2014; Ling et al., 2015; Kim et al., 2016), 7411
+charactern-grams (Wieting et al., 2016; Bojanowski et al., 2017), and byte-pair en- 7412
+codings , a compression technique which captures frequent substrings (Gage, 1994; 7413
+Sennrich et al., 2016). 7414
+Composition. Combining the subword embeddings by addition does not differentiate 7415
+between orderings, nor does it identify any particular morpheme as the root. A 7416
+range of more ﬂexible compositional models have been considered, including re- 7417
+currence (Ling et al., 2015), convolution (Santos and Zadrozny, 2014; Kim et al., 7418
+2016), and recursive neural networks (Luong et al., 2013), in which representa- 7419
+tions of progressively larger units are constructed over a morphological parse, e.g. 7420
+((milli+curie )+s), ((in+ﬂam)+able), (in+(vis+ible)). A recursive embedding model is 7421
+shown in the right panel of Figure 14.5. 7422
+Estimation. Estimating subword embeddings from a full dataset is computationally ex- 7423
+pensive. An alternative approach is to train a subword model to match pre-trained 7424
+word embeddings (Cotterell et al., 2016; Pinter et al., 2017). To train such a model, it 7425
+is only necessary to iterate over the vocabulary, and the not the corpus. 7426
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+352 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+14.7.2 Lexical semantic resources 7427
+Resources such as WordNet provide another source of information about word meaning:
+if we know that caesium is a synonym of cesium , or that a millicurie is a type of measurement
+unit, then this should help to provide embeddings for the unknown words, and to smooth
+embeddings of rare words. One way to do this is to retroﬁt pre-trained word embeddings
+across a network of lexical semantic relationships (Faruqui et al., 2015) by minimizing the
+following objective,
+min
+UV∑
+j=1||ui−ˆui||2+∑
+(i,j)∈Lβij||ui−uj||2, [14.28]
+where ˆuiis the pretrained embedding of word i, andL={(i,j)}is a lexicon of word 7428
+relations. The hyperparameter βijcontrols the importance of adjacent words having 7429
+similar embeddings; Faruqui et al. (2015) set it to the inverse of the degree of word i, 7430
+βij=|{j: (i,j)∈L}|−1. Retroﬁtting improves performance on a range of intrinsic evalu- 7431
+ations, and gives small improvements on an extrinsic document classiﬁcation task. 7432
+14.8 Distributed representations of multiword units 7433
+Can distributed representations extend to phrases, sentences, paragraphs, and beyond? 7434
+Before exploring this possibility, recall the distinction between distributed and distri- 7435
+butional representations. Neural embeddings such as WORD 2VEC are both distributed 7436
+(vector-based) and distributional (derived from counts of words in context). As we con- 7437
+sider larger units of text, the counts decrease: in the limit, a multi-paragraph span of text 7438
+would never appear twice, except by plagiarism. Thus, the meaning of a large span of 7439
+text cannot be determined from distributional statistics alone; it must be computed com- 7440
+positionally from smaller spans. But these considerations are orthogonal to the question 7441
+of whether distributed representations — dense numerical vectors — are sufﬁciently ex- 7442
+pressive to capture the meaning of phrases, sentences, and paragraphs. 7443
+14.8.1 Purely distributional methods 7444
+Some multiword phrases are non-compositional: the meaning of such phrases is not de- 7445
+rived from the meaning of the individual words using typical compositional semantics. 7446
+This includes proper nouns like San Francisco as well as idiomatic expressions like kick 7447
+the bucket (Baldwin and Kim, 2010). For these cases, purely distributional approaches 7448
+can work. A simple approach is to identify multiword units that appear together fre- 7449
+quently, and then treat these units as words, learning embeddings using a technique such 7450
+asWORD 2VEC. The problem of identifying multiword units is sometimes called colloca- 7451
+tion extraction , and can be approached using metrics such as pointwise mutual informa- 7452
+tion: two-word units are extracted ﬁrst, and then larger units are extracted. Mikolov et al. 7453
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.8. DISTRIBUTED REPRESENTATIONS OF MULTIWORD UNITS 353
+(2013) identify such units and then treat them as words when estimating skipgram em- 7454
+beddings, showing that the resulting embeddings perform reasonably on a task of solving 7455
+phrasal analogies, e.g. New York : New York Times :: Baltimore : Baltimore Sun . 7456
+14.8.2 Distributional-compositional hybrids 7457
+To move beyond short multiword phrases, composition is necessary. A simple but sur- 7458
+prisingly powerful approach is to represent a sentence with the average of its word em- 7459
+beddings (Mitchell and Lapata, 2010). This can be considered a hybrid of the distribu- 7460
+tional and compositional approaches to semantics: the word embeddings are computed 7461
+distributionally, and then the sentence representation is computed by composition. 7462
+The WORD 2VEC approach can be stretched considerably further, embedding entire 7463
+sentences using a model similar to skipgrams, in the “skip-thought” model of Kiros et al. 7464
+(2015). Each sentence is encoded into a vector using a recurrent neural network: the encod- 7465
+ing of sentence tis set to the RNN hidden state at its ﬁnal token, h(t)
+Mt. This vector is then 7466
+a parameter in a decoder model that is used to generate the previous and subsequent sen- 7467
+tences: the decoder is another recurrent neural network, which takes the encoding of the 7468
+neighboring sentence as an additional parameter in its recurrent update. (This encoder- 7469
+decoder model is discussed at length in chapter 18.) The encoder and decoder are trained 7470
+simultaneously from a likelihood-based objective, and the trained encoder can be used to 7471
+compute a distributed representation of any sentence. Skip-thought can also be viewed 7472
+as a hybrid of distributional and compositional approaches: the vector representation of 7473
+each sentence is computed compositionally from the representations of the individual 7474
+words, but the training objective is distributional, based on sentence co-occurrence across 7475
+a corpus. 7476
+Autoencoders are a variant of encoder-decoder models in which the decoder is trained 7477
+to produce the same text that was originally encoded, using only the distributed encod- 7478
+ing vector (Li et al., 2015). The encoding acts as a bottleneck, so that generalization is 7479
+necessary if the model is to successfully ﬁt the training data. In denoising autoencoders , 7480
+the input is a corrupted version of the original sentence, and the auto-encoder must re- 7481
+construct the uncorrupted original (Vincent et al., 2010; Hill et al., 2016). By interpolating 7482
+between distributed representations of two sentences, αui+(1−α)uj, it is possible to gen- 7483
+erate sentences that combine aspects of the two inputs, as shown in Figure 14.6 (Bowman 7484
+et al., 2016). 7485
+Autoencoders can also be applied to longer texts, such as paragraphs and documents. 7486
+This enables applications such as question answering , which can be performed by match- 7487
+ing the encoding of the question with encodings of candidate answers (Miao et al., 2016). 7488
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+354 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+this was the only way
+it was the only way
+it was her turn to blink
+it was hard to tell
+it was time to move on
+he had to do it again
+they all looked at each other
+they all turned to look back
+they both turned to face him
+they both turned and walked away
+Figure 14.6: By interpolating between the distributed representations of two sentences (in
+bold), it is possible to generate grammatical sentences that combine aspects of both (Bow-
+man et al., 2016)
+14.8.3 Supervised compositional methods 7489
+Given a supervision signal, such as a label describing the sentiment or meaning of a sen- 7490
+tence, a wide range of compositional methods can be applied to compute a distributed 7491
+representation that then predicts the label. The simplest is to average the embeddings 7492
+of each word in the sentence, and pass this average through a feedforward neural net- 7493
+work (Iyyer et al., 2015). Convolutional and recurrent neural networks go further, with 7494
+the ability to effectively capturing multiword phenomena such as negation (Kalchbrenner 7495
+et al., 2014; Kim, 2014; Li et al., 2015; Tang et al., 2015). Another approach is to incorpo- 7496
+rate the syntactic structure of the sentence into a recursive neural networks , in which the 7497
+representation for each syntactic constituent is computed from the representations of its 7498
+children (Socher et al., 2012). However, in many cases, recurrent neural networks perform 7499
+as well or better than recursive networks (Li et al., 2015). 7500
+Whether convolutional, recurrent, or recursive, a key question is whether supervised 7501
+sentence representations are task-speciﬁc, or whether a single supervised sentence repre- 7502
+sentation model can yield useful performance on other tasks. Wieting et al. (2015) train a 7503
+variety of sentence embedding models for the task of labeling pairs of sentences as para- 7504
+phrases . They show that the resulting sentence embeddings give good performance for 7505
+sentiment analysis. The Stanford Natural Language Inference corpus classiﬁes sentence 7506
+pairs as entailments (the truth of sentence iimplies the truth of sentence j),contradictions 7507
+(the truth of sentence iimplies the falsity of sentence j), and neutral ( ineither entails nor 7508
+contradicts j). Sentence embeddings trained on this dataset transfer to a wide range of 7509
+classiﬁcation tasks (Conneau et al., 2017). 7510
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.8. DISTRIBUTED REPRESENTATIONS OF MULTIWORD UNITS 355
+14.8.4 Hybrid distributed-symbolic representations 7511
+The power of distributed representations is in their generality: the distributed represen- 7512
+tation of a unit of text can serve as a summary of its meaning, and therefore as the input 7513
+for downstream tasks such as classiﬁcation, matching, and retrieval. For example, dis- 7514
+tributed sentence representations can be used to recognize the paraphrase relationship 7515
+between closely related sentences like the following: 7516
+(14.5) Donald thanked Vlad profusely. 7517
+(14.6) Donald conveyed to Vlad his profound appreciation. 7518
+(14.7) Vlad was showered with gratitude by Donald. 7519
+Symbolic representations are relatively brittle to this sort of variation, but are better 7520
+suited to describe individual entities, the things that they do, and the things that are done 7521
+to them. In examples (14.5)-(14.7), we not only know that somebody thanked someone 7522
+else, but we can make a range of inferences about what has happened between the en- 7523
+tities named Donald and Vlad . Because distributed representations do not treat entities 7524
+symbolically, they lack the ability to reason about the roles played by entities across a sen- 7525
+tence or larger discourse.5A hybrid between distributed and symbolic representations 7526
+might give the best of both worlds: robustness to the many different ways of describing 7527
+the same event, plus the expressiveness to support inferences about entities and the roles 7528
+that they play. 7529
+A “top-down” hybrid approach is to begin with logical semantics (of the sort de- 7530
+scribed in the previous two chapters), and but replace the predeﬁned lexicon with a set 7531
+of distributional word clusters (Poon and Domingos, 2009; Lewis and Steedman, 2013). A 7532
+“bottom-up” approach is to add minimal symbolic structure to existing distributed repre- 7533
+sentations, such as vector representations for each entity (Ji and Eisenstein, 2015; Wiseman 7534
+et al., 2016). This has been shown to improve performance on two problems that we will 7535
+encounter in the following chapters: classiﬁcation of discourse relations between adja- 7536
+cent sentences (chapter 16; Ji and Eisenstein, 2015), and coreference resolution of entity 7537
+mentions (chapter 15; Wiseman et al., 2016; Ji et al., 2017). Research on hybrid seman- 7538
+tic representations is still in an early stage, and future representations may deviate more 7539
+boldly from existing symbolic and distributional approaches. 7540
+Additional resources 7541
+Turney and Pantel (2010) survey a number of facets of vector word representations, fo- 7542
+cusing on matrix factorization methods. Schnabel et al. (2015) highlight problems with 7543
+5At a 2014 workshop on semantic parsing, this critique of distributed representations was expressed by
+Ray Mooney — a leading researcher in computational semantics — in a now well-known quote, “you can’t
+cram the meaning of a whole sentence into a single vector!”
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+356 CHAPTER 14. DISTRIBUTIONAL AND DISTRIBUTED SEMANTICS
+similarity-based evaluations of word embeddings, and present a novel evaluation that 7544
+controls for word frequency. Baroni et al. (2014) address linguistic issues that arise in 7545
+attempts to combine distributed and compositional representations. 7546
+In bilingual and multilingual distributed representations, embeddings are estimated 7547
+for translation pairs or tuples, such as (dog, perro, chien ). These embeddings can improve 7548
+machine translation (Zou et al., 2013; Klementiev et al., 2012), transfer natural language 7549
+processing models across languages (T ¨ackstr ¨om et al., 2012), and make monolingual word 7550
+embeddings more accurate (Faruqui and Dyer, 2014). A typical approach is to learn a pro- 7551
+jection that maximizes the correlation of the distributed representations of each element 7552
+in a translation pair, which can be obtained from a bilingual dictionary. Distributed rep- 7553
+resentations can also be linked to perceptual information, such as image features. Bruni 7554
+et al. (2014) use textual descriptions of images to obtain visual contextual information for 7555
+various words, which supplements traditional distributional context. Image features can 7556
+also be inserted as contextual information in log bilinear language models (Kiros et al., 7557
+2014), making it possible to automatically generate text descriptions of images. 7558
+Exercises 7559
+1. Prove that the sum of probabilities of paths through a hierarchical softmax tree is 7560
+equal to one. 7561
+2. In skipgram word embeddings, the negative sampling objective can be written as,
+L=∑
+i∈V∑
+j∈Ccount (i,j)ψ(i,j), [14.29]
+withψ(i,j)is deﬁned in Equation 14.23. 7562
+Suppose we draw the negative samples from the empirical unigram distribution 7563
+ˆp(i) =punigram(i). First, compute the expectation of Lwith respect this probability. 7564
+Next, take the derivative of this expectation with respect to the score of a single word 7565
+context pair σ(ui·vj), and solve for the pointwise mutual information PMI (i,j). You 7566
+should be able to show that at the optimum, the PMI is a simple function of σ(ui·vj) 7567
+and the number of negative samples. 7568
+3. * In Brown clustering, prove that the cluster merge that maximizes the average mu- 7569
+tual information (Equation 14.13) also maximizes the log-likelihood objective (Equa- 7570
+tion 14.12). 7571
+For the next two problems, download a set of pre-trained word embeddings, such as the 7572
+WORD 2VEC or polyglot embeddings. 7573
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+14.8. DISTRIBUTED REPRESENTATIONS OF MULTIWORD UNITS 357
+4. Use cosine similarity to ﬁnd the most similar words to: dog, whale, before, however, 7574
+fabricate . 7575
+5. Use vector addition and subtraction to compute target vectors for the analogies be- 7576
+low. After computing each target vector, ﬁnd the top three candidates by cosine 7577
+similarity. 7578
+•dog:puppy :: cat: ? 7579
+•speak:speaker :: sing:? 7580
+•France:French :: England:? 7581
+•France:wine :: England:? 7582
+The remaining problems will require you to build a classiﬁer and test its properties. Pick 7583
+a multi-class text classiﬁcation dataset, such as RCV16). Divide your data into training 7584
+(60%), development (20%), and test sets (20%), if no such division already exists. 7585
+6. Train a convolutional neural network, with inputs set to pre-trained word embed- 7586
+dings from the previous problem. Use a special, ﬁne-tuned embedding for out-of- 7587
+vocabulary words. Train until performance on the development set does not im- 7588
+prove. You can also use the development set to tune the model architecture, such 7589
+as the convolution width and depth. Report F-MEASURE and accuracy, as well as 7590
+training time. 7591
+7. Now modify your model from the previous problem to ﬁne-tune the word embed- 7592
+dings. Report F-MEASURE , accuracy, and training time. 7593
+8. Try a simpler approach, in which word embeddings in the document are averaged, 7594
+and then this average is passed through a feed-forward neural network. Again, use 7595
+the development data to tune the model architecture. How close is the accuracy to 7596
+the convolutional networks from the previous problems? 7597
+6http://www.ai.mit.edu/projects/jmlr/papers/volume5/lewis04a/lyrl2004_
+rcv1v2_README.htm
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+
+

@@ -1,0 +1,1143 @@
+p/CX /CX6Statistical Inference: n-gram
+Models over Sparse Data
+Statistical NLP aims to do statistical inference for the ﬁeld of natu-
+ral language. Statistical inference in general consists of taking some data statistical
+inference (generated in accordance with some unknown probability distribution)
+and then making some inferences about this distribution. For example,
+we might look at lots of instances of prepositional phrase attachmentsin a corpus, and use them to try to predict prepositional phrase attach-ments for English in general. The discussion in this chapter divides theproblem into three areas (although they tend to overlap considerably): di-viding the training data into equivalence classes, ﬁnding a good statisticalestimator for each equivalence class, and combining multiple estimators.
+As a running example of statistical estimation, we will examine the
+classic task of language modeling , where the problem is to predict the
+language modeling
+next word given the previous words. This task is fundamental to speech
+or optical character recognition, and is also used for spelling correction,handwriting recognition, and statistical machine translation. This sort oftask is often referred to as a Shannon game following the presentation
+Shannon game
+of the task of guessing the next letter in a text in (Shannon 1951). This
+problem has been well-studied, and indeed many estimation methods
+were ﬁrst developed for this task. In general, though, the methods wedevelop are not speciﬁc to this task, and can be directly used for othertasks like word sense disambiguation or probabilistic parsing. The wordprediction task just provides a clear easily-understood problem for whichthe techniques can be developed.
+
+p/CX /CX192 6 Statistical Inference: n-gram Models over Sparse Data
+6.1 Bins: Forming Equivalence Classes
+6.1.1 Reliability vs. discrimination
+Normally, in order to do inference about one feature, we wish to ﬁnd
+other features of the model that predict it. Here, we are assuming thatpast behavior is a good guide to what will happen in the future (that is,that the model is roughly stationary). This gives us a classiﬁcation task:
+we try to predict the target feature on the basis of various classiﬁcatory
+target feature
+classiﬁcatory
+featuresfeatures . When doing this, we eﬀectively divide the data into equivalence
+classes that share values for certain of the classiﬁcatory features, and usethis equivalence classing to help predict the value of the target featureon new pieces of data. This means that we are tacitly making indepen-
+independence
+assumptions dence assumptions: the data either does not depend on other features, or
+the dependence is suﬃciently minor that we hope that we can neglect it
+without doing too much harm. The more classiﬁcatory features (of some
+relevance) that we identify, the more ﬁnely conditions that determine theunknown probability distribution of the target feature can potentially beteased apart. In other words, dividing the data into many bins gives us
+bins
+greater discrimination . Going against this is the problem that if we use a
+lot of bins then a particular bin may contain no or a very small number oftraining instances, and then we will not be able to do statistically reliable
+reliability
+estimation of the target feature for that bin. Finding equivalence classes
+that are a good compromise between these two criteria is our ﬁrst goal.
+6.1.2n-gram models
+The task of predicting the next word can be stated as attempting to esti-
+mate the probability function P:
+Pwnjw1;:::;wn−1 (6.1)
+In such a stochastic problem, we use a classiﬁcation of the previous
+words, the history , to predict the next word. On the basis of having looked history
+at a lot of text, we know which words tend to follow other words.
+For this task, we cannot possibly consider each textual history sepa-
+rately: most of the time we will be listening to a sentence that we havenever heard before, and so there is no previous identical textual historyon which to base our predictions, and even if we had heard the begin-ning of the sentence before, it might end diﬀerently this time. And so we
+
+p/CX /CX6.1 Bins: Forming Equivalence Classes 193
+need a method of grouping histories that are similar in some way so as
+to give reasonable predictions as to which words we can expect to comenext. One possible way to group them is by making a Markov assumption
+Markov assumption
+that only the prior local context – the last few words – aﬀects the next
+word. If we construct a model where all histories that have the same last
+n−1 words are placed in the same equivalence class, then we have an
+n−1thorder Markov model or an n-gram word model (the last word of
+then-gram being given by the word we are predicting).
+Before continuing with model-building, let us pause for a brief inter-
+lude on naming. The cases of n-gram models that people usually use are
+forn2;3;4, and these alternatives are usually referred to as a bigram , bigram
+atrigram ,a n da four-gram model, respectively. Revealing this will surely trigram
+four-grambe enough to cause any Classicists who are reading this book to stop,
+and to leave the ﬁeld to uneducated engineering sorts: gram is a Greek
+root and so should be put together with Greek number preﬁxes. Shannonactually diduse the term digram , but with the declining levels of educa-
+digram
+tion in recent decades, this usage has not survived. As non-prescriptive
+linguists, however, we think that the curious mixture of English, Greek,and Latin that our colleagues actually use is quite fun. So we will not try
+to stamp it out.
+1
+Now in principle, we would like the nof ourn-gram models to be fairly
+large, because there are sequences of words like:
+(6.2) Sue swallowed the large green .
+where swallowed is presumably still quite strongly inﬂuencing which
+word will come next – pillor perhaps frog are likely continuations, but
+tree,carormountain are presumably unlikely, even though they are in
+general fairly natural continuations after the large green . However,
+there is the problem that if we divide the data into too many bins, thenthere are a lot of parameters to estimate. For instance, if we conser-
+parameters
+vatively assume that a speaker is staying within a vocabulary of 20,000words, then we get the estimates for numbers of parameters shown in
+table 6.1.
+2
+1. Rather than four-gram , some people do make an attempt at appearing educated by
+saying quadgram , but this is not really correct use of a Latin number preﬁx (which would
+givequadrigram ,c f .quadrilateral ), let alone correct use of a Greek number preﬁx, which
+would give us “a tetragram model.”
+2. Given a certain model space (here word n-gram models), the parameters are the num-
+bers that we have to specify to determine a particular model within that model space.
+
+p/CX /CX194 6 Statistical Inference: n-gram Models over Sparse Data
+Model Parameters
+1st order (bigram model): 20 ;00019;999 = 400 million
+2nd order (trigram model): 20 ;000219;999 = 8 trillion
+3th order (four-gram model): 20 ;000319;9 9 9=1:61017
+Table 6.1 Growth in number of parameters for n-gram models.
+So we quickly see that producing a ﬁve-gram model, of the sort that
+we thought would be useful above, may well not be practical, even ifwe have what we think is a very large corpus. For this reason, n-gram
+systems currently usually use bigrams or trigrams (and often make dowith a smaller vocabulary).
+One way of reducing the number of parameters is to reduce the value
+ofn, but it is important to realize that n-grams are not the only way
+of forming equivalence classes of the history. Among other operationsof equivalencing, we could consider stemming (removing the inﬂectional
+stemming
+endings from words) or grouping words into semantic classes (by use
+of a pre-existing thesaurus, or by some induced clustering). This is ef-fectively reducing the vocabulary size over which we form n-grams. But
+we do not need to use n-grams at all. There are myriad other ways of
+forming equivalence classes of the history – it’s just that they’re all a bit
+more complicated than n-grams. The above example suggests that know-
+ledge of the predicate in a clause is useful, so we can imagine a modelthat predicts the next word based on the previous word and the previ-ous predicate (no matter how far back it is). But this model is harder toimplement, because we ﬁrst need a fairly accurate method of identifyingthe main predicate of a clause. Therefore we will just use n-gram models
+in this chapter, but other techniques are covered in chapters 12 and 14.
+For anyone from a linguistics background, the idea that we would
+choose to use a model of language structure which predicts the next wordsimply by examining the previous two words – with no reference to thestructure of the sentence – seems almost preposterous. But, actually, the
+Since we are assuming nothing in particular about the probability distribution, the num-
+ber of parameters to be estimated is the number of bins times one less than the numberof values of the target feature (one is subtracted because the probability of the last targetvalue is automatically given by the stochastic constraint that probabilities should sum toone).
+
+p/CX /CX6.1 Bins: Forming Equivalence Classes 195
+lexical co-occurrence, semantic, and basic syntactic relationships that ap-
+pear in this very local context are a good predictor of the next word,and such systems work surprisingly well. Indeed, it is diﬃcult to beat atrigram model on the purely linear task of predicting the next word.
+6.1.3 Building n-gram models
+In the ﬁnal part of some sections of this chapter, we will actually build
+some models and show the results. The reader should be able to recreateour results by using the tools and data on the accompanying website. Thetext that we will use is Jane Austen’s novels, and is available from thewebsite. This corpus has two advantages: (i) it is freely available through
+the work of Project Gutenberg, and (ii) it is not too large. The small size
+of the corpus is, of course, in many ways also a disadvantage. Because ofthe huge number of parameters of n-gram models, as discussed above,
+n-gram models work best when trained on enormous amounts of data.
+However, such training requires a lot of
+CPU time and diskspace, so a
+small corpus is much more appropriate for a textbook example. Even so,you will want to make sure that you start oﬀ with about 40Mb of free
+diskspace before attempting to recreate our examples.
+As usual, the ﬁrst step is to preprocess the corpus. The Project Guten-
+berg Austen texts are very clean plain
+ASCII ﬁles. But nevertheless, there
+are the usual problems of punctuation marks attaching to words and soon (see chapter 4) that mean that we must do more than simply split onwhitespace. We decided that we could make do with some very simplesearch-and-replace patterns that removed all punctuation leaving white-
+space separated words (see the website for details). We decided to use
+Emma ,Mansﬁeld Park ,Northanger Abbey ,Pride and Prejudice ,a n d Sense
+and Sensibility as our corpus for building models, reserving Persuasion
+for testing, as discussed below. This gave us a (small) training corpus ofN617;091 words of text, containing a vocabulary Vof 14,585 word
+types.
+By simply removing all punctuation as we did, our ﬁle is literally a long
+sequence of words. This isn’t actually what people do most of the time.
+It is commonly felt that there are not very strong dependencies betweensentences, while sentences tend to begin in characteristic ways. So peoplemark the sentences in the text – most commonly by surrounding themwith the
+SGML tags <s>and </s> . The probability calculations at the
+
+p/CX /CX196 6 Statistical Inference: n-gram Models over Sparse Data
+start of a sentence are then dependent not on the last words of the pre-
+ceding sentence but upon a ‘beginning of sentence’ context. We shouldadditionally note that we didn’t remove case distinctions, so capitalizedwords remain in the data, imperfectly indicating where new sentencesbegin.
+6.2 Statistical Estimators
+Given a certain number of pieces of training data that fall into a certainbin, the second goal is then ﬁnding out how to derive a good probabil-ity estimate for the target feature based on these data. For our runningexample ofn-grams, we will be interested in Pw
+1wnand the predic-
+tion taskPwnjw1wn−1. Since:
+Pwnjw1wn−1Pw 1wn
+Pw 1wn−1(6.3)
+estimating good conditional probability distributions can be reduced to
+having good solutions to simply estimating the unknown probability dis-tribution ofn-grams.
+3
+Let us assume that the training text consists of Nwords. If we append
+n−1 dummy start symbols to the beginning of the text, we can then also
+say that the corpus consists of Nn-grams, with a uniform amount of
+conditioning available for the next word in all cases. Let Bbe the number
+of bins (equivalence classes). This will be Vn−1,w h e r eVis the vocabulary
+size, for the task of working out the next word and Vnfor the task of
+estimating the probability of diﬀerent n-grams. LetCw 1wnbe the
+frequency of a certain n-gram in the training text, and let us say that
+there areNrn-grams that appeared rtimes in the training text (i.e., Nr
+jfw1wn:Cw 1wnrgj). These frequencies of frequencies are
+very commonly used in the estimation methods which we cover below.
+This notation is summarized in table 6.2.
+3. However, when smoothing, one has a choice of whether to smooth the n-gram proba-
+bility estimates, or to smooth the conditional probability distributions directly. For manymethods, these do not give equivalent results since in the latter case one is separatelysmoothing a large number of conditional probability distributions (which normally needto be themselves grouped into classes in some way).
+
+p/CX /CX6.2 Statistical Estimators 197
+N Number of training instances
+B Number of bins training instances are divided into
+w1n Ann-gramw1wnin the training text
+Cw 1wnFrequency ofn-gramw1wnin training text
+r Frequency of an n-gram
+f Frequency estimate of a model
+Nr Number of bins that have rtraining instances in them
+Tr Total count of n-grams of frequency rin further data
+h ‘History’ of preceding words
+Table 6.2 Notation for the statistical estimation chapter.
+6.2.1 Maximum Likelihood Estimation ( MLE)
+MLEestimates from relative frequencies
+Regardless of how we form equivalence classes, we will end up with bins
+that contain a certain number of training instances. Let us assume atrigram model where we are using the two preceding words of context topredict the next word, and let us focus in on the bin for the case where
+the two preceding words were comes across . In a certain corpus, the
+authors found 10 training instances of the words comes across ,a n do f
+those, 8 times they were followed by as,o n c eb y more and once by a.
+The question at this point is what probability estimates we should usefor estimating the next word.
+The obvious ﬁrst answer (at least from a frequentist point of view) is
+to suggest using the relative frequency as a probability estimate:
+relative frequency
+Pas0:8
+Pmore0:1
+Pa0:1
+Px0:0f o rxnot among the above 3 words
+This estimate is called the maximum likelihood estimate (MLE): maximum likelihood
+estimate
+PMLEw1wnCw 1wn
+N(6.4)
+PMLEwnjw1wn−1Cw 1wn
+Cw 1wn−1(6.5)
+
+p/CX /CX198 6 Statistical Inference: n-gram Models over Sparse Data
+If one ﬁxes the observed data, and then considers the space of all pos-
+sible parameter assignments within a certain distribution (here a trigrammodel) given the data, then statisticians refer to this as a likelihood func-
+likelihood
+function tion. The maximum likelihood estimate is so called because it is the
+choice of parameter values which gives the highest probability to the
+training corpus.4The estimate that does that is the one shown above.
+It does not waste any probability mass on events that are not in the train-ing corpus, but rather it makes the probability of observed events as highas it can subject to the normal stochastic constraints.
+But the
+MLE is in general unsuitable for statistical inference in NLP.
+The problem is the sparseness of our data (even if we are using a largecorpus). While a few words are common, the vast majority of words are
+very uncommon – and longer n-grams involving them are thus much rarer
+again. The
+MLE assigns a zero probability to unseen events, and since
+the probability of a long string is generally computed by multiplying theprobabilities of subparts, these zeroes will propagate and give us bad(zero probability) estimates for the probability of sentences when we justhappened not to see certain n-grams in the training text.
+5With respect to
+the example above, the MLEis not capturing the fact that there are other
+words which can follow comes across , for example theandsome .
+As an example of data sparseness, after training on 1 :5 million words
+from the IBMLaser Patent Text corpus, Bahl et al. (1983) report that 23%
+of the trigram tokens found in further test data drawn from the samecorpus were previously unseen. This corpus is small by modern stan-dards, and so one might hope that by collecting much more data that theproblem of data sparseness would simply go away. While this may ini-
+tially seem hopeful (if we collect a hundred instances of comes across ,w e
+will probably ﬁnd instances with it followed by theandsome ), in practice
+it is never a general solution to the problem. While there are a limitednumber of frequent events in language, there is a seemingly never end-
+4. This is given that the occurrence of a certain n-gram is assumed to be a random variable
+with a binomial distribution (i.e., each n-gram is independent of the next). This is a quite
+untrue (though usable) assumption: ﬁrstly, each n-gram overlaps with and hence partly
+determines the next, and secondly, content words tend to clump (if you use a word once
+in a paper, you are likely to use it again), as we discuss in section 15.3.
+5. Another way to state this is to observe that if our probability model assigns zero prob-
+ability to any event that turns out to actually occur, then both the cross-entropy and theKL divergence with respect to (data from) the real probability distribution is inﬁnite. Inother words we have done a maximally bad job at producing a probability function thatis close to the one we are trying to model.
+
+p/CX /CX6.2 Statistical Estimators 199
+ing tail to the probability distribution of rarer and rarer events, and we rare events
+can never collect enough data to get to the end of the tail.6For instance
+comes across could be followed by any number, and we will never see ev-
+ery number. In general, we need to devise better estimators that allow forthe possibility that we will see events that we didn’t see in the training
+text.
+All such methods eﬀectively work by somewhat decreasing the proba-
+bility of previously seen events, so that there is a little bit of probabilitymass left over for previously unseen events. Thus these methods are fre-quently referred to as discounting methods. The process of discounting is
+discounting
+often referred to as smoothing , presumably because a distribution with- smoothing
+out zeroes is smoother than one with zeroes. We will examine a number
+of smoothing methods in the following sections.
+Using MLEestimates for n- g r a mm o d e l so fA u s t e n
+Based on our Austen corpus, we made n-gram models for diﬀerent values
+ofn. It is quite straightforward to write one’s own program to do this,
+by totalling up the frequencies of n-grams andn−1-grams, and then
+dividing to get MLEprobability estimates, but there is also software to do
+it on the website.
+In practical systems, it is usual to not actually calculate n-grams for
+all words. Rather, the n-grams are calculated as usual only for the most
+commonkwords, and all other words are regarded as Out-Of-Vocabulary
+(OOV) items and mapped to a single token such as <UNK> . Commonly, this
+will be done for all words that have been encountered only once in the
+training corpus ( hapax legomena ). A useful variant in some domains is to hapax legomena
+notice the obvious semantic and distributional similarity of rare numbers
+and to have two out-of-vocabulary tokens, one for numbers and one foreverything else. Because of the Zipﬁan distribution of words, cutting outlow frequency items will greatly reduce the parameter space (and thememory requirements of the system being built), while not appreciablyaﬀecting the model quality (hapax legomena often constitute half of the
+types, but only a fraction of the tokens).
+We used the conditional probabilities calculated from our training cor-
+pus to work out the probabilities of each following word for part of a
+6. Cf. Zipf’s law – the observation that the relationship between a word’s frequency and
+the rank order of its frequency is roughly a reciprocal curve – as discussed in section 1.4.3.
+
+p/CX /CX200 6 Statistical Inference: n-gram Models over Sparse Data
+In
+person she was inferior to both sisters
+1-gramPP  P  P  P  P  
+1 the 0.034 the 0.034 the 0.034 the 0.034 the 0.034 the 0.034
+2 to 0.032 to 0.032 to 0.032 to 0.032 to 0.032 to 0.032
+3 and 0.030 and 0.030 and 0.030 and 0.030 and 0.0304 of 0.029 of 0.029 of 0.029 of 0.029 of 0.029
+
+8 was 0.015 was 0.015 was 0.015 was 0.015 was 0.015
+
+13 she 0.011 she 0.011 she 0.011 she 0.011
+
+254 both 0.0005 both 0.0005 both 0.0005
+
+435 sisters 0.0003 sisters 0.0003
+
+1701 inferior 0.00005
+2-gramPjpersonP jsheP  jwasP  jinferiorP jtoP  jboth
+1 and 0.099 had 0.141 not 0.065 to 0.212 be 0.111 of 0.066
+2 who 0.099 was 0.122 a 0.052 the 0.057 to 0.041
+3 to 0.076 the 0.033 her 0.048 in 0.0384 in 0.045 to 0.031 have 0.027 and 0.025
+
+23 she 0.009 Mrs 0.006 she 0.009
+
+41 what 0.004 sisters 0.006
+
+293 both 0.0004
+
+1 inferior 0
+3-gramPjIn,personP jperson,sheP jshe,wasP  jwas,inf.P jinferior,toP jto,both
+1 Unseen did 0.5 not 0.057 Unseen the 0.286 to 0.222
+2 was 0.5 very 0.038 Maria 0.143 Chapter 0.111
+3 in 0.030 cherries 0.143 Hour 0.1114 to 0.026 her 0.143 Twice 0.111
+
+1 inferior 0 both 0 sisters 0
+4-gramPju,I,pP jI,p,sP  jp,s,wP  js,w,iP jw,i,tP  ji,t,b
+1 Unseen Unseen in 1.0 Unseen Unseen Unseen
+
+1 inferior 0
+Table 6.3 Probabilities of each successive word for a clause from Persuasion .
+The probability distribution for the following word is calculated by Maximum
+Likelihood Estimate n-gram models for various values of n. The predicted likeli-
+hood rank of diﬀerent words is shown in the ﬁrst column. The actual next wordis shown at the top of the table in italics, and in the table in bold.
+
+p/CX /CX6.2 Statistical Estimators 201
+sentence from our test corpus Persuasion . We will cover the issue of test
+corpora in more detail later, but it is vital for assessing a model thatwe try it on diﬀerent data – otherwise it isn’t a fair test of how well themodel allows us to predict the patterns of language. Extracts from theseprobability distributions – including the actual next word shown in bold
+– are shown in table 6.3. The unigram distribution ignores context en-
+tirely, and simply uses the overall frequency of diﬀerent words. But thisis not entirely useless, since, as in this clause, most words in most sen-tences are common words. The bigram model uses the preceding wordto help predict the next word. In general, this helps enormously, andgives us a much better model. In some cases the estimated probabilityof the word that actually comes next has gone up by about an order of
+magnitude ( was,to,sisters ). However, note that the bigram model is not
+guaranteed to increase the probability estimate. The estimate for shehas
+actually gone down, because sheis in general very common in Austen
+novels (being mainly books about women), but somewhat unexpected af-ter the noun person – although quite possible when an adverbial phrase
+is being used, such as In person here. The failure to predict inferior after
+wasshows problems of data sparseness already starting to crop up.
+When the trigram model works, it can work brilliantly. For example, it
+gives us a probability estimate of 0 :5f o r wasfollowing person she .B u ti n
+general it is not usable. Either the preceding bigram was never seen be-fore, and then there is no probability distribution for the following word,or a few words have been seen following that bigram, but the data is sosparse that the resulting estimates are highly unreliable. For example, thebigram to both was seen 9 times in the training text, twice followed by to,
+and once each followed by 7 other words, a few of which are shown in the
+table. This is not the kind of density of data on which one can sensiblybuild a probabilistic model. The four-gram model is entirely useless. Ingeneral, four-gram models do not become usable until one is training onseveral tens of millions of words of data.
+Examining the table suggests an obvious strategy: use higher order
+n-gram models when one has seen enough data for them to be of some
+use, but back oﬀ to lower order n-gram models when there isn’t enough
+data. This is a widely used strategy, which we will discuss below in thesection on combining estimates, but it isn’t by itself a complete solutionto the problem of n-gram estimates. For instance, we saw quite a lot of
+words following wasin the training data – 9409 tokens of 1481 types –
+butinferior was not one of them. Similarly, although we had seen quite
+
+p/CX /CX202 6 Statistical Inference: n-gram Models over Sparse Data
+a lot of words in our training text overall, there are many words that
+did not appear, including perfectly ordinary words like decides orwart.
+So regardless of how we combine estimates, we still deﬁnitely need away to give a non-zero probability estimate to words or n-grams that we
+happened not to see in our training text, and so we will work on that
+problem ﬁrst.
+6.2.2 Laplace’s law, Lidstone’s law and the Jeﬀreys-Perks law
+Laplace’s law
+The manifest failure of maximum likelihood estimation forces us to ex-
+amine better estimators. The oldest solution is to employ Laplace’s law(1814; 1995). According to this law,
+P
+Lapw1wnCw 1wn1
+NB(6.6)
+This process is often informally referred to as adding one , and has the adding one
+eﬀect of giving a little bit of the probability space to unseen events.
+But rather than simply being an unprincipled move, this is actually the
+Bayesian estimator that one derives if one assumes a uniform prior on
+events (i.e., that every n-gram was equally likely).
+However, note that the estimates which Laplace’s law gives are depen-
+dent on the size of the vocabulary. For sparse sets of data over largevocabularies, such as n-grams, Laplace’s law actually gives far too much
+of the probability space to unseen events.
+Consider some data discussed by Church and Gale (1991a) in the con-
+text of their discussion of various estimators for bigrams. Their corpus
+of 44 million words of Associated Press (AP) newswire yielded a vocab-ulary of 400,653 words (maintaining case distinctions, splitting on hy-phens, etc.). Note that this vocabulary size means that there is a spaceof 1:610
+11possible bigrams, and so ap r i o r i barely any of them will
+actually occur in the corpus. It also means that in the calculation of PLap,
+Bis far larger than N, and Laplace’s method is completely unsatisfactory
+in such circumstances. Church and Gale used half the corpus (22 million
+words) as a training text. Table 6.4 shows the expected frequency esti- expected frequency
+estimates mates of various methods that they discuss, and Laplace’s law estimates
+that we have calculated. Probability estimates can be derived by divid-ing the frequency estimates by the number of n-grams,N22 million.
+For Laplace’s law, the probability estimate for an n-gram seenrtimes is
+
+p/CX /CX6.2 Statistical Estimators 203
+r=fMLEfempiricalfLapfdelfGT NrTr
+0 0.000027 0.000137 0.000037 0.000027 74 671 100 000 2 019 187
+1 0.448 0.000274 0.396 0.446 2 018 046 903 2062 1.25 0.000411 1.24 1.26 449 721 564 1533 2.24 0.000548 2.23 2.24 188 933 424 0154 3.23 0.000685 3.22 3.24 105 668 341 0995 4.21 0.000822 4.22 4.22 68 379 287 7766 5.23 0.000959 5.20 5.19 48 190 251 9517 6.21 0.00109 6.21 6.21 35 709 221 693
+8 7.21 0.00123 7.18 7.24 27 710 199 779
+9 8.26 0.00137 8.18 8.25 22 280 183 971
+Table 6.4 Estimated frequencies for the AP data from Church and Gale (1991a).
+The ﬁrst ﬁve columns show the estimated frequency calculated for a bigram that
+actually appeared rtimes in the training data according to diﬀerent estimators:
+ris the maximum likelihood estimate, f
+empirical uses validation on the test set,
+fLapis the ‘add one’ method, fdelis deleted interpolation (two-way cross valida-
+tion, using the training data), and fGTis the Good-Turing estimate. The last two
+columns give the frequencies of frequencies and how often bigrams of a certainfrequency occurred in further text.
+r1=NB, so the frequency estimate becomes fLapr1N=NB.
+These estimated frequencies are often easier for humans to interpretthan probabilities, as one can more easily see the eﬀect of the discount-ing.
+Although each previously unseen bigram has been given a very low
+probability, because there are so many of them, 46.5% of the probabilityspace has actually been given to unseen bigrams.
+7This is far too much,
+and it is done at the cost of enormously reducing the probability esti-
+mates of more frequent events. How do we know it is far too much? Thesecond column of the table shows an empirically determined estimate(which we discuss below) of how often unseen n-grams actually appeared
+in further text, and we see that the individual frequency of occurrenceof previously unseen n-grams is much lower than Laplace’s law predicts,
+while the frequency of occurrence of previously seen n-grams is much
+higher than predicted.
+8In particular, the empirical model ﬁnds that only
+9.2% of the bigrams in further text were previously unseen.
+7. This is calculated as N0PLap74;671;100;0000:000137=22;000;0000:465.
+8. It is a bit hard dealing with the astronomical numbers in the table. A smaller example
+which illustrates the same point appears in exercise 6.2.
+
+p/CX /CX204 6 Statistical Inference: n-gram Models over Sparse Data
+Lidstone’s law and the Jeﬀreys-Perks law
+Because of this overestimation, a commonly adopted solution to the prob-
+lem of multinomial estimation within statistical practice is Lidstone’s lawof succession, where we add not one, but some (normally smaller) posi-tive value:
+P
+Lidw1wnCw 1wn
+NB(6.7)
+This method was developed by the actuaries Hardy and Lidstone, and
+Johnson showed that it can be viewed as a linear interpolation (see below)between the
+MLE estimate and a uniform prior. This may be seen by
+settingN=NB):
+PLidw1wnCw 1wn
+N1−1
+B(6.8)
+The most widely used value for is1
+2. This choice can be theoretically
+justiﬁed as being the expectation of the same quantity which is maxi-mized by
+MLE and so it has its own names, the Jeﬀreys-Perks law, or
+Expected Likelihood Estimation (ELE) (Box and Tiao 1973: 34–36). Expected Likelihood
+Estimation In practice, this often helps. For example, we could avoid the objection
+above that two much of the probability space was being given to unseenevents by choosing a small . But there are two remaining objections:
+(i) we need a good way to guess an appropriate value for in advance, and
+(ii) discounting using Lidstone’s law always gives probability estimates
+linear in the
+MLEfrequency and this is not a good match to the empirical
+distribution at low frequencies.
+Applying these methods to Austen
+Despite the problems inherent in these methods, we will nevertheless try
+applying them, in particular ELE, to our Austen corpus. Recall that up
+until now the only probability estimate we have been able to derive forthe test corpus clause she was inferior to both sisters was the unigram
+estimate, which (multiplying through the bold probabilities in the top
+part of table 6.3) gives as its estimate for the probability of the clause3:9610
+−17. For the other models, the probability estimate was either
+zero or undeﬁned, because of the sparseness of the data.
+Let us now calculate a probability estimate for this clause using a bi-
+gram model and ELE. Following the word was, which appeared 9409
+
+p/CX /CX6.2 Statistical Estimators 205
+Rank Word MLE ELE
+1 not 0.065 0.0362 a 0.052 0.0303 the 0.033 0.0194 to 0.031 0.017
+
+=1482 inferior 0 0.00003
+Table 6.5 Expected Likelihood Estimation estimates for the word following was.
+times, notappeared 608 times in the training corpus, which overall con-
+tained 14589 word types. So our new estimate for Pnotjwasis608
+0:5=9409145890:50:036. The estimate for Pnotjwashas
+thus been discounted (by almost half!). If we do similar calculations forthe other words, then we get the results shown in the last column of ta-ble 6.5. The ordering of most likely words is naturally unchanged, butthe probability estimates of words that did appear in the training textare discounted, while non-occurring words, in particular the actual next
+word, inferior , are given a non-zero probability of occurrence. Continu-
+ing in this way to also estimate the other bigram probabilities, we ﬁndthat this language model gives a probability estimate for the clause of6:8910
+−20. Unfortunately, this probability estimate is actually lower
+than the MLEestimate based on unigram counts – reﬂecting how greatly
+all the MLEprobability estimates for seen n-grams are discounted in the
+construction of the ELEmodel. This result substantiates the slogan used
+in the titles of (Gale and Church 1990a,b): poor estimates of context are
+worse than none. Note, however, that this does not mean that the modelthat we have constructed is entirely useless. Although the probabilityestimates it gives are extremely low, one can nevertheless use them torank alternatives. For example, the model does correctly tell us that she
+was inferior to both sisters is a much more likely clause in English than
+inferior to was both she sisters , whereas the unigram estimate gives them
+both the same probability.
+6.2.3 Held out estimation
+How do we know that giving 46.5% of the probability space to unseen
+events is too much? One way that we can test this is empirically. We
+
+p/CX /CX206 6 Statistical Inference: n-gram Models over Sparse Data
+can take further text (assumed to be from the same source) and see how
+often bigrams that appeared rtimes in the training text tend to turn up
+in the further text. The realization of this idea is the held out estimator held out estimator
+of Jelinek and Mercer (1985).
+The held out estimator
+For eachn-gram,w1wn,l e t :
+C1w1wnfrequency ofw1wnin training data
+C2w1wnfrequency ofw1wnin held out data
+and recall that Nris the number of bigrams with frequency r(in the
+training text). Now let:
+TrX
+fw1wn:C1w1wnrgC2w1wn (6.9)
+That is,Tris the total number of times that all n-grams that appeared
+rtimes in the training text appeared in the held out data. Then the aver-
+age frequency of those n-grams isTr
+Nrand so an estimate for the proba-
+bility of one of these n-grams is:
+Phow1wnTr
+NrNwhereCw 1wnr (6.10)
+Pots of data for developing and testing models
+A cardinal sin in Statistical NLPis to test on your training data .B u tw h yi s training data
+that? The idea of testing is to assess how well a particular model works.
+That can only be done if it is a ‘fair test’ on data that has not been seenbefore. In general, models induced from a sample of data have a tendencyto be overtrained , that is, to expect future events to be like the events on
+overtraining
+which the model was trained, rather than allowing suﬃciently for other
+possibilities. (For instance, stock market models sometimes suﬀer fromthis failing.) So it is essential to test on diﬀerent data. A particular case
+of this is for the calculation of cross entropy (section 2.2.6). To calculate
+cross entropy, we take a large sample of text and calculate the per-wordentropy of that text according to our model. This gives us a measureof the quality of our model, and an upper bound for the entropy of thelanguage that the text was drawn from in general. But all that is onlytrue if the test data is independent of the training data, and large enough
+test data
+
+p/CX /CX6.2 Statistical Estimators 207
+to be indicative of the complexity of the language at hand. If we test
+on the training data, the cross entropy can easily be lower than the realentropy of the text. In the most blatant case we could build a modelthat has memorized the training text and always predicts the next wordwith probability 1. Even if we don’t do that, we will ﬁnd that
+MLE is an
+excellent language model if you are testing on training data, which is not
+the right result.
+So when starting to work with some data, one should always separate
+it immediately into a training portion and a testing portion. The test datais normally only a small percentage (5–10%) of the total data, but has tobe suﬃcient for the results to be reliable. You should always eyeball thetraining data – you want to use your human pattern-ﬁnding abilities to
+get hints on how to proceed. You shouldn’t eyeball the test data – that’s
+cheating, even if less directly than getting your program to memorize it.
+Commonly, however, one wants to divide both the training and test
+data into two again, for diﬀerent reasons. For many Statistical
+NLPmeth-
+ods, such as held out estimation of n-grams, one gathers counts from
+one lot of training data, and then one smooths these counts or estimatescertain other parameters of the assumed model based on what turns up
+in further held out orvalidation data. The held out data needs to be inde-
+held out data
+validation datapendent of both the primary training data and the test data. Normally the
+stage using the held out data involves the estimation of many fewer pa-rameters than are estimated from counts over the primary training data,and so it is appropriate for the held out data to be much smaller than theprimary training data (commonly about 10% of the size). Nevertheless, itis important that there is suﬃcient data for any additional parameters of
+the model to be accurately estimated, or signiﬁcant performance losses
+can occur (as Chen and Goodman (1996: 317) show).
+A typical pattern in Statistical
+NLPresearch is to write an algorithm,
+train it, and test it, note some things that it does wrong, revise it andthen to repeat the process (often many times!). But, if one does that a lot,not only does one tend to end up seeing aspects of the test set, but justrepeatedly trying out diﬀerent variant algorithms and looking at their
+performance can be viewed as subtly probing the contents of the test set.
+This means that testing a succession of variant models can again lead toovertraining. So the right approach is to have two test sets: a development
+development test
+set test set on which successive variant methods are trialed and a ﬁnal test
+ﬁnal test setsetwhich is used to produce the ﬁnal results that are published about
+the performance of the algorithm. One should expect performance on
+
+p/CX /CX208 6 Statistical Inference: n-gram Models over Sparse Data
+the ﬁnal test set to be slightly lower than on the development test set
+(though sometimes one can be lucky).
+The discussion so far leaves open exactly how to choose which parts
+of the data are to be used as testing data. Actually here opinion dividesinto two schools. One school favors selecting bits (sentences or even n-
+grams) randomly from throughout the data for the test set and using the
+rest of the material for training. The advantage of this method is thatthe testing data is as similar as possible (with respect to genre, register,writer, and vocabulary) to the training data. That is, one is training fromas accurate a sample as possible of the type of language in the test data.The other possibility is to set aside large contiguous chunks as test data.The advantage of this is the opposite: in practice, one will end up using
+any
+NLP system on data that varies a little from the training data, as
+language use changes a little in topic and structure with the passage oftime. Therefore, some people think it best to simulate that a little bychoosing test data that perhaps isn’t quite stationary with respect to thetraining data. At any rate, if using held out estimation of parameters, it isbest to choose the same strategy for setting aside data for held out dataas for test data, as this makes the held out data a better simulation of
+the test data. This choice is one of the many reasons why system results
+can be hard to compare: all else being equal, one should expect slightlyworse performance results if using the second approach.
+While covering testing, let us mention one other issue. In early work, it
+was common to just run the system on the test data and present a singleperformance ﬁgure (for perplexity, percent correct or whatever). But thisisn’t a very good way of testing, as it gives no idea of the variance in
+variance
+the performance of the system. A much better way is to divide the test
+data into, say 20, smaller samples, and work out a test result on each ofthem. From those results, one can work out a mean performance ﬁgure,as before, but one can also calculate the variance that shows how muchperformance tends to vary. If using this method together with continuouschunks of training data, it is probably best to take the smaller testingsamples from diﬀerent regions of the data, since the testing lore tends
+to be full of stories about certain sections of data sets being “easy,” and
+so it is better to have used a range of test data from diﬀerent sections ofthe corpus.
+If we proceed this way, then one system can score higher on average
+than another purely by accident, especially when within-system varianceis high. So just comparing average scores is not enough for meaningful
+
+p/CX /CX6.2 Statistical Estimators 209
+System 1 System 2
+scores 71, 61, 55, 60, 68, 49, 42, 55, 75, 45, 54, 51
+42, 72, 76, 55, 64 55, 36, 58, 55, 67
+total 609 526
+n 11 11
+mean ¯xi 55.4 47.8
+s2
+iP
+xij−¯xi21,375.4 1,228.8
+df 10 10
+Pooleds21375:41228:8
+1010130:2
+t¯x1−¯x2r
+2s2
+n55:4−47:8q
+2130:2
+111:56
+Table 6.6 Using thettest for comparing the performance of two systems. Since
+we calculate the mean for each data set, the denominator in the calculation ofvariance and the number of degrees of freedom is 11−111−120.
+The data do not provide clear support for the superiority of system 1. Despitethe clear diﬀerence in mean scores, the sample variance is too high to draw anydeﬁnitive conclusions.
+system comparison. Instead, we need to apply a statistical test that takes
+into account both mean and variance. Only if the statistical test rejectsthe possibility of an accidental diﬀerence can we say with conﬁdence thatone system is better than the other.
+9
+An example of using the ttest (which we introduced in section 5.3.1) ttest
+for comparing the performance of two systems is shown in table 6.6
+(adapted from (Snedecor and Cochran 1989: 92)). Note that we use apooled estimate of the sample variance s
+2here under the assumption
+that the variance of the two systems is the same (which seems a reason-able assumption here: 609 and 526 are close enough). Looking up thetdistribution in the appendix, we ﬁnd that, for rejecting the hypothesis
+that the system 1 is better than system 2 at a probability level of 0:05,
+the critical value is t1:725 (using a one-tailed test with 20 degrees of
+freedom). Since we have t1:56<1:725, the data fail the signiﬁcance
+test. Although the averages are fairly distinct, we cannot conclude supe-riority of system 1 here because of the large variance of scores.
+9. Systematic discussion of testing methodology for comparing statistical and machine
+learning algorithms can be found in (Dietterich 1998). A good case study, for the exampleof word sense disambiguation, is (Mooney 1996).
+
+p/CX /CX210 6 Statistical Inference: n-gram Models over Sparse Data
+Using held out estimation on the test data
+So long as the frequency of an n-gramCw 1wnis the only thing that
+we are using to predict its future frequency in text, then we can use heldout estimation performed on the test set to provide the correct answer ofwhat the discounted estimates of probabilities should be in order to max-imize the probability of the test set data. Doing this empirically measureshow oftenn-grams that were seen rtimes in the training data actually do
+occur in the test text. The empirical estimates f
+empirical in table 6.4 were
+found by randomly dividing the 44 million bigrams in the whole AP cor-pus into equal-sized training and test sets, counting frequencies in the22 million word training set and then doing held out estimation usingthe test set. Whereas other estimates are calculated only from the 22million words of training data, this estimate can be regarded as an em-pirically determined gold standard, achieved by allowing access to the
+test data.
+6.2.4 Cross-validation (deleted estimation)
+Thefempirical estimates discussed immediately above were constructed
+by looking at what actually happened in the test data. But the idea of
+held out estimation is that we can achieve the same eﬀect by dividing thetraining data into two parts. We build initial estimates by doing countson one part, and then we use the other pool of held out data to reﬁnethose estimates. The only cost of this approach is that our initial trainingdata is now less, and so our probability estimates will be less reliable.
+Rather than using some of the training data only for frequency counts
+and some only for smoothing probability estimates, more eﬃcientschemes are possible where each part of the training data is used bothas initial training data and as held out data. In general, such methods instatistics go under the name cross-validation .
+cross-validation
+Jelinek and Mercer (1985) use a form of two-way cross-validation that
+they call deleted estimation . Suppose we let Na
+rbe the number of n-grams deleted estimation
+occurringrtimes in theathpart of the training data, and Tab
+rbe the total
+occurrences of those bigrams from part ain thebthpart. Now depending
+on which part is viewed as the basic training data, standard held outestimates would be either:
+P
+how1wnT01
+r
+N0rNorT10
+r
+N1rNwhereCw 1wnr
+
+p/CX /CX6.2 Statistical Estimators 211
+The more eﬃcient deleted interpolation estimate does counts and
+smoothing on both halves and then averages the two:
+Pdelw1wnT01
+rT10
+r
+NN0rN1rwhereCw 1wnr (6.11)
+On large training corpora, doing deleted estimation on the training data
+works better than doing held-out estimation using just the training data,and indeed table 6.4 shows that it produces results that are quite closeto the empirical gold standard.
+10It is nevertheless still some way oﬀ for
+low frequency events. It overestimates the expected frequency of unseenobjects, while underestimating the expected frequency of objects that
+were seen once in the training data. By dividing the text into two parts
+like this, one estimates the probability of an object by how many timesit was seen in a sample of size
+N
+2, assuming that the probability of a
+token seenrtimes in a sample of sizeN
+2is double that of a token seen r
+times in a sample of size N. However, it is generally true that as the size
+of the training corpus increases, the percentage of unseen n-grams that
+one encounters in held out data, and hence one’s probability estimate
+for unseenn-grams, decreases (while never becoming negligible). It is for
+this reason that collecting counts on a smaller training corpus has theeﬀect of overestimating the probability of unseen n-grams.
+There are other ways of doing cross-validation. In particular Ney et al.
+(1997) explore a method that they call Leaving-One-Out where the pri-
+Leaving-One-Out
+mary training corpus is of size N−1 tokens, while 1 token is used as
+held out data for a sort of simulated testing. This process is repeated N
+times so that each piece of data is left out in turn. The advantage of thistraining regime is that it explores the eﬀect of how the model changes ifany particular piece of data had not been observed, and Ney et al. showstrong connections between the resulting formulas and the widely-usedGood-Turing method to which we turn next.
+11
+10. Remember that, although the empirical gold standard was derived by held out esti-
+mation, it was held out estimation based on looking at the test data! Chen and Goodman
+(1998) ﬁnd in their study that for smaller training corpora, held out estimation outper-forms deleted estimation.
+11. However, Chen and Goodman (1996: 314) suggest that leaving one word out at a
+time is problematic, and that using larger deleted chunks in deleted interpolation is to bepreferred.
+
+p/CX /CX212 6 Statistical Inference: n-gram Models over Sparse Data
+6.2.5 Good-Turing estimation
+The Good-Turing estimator
+Good (1953) attributes to Turing a method for determining frequency or
+probability estimates of items, on the assumption that their distribution
+is binomial. This method is suitable for large numbers of observations ofdata drawn from a large vocabulary, and works well for n-grams, despite
+the fact that words and n-grams do not have a binomial distribution. The
+probability estimate in Good-Turing estimation is of the form P
+GTr*=N
+wherer* can be thought of as an adjusted frequency. The theorem un-
+derlying Good-Turing methods gives that for previously observed items:
+r*r1ENr1
+ENr(6.12)
+whereEdenotes the expectation of a random variable (see (Church and
+Gale 1991a; Gale and Sampson 1995) for discussion of the derivation ofthis formula). The total probability mass reserved for unseen objects isthenEN
+1=N(see exercise 6.5).
+Using our empirical estimates, we can hope to substitute the observed
+NrforENr. However, we cannot do this uniformly, since these empir-
+ical estimates will be very unreliable for high values of r. In particular,
+the most frequent n-gram would be estimated to have probability zero,
+since the number of n-grams with frequency one greater than it is zero!
+In practice, one of two solutions is employed. One is to use Good-Turingreestimation only for frequencies r<k for some constant k(e.g., 10).
+Low frequency words are numerous, so substitution of the observed fre-
+quency of frequencies for the expectation is quite accurate, while the
+MLEestimates of high frequency words will also be quite accurate and so
+one doesn’t need to discount them. The other is to ﬁt some function Sthrough the observed values of r;N
+rand to use the smoothed values
+Sr for the expectation (this leads to a family of possibilities depend-
+ing on exactly which method of curve ﬁtting is employed – Good (1953)discusses several smoothing methods). The probability mass
+N1
+Ngiven to
+unseen items can either be divided among them uniformly, or by some
+more sophisticated method (see under Combining Estimators, below). Sousing this method with a uniform estimate for unseen events, we have:
+Good-Turing Estimator: IfCw
+1wnr>0,
+PGTw1wnr*
+Nwherer*r1Sr1
+Sr(6.13)
+
+p/CX /CX6.2 Statistical Estimators 213
+IfCw 1wn0,
+PGTw1wn1−P1
+r1Nrr*
+N
+N0N1
+N0N(6.14)
+Gale and Sampson (1995) present a simple and eﬀective approach, Sim-
+ple Good-Turing, which eﬀectively combines these two approaches. As asmoothing curve they simply use a power curve N
+rarb(withb<−1
+to give the appropriate hyperbolic relationship), and estimate Aandb
+by simple linear regression on the logarithmic form of this equationlogN
+rablogr(linear regression is covered in section 15.4.1, or in all
+introductory statistics books). However, they suggest that such a simple
+curve is probably only appropriate for high values of r. For low values of
+r, they use the measured Nrdirectly. Working up through frequencies,
+these direct estimates are used until for one of them there isn’t a signiﬁ-cant diﬀerence between r* values calculated directly or via the smoothing
+function, and then smoothed estimates are used for all higher frequen-cies.
+12Simple Good-Turing can give exceedingly good estimators, as can
+be seen by comparing the Good-Turing column fGTin table 6.4 with the
+empirical gold standard.
+Under any of these approaches, it is necessary to renormalize all the renormalization
+estimates to ensure that a proper probability distribution results. This
+can be done either by adjusting the amount of probability mass given tounseen items (as in equation (6.14)), or, perhaps better, by keeping theestimate of the probability mass for unseen items as
+N1
+Nand renormal-
+izing all the estimates for previously seen items (as Gale and Sampson
+(1995) propose).
+Frequencies of frequencies in Austen
+To do Good-Turing, the ﬁrst step is to calculate the frequencies of diﬀer-
+ent frequencies (also known as count-counts ). Table 6.7 shows extracts count-counts
+from the resulting list of frequencies of frequencies for bigrams and
+trigrams. (The numbers are reminiscent of the Zipﬁan distributions of
+12. An estimate of r* is deemed signiﬁcantly diﬀerent if the diﬀerence exceeds 1.65 times
+the standard deviation of the Good-Turing estimate, which is given by:
+s
+r12Nr1
+N2r
+1Nr1
+Nr
+
+p/CX /CX214 6 Statistical Inference: n-gram Models over Sparse Data
+Bigrams Trigrams
+rN rrNrrN rrNr
+1 138741 28 90 1 404211 28 352 25413 29 120 2 32514 29 323 10531 30 86 3 10056 30 25
+4 5997 31 98 4 4780 31 18
+5 3565 32 99 5 2491 32 196 2486  6 1571 
+7 1754 1264 1 7 1088 189 18 1342 1366 1 8 749 202 19 1106 1917 1 9 582 214 1
+10 896 2233 1 10 432 366 1
+ 2507 1  378 1
+Table 6.7 Extracts from the frequencies of frequencies distribution for bigrams
+and trigrams in the Austen corpus.
+section 1.4.3 but diﬀerent in the details of construction, and more exag-
+gerated because they count sequences of words.) Table 6.8 then shows
+the reestimated counts r* and corresponding probabilities for bigrams.
+For the bigrams, the mass reserved for unseen bigrams, N1=N
+138741=6170910:2248. The space of bigrams is the vocabulary
+squared, and we saw 199,252 bigrams, so using uniform estimates,the probability estimate for each unseen bigram is: 0 :2248=14585
+2−
+1992521:05810−9. If we now wish to work out conditional prob-
+ability estimates for a bigram model by using Good-Turing estimates for
+bigram probability estimates, and MLE estimates directly for unigrams,
+then we begin as follows:
+PshejpersonfGTperson she
+Cperson1:228
+2230:0055
+Continuing in this way gives the results in table 6.9, which can be com-
+pared with the bigram estimates in table 6.3. The estimates in generalseem quite reasonable. Multiplying these numbers, we come up with aprobability estimate for the clause of 1 :27810
+−17. This is at least much
+higher than the ELEestimate, but still suﬀers from assuming a uniform
+distribution over unseen bigrams.
+
+p/CX /CX6.2 Statistical Estimators 215
+rr *PGT
+0 0.0007 1 :05810−9
+1 0.3663 5 :98210−7
+2 1.228 2 :00410−6
+3 2.122 3 :46510−6
+4 3.058 4 :99310−6
+5 4.015 6 :55510−6
+6 4.984 8 :13810−6
+7 5.96 9 :73310−6
+8 6.942 1 :13410−5
+9 7.928 1 :29410−5
+10 8.916 1 :45610−5
+
+28 26.84 4 :38310−5
+29 27.84 4 :54610−5
+30 28.84 4 :70910−5
+31 29.84 4 :87210−5
+32 30.84 5 :03510−5
+
+1264 1263 0.0020621366 1365 0.002228
+1917 1916 0.003128
+2233 2232 0.0036442507 2506 0.004092
+Table 6.8 Good-Turing estimates for bigrams: Adjusted frequencies and prob-
+abilities.
+Pshejperson 0.0055
+Pwasjshe 0.1217
+Pinferiorjwas6:910−8
+Ptojinferior 0.1806
+Pbothjto 0.0003956
+Psistersjboth0.003874
+Table 6.9 Good-Turing bigram frequency estimates for the clause from Persua-
+sion.
+
+p/CX /CX216 6 Statistical Inference: n-gram Models over Sparse Data
+6.2.6 Brieﬂy noted
+Ney and Essen (1993) and Ney et al. (1994) propose two discounting mod-
+els: in the absolute discounting model, all non-zero MLEfrequencies are
+discounted by a small constant amount and the frequency so gained is
+uniformly distributed over unseen events:
+Absolute discounting: IfCw 1wnr,
+Pabsw1wn(
+r−=N ifr>0
+B−N0
+N0Notherwise(6.15)
+(Recall thatBis the number of bins.) In the linear discounting method,
+the non-zero MLEfrequencies are scaled by a constant slightly less than
+one, and the remaining probability mass is again distributed across novelevents:
+Linear discounting: IfCw
+1wnr,
+Pw 1wn(
+1−r=N ifr>0
+=N 0 otherwise(6.16)
+These estimates are equivalent to the frequent engineering move of mak-
+ing the probability of unseen events some small number instead of
+zero and then rescaling the other probabilities so that they still sum toone – the choice between them depending on whether the other proba-bilities are scaled by subtracting or multiplying by a constant. Lookingagain at the ﬁgures in table 6.4 indicates that absolute discounting seems
+like it could provide a good estimate. Examining the f
+empirical ﬁgures
+there, it seems that a discount of 0:77 would work well except for
+bigrams that have only been seen once previously (which would be un-derestimated). In general, we could use held out data to estimate a goodvalue for. Extensions of the absolute discounting approach are very
+successful, as we discuss below. It is hard to justify linear discounting.In general, the higher the frequency of an item in the training text, the
+more accurate an unadjusted
+MLEestimate is, but the linear discounting
+method does not even approximate this observation.
+A shortcoming of Lidstone’s law is that it depends on the number of
+bins in the model. While some empty bins result from sparse data prob-lems, many more may be principled gaps. Good-Turing estimation is one
+
+p/CX /CX6.3 Combining Estimators 217
+method where the estimates of previously seen items do not depend on
+the number of bins. Ristad (1995) explores the hypothesis that natu-ral sequences use only a subset of the possible bins. He derives variousforms for a Natural Law of Succession , including the following probability
+Natural Law of
+Succession estimate for an n-gram with observed frequency Cw 1wnr:
+PNLSw1wn8
+>>>><
+>>>>:r1
+NBifN00
+r1N1N0−B
+N2N2B−N0ifN0>0a n dr>0
+B−N0B−N01
+N0N2N2B−N0otherwise(6.17)
+The central features of this law are: (i) it reduces to Laplace’s law if some-
+thing has been seen in every bin, (ii) the amount of probability massassigned to unseen events decreases quadratically in the number Nof
+trials, and (iii) the total probability mass assigned to unseen events isindependent of the number of bins B, so there is no penalty for large
+vocabularies.
+6.3 Combining Estimators
+So far the methods we have considered have all made use of nothing butthe raw frequency rof ann-gram and have tried to produce the best es-
+timate of its probability in future text from that. But rather than givingthe same estimate for all n-grams that never appeared or appeared only
+rarely, we could hope to produce better estimates by looking at the fre-
+quency of the n−1-grams found in the n-gram. If these n−1-grams
+are themselves rare, then we give a low estimate to the n-gram. If the
+n−1-grams are of moderate frequency, then we give a higher probabil-
+ity estimate for the n-gram.
+13Church and Gale (1991a) present a detailed
+study of this idea, showing how probability estimates for unseen bigramscan be estimated in terms of the probabilities of the unigrams that com-
+pose them. For unseen bigrams, they calculate the joint-if-independent
+probabilityPw
+1Pw 2, and then group the bigrams into bins based on
+this quantity. Good-Turing estimation is then performed on each bin togive corrected counts that are normalized to yield probabilities.
+13. But if the n−1-grams are of very high frequency, then we may actually want to
+lower the estimate again, because the non-appearance of the n-gram is then presumably
+indicative of a principled gap.
+
+p/CX /CX218 6 Statistical Inference: n-gram Models over Sparse Data
+But in this section we consider the more general problem of how to
+combine multiple probability estimates from various diﬀerent models. Ifwe have several models of how the history predicts what comes next, thenwe might wish to combine them in the hope of producing an even bettermodel. The idea behind wanting to do this may either be smoothing, or
+simply combining diﬀerent information sources.
+Forn-gram models, suitably combining various models of diﬀerent or-
+ders is in general the secret to success. Simply combining
+MLEn-gram
+estimates of various orders (with some allowance for unseen words) us-ing the simple linear interpolation technique presented below results ina quite good language model (Chen and Goodman 1996). One can do bet-ter, but not by simply using the methods presented above. Rather one
+needs to combine the methods presented above with the methods for
+combining estimators presented below.
+6.3.1 Simple linear interpolation
+One way of solving the sparseness in a trigram model is to mix that modelwith bigram and unigram models that suﬀer less from data sparseness.In any case where there are multiple probability estimates, we can makea linear combination of them, providing only that we weight the contri-bution of each so that the result is another probability function. InsideStatistical
+NLP, this is usually called linear interpolation, but elsewhere linear
+interpolation the name (ﬁnite) mixture models is more common. When the functions
+mixture modelsbeing interpolated all use a subset of the conditioning information of
+the most discriminating function (as in the combination of trigram, bi-gram and unigram models), this method is often referred to as deleted
+deleted
+interpolation interpolation . For interpolating n-gram language models, such as deleted
+interpolation from a trigram model, the most basic way to do this is:
+Pliwnjwn−2;wn−11P1wn2P2wnjwn−13P3wnjwn−1;wn−2 (6.18)
+where 0i1a n dP
+ii1.
+While the weights may be set by hand, in general one wants to ﬁnd the
+combination of weights that works best. This can be done automatically
+by a simple application of the Expectation Maximization (EM) algorithm,as is discussed in section 9.2.1, or by other numerical algorithms. Forinstance, Chen and Goodman (1996) use Powell’s algorithm, as presentedin (Press et al. 1988). Chen and Goodman (1996) show that this simple
+
+p/CX /CX6.3 Combining Estimators 219
+model (with just slight complications to deal with previously unseen his-
+tories and to reserve some probability mass for out of vocabulary items)works quite well. They use it as the baseline model (see section 7.1.3) intheir experiments.
+6.3.2 Katz’s backing-oﬀ
+Inback-oﬀ models , diﬀerent models are consulted in order depending back-off models
+on their speciﬁcity. The most detailed model that is deemed to provide
+suﬃciently reliable information about the current context is used. Again,back-oﬀ may be used to smooth or to combine information sources.
+Back-oﬀn-gram models were proposed by Katz (1987). The estimate
+for ann-gram is allowed to back oﬀ through progressively shorter histo-
+ries:
+P
+bowijwi−n1wi−18
+>>>><
+>>>>:1−dwi−n1wi−1Cwi−n1wi
+Cwi−n1wi−1
+ifCwi−n1wi>k
+wi−n1wi−1Pbowijwi−n2wi−1
+otherwise(6.19)
+If then-gram of concern has appeared more than ktimes (kis normally
+set to 0 or 1), then an n-gram estimate is used, as in the ﬁrst line. But the
+MLEestimate is discounted a certain amount (represented by the function
+d) so that some probability mass is reserved for unseen n-grams whose
+probability will be estimated by backing oﬀ. The MLEestimates need to
+be discounted in some manner, or else there would be no probability
+mass to distribute to the lower order models. One possibility for calcu-
+lating the discount is the Good-Turing estimates discussed above, andthis is what Katz actually used. If the n-gram did not appear or appeared
+ktimes or less in the training data, then we will use an estimate from a
+shortern-gram. However, this back-oﬀ probability has to be multiplied
+by a normalizing factor so that only the probability mass left over in
+the discounting process is distributed among n-grams that are estimated
+by backing oﬀ. Note that in the particular case where the n−1-gram in
+the immediately preceding history was unseen, the ﬁrst line is inapplica-ble for any choice of w
+i, and the back-oﬀ factor takes on the value 1. If
+the second line is chosen, estimation is done recursively via an n−1-
+gram estimate. This recursion can continue down, so that one can start
+
+p/CX /CX220 6 Statistical Inference: n-gram Models over Sparse Data
+with a four-gram model and end up estimating the next word based on
+unigram frequencies.
+While backing oﬀ in the absence of much data is generally reasonable,
+it can actually work badly in some circumstances. If we have seen the bi-gramw
+iwjmany times, and wkis a common word, but we have never seen
+the trigramwiwjwk, then at some point we should actually conclude that
+this is signiﬁcant, and perhaps represents a ‘grammatical zero,’ ratherthan routinely backing oﬀ and estimating Pw
+kjhvia the bigram esti-
+matePwkjwj. Rosenfeld and Huang (1992) suggest a more complex
+back-oﬀ model that attempts to correct for this.
+Back-oﬀ models are sometimes criticized because their probability es-
+timates can change suddenly on adding more data when the back-oﬀ al-
+gorithm selects a diﬀerent order of n-gram model on which to base the
+estimate. Nevertheless, they are simple and in practice work well.
+6.3.3 General linear interpolation
+In simple linear interpolation, the weights were just a single number, but
+one can deﬁne a more general and powerful model where the weights are
+a function of the history. For kprobability functions Pkthe general form
+for a linear interpolation model is:
+PliwjhkX
+i1ihPiwjh (6.20)
+where8h;0ih1a n dP
+iih1.
+Linear interpolation is commonly used because it is a very general way
+to combine models. Randomly adding in dubious models to a linear in-
+terpolation need not do harm providing one ﬁnds a good weighting ofthe models using the EM algorithm. But linear interpolation can makebad use of component models, especially if there is not a careful par-titioning of the histories with diﬀerent weights used for diﬀerent sortsof histories. For instance, if the 
+iare just constants in an interpola-
+tion ofn-gram models, the unigram estimate is always combined in with
+the same weight regardless of whether the trigram estimate is very good
+(because there is a lot of data) or very poor.
+In general the weights are not set according to individual histories.
+Training a distinct wi−n1i−1for eachwi−n1i−1is not in general fe-
+licitous, because it would worsen the sparse data problem. Rather one
+
+p/CX /CX6.3 Combining Estimators 221
+wants to use some sort of equivalence classing of the histories. Bahl et al.
+(1983) suggest partitioning the into bins according to Cwi−n1i−1,
+and tying the parameters for all histories with the same frequency.
+Chen and Goodman (1996) show that rather than this method of put-
+ting theparameters into bins, a better way is to group them according
+to the average number of counts per non-zero element:
+Cwi−n1i−1
+jwi:Cwi−n1i>0j(6.21)
+That is, we take the average count over non-zero counts for n-grams
+wi−n1wi−1wx. We presume that the reason this works is that, be-
+cause of the syntax of language, there are strong structural constraints
+on which words are possible or normal after certain other words. While
+it is central to most Statistical NLPlanguage models that any word is al-
+lowed after any other – and this lets us deal with all possible disﬂuencies– nevertheless in many situations there are strong constraints on whatcan normally be expected due to the constraints of grammar. While somen-grams have just not been seen, others are ‘grammatical zeroes,’ to coin
+a phrase, because they do not ﬁt with the grammatical rules of the lan-
+guage. For instance, in our Austen training corpus, both of the bigrams
+great deal andof that occur 178 times. But of that is followed in the
+corpus by 115 diﬀerent words, giving an average count of 1.55, reﬂectingthe fact that any adverb, adjective, or noun can felicitously follow withina noun phrase, and any capitalized word starting a new sentence is alsoa possibility. There are thus fairly few grammatical zeroes (mainly justverbs and prepositions). On the other hand, great deal is followed by
+only 36 words giving an average count of 4.94. While a new sentence
+start is again a possibility, grammatical possibilities are otherwise prettymuch limited to conjunctions, prepositions, and the comparative form ofadjectives. In particular, the preposition offollows 38% of the time. The
+higher average count reﬂects the far greater number of grammatical ze-roes following this bigram, and so it is correct to give new unseen wordsa much lower estimate of occurrence in this context.
+Finally, note that back-oﬀ models are actually a special case of the gen-
+eral linear interpolation model. In back-oﬀ models, the functions 
+ih
+are chosen so that their value is 0 for a history hexcept for the coeﬃcient
+of the model that would have been chosen using a back-oﬀ model, whichhas the value 1.
+
+p/CX /CX222 6 Statistical Inference: n-gram Models over Sparse Data
+6.3.4 Brieﬂy noted
+Bell et al. (1990) and Witten and Bell (1991) introduce a number of
+smoothing algorithms for the goal of improving text compression. Their“Method C” is normally referred to as Witten-Bell smoothing and has been
+Witten-Bell
+smoothing used for smoothing speech language models. The idea is to model the
+probability of a previously unseen event by estimating the probability ofseeing such a new (previously unseen) event at each point as one proceedsthrough the training corpus. In particular, this probability is worked out
+relative to a certain history. So to calculate the probability of seeing a
+new word after, say, sat in one is calculating from the training data how
+often one saw a new word after sat in , which is just the count of the num-
+ber of trigram types seen which begin with sat in . It is thus an instance
+of generalized linear interpolation:
+P
+WBwijwi−n1i−1wi−n1i−1PMLEwijwi−n1i−1 (6.22)
+1−wi−n1i−1PWBwijwi−n2i−1
+where the probability mass given to new n-grams is given by:
+1−wi−n1i−1jfwi:Cwi−n1wi>0gj
+jfwi:Cwi−n1wi>0gjP
+wiCwi−n1wi(6.23)
+However, Chen and Goodman’s (1998) results suggest that this method
+is not as good a smoothing technique for language models as others thatwe discuss in this section (performing particularly poorly when used onsmall training sets).
+Samuelsson (1996) develops Linear Successive Abstraction , a method of
+Linear Successive
+Abstraction determining the parameters of deleted interpolation style models without
+the need for their empirical determination on held out data. Samuels-
+son’s results suggest similar performance within a part-of-speech tagger
+to that resulting from conventional deleted interpolation; we are unawareof any evaluation of this technique on word n-gram models.
+Another simple but quite successful smoothing method examined by
+Chen and Goodman (1996) is the following. MacKay and Peto (1990) arguefor a smoothed distribution of the form:
+P
+MPwijwi−n1wi−1Cwi−n1wiPMPwijwi−n2wi−1
+Cwi−n1wi−1(6.24)
+whererepresents the number of counts added, in the spirit of Lid-
+stone’s law, but distributed according to the lower order distribution.
+
+p/CX /CX6.3 Combining Estimators 223
+Model Cross-entropy Perplexity
+Bigram 7.98 bits 252.3
+Trigram 7.90 bits 239.1
+Fourgram 7.95 bits 247.0
+Table 6.10 Back-oﬀ language models with Good-Turing estimation tested on
+Persuasion .
+Chen and Goodman (1996) suggest that the number of added counts
+should be proportional to the number of words seen exactly once, andsuggest taking:
+γ(
+N
+1wi−n1wi−1
+(6.25)
+whereN1wi−n1wi−1jfwi:Cwi−n1wi1gj, and then opti-
+mizingandγon held out data.
+Kneser and Ney (1995) develop a back-oﬀ model based on an exten-
+sion of absolute discounting which provides a new more accurate way of
+estimating the distribution to which one backs oﬀ. Chen and Goodman
+(1998) ﬁnd that both this method and an extension of it that they proposeprovide excellent smoothing performance.
+6.3.5 Language models for Austen
+With the introduction of interpolation and back-oﬀ, we are at last at thepoint where we can build ﬁrst-rate language models for our Austen cor-pus. Using the
+CMU-Cambridge Statistical Language Modeling Toolkit
+(see the website) we built back-oﬀ language models using Good-Turingestimates, following basically the approach of Katz (1987).
+14We then
+calculated the cross-entropy (and perplexity) of these language models
+on our test set, Persuasion . The results appear in table 6.10. The esti-
+mated probabilities for each following word, and the n-gram size used to
+estimate it for our sample clause is then shown in table 6.11. Our prob-ability estimates are at last pleasingly higher than the unigram estimate
+with which we began!
+While overall the trigram model outperforms the bigram model on the
+test data, note that on our example clause, the bigram model actually as-
+14. The version of Good-Turing smoothing that the package implements only discounts
+low frequencies – words that occurred fewer than 7 times.
+
+p/CX /CX224 6 Statistical Inference: n-gram Models over Sparse Data
+Pshejh P wasjh P inferiorjh P tojh P bothjh P sistersjh Product
+Unigram 0.011 0.015 0.00005 0.032 0.0005 0.0003 3:9610−17
+Bigram 0.00529 0.1219 0.0000159 0.183 0.000449 0.00372 3:1410−15
+nused 2 2 1 2 2 2
+Trigram 0.00529 0.0741 0.0000162 0.183 0.000384 0.00323 1:4410−15
+nused 2 3 1 2 2 2
+Table 6.11 Probability estimates of the test clause according to various lan-
+guage models. The unigram estimate is our previous MLEunigram estimate. The
+other two estimates are back-oﬀ language models. The last column gives the
+overall probability estimate given to the clause by the model.
+signs a higher probability. Overall, the fourgram model performs slightly
+worse than the trigram model. This is expected given the small amountof training data. Back-oﬀ models are in general not perfectly successfulat simply ignoring inappropriately long contexts, and the models tend todeteriorate if too large n-grams are chosen for model building relative to
+the amount of data available.
+6.4 Conclusions
+A number of smoothing methods are available which often oﬀer similarand good performance ﬁgures. Using Good-Turing estimation and linearinterpolation or back-oﬀ to circumvent the problems of sparse data rep-resent good current practice. Chen and Goodman (1996, 1998) present
+extensive evaluations of diﬀerent smoothing algorithms. The conclusions
+of (Chen and Goodman 1998) are that a variant of Kneser-Ney back-oﬀ smoothing that they develop normally gives the best performance.It is outperformed by the Good-Turing smoothing method explored byChurch and Gale (1991a) when training bigram models on more than 2million words of text, and one might hypothesize that the same wouldbe true of trigram models trained on a couple of orders of magnitude
+more text. But in all other circumstances, it seems to perform as well or
+better than other methods. While simple smoothing methods may be ap-propriate for exploratory studies, they are best avoided if one is hopingto produce systems with optimal performance. Active research continueson better ways of combining probability models and dealing with sparsedata.
+
+pa/CX /CX6.5 Further Reading 225
+6.5 Further Reading
+Important research studies on statistical estimation in the context of lan-
+guage modeling include (Katz 1987), (Jelinek 1990), (Church and Gale1991a), (Ney and Essen 1993), and (Ristad 1995). Other discussions of es-timation techniques can be found in (Jelinek 1997) and (Ney et al. 1997).Gale and Church (1994) provide detailed coverage of the problems with
+“adding one.” An approachable account of Good-Turing estimation can
+be found in (Gale and Sampson 1995). The extensive empirical compar-ison of various smoothing methods in (Chen and Goodman 1996, 1998)are particularly recommended.
+The notion of maximum likelihood across the values of a parameter
+was ﬁrst deﬁned in (Fisher 1922). See (Ney et al. 1997) for a proof thatthe relative frequency really is the maximum likelihood estimate.
+Recently, there has been increasing use of maximum entropy methods
+for combining models. We defer coverage of maximum entropy modelsuntil chapter 16. See Lau et al. (1993) and Rosenfeld (1994, 1996) forapplications to language models.
+The early work cited in section 6.2.2 appears in: (Lidstone 1920), (John-
+son 1932), and (Jeﬀreys 1948). See (Ristad 1995) for discussion. Good(1979: 395–396) covers Turing’s initial development of the idea of Good-
+Turing smoothing. This article is reprinted with ampliﬁcation in (Britton
+1992).
+6.6 Exercises
+Exercise 6.1 [««]
+Explore ﬁgures for the percentage of unseen n-grams in test data (that diﬀers
+from the training data). Explore varying some or all of: (i) the order of the model
+(i.e.,n), (ii) the size of the training data, (iii) the genre of the training data, and
+(iv) how similar in genre, domain, and year the test data is to the training data.
+Exercise 6.2 [«]
+As a smaller example of the problems with Laplace’s law, work out probability
+estimates using Laplace’s law given that 100 samples have been seen from apotential vocabulary of 1000 items, and in that sample 9 items were seen 10times, 2 items were seen 5 times and the remaining 989 items were unseen.
+
+pa/CX /CX226 6 Statistical Inference: n-gram Models over Sparse Data
+Exercise 6.3 [«]
+Show that using ELEyields a probability function, in particular that
+X
+w1wnPELEw1wn1
+Exercise 6.4 [«]
+Using the word and bigram frequencies within the Austen test corpus given be-
+low, conﬁrm the ELEestimate for the test clause she was inferior to both sisters
+given in section 6.2.2 (using the fact that the word before shein the corpus was
+person ).
+wC  w  w 1w2Cw 1w2
+person 223 person she 2
+she 6,917 she was 843was 9,409 was inferior 0
+inferior 33 inferior to 7
+to 20,042 to both 9both 317 both sisters 2
+Exercise 6.5 [«]
+Show that Good-Turing estimation is well-founded. I.e., you want to show:
+X
+w1wnPGTw1wnfGTw1wn
+N1
+Exercise 6.6 [«]
+We calculated a Good-Turing probability estimate for she was inferior to both
+sisters using a bigram model with a uniform estimate of unseen bigrams. Make
+sure you can recreate these results, and then try doing the same thing using atrigram model. How well does it work?
+Exercise 6.7 [««]
+Build language models for a corpus using the software pointed to on the web-
+site (or perhaps build your own). Experiment with what options give the bestlanguage model, as measured by cross-entropy.
+Exercise 6.8 [««]
+Get two corpora drawn from diﬀerent domains, and divide each into a training
+and a test set. Build language models based on the training data for each domain.Then calculate the cross-entropy ﬁgures for the test sets using both the languagemodel trained on that domain, and the other language model. How much do thecross-entropy estimates diﬀer?
+
+p/CX /CX6.6 Exercises 227
+Exercise 6.9 [««]
+Write a program that learns word n-gram models of some text (perhaps doing
+smoothing, but it is not really necessary for this exercise). Train separate modelson articles from several Usenet newsgroups or other text from diﬀerent genresand then generate some random text based on the models. How intelligible isthe output for diﬀerent values of n? Is the diﬀerent character of the various
+newsgroups clearly preserved in the generated text?
+Exercise 6.10 [««]
+Write a program that tries to identify the language in which a short segment of
+text is written, based on training itself on text written in known languages. Forinstance, each of the following lines is text in a diﬀerent language:
+doen is ondubbelzinnig uit
+prétendre à un emploiuscirono fuori solo alcunelook into any little problem
+If you know a little about European languages, you can probably identify what
+language each sample is from. This is a classiﬁcation task, in which you shouldusefully be able to use some of the language modeling techniques discussedin this chapter. (Hint: consider letter n-grams vs. word n- g r a m s . ) ( T h i si sa
+problem that has been investigated by others; see in particular (Dunning 1994).The website contains pointers to a number of existing language identiﬁcationsystems – including one that was originally done as a solution to this exercise!)
+
+p/CX /CX“The primary implication is that a task-independent set of word
+senses for a language is not a coherent concept. Word sensesare simply undeﬁned unless there is some underlying rationalefor clustering, some context which classiﬁes some distinctions asworth making and others as not worth making. For people,
+homonyms like ‘pike’ are a limiting case: in almost any
+situation where a person considers it worth their whileattending to a sentence containing ‘pike,’ it is also worth theirwhile making the ﬁsh/weapon distinction.”
+(Kilgarriﬀ 1997: 19)
+

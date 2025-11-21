@@ -1,0 +1,883 @@
+p/CX /CX11Probabilistic Context Free
+Grammars
+People write and say lots of diﬀerent things, but the way people say
+things – even in drunken casual conversation – has some structure andregularity. The goal of syntax within linguistics is to try to isolate that
+structure. Until now, the only form of syntax we have allowed ourselves
+is methods for describing the ordering and arrangement of words, eitherdirectly in terms of the words, or in terms of word categories. In thischapter, we wish to escape the linear tyranny of these n-gram models
+and
+HMM tagging models, and to start to explore more complex notions
+of grammar.
+Even in the most traditional forms of grammar, syntax is meant to
+show something more that just linear order. It shows how words group
+together and relate to each other as heads and dependents. The dominantmethod used for doing this within the last 50 or so years has been toplace tree structures over sentences, as we saw in chapter 3. Languagehas a complex recursive structure, and such tree-based models – unlikeMarkov models – allow us to capture this. For instance Kupiec (1992b)notes that his
+HMM -based tagger has problems with constructions like:
+(11.1) The velocity of the seismic waves rises to . . .
+because a singular verb (here, rises) is unexpected after a plural noun.
+Kupiec’s solution is to augment the HMM model so it can recognize a
+rudimentary amount of NP structure, which in his model is encoded asa higher-order context extension glued on to his basic ﬁrst order
+HMM .
+Leaving aside the technical details of the solution, the essential observa-tion about verb agreement is that it is reﬂecting the hierarchical structureof the sentence, as shown in (11.2), and not the linear order of words.
+
+p/CX /CX382 11 Probabilistic Context Free Grammars
+(11.2) S
+NPsg
+DT
+TheNN
+velocityPP
+IN
+ofNPpl
+the seismic wavesVPsg
+rises to . . .
+The verb agrees in number with the noun velocity which is the head of the
+preceding noun phrase, and not with the noun that linearly precedes it.
+The simplest probabilistic model for recursive embedding is a PCFG , PCFG
+aProbabilistic (sometimes also called Stochastic )Context Free Grammar Probabilistic
+Context Free
+Grammar– which is simply a CFGwith probabilities added to the rules, indicating
+how likely diﬀerent rewritings are. We provide a detailed discussion of
+PCFG s in this chapter for a number of reasons: PCFG s are the simplest
+and most natural probabilistic model for tree structures, the mathemat-ics behind them is well understood, the algorithms for them are a naturaldevelopment of the algorithms employed with
+HMM s, and PCFG sp r o -
+vide a suﬃciently general computational device that they can simulate
+various other forms of probabilistic conditioning (as we describe in sec-tion 12.1.9). Nevertheless, it is important to realize that
+PCFG s are only
+one of many ways of building probabilistic models of syntactic structure,and in the next chapter we study the domain of probabilistic parsingmore generally.
+A
+PCFGGconsists of:
+A set of terminals, fwkg;k1;:::;V
+A set of nonterminals, fNig;i1;:::;n
+A designated start symbol, N1
+A set of rules, fNi!jg,( w h e r ejis a sequence of terminals and
+nonterminals)
+A corresponding set of probabilities on rules such that:
+8iX
+jPNi!j1 (11.3)
+
+p/CX /CX383
+Notation Meaning
+G Grammar ( PCFG )
+L Language (generated or accepted by a grammar)
+t Parse tree
+fN1;:::;NngNonterminal vocabulary ( N1is start symbol)
+fw1;:::;wVgTerminal vocabulary
+w1wm Sentence to be parsed
+Nj
+pq NonterminalNjspans positions pthroughqin string
+jp;q Outside probabilities (11.15)
+jp;q Inside probabilities (11.14)
+Table 11.1 Notation for the PCFG chapter.
+Note that when we write PNi!jin this chapter, we always mean
+PNi!jjNi. That is, we are giving the probability distribution of the
+daughters for a certain head. Such a grammar can be used either to parseor generate sentences of the language, and we will switch between theseterminologies quite freely.
+Before parsing sentences with a
+PCFG , we need to establish some no-
+tation. We will represent the sentence to be parsed as a sequence of
+wordsw1wm, and usewabto denote the subsequence wawb.W e
+denote a single rewriting operation of the grammar by a single arrow !.
+If as a result of one or more rewriting operations we are able to rewritea nonterminal N
+jas a sequence of words wawb, then we will say
+thatNjdominates the wordswawb, and write either Nj=)wawb domination
+or yieldNjwawb. This situation is illustrated in (11.4): a sub-
+tree with root nonterminal Njdominating all and only the words from
+wawbin the string:
+(11.4)Nj
+wawb
+To say that a nonterminal Njspans positions athroughbin the string,
+but not to specify what words are actually contained in this subsequence,we will writeN
+j
+ab. This notation is summarized in table 11.1.
+The probability of a sentence (according to a grammar G)i sg i v e nb y :
+Pw 1mX
+tPw 1m;t wheretis a parse tree of the sentence (11.5)
+
+p/CX /CX384 11 Probabilistic Context Free Grammars
+S!NP VP 1.0 NP !NP PP 0.4
+PP!P NP 1.0 NP !astronomers 0.1
+VP!V NP 0.7 NP !ears 0.18
+VP!VP PP 0.3 NP !saw 0.04
+P!with 1.0 NP !stars 0.18
+V!saw 1.0 NP !telescopes 0.1
+Table 11.2 A simple Probabilistic Context Free Grammar ( PCFG ). The nontermi-
+nals are S, NP, PP, VP, P, V. We adopt the common convention whereby the startsymbolN
+1is denoted by S. The terminals are the words in italics. The table
+shows the grammar rules and their probabilities. The slightly unusual NP ruleshave been chosen so that this grammar is in Chomsky Normal Form, for use asan example later in the section.
+X
+ft:yieldtw1mgPt
+Moreover, it is easy to ﬁnd the probability of a tree in a PCFG model. One
+just multiplies the probabilities of the rules that built its local subtrees.
+Example 1: Assuming the grammar in table 11.2, the sentence as-
+tronomers saw stars with ears has two parses with probabilities as shown
+in ﬁgure 11.1.
+What are the assumptions of this model? The conditions that we need
+are:
+Place invariance. The probability of a subtree does not depend onwhere in the string the words it dominates are (this is like time invari-ance in
+HMM s):
+8kP  Nj
+kkc!is the same (11.6)
+Context-free. The probability of a subtree does not depend on words
+not dominated by the subtree.
+PNj
+kl!janything outside kthroughlPNj
+kl! (11.7)
+Ancestor-free. The probability of a subtree does not depend on nodes
+in the derivation outside the subtree.
+PNj
+kl!jany ancestor nodes outside Nj
+klPNj
+kl! (11.8)
+
+p/CX /CX385
+t1:S 1:0
+NP0:1
+astronomersVP0:7
+V1:0
+sawNP0:4
+NP0:18
+starsPP1:0
+P1:0
+withNP0:18
+ears
+t2:S 1:0
+NP0:1
+astronomersVP0:3
+VP0:7
+V1:0
+sawNP0:18
+starsPP1:0
+P1:0
+withNP0:18
+ears
+Pt11:00:10:71:00:40:181:01:00:18
+0:0009072
+Pt21:00:10:30:71:00:181:01:00:18
+0:0006804
+Pw 15Pt1Pt20:0015876
+Figure 11.1 The two parse trees, their probabilities, and the sentence probabil-
+ity. This is for the sentence astronomers saw stars with ears , according to the
+grammar in table 11.2. Nonterminal nodes in the trees have been subscriptedwith the probability of the local tree that they head.
+
+p/CX /CX386 11 Probabilistic Context Free Grammars
+Using these conditions we can justify the calculation of the probability of
+a tree in terms of just multiplying probabilities attached to rules. But toshow an example, we need to be able to distinguish tokens of a nontermi-nal. Therefore, let the upper left index in
+iNjbe an arbitrary identifying
+index for a particular token of a nonterminal. Then,
+P0
+BBBB@1S
+2NP
+the man3VP
+snores1
+CCCCA
+P
+1S13!2NP123VP33;2NP12!the1man 2;3VP33!snores 3
+P1S13!2NP123VP33P2NP12!the1man 2j1S13!2NP123VP33
+P3VP33!snores 3j1S13!2NP123VP33;2NP12!the1man 2
+P1S13!2NP123VP33P2NP12!the1man 2P3VP33!snores 3
+PS!NP VPPNP!the manPVP!snores
+where, after expanding the probability by the chain rule, we impose
+ﬁrst the context-freeness assumption, and then the position-invariant as-
+sumption.
+11.1 Some Features of PCFG s
+H e r ew eg i v es o m er e a s o n st ou s ea PCFG , and also some idea of their
+limitations:
+As grammars expand to give coverage of a large and diverse corpus oftext, the grammars become increasingly ambiguous. There start to bemany structurally diﬀerent parses for most word sequences. A
+PCFG
+gives some idea of the plausibility of diﬀerent parses.
+APCFG does not give a very good idea of the plausibility of diﬀerent
+parses, since its probability estimates are based purely on structural
+factors, and do not factor in lexical co-occurrence.
+PCFG s are good for grammar induction . Gold (1967) showed that CFGs grammar induction
+cannot be learned (in the sense of identiﬁcation in the limit – that is, identiﬁcation in
+the limit whether one can identify a grammar if one is allowed to see as much
+data produced by the grammar as one wants) without the use of neg- negative evidence
+ative evidence (the provision of ungrammatical examples). But PCFG s
+
+p/CX /CX11.1 Some Features of PCFG s 387
+can be learned from positive data alone (Horning 1969). (However, do-
+ing grammar induction from scratch is still a diﬃcult, largely unsolvedproblem, and hence much emphasis has been placed on learning frombracketed corpora, as we will see in chapter 12.)
+Robustness. Real text tends to have grammatical mistakes, disﬂuen-cies, and errors. This problem can be avoided to some extent with a
+PCFG by ruling out nothing in the grammar, but by just giving implau-
+sible sentences a low probability.
+PCFG s give a probabilistic language model for English (whereas a CFG
+does not).
+The predictive power of a PCFG as measured by entropy tends to be
+greater than that for a ﬁnite state grammar (i.e., an HMM ) with the
+same number of parameters. (For such comparisons, we compute thenumber of parameters as follows. A Vterminal,nnonterminal
+PCFG
+hasn3nVparameters, while a KstateMoutput HMM hasK2
+MKparameters. While the exponent is higher in the PCFG case, the
+number of nonterminals used is normally quite small. See Lari and
+Young (1990) for a discussion of this with respect to certain artiﬁcial
+grammars.)
+In practice, a PCFG is a worse language model for English than an n-
+gram model (for n> 1). Ann-gram model takes some local lexical
+context into account, while a PCFG uses none.
+PCFG s are not good models by themselves, but we could hope to com-
+bine the strengths of a PCFG and a trigram model. An early experiment
+that conditions the rules of a PCFG by word trigrams (and some addi-
+tional context sensitive knowledge of the tree) is presented in Mager-man and Marcus (1991) and Magerman and Weir (1992). Better solu-tions are discussed in chapter 12.
+PCFG s have certain biases, which may not be appropriate. All else be-
+ing equal, in a PCFG , the probability of a smaller tree is greater than
+a larger tree. This is not totally wild – it is consonant with Frazier’s(1978) Minimal Attachment heuristic – but it does not give a sensiblemodel of actual sentences, which peak in frequency at some interme-diate length. For instance, table 4.3 showed that the most frequentlength for Wall Street Journal sentences is around 23 words. A
+PCFG
+
+p/CX /CX388 11 Probabilistic Context Free Grammars
+gives too much of the probability mass to very short sentences. Sim-
+ilarly, all else being equal, nonterminals with a small number of ex-pansions will be favored over nonterminals with many expansions in
+PCFG parsing, since the individual rewritings will have much higher
+probability (see exercise 12.3).
+The one item here that deserves further comment is the claim that PCFG s
+deﬁne a language model. Initially, one might suspect that providing thatthe rules all obey equation (11.3), thenP
+!2LP!P
+tPt1. But
+actually this is only true if the probability mass of rules is accumulating probability mass of
+rules in ﬁnite derivations. For instance, consider the grammar:
+(11.9) S!rhubarbP1
+3
+S!SSP2
+3
+This grammar will generate all strings rhubarb . . . rhubarb . However, we
+ﬁnd that the probability of those strings is:
+(11.10) rhubarb1
+3
+rhubarb rhubarb2
+31
+31
+32
+27
+rhubarb rhubarb rhubarb
+2
+32
+
+1
+33
+28
+243
+...
+The probability of the language is the sum of this inﬁnite series1
+32
+27
+8
+243:::, which turns out to be1
+2. Thus half the probability mass has
+disappeared into inﬁnite trees which do not generate strings of the lan-guage! Such a distribution is often termed inconsistent in the probability
+inconsistent
+literature, but since this word has a rather diﬀerent meaning in other
+ﬁelds related to NLP, we will term such a distribution improper . In prac- improper
+tice, improper distributions are not much of a problem. Often, it doesn’t
+really matter if probability distributions are improper, especially if we aremainly only comparing the magnitude of diﬀerent probability estimates.Moreover, providing we estimate our
+PCFG parameters from parsed train-
+ing corpora (see chapter 12), Chi and Geman (1998) show that one always
+gets a proper probability distribution.
+11.2 Questions for PCFG s
+Just as for HMM s, there are three basic questions we wish to answer:
+
+p/CX /CX11.2 Questions for PCFG s 389
+What is the probability of a sentence w1maccording to a grammar G:
+Pw 1mjG?
+What is the most likely parse for a sentence: arg maxtPtjw1m;G?
+How can we choose rule probabilities for the grammar Gthat maxi-
+mize the probability of a sentence, arg maxGPw 1mjG?
+In this chapter, we will only consider the case of Chomsky Normal Form Chomsky Normal
+Form grammars, which only have unary and binary rules of the form:
+Ni!NjNk
+Ni!wj
+The parameters of a PCFG in Chomsky Normal Form are:
+(11.11)PNj!NrNsjG Ifnnonterminals, an n3matrix of parameters
+PNj!wkjG IfVterminals,nVparameters
+Forj1;:::;n ,
+X
+r;sPNj!NrNsX
+kPNj!wk1 (11.12)
+This constraint is seen to be satisﬁed for the grammar in table 11.2 (un-
+der the convention whereby all probabilities not shown are zero). Any
+CFGcan be represented by a weakly equivalent CFGin Chomsky Normal
+Form.1
+To see how we might eﬃciently compute probabilities for PCFG s, let
+us work from HMM st o probabilistic regular grammars , and then from probabilistic
+regular grammars there to PCFG s. Consider a probabilistic regular grammar ( PRG), which
+has rules of the form:
+Ni!wjNkorNi!wjand start state N1
+This is similar to what we had for an HMM . The diﬀerence is that in an
+HMM there is a probability distribution over strings of a certain length:
+8nX
+w1nPw 1n1
+1. Two grammars G1andG2areweakly equivalent if they both generate the same lan-
+guageL(with the same probabilities on sentences for stochastic equivalence). Two gram-
+mars are strongly equivalent if they additionally assign sentences the same tree structures
+(with the same probabilities, for the stochastic case).
+
+p/CX /CX390 11 Probabilistic Context Free Grammars
+Start HMM Finish
+Figure 11.2 A Probabilistic Regular Grammar ( PRG).
+whereas in a PCFG or a PRG, there is a probability distribution over the
+set of all strings that are in the language Lgenerated by the grammar:
+X
+!2LP!1
+To see the diﬀerence, consider:
+PJohn decided to bake a 
+This would have a high probability in an HMM , since this is a quite likely
+beginning to a sentence, but a very low probability in a PRG or a PCFG ,
+because it isn’t a complete utterance.
+We can think of a PRGas related to an HMM roughly as in ﬁgure 11.2.
+We add a start state and the transitions from it to the states of the HMM
+mirror the initial probabilities . To represent ending the string, we ad-
+join to the HMM a ﬁnish state, often called a sink state , which one never sink state
+leaves once one has entered it. From each HMM state one can continue in
+the basic HMM or shift to the sink state, which we interpret as the end of
+string in the PRG.
+This gives the basic idea of how PRGs are related to HMM s. We can
+implement the PRGas an HMM where the states are nonterminals and the
+terminals are the output symbols, as follows:
+States: NP -! N0-! N0-! N0-!sink state
+jj j j
+Outputs: the big brown box
+Recall how for an HMM we were able to eﬃciently do calculations in terms
+of forward and backward probabilities:
+Forward probability itPw 1t−1;Xti
+Backward probability itPwtTjXti
+
+p/CX /CX11.2 Questions for PCFG s 391
+w1 wm wp−1wpwqwq1N1
+Nj
+  
+
+Figure 11.3 Inside and outside probabilities in PCFG s.
+But now consider the PRGparse again, drawn as a tree:
+(11.13) NP
+the N0
+big N0
+brown N0
+box
+In the tree, the forward probability corresponds to the probability of ev-
+erything above and including a certain node, while the backward proba-bility corresponds to the probability of everything below a certain node(given the node). This suggests an approach to dealing with the moregeneral case of
+PCFG s. We introduce Inside and Outside probabilities, as
+indicated in ﬁgure 11.3, and deﬁned as follows:
+
+p/CX /CX392 11 Probabilistic Context Free Grammars
+Outside probability jp;qPw 1p−1;Nj
+pq;wq1mjG (11.14)
+Inside probability jp;qPwpqjNj
+pq;G (11.15)
+The inside probability jp;q is the total probability of generating words
+wpwqgiven that one is starting oﬀ with the nonterminal Nj.T h e
+outside probability jp;q is the total probability of beginning with the
+start symbolN1and generating the nonterminal Nj
+pqand all the words
+outsidewpwq.
+11.3 The Probability of a String
+11.3.1 Using inside probabilities
+In general, we cannot eﬃciently calculate the probability of a string by
+simply summing the probabilities of all possible parse trees for the string,as there will be exponentially many of them. An eﬃcient way to calcu-
+late the total probability of a string is by the inside algorithm , a dynamic
+inside algorithm
+programming algorithm based on the inside probabilities:
+Pw 1mjGPN1=)w1mjG (11.16)
+Pw 1mjN1
+1m;G11;m (11.17)
+The inside probability of a substring is calculated by induction on the
+length of the string subsequence:
+Base case: We want to ﬁnd jk;k (the probability of a rule Nj!wk):
+jk;kPwkjNj
+kk;G
+PNj!wkjG
+Induction: We want to ﬁnd jp;q ,f o rp<q . As this is the inductive
+step using a Chomsky Normal Form grammar, the ﬁrst rule must be ofthe formN
+j!NrNs, so we can proceed by induction, dividing the string
+in two in various places and summing the result:
+Nj
+Nr
+wpwdNs
+wd1wq
+
+p/CX /CX11.3 The Probability of a String 393
+Then,8j;1p<qm,
+jp;qPwpqjNj
+pq;G
+X
+r;sq−1X
+dpPwpd;Nr
+pd;wd1q;Ns
+d1qjNj
+pq;G
+X
+r;sq−1X
+dpPNr
+pd;Ns
+d1qjNj
+pq;GPwpdjNj
+pq;Nr
+pd;Ns
+d1q;G
+Pwd1qjNj
+pq;Nr
+pd;Ns
+d1q;wpd;G
+X
+r;sq−1X
+dpPNr
+pd;Ns
+d1qjNj
+pq;GPwpdjNr
+pd;G
+Pwd1qjNs
+d1q;G
+X
+r;sq−1X
+dpPNj!NrNsrp;dsd1;q
+Above, we ﬁrst divided things up using the chain rule, then we made
+use of the context-free assumptions of PCFG s, and then rewrote the re-
+sult using the deﬁnition of the inside probabilities. Using this recurrence
+relation, inside probabilities can be eﬃciently calculated bottom up.
+Example 2: The above equation looks scary, but the calculation of in-
+side probabilities is actually relatively straightforward. We’re just tryingto ﬁnd all ways that a certain constituent can be built out of two smallerconstituents by varying what the labels of the two smaller constituentsare and which words each spans. In table 11.3, we show the computations
+of inside probabilities using the grammar of table 11.2 and the sentence
+explored in ﬁgure 11.1. The computations are shown using a parse tri-
+parse triangle
+angle where each box records nodes that span from the row index to the
+column index.
+Further calculations using this example grammar and sentence are left
+to the reader in the Exercises.
+
+p/CX /CX394 11 Probabilistic Context Free Grammars
+1 2 3 4 5
+1NP=0 . 1 S= 0.0126 S= 0.0015876
+2 NP= 0.04
+V=1 . 0VP= 0.126 VP= 0.015876
+3 NP= 0.18 NP= 0.01296
+4 P=1 . 0PP= 0.18
+5 NP= 0.18
+astronomers saw stars with ears
+Table 11.3 Calculation of inside probabilities. Table cell p;q shows non-zero
+probabilitiesip;q calculated via the inside algorithm. The recursive com-
+putation of inside probabilities is done starting along the diagonal, and thenmoving in diagonal rows towards the top right corner. For the simple gram-
+mar of table 11.2, the only non-trivial case is cell 2;5, which we calculate as:
+PVP!VN P
+V2;2NP3;5PVP!VP PPVP2;3PP4;5
+11.3.2 Using outside probabilities
+We can also calculate the probability of a string via the use of the outside
+probabilities. For any k,1km,
+Pw 1mjGX
+jPw 1k−1;wk;wk1m;Nj
+kkjG (11.18)
+X
+jPw 1k−1;Nj
+kk;wk1mjG
+Pwkjw1k−1;Nj
+kk;wk1n;G
+X
+jjk;kPNj!wk (11.19)
+The outside probabilities are calculated top down. As we shall see,
+the inductive calculation of outside probabilities requires reference toinside probabilities, so we calculate outside probabilities second, usingtheoutside algorithm .
+outside algorithm
+Base Case: The base case is the probability of the root of the tree being
+nonterminalNiwith nothing outside it:
+11;m1
+j1;m0f o rj61
+
+p/CX /CX11.3 The Probability of a String 395
+Inductive case: In terms of the previous step of the derivation, a node
+Nj
+pqwith which we are concerned might be on the left:
+(11.20) N1
+Nf
+pe
+Nj
+pq
+w1wp−1wpwqNg
+q1e
+wq1wewe1wm
+or right branch of the parent node:
+(11.21) N1
+Nf
+eq
+Ng
+ep−1
+w1we−1wewp−1Nj
+pq
+wpwqwq1wm
+We sum over both possibilities, but restrict the ﬁrst sum to g6jso as
+not to double count in the case of rules of the form X!NjNj:
+jp;qhX
+f;g6jmX
+eq1P(
+w1p−1;wq1m;Nf
+pe;Nj
+pq;Ng
+q1ei
+hX
+f;gp−1X
+e1P(
+w1p−1;wq1m;Nf
+eq;Ng
+ep−1;Nj
+pqi
+hX
+f;g6jmX
+eq1P(
+w1p−1;we1m;Nf
+pe
+P(
+Nj
+pq;Ng
+q1ejNf
+pe
+P(
+wq1ejNg
+q1ei
+hX
+f;gp−1X
+e1P(
+w1e−1;wq1m;Nf
+eq
+P(
+Ng
+ep−1;Nj
+pqjNf
+eq
+P(
+wep−1jNg
+ep−1i
+
+p/CX /CX396 11 Probabilistic Context Free Grammars
+hX
+f;g6jmX
+eq1fp;ePNf!NjNggq1;ei
+hX
+f;gp−1X
+e1fe;qPNf!NgNjge;p−1i
+As with an HMM , we can form a product of the inside and the outside
+probabilities:
+jp;qjp;qPw 1p−1;Nj
+pq;wq1mjGPwpqjNj
+pq;G
+Pw 1m;Nj
+pqjG
+But this time, the fact that we postulate a nonterminal node is important
+(whereas in the HMM case it is trivial that we are in some state at each
+point in time). Therefore, the probability of the sentence andthat there
+is some constituent spanning from word ptoqis given by:
+Pw 1m;NpqjGX
+jjp;qjp;q (11.22)
+However, we know that there will always be some nonterminal spanning
+the whole tree and each individual terminal (in a Chomsky Normal Formgrammar). The nonterminal nodes whose only daughter is a single ter-minal node are referred to as preterminal nodes. Just in these cases
+preterminal
+this gives us the equations in (11.17) and (11.19) for the total prob-
+ability of a string. Equation (11.17) is equivalent to 11;m 11;m
+and makes use of the root node, while equation (11.19) is equivalent toP
+jjk;kjk;k and makes use of the fact that there must be some
+preterminalNjabove each word wk.
+11.3.3 Finding the most likely parse for a sentence
+A Viterbi-style algorithm for ﬁnding the most likely parse for a sentence
+can be constructed by adapting the inside algorithm to ﬁnd the elementof the sum that is maximum, and to record which rule gave this maxi-
+mum. This works as in the
+HMM case because of the independence as-
+sumptions of PCFG s. The result is an Om3n3PCFG parsing algorithm.
+The secret to the Viterbi algorithm for HMM s is to deﬁne accumulators
+jtwhich record the highest probability of a path through the trellis
+that leaves us at state jat timet. Recalling the link between HMM sa n d
+PCFG s through looking at PRGs, this time we wish to ﬁnd the highest
+
+p/CX /CX11.3 The Probability of a String 397
+probability partial parse tree spanning a certain substring that is rooted
+with a certain nonterminal. We will retain the name and use accumula-
+tors:
+ip;qthe highest inside probability parse of a subtree Ni
+pq
+Using dynamic programming, we can then calculate the most probable
+parse for a sentence as follows. The initialization step assigns to eachunary production at a leaf node its probability. For the inductive step, we
+again know that the ﬁrst rule applying must be a binary rule, but this time
+we ﬁnd the most probable one instead of summing over all such rules,and record that most probable one in the  variables, whose values are
+a list of three integers recording the form of the rule application whichhad the highest probability.
+1. Initialization
+
+ip;pPNi!wp
+2. Induction
+ip;qmax
+1j;kn
+pr<qPNi!NjNkjp;rkr1;q
+Store backtrace
+ ip;qarg max
+j;k;rPNi!NjNkjp;rkr1;q
+3. Termination and path readout (by backtracking). Since our grammar
+has a start symbol N1, then by construction, the probability of the
+most likely parse rooted in the start symbol is:2
+Pˆt11;m (11.23)
+We want to reconstruct this maximum probability tree ˆt.W ed ot h i sb y
+regarding ˆtas a set of nodes fˆXxgand showing how to construct this
+2. We could alternatively ﬁnd the highest probability node of any category that dominates
+the entire sentence as:
+Pˆtmax
+1ini1;m
+
+p/CX /CX398 11 Probabilistic Context Free Grammars
+set. Since the grammar has a start symbol, the root node of the tree
+must beN1
+1m. We then show in general how to construct the left and
+right daughter nodes of a nonterminal node, and applying this processrecursively will allow us to reconstruct the entire tree. If X
+xNi
+pqis
+in the Viterbi parse, and  ip;qj;k;r , then:
+leftˆXxNj
+pr
+rightˆXxNk
+r1q
+Note that where we have written ‘arg max’ above, it is possible for there
+not to be a unique maximum. We assume that in such cases the parserjust chooses one maximal parse at random. It actually makes things con-siderably more complex to preserve all ties.
+11.3.4 Training a PCFG
+The idea of training a PCFG is grammar learning or grammar induction,
+but only in a certain limited sense. We assume that the structure of thegrammar in terms of the number of terminals and nonterminals, and thename of the start symbol is given in advance. We also assume the set ofrules is given in advance. Often one assumes that all possible rewritingrules exist, but one can alternatively assume some pre-given structurein the grammar, such as making some of the nonterminals dedicated
+preterminals that may only be rewritten as a terminal node. Training
+the grammar comprises simply a process that tries to ﬁnd the optimalprobabilities to assign to diﬀerent grammar rules within this architecture.
+As in the case of
+HMM s, we construct an EM training algorithm, the
+Inside-Outside algorithm , which allows us to train the parameters of a Inside-Outside
+algorithmPCFG on unannotated sentences of the language. The basic assumption
+is that a good grammar is one that makes the sentences in the training
+corpus likely to occur, and hence we seek the grammar that maximizes
+the likelihood of the training data. We will present training ﬁrst on thebasis of a single sentence, and then show how it is extended to the morerealistic situation of a large training corpus of many sentences, by assum-ing independence between sentences.
+To determine the probability of rules, what we would like to calculate
+is:
+ˆPN
+j!CNj!P
+γCNj!γ
+
+p/CX /CX11.3 The Probability of a String 399
+whereCis the count of the number of times that a particular rule is
+used. If parsed corpora are available, we can calculate these probabilitiesdirectly (as discussed in chapter 12). If, as is more common, a parsedtraining corpus is not available, then we have a hidden data problem: wewish to determine probability functions on rules, but can only directly see
+the probabilities of sentences. As we don’t know the rule probabilities,
+we cannot compute relative frequencies, so we instead use an iterativealgorithm to determine improving estimates. We begin with a certaingrammar topology, which speciﬁes how many terminals and nontermi-nals there are, and some initial probability estimates for rules (perhapsjust randomly chosen). We use the probability of each parse of a trainingsentence according to this grammar as our conﬁdence in it, and then sum
+the probabilities of each rule being used in each place to give an expecta-
+tion of how often each rule was used. These expectations are then usedto reﬁne our probability estimates on rules, so that the likelihood of thetraining corpus given the grammar is increased.
+Consider:
+
+jp;qjp;qPN1=)w1m;Nj=)wpqjG
+PN1=)w1mjGPNj=)wpqjN1=)w1m;G
+We have already solved how to calculate PN1=)w1m; let us call this
+probability. Then:
+PNj=)wpqjN1=)w1m;Gjp;qjp;q
+
+and the estimate for how many times the nonterminal Njis used in the
+derivation is:
+ENjis used in the derivation mX
+p1mX
+qpjp;qjp;q
+(11.24)
+In the case where we are not dealing with a preterminal, we substitute
+the inductive deﬁnition of into the above probability and then 8r;s;p<
+q:
+PNj!NrNs=)wpqjN1=)w1m;G
+Pq−1
+dpjp;qPNj!NrNsrp;dsd1;q
+
+Therefore, the estimate for how many times this particular rule is used
+in the derivation can be found by summing over all ranges of words that
+
+p/CX /CX400 11 Probabilistic Context Free Grammars
+the node could dominate:
+ENj!NrNs;Njused (11.25)
+Pm−1
+p1Pm
+qp1Pq−1
+dpjp;qPNj!NrNsrp;dsd1;q
+
+Now for the maximization step, we want:
+PNj!NrNsENj!NrNs;Njused
+ENjused
+So, the reestimation formula is:
+ˆPNj!NrNs11:25=11:24 (11.26)
+Pm−1
+p1Pm
+qp1Pq−1
+dpjp;qPNj!NrNsrp;dsd1;q
+Pm
+p1Pm
+qpjp;qjp;q
+Similarly for preterminals,
+PNj!wkjN1=)w1m;GPm
+h1jh;hPNj!wh;whwk
+
+Pm
+h1jh;hPwhwkjh;h
+
+ThePwhwkabove is, of course, either 0 or 1, but we express things
+in the second form to show maximal similarity with the preceding case.Therefore,
+ˆPN
+j!wkPm
+h1jh;hPwhwkjh;hPm
+p1Pm
+qpjp;qjp;q(11.27)
+Unlike the case of HMM s, this time we cannot possibly avoid the prob-
+lem of dealing with multiple training instances – one cannot use con-
+catenation as in the HMM case. Let us assume that we have a set of
+training sentences WW1;:::;W!,w i t hWiwi;1wi;mi.L e tfi,gi,
+andhibe the common subterms from before for use of a nonterminal at
+a branching node, at a preterminal node, and anywhere respectively, nowcalculated from sentence W
+i:
+fip;q;j;r;s Pq−1
+dpjp;qPNj!NrNsrp;dsd1;q
+PN1=)WijG(11.28)
+gih;j;kjh;hPwhwkjh;h
+PN1=)WijG
+hip;q;jjp;qjp;q
+PN1=)WijG
+
+p/CX /CX11.4 Problems with the Inside-Outside Algorithm 401
+If we assume that the sentences in the training corpus are independent,
+then the likelihood of the training corpus is just the product of the prob-abilities of the sentences in it according to the grammar. Therefore, inthe reestimation process, we can sum the contributions from multiplesentences to give the following reestimation formulas. Note that the de-
+nominators consider all expansions of the nonterminal, as terminals or
+nonterminals, to satisfy the stochastic constraint in equation (11.3) thata nonterminal’s expansions sum to 1.
+ˆPN
+j!NrNsP!
+i1Pmi−1
+p1Pmi
+qp1fip;q;j;r;s
+P!
+i1Pmi
+p1Pmi
+qphip;q;j(11.29)
+and
+ˆPNj!wkP!
+i1Pmi
+h1gih;j;kP!
+i1Pmi
+p1Pmi
+qphip;q;j(11.30)
+The Inside-Outside algorithm is to repeat this process of parameter
+reestimation until the change in the estimated probability of the trainingcorpus is small. If G
+iis the grammar (including rule probabilities) in the
+ithiteration of training, then we are guaranteed that the probability of
+the corpus according to the model will improve or at least get no worse:
+PWjGi1PWjGi:
+11.4 Problems with the Inside-Outside Algorithm
+However, the PCFG learning algorithm is not without problems:
+1. Compared with linear models like HMM s, it is slow. For each sentence,
+each iteration of training is Om3n3,w h e r emis the length of the
+sentence, and nis the number of nonterminals in the grammar.
+2.Local maxima are much more of a problem. Charniak (1993) reports local maxima
+that on each of 300 trials of PCFG induction (from randomly initialized
+parameters, using artiﬁcial data generated from a simple English-like
+PCFG ) a diﬀerent local maximum was found. Or in other words, the
+algorithm is very sensitive to the initialization of the parameters. Thismight perhaps be a good place to try another learning method. (Forinstance, the process of simulated annealing has been used with somesuccess with neural nets to avoid problems of getting stuck in local
+
+p/CX /CX402 11 Probabilistic Context Free Grammars
+maxima (Kirkpatrick et al. 1983; Ackley et al. 1985), but it is still per-
+haps too compute expensive for large-scale PCFG s.) Other partial so-
+lutions are restricting rules by initializing some parameters to zero orperforming grammar minimization, or reallocating nonterminals awayfrom “greedy” terminals. Such approaches are discussed in Lari and
+Young (1990).
+3. Based on experiments on artiﬁcial languages, Lari and Young (1990)
+suggest that satisfactory grammar learning requires many more non-
+terminals than are theoretically needed to describe the language at
+hand. In their experiments one typically needed about 3 nnontermi-
+nals to satisfactorily learn a grammar from a training text generatedby a grammar with nnonterminals. This compounds the ﬁrst problem.
+4. While the algorithm is guaranteed to increase the probability of the
+training corpus, there is no guarantee that the nonterminals that thealgorithm learns will have any satisfactory resemblance to the kinds ofnonterminals normally motivated in linguistic analysis (NP, VP, etc.).Even if one initializes training with a grammar of the sort familiar to
+linguists, the training regime may completely change the meaning of
+nonterminal categories as it thinks best. As we have set things up, theonly hard constraint is that N
+1must remain the start symbol. One
+option is to impose further constraints on the nature of the grammar.For instance, one could specialize the nonterminals so that they eachonly generate terminals ornonterminals. Using this form of grammar
+would actually also simplify the reestimation equations we presented
+above.
+Thus, while grammar induction from unannotated corpora is possible in
+principle with
+PCFG s, in practice, it is extremely diﬃcult. In diﬀerent
+ways, many of the approaches of the next chapter address various of thelimitations of using vanilla
+PCFG s.
+11.5 Further Reading
+A comprehensive discussion of topics like weak and strong equivalence,Chomsky Normal Form, and algorithms for changing arbitrary
+CFGs into
+various normal forms can be found in (Hopcroft and Ullman 1979). Stan-dard techniques for parsing with
+CFGsi n NLPcan be found in most AI
+and NLPtextbooks, such as (Allen 1995).
+
+p/CX /CX11.5 Further Reading 403
+Probabilistic CFGs were ﬁrst studied in the late 1960s and early 1970s,
+and initially there was an outpouring of work. Booth and Thomson(1973), following on from Booth (1969), deﬁne a
+PCFG as in this chap-
+ter (modulo notation). Among other results, they show that there areprobability distributions on the strings of context free languages which
+cannot be generated by a
+PCFG , and derive necessary and suﬃcient con-
+ditions for a PCFG to deﬁne a proper probability distribution. Other work
+from this period includes: (Grenander 1967), (Suppes 1970), (Huang andFu 1971), and several PhD theses (Horning 1969; Ellis 1969; Hutchins1970). Tree structures in probability theory are normally referred to asbranching processes , and are discussed in such work as (Harris 1963) and
+branching
+processes (Sankoﬀ 1971).
+During the 1970s, work on stochastic formal languages largely died
+out, and PCFG s were really only kept alive by the speech community, as an
+occasionally tried variant model. The Inside-Outside algorithm was intro-duced, and its convergence properties formally proved by Baker (1979).Our presentation essentially follows (Lari and Young 1990). This paperincludes a proof of the algorithmic complexity of the Inside-Outside al-gorithm. Their work is further developed in (Lari and Young 1991).
+For the extension of the algorithms presented here to arbitrary
+PCFG s,
+see (Charniak 1993) or (Kupiec 1991, 1992a).3Jelinek et al. (1990) and
+Jelinek et al. (1992a) provide a thorough introduction to PCFG s. In par-
+ticular, these reports, and also Jelinek and Laﬀerty (1991) and Stolcke(1995), present incremental left-to-right versions of the Inside and Viterbialgorithms, which are very useful in contexts such as language models forspeech recognition.
+In the section on training a
+PCFG , we assumed a ﬁxed grammar archi-
+tecture. This naturally raises the question of how one should determinethis architecture, and how one would learn it automatically. There hasbeen a little work on automatically determining a suitable architectureusing Bayesian model merging ,aMinimum Description Length approach
+Bayesian model
+merging
+Minimum
+Description Length(Stolcke and Omohundro 1994b; Chen 1995), but at present this task is
+still normally carried out by using the intuitions of a linguist.
+3. For anyone familiar with chart parsing, the extension is fairly straightforward: in a
+chart we always build maximally binary ‘traversals’ as we move the dot through rules. Wecan use this virtual grammar, with appropriate probabilities to parse arbitrary
+PCFG s( t h e
+rule that completes a constituent can have the same probability as the original rule, whileall others have probability 1).
+
+pa/CX /CX404 11 Probabilistic Context Free Grammars
+PCFG s have also been used in bioinformatics (e.g., Sakakibara et al.
+1994), but not nearly as much as HMM s.
+11.6 Exercises
+Exercise 11.1 [««]
+Consider the probability of a (partial) syntactic parse tree giving part of the struc-
+ture of a sentence:
+P0
+BBBBBBB@NP
+Det N
+0
+Adj N1
+CCCCCCCA
+In general, as the (sub)tree gets large, we cannot accurately estimate the probabil-
+ity of such trees from any existing training corpus (a data sparseness problem).
+As we saw,
+PCFG s approach this problem by estimating the probability of a tree
+like the one above from the joint probabilities of local subtrees:
+P0
+BB@NP
+Det N0;N0
+Adj N1
+CCA
+However, how reasonable is it to assume independence between the probability
+distributions of these local subtrees (which is the assumption that licenses us toestimate the probability of a subtree as the product of the probability of each
+local tree it contains)?
+Use a parsed corpus (e.g., the Penn Treebank) and ﬁnd for some common sub-
+trees whether the independence assumption seems justiﬁed or not. If it is not,see if you can ﬁnd a method of combining the probabilities of local subtrees insuch a way that it results in an empirically better estimate of the probability ofa larger subtree.
+Exercise 11.2 [«]
+Using a parse triangle as in ﬁgure 11.3, calculate the outside probabilities for the
+sentence astronomers saw stars with ears according to the grammar in table 11.2.
+Start at the top righthand corner and work towards the diagonal.
+Exercise 11.3 [«]
+Using the inside and outside probabilities for the sentence astronomers saw stars
+with ears worked out in ﬁgure 11.3 and exercise 11.2, reestimate the proba-
+bilities of the grammar in table 11.2 by working through one iteration of theInside-Outside algorithm. It is helpful to ﬁrst link up the inside probabilitiesshown in ﬁgure 11.3 with the particular rules and subtrees used to obtain them.
+
+p/CX /CX11.6 Exercises 405
+What would the rule probabilities converge to with continued iterations of the
+Inside-Outside algorithm? Why?
+Exercise 11.4 [««« ]
+Recording possible spans of nodes in a parse triangle such as the one in ﬁg-
+ure 11.3 is the essence of the Cocke-Kasami-Younger ( CKY) algorithm for pars-
+ingCFGs (Younger 1967; Hopcroft and Ullman 1979). Writing a CKY PCFG parser
+is quite straightforward, and a good exercise. One might then want to extendthe parser from Chomsky Normal Form grammars to the more general case ofcontext-free grammars. One way is to work out the general case oneself, or toconsult the appropriate papers in the Further Reading. Another way is to writea grammar transformation that will take a
+CFG and convert it into a Chomsky
+Normal Form CFGby introducing specially-marked additional nodes where nec-
+essary, which can then be removed on output to display parse trees as given bythe original grammar. This task is quite easy if one restricts the input
+CFG to
+one that does not contain any empty nodes (nonterminals that expand to givenothing).
+Exercise 11.5 [««« ]
+Rather than simply parsing a sequence of words, if interfacing a parser to a
+speech recognizer, one often wants to be able to parse a word lattice, of thesort shown in ﬁgure 12.1. Extend a
+PCFG parser so it works with word lattices.
+(Because the runtime of a PCFG parser is dependent on the number of words in
+the word lattice, a PCFG parser can be impractical when dealing with large speech
+lattices, but our CPUs keep getting faster every year!)
+
+
+

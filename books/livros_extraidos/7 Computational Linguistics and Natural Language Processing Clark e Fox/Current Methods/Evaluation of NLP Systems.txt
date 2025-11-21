@@ -1,0 +1,483 @@
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 271 — #1
+11 Evaluation of NLP Systems
+PHILIP RESNIK AND JIMMY LIN
+1 Introduction
+As the engineering branch of computational linguistics, natural language process-ing is concerned with the creation of artifacts that accomplish tasks. The operativequestion in evaluating an NLP algorithm or system is therefore the extent to whichit produces the results for which it was designed. Because NLP encompasses anenormous range of different tasks, each with its own particular criteria for assess-ing results, a single chapter on evaluation cannot hope to be comprehensive. Inthis chapter, therefore, we have selected a number of basic issues, laying out somefundamental principles of NLP evaluation, describing several of the most com-mon evaluation paradigms, and illustrating how the principles and paradigmsapply in the context of two speciﬁc tasks, word-sense disambiguation and ques-tion answering. For a comprehensive treatment, we refer the reader to Galliers andJones (1995).
+1
+It must be noted that the design or application of an NLP system is some-
+times connected with a broader scientiﬁc agenda; for example, cognitive modelingof human language acquisition or processing. In those cases, the value of asystem resides partly in the attributes of the theory it instantiates, such as con-ciseness, coverage of observed data, and the ability to make falsiﬁable predictions.Although several chapters in this volume touch on scientiﬁc as well as practicalgoals (e.g., the chapters on computational morphology, unsupervised grammaracquisition, and computational semantics), such scientiﬁc criteria have fallen outof mainstream computational linguistics almost entirely in recent years in favor ofa focus on practical applications, and we will not consider them further here.
+In addition, like other types of computer software, NLP systems inherit a wide
+range of evaluation concerns, criteria, and measures from the discipline of soft-ware quality evaluation. When assessing any software product, for example, it istypical to consider such issues as cost, support, efﬁciency, reliability, scalability,interoperability, security, and so forth. Many relevant issues are covered by the
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 272 — #2
+272 Philip Resnik and Jimmy Lin
+ISO 9126 standard for software product evaluation (ISO 1991), and speciﬁc exten-sions to that standard have been created speciﬁcally for the purpose of evaluatinglanguage technology (EAGLES 1996).
+To introduce some of the ideas we will be looking at in greater detail below,
+consider evaluation in the context of a ‘semantic’ search engine that utilizes NLPcomponents.
+2For purposes of illustration, suppose that the search engine matches
+users’ questions with facts that appear in documents, and that the underlyingmethod involves a component that analyzes sentences to produce normalizedsubject–relation–object dependency tuples. The use of normalized dependencytuples has the potential to allow more speciﬁc concept-level matches; for example,the question When was the light bulb patented by Edison? , can match Thomas Edison’s
+patent of the electric light bulb via the tuple [Thomas Edison, patented, bulbs].
+3
+How might the quality of dependency tuple analysis be evaluated? One time-
+tested approach that deserves mention would be to skip formal evaluation of thiscomponent altogether, and instead perform a demonstration of the search engine
+for the project’s investors or other target audience. Well-designed demos are oftensimple to execute, easy to understand, and surprisingly powerful in making acompelling case for a system’s value. However, demos can also be quite mislead-ing because they rarely exercise the full range of a system’s capabilities and can becarefully orchestrated to hide known ﬂaws.
+Another approach would be to perform a standard intrinsic evaluation of the
+dependency extraction component. In a case like this, one would typically cre-ate a test set that contains a sample of test sentences for input, along with theground truth, i.e., an ‘answer key’ in the form of tuples that the system is expectedto create for each test sentence. The design of the evaluation would quantify thesystem’s agreement with the ground truth, much as a teacher counts up the agree-ments and disagreements between a student’s multiple-choice test answers andthe answer key. In this case, each test sentence has a setof tuples that together
+comprise the correct answer, and the goal is to produce all and only the tuplesin that set. In settings like this, one would usually calculate recall, measuring the
+extent to which allthe tuples were produced, precision, capturing the extent to
+which only correct tuples are included in the output, and F-measure , a score that
+combines recall and precision into a single ﬁgure of merit (see Section 3.2). Onemight compare the F-measure for the current tuples analyzer against an earlierversion (a formative evaluation, measuring progress and informing new develop-
+ment) or against competing techniques (a summative evaluation, concerned with
+the outcome of development).
+The intrinsic evaluation helps to assess the quality of the tuples analyzer, but
+how do we know that improvements in the analyzer actually make a differencein the overall quality of the system (that is, better search results)? One answer isto perform an extrinsic evaluation, which measures the quality of the analyzer by
+looking at its impact on the effectiveness of the search engine. In this case, wewould create a test set not for the analyzer, but for the search engine as a whole .T h e
+test items in this case would therefore be user questions, and the ground truthfor each question would be the answers that should be produced by the system.
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 273 — #3
+Evaluation of NLP Systems 273
+Precision, recall, and F-measure could be used again here, but this time they wouldbe used to quantify the extent to which the search engine produces all and only
+the correct answers to the test questions. Crucially, the quality of the dependencytuple analyzer is measured only indirectly, by evaluating the whole system withand without it, or by swapping out this analyzer and substituting another. Toput this another way, the extrinsic evaluation treats the analyzer as an enabling
+technology, whose value is not intrinsic but rather resides in its contribution to alarger application (Resnik 2006).
+Even an extrinsic evaluation may still be too far removed from quality in the
+real world, however. One way to address this would be to conduct a laboratorytest involving real users employing the search engine to perform a standardizedtask, e.g., ﬁnding the answers to a set of test questions. This is, in effect, a variationon the extrinsic evaluation in which the ‘system as a whole’ actually includes notonly the search engine but the user as well, and the setup makes it possible notonly to measure the quality of the answers produced, but also to look at factorssuch as time taken and user satisfaction.
+Ultimately, however, laboratory experimentation cannot completely predict
+how a technology will fare in a real-world environment with real users performingreal tasks. For this, a system must be deployed, and observations made in situ of
+the system, the users, and their interaction. Learning how the technology does inthe real world comes at the cost of experimental controls and replicability, but formany pieces of real-world technology, the ﬁnal test is not the laboratory measures,but the usefulness of the tools, the satisfaction of users, and their willingness tocome back and use that technology again.
+2 Fundamental Concepts
+2.1 Automatic and manual evaluations
+Perhaps the most basic dichotomy in evaluation is that between automatic andmanual evaluation. Often, the most straightforward way to evaluate an NLP algo-rithm or system is to recruit human subjects and ask them to assess system outputalong some predetermined criteria. In many cases, this is the best approach forﬁnding out whether a system is actually useful and whether users are pleasedwith the system – a criterion that goes beyond whether or not the system meetspredetermined requirements or speciﬁcations. Note that manual evaluationsare the norm in many ﬁelds, for example, user studies in human–computerinteraction.
+Unfortunately, manual evaluations have two signiﬁcant limitations: they often
+generate inconsistent results and they are slow. Human beings are notoriouslyinconsistent in their judgments about what is ‘good’ (both across multiple sub-jects and sometimes with themselves), and even with the adoption of standardbest practices in study design (e.g., counterbalanced presentation of experimen-tal conditions, calibration for learning effects and environmental settings, etc.),
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 274 — #4
+274 Philip Resnik and Jimmy Lin
+it is difﬁcult to control for unanticipated factors. In addition, manual evaluationsare time-consuming and laborious. In addition to time for the actual experiment,human subjects must be recruited, scheduled, and trained. To arrive at statis-tically signiﬁcant ﬁndings, dozens of subjects are often necessary. All of thesefactors conspire to make well-designed manual evaluations a large investment ofresources.
+Modern NLP has evolved into an empirical, evaluation-driven discipline, which
+means that researchers have little patience for long turnaround between successiveexperiments. Thus, automatic evaluation methods are favored today by most. Thedevelopment of evaluation algorithms that mimic the behavior of human asses-sors is an important subﬁeld in NLP , and such research can be readily foundin the pages of conference proceedings and journal articles in the ﬁeld. How-ever, recognizing that manual evaluations remain valuable, it is common practiceto periodically conduct studies that establish a correlation between results ofautomatic and manual evaluations. If such a correlation is demonstrated, thenresearchers have a degree of conﬁdence that improvements according to automaticevaluations will translate into meaningful improvements for users.
+2.2 Formative and summative evaluations
+The distinction between formative and summative evaluations is best summed upwith a quote: “When the cook tastes the soup, that’s formative; when the customertastes the soup, that’s summative.”
+4Formative evaluations typically occur during
+the development of NLP systems – their primary purpose is to inform the designeras to whether progress is being made towards the intended goals. As such, forma-tive evaluations tend to be lightweight (so as to support rapid evaluation) anditerative (so that feedback can be subsequently incorporated to improve the sys-tem). In contrast, summative evaluations are typically conducted once a system iscomplete (or has reached a major milestone in its development): they are intendedto assess whether intended goals of the system have been achieved.
+In NLP research, there is a tendency for formative evaluations to be automatic,
+so that they can provide rapid feedback in the development process. In con-trast, summative evaluations often involve human judges, in order to assess theusefulness of the system as a whole for users.
+2.3 Intrinsic and extrinsic evaluations
+Intrinsic and extrinsic evaluations form another contrast that is often invoked indiscussions of evaluation methodologies. In an intrinsic evaluation, system out-put is directly evaluated in terms of a set of norms or predeﬁned criteria about thedesired functionality of the system itself. In an extrinsic evaluation, system outputis assessed in its impact on a task external to the system itself. Evaluation of doc-ument summarization systems serves to illustrate this distinction. In an intrinsicevaluation, we would ask questions such as the following about system-generated
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 275 — #5
+Evaluation of NLP Systems 275
+summaries: How ﬂuently does the summary read? Does the summary containcoverage of key ideas? On the other hand, extrinsic evaluations consider tasks inwhich a document summarization system may be useful – for example, as a com-ponent of a search engine that summarizes results and presents short snippets tohelp users decide whether or not a document is relevant (i.e., worth reading). Inthe context of this particular task, we might ask: How accurately can a user makesuch relevance judgments, compared to having access to the entire document?How much more quickly can such judgments be made with summaries?
+5
+In NLP research, at least, there is an afﬁnity between intrinsic, formative, and
+automatic evaluations on the one hand, and extrinsic, summative, and manualevaluations on the other. The characteristics of these different approaches nat-urally explain these associations. Since extrinsic evaluations must be couchedwithin the context of a user task, it is difﬁcult to avoid having human subjects.It is usually easier to develop automatic techniques for intrinsic evaluations sinceonly the system output needs to be considered.
+2.4 Component and end-to-end evaluations
+Most NLP systems today are not monolithic entities, but rather consist of distinctcomponents, often arranged in a processing pipeline. For example, identiﬁcationof semantic role (e.g., agent, patient, theme) depends on syntactic parsing, whichin turn depends on part-of-speech tagging, which in turn depends on tokenization.We could choose to evaluate each component individually, or instead considermultiple components at once. For example, when evaluating the accuracy of asyntactic parser that requires part-of-speech tags as input, one could assess thequality of the parse-trees based on the output of a real tagger that may containerrors (an end-to-end evaluation), or based on ‘gold standard’ part-of-speech tagssupplied by a human (a component evaluation).
+6
+Both component and end-to-end evaluations are useful, but for different pur-
+poses. Obviously, end-to-end evaluations provide a more meaningful quantiﬁca-tion of system effectiveness under real-world circumstances. However, measuringsystem characteristics under ideal circumstances may also be useful, since it iso-lates the system from errors in other components. With component evaluations, itis possible to artiﬁcially manipulate input and observe the impact on system effec-tiveness. For example, in evaluating a syntactic parser one could start with goldstandard part-of-speech tags and then artiﬁcially degrade tagging accuracy in acontrolled manner. Doing so would allow a researcher to understand the input–output characteristics of the component, i.e., sensitivity of the parser to taggingerrors.
+In most cases, it is desirable to conduct both component and end-to-end evalu-
+ation of NLP systems since components often interact in non-obvious ways. Forsome systems, the effects of errors are multiplicative: that is, since each compo-nent depends on the previous, errors propagate down a processing pipeline, sothat the ﬁnal output may be quite poor despite high effectiveness for each of thecomponents (consider the pipeline for identifying semantic roles described above).
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 276 — #6
+276 Philip Resnik and Jimmy Lin
+For other systems, the overall effectiveness is much higher than one would expectgiven individual component-level effectiveness – these represent cases where thecomponents are able to compensate for poor quality. One example of this is incross-language information retrieval (CLIR), where the user issues a query in onelanguage to retrieve documents in another language. Abstractly, one can thinkof CLIR systems as having a translation component and a search component. Ineven the most sophisticated systems, the translation component is little better thanword-for-word translation – the quality of which is quite poor by human stan-dards. Yet CLIR systems are about as effective as monolingual IR systems – sincethe inherent redundancy in documents and queries (i.e., the presence of multiplewords referring to the same concepts) compensates for the poor translation quality.
+2.5 Inter-annotator agreement and upper bounds
+In many NLP evaluation settings – particularly intrinsic, component-level eval-uations – the task being evaluated is to ‘annotate’ (tag, label) text. For example,part-of-speech taggers assign grammatical category tags to words, named entityextractors assign category labels (e.g.,
+PERSON ,ORGANIZATION ) to phrases, and
+parsers can be viewed as assigning constituent labels like NP or VP to spans of textwithin a sentence. It is common practice in such cases to compare the performanceof multiple human annotators, for two reasons. First, if human beings cannot reach
+substantial agreement about what annotations are correct, it is likely either that thetask is too difﬁcult or that it is poorly deﬁned. Second, it is generally agreed thathuman inter-annotator agreement deﬁnes the upper limit on our ability to measureautomated performance; Gale et al. (1992: 249) observe that “our ability to measureperformance is largely limited by our ability [to] obtain reliable judgments fromhuman informants.” As a well-known case in point, the WordNet lexical databaseincludes sense tags that are notoriously ﬁne-grained, e.g., distinguishing verbsense chill (make cool or cooler) from chill (lose heat) because the former involves
+causing a change and the latter undergoing a change in temperature (Palmer et al.,
+2007). Could we really expect any word-sense disambiguation algorithm to achieve95 percent agreement with human-selected WordNet sense tags, for example, ifthe human taggers themselves can only agree 75 percent of the time when doingthe task (Snyder & Palmer 2004)? For this reason, human agreement is generallyviewed as the upper bound on automatic performance in annotation tasks.
+7
+One way to measure agreement between two annotators is simply to mea-
+sure their observed agreement on a sample of annotated items. This, however,may not constitute an accurate reﬂection of the true difﬁculty or upper boundon the task, because, for any given task, some agreements may occur accordingto chance. Consider a simple example: if the annotation task were to sense-taginstances of the word bank as either R
+IVER BANK or F INANCIAL BANK ,a n dt w o
+annotators make their choices independently by ﬂipping a coin, they could beexpected to agree 50 percent of the time. Therefore, in order to establish the valid-ity of a coding scheme, as well as deﬁne upper bounds for the annotation task,it is now common practice to compute a measure of chance corrected agreement
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 277 — #7
+Evaluation of NLP Systems 277
+(Artstein & Poesio 2008). Correction for chance is captured by measures thatgenerally take the form(1)A
+0−Ae
+1−Ae
+where A0is the observed agreement (total agreements divided by total number of
+items), and Aeis an estimate of chance agreement varying according to the spe-
+ciﬁc measure. Cohen’s kappa is in widespread use for this purpose, but Artsteinand Poesio (2008) provide a thorough discussion of its limitations and of alterna-tive measures, as well as in-depth consideration of detailed issues, including, e.g.,measuring agreement among three or more annotators, weighting some disagree-ments more heavily than others, and the interpretation of agreement coefﬁcientvalues.
+2.6 Partitioning of data used in evaluations
+Within most NLP settings, system development and evaluation involves partition-ing the available data into the following disjoint subsets:•Training data. This term most often refers to a data set where input items are
+paired with the desired outputs, often as the result of manual annotation (cf.Section 2.5). It usually refers to the input for supervised learning algorithms,but it can refer more broadly to any data used in the process of developing thesystem’s capabilities prior to its evaluation or use.
+8
+•Development (dev) data. Some systems include parameters whose settings
+inﬂuence their performance. For example, a tagger might choose its outputbased on a weighted vote∑λ
+ipi(input ), where each piis a different method
+of prediction and the λiare weights for the different methods. Rather than
+choosing weights or parameters arbitrarily, it is common to hold out some sub-set of the training data as a development set. A search for good values for λ
+iis
+conducted, either in an ad hoc manual fashion or using an optimization tech-nique such as expectation-maximization. In either case, performance on thedevelopment data measures the ‘goodness’ of the parameter choices.
+•Development-test (devtest) data. Typically one or more data sets are also held
+out for use in formative evaluation (Section 2.2) as the system is developed.A devtest set is just a test set that is being used during the cycle of systemdevelopment and improvement.
+•Test data. This term describes the data that will be used to evaluate the sys-
+tem’s performance after development has taken place, i.e., at the point of asummative evaluation.
+9
+It is typical to reserve as much data as possible for training and development. Forexample, one might split the available data into 70, 20, and 10 percent for training,held-out (i.e., dev and devtest), and test data respectively.
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 278 — #8
+278 Philip Resnik and Jimmy Lin
+Disjointness of the subsets is crucial, because a fundamental principle in NLP
+evaluation is that the technology being evaluated cannot be informed by the test data .
+In its purest form, this means that test data should remain entirely untouched andunseen by the researcher or developer until system development is frozen justprior to evaluation. The reasoning behind this stricture is simply that evaluationsare intended to help predict a system’s performance on future unseen data, i.e., togeneralize. In machine learning, the error rate when testing on the training data isreferred to as the resubstitution error rate, and it is regarded as a severe underesti-
+mate of the true error rate, as a result of overﬁtting. Performance on the trainingdata can be a useful reality check, of course, since something is probably wrong ifit is not quite good. But it cannot be relied upon to predict future performance.
+Moreover, it should be noted that evaluations can be overly optimistic even
+when test data are kept properly disjoint from data used in system development.For example, it is typical to assume that systems will be evaluated (or run) on thesame kind of data that were used during system development, e.g., language thatis similar in genre and topic. It is widely recognized, however, that system per-formance will suffer when this assumption is not met (e.g., Escudero et al., 2000;Gildea, 2001).
+It is also worth noting that there are, in fact, some uses of the test data that are
+generally regarded as valid. The following are some examples:•For research on machine translation systems, using the test set to automaticallyﬁlter the phrase table, so that it contains only entries that are relevant for thegiven test set. This is a common way to reduce the size of the model so that itﬁts in memory (Lopez 2008a). Note that this affects the efﬁciency of a system,but does not fundamentally alter its behavior.
+•Using the test set automatically for model adaptation (e.g., Kim & Khudanpur2003).
+•Performing error analysis prior to moving on to a fresh test set – i.e., the currenttest set becomes devtest data.
+•Looking just at performance numbers on test data, without examining the sys-tem’s output. For example, parsing researchers test over and over again usingSection 23 of the Wall Street Journal in the Penn TreeBank, and MT researchers
+test repeatedly on test sets from the NIST machine translation evaluationexercises.
+2.7 Cross validation
+Employing a single partition of the available data is common, but it does presenttwo potential problems. First, regardless of whether the evaluation results aregood or bad, one has to wonder whether the results reﬂect a particularly fortu-itous (or infortuitous) selection of test data. More precisely, a single split providesonly a point estimator for whatever measure or measures are used for evaluation,as opposed to an interval estimate such as a 95 percent conﬁdence interval. Sec-ond, as a practical matter, even a 70 percent allocation may not produce a large
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 279 — #9
+Evaluation of NLP Systems 279
+enough training set for automatic learning methods if only a small quantity ofannotated data is available.
+Within NLP , the most common solution to these problems is k-fold cross-
+validation. Instead of creating a single split, the full set of available data ispartitioned into kpieces, or folds, {f
+1...fk}.10Then evaluation is conducted as
+follows:
+forifrom 1 to k
+Let TEST =fibe the test set
+Let TRAIN =∪j̸=i{fj}be used as the training set
+Compute mi, the evaluation measure, by training on TRAIN and testing on
+TEST
+Compute statistics, e.g., the mean and standard deviation, over the {mi}.
+If held-out data is needed for parameter tuning, TRAIN is subdivided into training
+and dev data.
+K-fold cross-validation ensures that every item in the full data set gets used for
+both training and testing, while at the same time also ensuring that no item isused simultaneously for both purposes. Therefore it addresses the concern thatthe evaluation results only reﬂect a particularly good or particularly bad choiceof test set. Indeed, addressing the second concern, the set {m
+1...mk}can be used
+to compute not only the mean, as a scalar ﬁgure of merit, but also the standarddeviation, enabling the computation of conﬁdence intervals and tests of statis-tical signiﬁcance when alternative algorithms or systems are compared. Finally,although values of kare typically between 4 and 10 – e.g., training uses from
+75 percent to 90 percent of the available data – it is possible to use data even moreefﬁciently by employing a larger number of folds. At the extreme, one can set kequal
+to the number of items Nin the full data set, so that each fold involves N−1i t e m s
+used for training and one item for testing. This form of cross-validation is knownasleave-one-out , and is similar to the jackknife estimate (Efron & Gong 1983).
+2.8 Summarizing and comparing performance
+All quantitative evaluation paradigms make use of at least one ﬁgure of merit,
+sometimes referred to as an evaluation measure orevaluation metric , to summa-
+rize performance on a relevant property of interest. Some of the most importantparadigms, and their associated evaluation measures, are discussed in Section 3.
+Table 11.1 shows the typical structure for reporting results in NLP evaluations.
+The ﬁrst column of the table identiﬁes the ‘conditions,’ i.e., variant approachestaken to the task. A single evaluation measure might be reported (e.g., accuracy,Section 3.1). Or there might be columns for multiple measures, often trading offagainst each other, with some single metric representing their combination (e.g.,recall, precision, and F-measure, Section 3.2).
+Turning to the rows, a results table almost always includes at least one baseline
+condition. The role of a baseline is similar to the control condition in an experimentstudying the effectiveness of a new drug: in order for the study to successfully
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 280 — #10
+280 Philip Resnik and Jimmy Lin
+Table 11.1 Structure of a typical summary of evaluation results
+Condition Measure 1 Measure 2 Combined Measure
+Baseline 1 MB11 MB12 MB1c
+Baseline 2 MB21 MB22 MB2c
+Variation 1 MV1
+1MV1
+2MV1
+c
+Variation 2 MV2
+1MV2
+2MV2
+c
+Upper Bound MU1 MU2 MUc
+demonstrate that a drug is effective, patients taking the drug must show bene-ﬁts over and above that experienced by patients taking a placebo. Similarly, thebaseline condition in an NLP experiment deﬁnes the performance that must beimproved upon in order for the study to deliver a positive result. One category ofbaselines can be deﬁned independently of prior work in the literature; for exam-ple, choosing an answer at random, or always selecting an item’s most frequentlabel in the training data, or applying something else that is equally obvious andsimple.
+11Another kind of baseline is the effectiveness of some prior approach on
+the same data set. Generally the ﬁrst category can be viewed as a ‘reality check’:if you cannot beat one of these baselines, most likely something is fundamentallywrong in your approach, or the problem is poorly deﬁned (see Section 2.5).
+The ‘upper bound’ for a task deﬁnes the highest level of performance one could
+expect to attain in this experiment. Typically, upper bounds are deﬁned by humaninter-annotator agreement (as discussed in Section 2.5). Sometimes, alternativeupper bounds are deﬁned by allowing the system to use knowledge that it wouldnot have access to in a fair evaluation setting. As an example, a machine transla-tion system might be permitted to produce its 1000-best hypotheses for each inputsentence, and the oracle upper bound would be deﬁned as the score of the hypothesis
+that performs best when compared against the reference translations. In practice,of course, an MT system cannot choose its single-best output by looking at correcttranslations of the input. But the oracle upper bound helps to quantify how muchbetter the system could potentially get with better ranking of its hypotheses (Ochet al., 2004).
+When comparing system results against baselines, upper bounds, or across vari-
+ations, it is important to recognize that not all differences between scores matter.One question to consider is whether or not an apparent difference is statistically
+signiﬁcant ; that is, if the difference is unlikely to have occurred as a result of
+chance variation. As a simple example, suppose we are selling a coin-ﬂippingmachine that will (we claim) make a fair coin more likely to land heads up. If wetest the machine by performing an experiment with 10 ﬂips, and the coin comesup heads 6 times instead of 5, should a potential buyer be convinced that ourmachine works as advertised, compared to typical, unassisted coin ﬂips? Prob-ably not: even with normal, ‘unimproved’ coin ﬂipping, someone doing a largenumber of 10-ﬂip experiments could be expected to get the same result, exactly
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 281 — #11
+Evaluation of NLP Systems 281
+6 heads out of 10 ﬂips, in fully 20 percent of those experiments, just by chance. Sogetting that particular result in this experiment could easily have happened evenif the machine just ﬂipped coins in the usual way. By convention, an experimentaloutcome is not usually considered ‘statistically signiﬁcant’ unless the likelihood ofits having occurred by chance is less than 5 percent, often written p<.05.
+12
+Even if a difference in experimental conditions is statistically signiﬁcant, how-
+ever, it is essential to recognize that the result may not be large, important, or evenmeaningful. The ‘signiﬁcance’ of an experimental improvement (in the ordinarysense of the word) is usually calibrated as a matter of folklore or common wisdomwithin a particular experimental community. In information retrieval, for example,a system might meet accepted criteria for a meaningful result by achieving a .05absolute improvement in average ‘precision at 10’ (the precision computed usingthe ten most highly ranked hits in response to a query), with an improvementof .10 being considered substantial.
+13In machine translation, researchers might
+expect to see around a one-point improvement in B LEU score (Papineni et al., 2002)
+on one of the recent NIST evaluation data sets, with a gain of two points or morebeing considered substantial.
+14
+However, the bottom line is that no hard-and-fast rule involving evaluation
+numbers or statistical signiﬁcance can tell the full story when comparing alterna-tive approaches to a problem. Ultimately, the potential value of a new contributionin NLP depends also on the relevance of the evaluation task, the representative-ness of the data, the range of alternative approaches being compared, and a hostof other more tangible and less tangible factors.
+Finally, it is worth noting that sometimes the relative difference in performance
+metrics provides more insight than their absolute difference. On the combinedmeasure, the relative improvement of Variation 1 over Baseline 1 in Table 11.1 is
+(2)M
+V1
+c−MB1c
+MB1c
+For example, improving accuracy from MB1c=35% to MV1
+c=40% is only a 5 per-
+cent improvement in absolute terms, but the relative improvement deﬁned in (2) ismore than 14 percent. To make the point more dramatically, if a system improvesaccuracy from 98 percent to 99 percent, this may seem like only a small accom-plishment, only one percentage point. But the picture changes a great deal if theresults are expressed in terms of error rate (100 percent −accuracy): the improved
+system cuts the number of errors in half, which can make a huge difference if thenumber of inputs is very large.
+3 Evaluation Paradigms in Common Evaluation
+Settings
+At the most basic level, NLP systems are designed to accomplish some task, whichcan be characterized by input–output characteristics. Thus, evaluation boils down
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 282 — #12
+282 Philip Resnik and Jimmy Lin
+to a conceptually simple question: for a set of inputs, to what extent does systemoutput correspond to outputs that are correct ordesirable? This question helps orga-
+nize common paradigms in evaluation, discussed in this section. In some cases,there is a one-to-one correspondence between input and the correct output (e.g.,part-of-speech tagging, word-sense disambiguation). In other cases, multiple out-puts are desirable (e.g., information retrieval, parallel text alignment), the outputtakes the form of text (e.g., machine translation, document summarization), or theoutput contains complex structure (e.g., parsing). Finally, the output may involvevalues on a scale (e.g., language modeling, semantic similarity).
+3.1 One output per input
+The most straightforward evaluation paradigm in NLP is one in which each inputproduces a single output – a nominal value that can be considered a categoryor label (Stevens 1946) – and that output is compared against a single correctanswer. This is analogous to multiple-choice tests, although for many NLP tasksthe number of possible answers for any input can be quite large.
+Classic word-sense disambiguation tasks fall into this category: each word, in its
+context, represents an input, and the possible outputs are deﬁned by an enumera-tion of sense labels. For example, suppose that the task involves deciding whetherinstances of the word ashare being used in the sense A
+SH1, ‘a tree of the olive
+family,’ or in the sense A SH2, ‘the solid residue left when combustible material is
+burned’ (Lesk 1986).15
+To evaluate disambiguation performance in settings like this, one would run
+the system on inputs {a1,...,an}(where each aiis an instance of the word ash
+in context), producing single-best output label decisions {l1,...,ln}(where each
+li∈{ASH1,ASH2}), and then compare those decisions to ‘ground truth’ human-
+annotated sense labels {t1,...,tn}(ti∈{ASH1,ASH2}). The primary ﬁgure of merit
+would be the percentage of agreement with the true labels, i.e., the accuracy :
+(3) A=∑
+i=1..n agri
+n=number correct
+n
+where agriis 1 if li=tiand 0 otherwise.16Sometimes the inverse of accuracy, or
+error rate, is reported instead: 1 −A.
+Sometimes a system is not required to produce any answer at all for some
+inputs; that is, licould remain undeﬁned. In some tasks, it might be preferable
+for the system to remain silent than to risk being wrong. In those cases, we candeﬁne dto be the number of deﬁned answers, and dreplaces nin the denominator
+when accuracy is calculated. We then deﬁne coverage asd/n, in order to measure
+the extent to which answers were provided. By default, one can assume d=n, i.e.,
+coverage is 100 percent, when accuracy is presented alone as the ﬁgure of merit.When d<n, accuracy and coverage can be traded off against each other – for exam-
+ple, a system can obtain high accuracy by providing an answer for an input onlywhen it is very conﬁdent, at the expense of coverage. This is quite similar to thetrade-off between precision and recall discussed below in Section 3.2. Indeed, the
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 283 — #13
+Evaluation of NLP Systems 283
+Table 11.2 Contingency table for a
+document retrieval task
+relevant ¬relevant
+retrieved r n
+¬retrieved R N
+Precision = r/(r+n)=|relevant ∩retrieved |
+|retrieved |
+Recall = r/(r+R)=|relevant ∩retrieved |
+|relevant |
+terms ‘precision’ and ‘recall’ are sometimes used, in our view somewhat confus-ingly, to refer to accuracy and coverage in task settings where each input has onlya single output.
+17
+In a common variant of this paradigm, the desired output for each input is a
+sequence y1...yk. For example, in part-of-speech tagging, each input aiwould be
+a whole sentence, i.e., a sequence of tokens x1...xk, and the output label would
+be a sequence y1...ykof grammatical category tags. When the output sequence
+stands in one-to-one correspondence with the input sequence, as in this example, itis most common simply to evaluate as if each input token comprises its own single-token labeling problem, even if that’s not really how the output was produced.This is equivalent to concatenating all the output sequences to produce one longsequence of length n, and then computing Aas deﬁned above.
+When the output sequence can differ in length from the input sequence, the situ-
+ation becomes a bit more complicated; we treat that case as a variant of structuredoutput in Section 3.2.
+3.2 Multiple outputs per input
+For many NLP tasks, there is no single correct answer; multiple outputs aresought. Information (document) retrieval is perhaps the best illustration of thisgeneral evaluation paradigm. Given an information need expressed as a query(e.g., ‘gardening in arid soil’), the task of the system is to return the set ofdocuments that are relevant and, in most cases, there are multiple satisfactory doc-uments. Formalizing the task abstractly in terms of set membership – a documentis either retrieved by the system or it is not, and a document is either relevant tothe information need or it is not – is an imperfect approximation of the real-worldtask, where documents may be relevant only to a greater or lesser extent, andsystems may estimate degrees of conﬁdence. But this abstraction makes it possi-ble to deﬁne the quality of a system’s set of retrieved documents in terms of twoextremely useful and intuitive concepts: precision and recall. The contingency table
+in Table 11.2 illustrates how these are computed. Precision is the fraction of systemoutput that is relevant, or r/(r+n); recall is the fraction of relevant documents that
+is retrieved, or r/(r+R).
+18
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 284 — #14
+284 Philip Resnik and Jimmy Lin
+Notice that the numerator is the same in both cases: rcounts the number of
+documents that were both relevant and retrieved by the system. For precision, weare interested in comparing that with the total number of documents retrieved bythe system, hence r+nin the denominator. If n=0, i.e., no irrelevant documents
+were retrieved, then precision is perfect. For recall, we are interested in comparingrwith the total number of documents that should have been retrieved, hence r+R
+in the denominator. If R=0, i.e., every relevant document was retrieved, then
+recall is perfect.
+High precision is easy to obtain, at the expense of recall: just return the single
+document most likely to be relevant, or, more generally, do not return documentsunless the system’s conﬁdence in their relevance is very high. This keeps nclose
+to 0, but of course it also increases R, so recall suffers. Similarly, perfect recall is
+easy to achieve (just return all the documents in the collection, so R=0), but at
+the expense of precision, since nis then likely to be large.
+To balance the need for both precision and recall, F-measure (or F-score) is often
+reported:(4) F(β)=(β
+2+1)×P×R
+β2×P+R
+The F-measure computes a harmonic mean between precision and recall, wherethe relative emphasis on the two components is controlled by the βparameter
+(higher values of βplace more emphasis on recall). The choice of βdepends a
+lot on the task. For example, a person searching the web for gardening infor-mation does not want to slog through lots of irrelevant material, and does notrequire every single gardening article that is out there, so precision is a high pri-ority. In contrast, a complex legal argument can be undermined by even a singlecourt ruling overturning a previous precedent, so systems for legal research canbe expected to place a heavy emphasis on recall.
+F-measure is frequently used to compare different systems. In addition to com-
+bining two measures into a single ﬁgure of merit, F-measure has the attractiveproperty of incurring a penalty in performance when precision and recall are verydifferent from each other, thereby discouraging an emphasis on one at the expenseof the other. Other common metrics in information retrieval (e.g., mean averageprecision, R-precision) derive from this set-based formalism, with the addition ofother concepts such as document ranking. It is worth noting that all these met-rics are intrinsic in nature, in that they do not measure how useful the retrieved
+documents are in a real-world task, e.g., writing a report, answering a complexquestion, making a decision, etc.
+3.3 Text output for each input
+Frequently in NLP , the task of the system is to produce text in response to theinput. Machine translation is the most obvious example of the paradigm, sincean output text in the target language is produced for the source-language input.
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 285 — #15
+Evaluation of NLP Systems 285
+Text summarization is similar, producing an output text that condenses pertinentinformation from a set containing one or more input documents.
+Evaluating text output introduces a difﬁcult challenge: how do we account for
+the fact that the desired information can be expressed correctly in many differ-ent ways? Testing for exact equality is necessary when computing agreement inSection 3.1, or when computing the intersection |relevant ∩retrieved |in Section 3.2,
+but string equality hardly seems appropriate as a way of evaluating whether ornot two texts are saying the same thing. One solution to this problem is to rely onhuman judges to compare system outputs with correct answers (see Section 3.5),but that solution is extremely labor-intensive. It would generally be impracti-cal, for example, to collect human judgments on a weekly basis in order to trackprogress during system development.
+Most ways of dealing with this challenge involve two elements. First, texts being
+compared are broken down into units that canbe compared via exact match-
+ing, e.g., word n-grams. Then a bag of n-grams from the system output can be
+compared with the n-grams present in the human ‘gold standard’ reference, quan-
+tifying the relationship using measures derived from precision and/or recall. Inessence, the n-grams in gold standard references deﬁne the ‘relevant’ elements of
+the desired response to the input, and n-grams in the system output constitute
+what the system has ‘retrieved.’ This idea has been operationalized, for example,in the B
+LEU metric for machine translation (Papineni et al., 2002) and the R OUGE
+metric for text summarization (Lin & Hovy 2003), both of which are widely usedin their respective communities, albeit not without some controversy.
+A second useful strategy is to deﬁne multiple correct references for each input.
+For example, it is not uncommon in MT evaluations to provide anywhere fromtwo to ten correct translations for each test input. The evaluation measure is thengeneralized to take into account correct or ‘relevant’ units from multiple valid out-puts. For example, consider a system that produces the English sentence my dog is
+always hungry, with reference translations
+my dog is hungry all the timemy pup is always famished
+Using the B
+LEU metric, which focuses on precision, the system would get credit
+for having produced ‘relevant’ unigrams my,dog, is,always ,a n d hungry ; bigrams
+my dog, dog is,a n d is always ; and the trigram my dog is. Notice that it is getting
+some credit for having conveyed both always and hungry , even though no single
+reference translation conveys the combined meaning always hungry using both of
+those words.
+3.4 Structured outputs
+The paradigm in Section 3.3 also provides a way of thinking about evaluation set-tings in which structured outputs are expected, whether or not multiple references
+are available. The basic idea is the same: to break the structured representations
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 286 — #16
+286 Philip Resnik and Jimmy Lin
+up into bags of smaller units and then compute precision and/or recall over thosesmaller units. Metrics like B
+LEU and R OUGE apply this concept to sequences
+(since sentences are sequences of tokens), which are broken up into bags ofn-grams. But the idea is signiﬁcantly more general; for example, the P
+ARSEVAL
+measures (Abney et al., 1991) evaluate parsers by computing precision and recallover constituents.
+19
+Another way to compare structured outputs, particularly sequences, is edit dis-
+tance or its variants. For example, speech recognition researchers compute the word
+error rate between the system’s output and the reference transcription:
+(5) WER =S+D+I
+n
+where S,D,a n d Iare, respectively, the number of substitutions, deletions,
+and insertions in a minimum-cost edit transforming the system output into thereference. In machine translation, translation edit rate (TER) has gained currency.TER “measures the amount of editing that a human would have to perform tochange a system output so it exactly matches a reference translation” (Snover et al.,2006: 223).
+20
+3.5 Output values on a scale
+Some tasks involve producing a value on a measurement scale, e.g., the traditionalnominal, ordinal, interval, and ratio scales of Stevens (1946).
+21Producing values
+on nominal scales can be viewed simply as assigning a label or category to eachinput (one can only meaningfully ask about equality, but not relative ordering ormagnitude). Comparisons of nominal outputs are addressed in Sections 3.1 andchance-corrected agreement is discussed in Section 2.5.
+Ordinal scales capture a common situation in which desired outputs represent
+ratings, e.g., performing opinion analysis in order to assign a rating from one toﬁve stars given the text of a movie review. Output values are ordered with respectto each other, but the intervals on the scale are not necessarily comparable. Onecannot assume that the ‘distance’ between a one-star and two-star review rep-resents the same difference in quality as the distance between a four-star and aﬁve-star review – the number of stars merely tells you how the movies are rankedrelative to each other. In these situations, it is common to compare a system’soutput ratings against human ratings by computing the Spearman rank order cor-relation coefﬁcient, r
+s(sometimes ρ), over the set {(oi,ti)}of system outputs paired
+with human ‘ground truth’ ratings.
+Interval scales are similar to ordinal measurements, with the additional assump-
+tion that differences between values constitute equivalent intervals. On the Celsiusscale, for example, the difference in temperature between 1
+◦Ca n d2◦C is the same
+as the difference between 101◦C and 102◦C. Within NLP , comparisons of system
+scores against human ratings often assume this interpretation of the ratings scale isvalid, and use the Pearson product–moment correlation (Pearson’s r) over {(o
+i,ti)}
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 287 — #17
+Evaluation of NLP Systems 287
+as a ﬁgure of merit. In machine translation, the validity of automatic evaluationmetrics like B
+LEU (Papineni et al., 2002), TER (Snover et al., 2006), and M ETEOR
+(Banerjee & Lavie 2005) is sometimes supported by comparing automatic scoreswith human ratings of accuracy and ﬂuency, using Pearson’s r. Similarly, auto-
+matic measures of semantic similarity are often evaluated via correlation withhuman similarity ratings, using pairs of words (e.g., furnace, stove) as the items
+for which similarity is being computed (Resnik 1999; Pedersen et al., 2007).
+Ratio scales assume that there is meaning not only for sums and differences on
+the scale but also for products and ratios. Within NLP , the most common quanti-tative output on a ratio scale would be the assignment of probabilities to inputs,often in the context of language modeling. For example, when evaluating a tri-gram language model ptri, the test set consists of a text T=w
+1...wN, and we
+measure either the cross entropy(6) H=−1
+NN∑
+i=1log2ptri(wi|wi−2wi−1)
+or, more commonly, the perplexity, 2H. Notice that whenever the model makes an
+accurate prediction in the test data, i.e., when the probability ptri(wi|wi−2wi−1)is
+high for an observed instance of wipreceded by wi−2wi−1inT, the contribution
+toHis small. Intuitively, perplexity is measuring the extent to which the model
+ptricorrectly reduces ambiguity, on average, when predicting the next word in
+Tgiven its prior context. To put this another way, on average we are ‘ k-ways
+perplexed’ about what the next word will be, with kranging from 1 to the vocab-
+ulary size |V|.22In the worst case, the model might be no better than rolling a fair
+|V|-sided die, yielding perplexity k=2−1
+NN×log1
+|V|=|V|, meaning that the model
+provides no value at all in narrowing down the prediction of the next word. Atthe other extreme, a model that always predicts the next word perfectly (giving ita probability of 1 and therefore zero probability to all alternatives) would have aperplexity of k=2
+0=1.
+Sometimes evaluation involves comparing output in the form of a probability
+distribution with ground truth that is also a distribution. In such cases, it is com-mon to use Kullback–Leibler distance (also known as KL divergence or relativeentropy) to compare the two distributions:(7) D(p||m) =∑
+x∈Xp(x) logp(x)
+m(x)
+where pis the true probability distribution and mis the model being evaluated.
+Kullback–Leibler distance is zero when mis identical to p, and otherwise it is
+always positive. Its value can be interpreted as the cost, measured in bits of infor-mation, of encoding events in Xusing the imperfect model mrather than the
+truth p.
+23
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 288 — #18
+288 Philip Resnik and Jimmy Lin
+4 Case Study: Evaluation of Word-Sense
+Disambiguation
+Word-sense ambiguity is one of the earliest challenges singled out by researchersinterested in automatically processing natural language. Some well-known earlydiscussions of the problem include Weaver’s (1949) memorandum on automatictranslation, Bar-Hillel’s (1960) argument that automatic high-quality translationrequires comprehensive world knowledge in order to resolve lexical ambiguity,and Wilks’s (1975) ‘preference semantics’ approach to semantic interpretation.Word-sense disambiguation (WSD) is conventionally regarded as the task of iden-
+tifying which of a word’s meanings (senses) is intended, given an observed use ofthe word and an enumerated list of its possible senses. In this section, we brieﬂyreview how approaches to WSD have been evaluated, with reference to the con-cepts we introduced earlier in the chapter. For informative general treatments ofWSD, see Ide and Véronis (1998) and Agirre and Edmonds (2006), and for a morecomprehensive discussion of recent WSD evaluation, see Palmer et al. (2006).
+4.1 Pre-Senseval WSD evaluation
+From the earliest days, assessing the quality of WSD algorithms has been primarilya matter of intrinsic evaluation, and “almost no attempts have been made to eval-uate embedded WSD components” (Palmer et al., 2006: 76). Only very recentlyhave extrinsic evaluations begun to provide some evidence for the value of WSDin end-user applications (Resnik 2006; Carpuat & Wu 2007). Until 1990 or so, dis-cussions of the sense disambiguation task focused mainly on illustrative examplesrather than comprehensive evaluation. The early 1990s saw the beginnings of moresystematic and rigorous intrinsic evaluations, including more formal experimen-tation on small sets of ambiguous words (Yarowsky 1992; Leacock et al., 1993;Bruce & Wiebe 1994).
+24
+Since word-sense disambiguation is typically deﬁned as selecting one sense
+among a number of possibilities, it is naturally regarded as a classiﬁcation prob-lem involving the labeling of words in context (Edmonds & Agirre 2008). Thusevaluation has required answering six main questions.
+25
+How do you deﬁne the ‘sense inventory,’ i.e., the set of possible sense labels for a word?Early efforts involved a wide variety of answers to this question – for exam-ple, Roget’s thesaurus, various paper dictionaries, and various machine readabledictionaries. By the mid-1990s, WordNet (Fellbaum 1998) had emerged as a stan-dard, easily available lexical database for English, and WordNet’s ‘synonym sets’provided a widely used enumeration of senses for content words (nouns, verbs,adjectives, and adverbs).How do you select input items? Early experimentation focused on identifying a
+small set of ‘interesting,’ highly ambiguous words, e.g., line and interest,a n d
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 289 — #19
+Evaluation of NLP Systems 289
+collecting a sample of those words within their sentential contexts. Cowie et al.(1992) represent a notable exception, tackling the problem of disambiguating allthe content words in a sentence simultaneously.How do you obtain labels (‘ground truth’) for items in the data set? In early studies it
+was not uncommon for experimenters to label their own test sets, e.g., Yarowsky(1992); Leacock et al. (1993); Bruce and Wiebe (1994). Miller et al. (1993) and Ng andLee (1996) introduced large-scale manual sense labeling of corpora using Word-Net, laying the groundwork for WSD approaches involving supervised learningtechniques.How do you compare system output against ground truth? In a setting where one
+correct label is assumed per input, the most natural ﬁgure of merit is accuracy,possibly accompanied by coverage if the system is permitted to abstain from label-ing some inputs. Measures derived from cross-entropy (equation 6) can be used togive partial credit to systems that assign a probability distribution over senses(Resnik & Yarowsky 1999; Melamed & Resnik 2000).What constitutes a lower bound on performance? An obvious but overly generous
+lower bound is chance, selecting randomly among a word’s senses according toa uniform distribution. A more sensible lower bound is deﬁned by tagging eachinstance of a word with its most frequent sense.
+26It is also not uncommon to com-
+pare WSD algorithms against easily implemented dictionary-based techniques,e.g., Lesk (1986) or variants.What constitutes an upper bound on performance? Word-sense disambiguation is a
+classic example of a task where human inter-annotator agreement, and particu-larly chance-corrected agreement, are used to deﬁne the limits on what can beexpected from automated algorithms (Artstein & Poesio 2008).
+4.2 Senseval
+In April 1997, a workshop entitled “Tagging Text with Lexical Semantics: Why,What, and How?” was held in conjunction with the Conference on AppliedNatural Language Processing (Palmer & Light 1999). At the time, there wasa clear recognition that manually annotated corpora had revolutionized otherareas of NLP , such as part-of-speech tagging and parsing, and that corpus-drivenapproaches had the potential to revolutionize automatic semantic analysis as well(Ng 1997). Kilgarriff (1998: 582) recalls that there was “a high degree of consensusthat the ﬁeld needed evaluation,” and several practical proposals by Resnik andYarowsky (1997) kicked off a discussion that led to the creation of the Sensevalevaluation exercises.
+The Senseval-1 exercise involved ‘lexical sample’ tasks for English, French, and
+Italian (Kilgarriff 1998), essentially a community-wide version of evaluations pre-viously conducted by individual researchers for words like line (Leacock et al.,
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 290 — #20
+290 Philip Resnik and Jimmy Lin
+1993) and interest (Bruce & Wiebe 1994). As a community-wide ﬁgure of merit,
+Resnik and Yarowsky (1997) had suggested using cross-entropy rather than accu-racy in order to accommodate systems with probabilistic output, thereby allowingas y s t e m Ato obtain partial credit for word w
+ieven if the correct sense cs iwas not
+deemed most probable (cf. equation 6):(8) H=−1
+NN∑
+i=1log2pA(csi|wi, context i)
+Senseval-1 adopted a variant of this suggestion proposed by Melamed and Resnik(2000), which accounted for ﬁne- to coarse-grained distinctions in a sense hier-archy, and also permitted human annotators to specify a disjunction of correctanswers in ground truth sense labelings.
+27
+Following Senseval-1, other Senseval exercises continued for some time as the
+primary forum for evaluation of word-sense disambiguation. Senseval-2 dra-matically expanded the scope of the exercise to include ten languages, usingWordNet-based sense inventories. It also introduced ‘all-words’ tasks, requir-ing systems to assign a sense label to every content word within a document.Senseval-3 (Mihalcea & Edmonds 2004) continued lexical sample and all-wordstasks, and added new semantic annotation tasks including semantic role labeling(Gildea & Jurafsky 2002), creation of logical forms, and sense disambiguation ofthe words in WordNet’s deﬁnitional glosses. More recently, Senseval has becomeSemeval, a series of evaluation exercises for semantic annotation involving a muchlarger and more diverse set of tasks (Agirre et al., 2009).
+5 Case Study: Evaluation of Question Answering
+Systems
+In response to a short query representing an information need, a search engineretrieves a list of ‘hits,’ or potentially relevant results. The user must then man-ually examine these results to ﬁnd the desired information. Given the amount ofinformation available today on the web and in other electronic formats, typicalqueries retrieve thousands of hits. Question answering (QA) aims to improve onthis potentially frustrating interaction model by developing technologies that canunderstand users’ needs expressed in natural language and return only the rele-vant answers. From an algorithmic standpoint, question answering is interestingin that it combines term-level processing techniques (from information retrieval)with rich linguistic analysis. This section provides a case study on the evaluationof question answering systems.
+The earliest question answering systems focused on fact-based questions that
+could be answered by named entities such as people, organizations, locations,dates, etc. A few examples of these so-called ‘factoid’ questions are shown below:•What position did Satchel Paige play in professional baseball?
+•What modern country is home to the ancient city of Babylon?
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 291 — #21
+Evaluation of NLP Systems 291
+•Who was responsible for the killing of Duncan in Macbeth?
+•What Spanish explorer discovered the Mississippi River?
+For several years, the locus of question answering evaluation has resided at the
+Text Retrieval Conferences (TRECs).28TREC is a yearly evaluation forum, orga-
+nized by the US National Institute of Standards and Technology (NIST), whichbrings together dozens of research groups from around the world to work onshared information retrieval tasks. Different ‘tracks’ at TREC focus on differentproblems, ranging from spam detection to biomedical text retrieval. Questionanswering occupied one such track from 1999 to 2007. During this time, theTREC QA tracks were recognized as the de facto benchmark for assessing ques-tion answering systems. These annual forums provide the infrastructure andsupport necessary to conduct large-scale evaluations on shared collections usingcommon test sets, thereby providing a meaningful comparison between differentsystems. The TREC model has been duplicated and elaborated on by CLEF inEurope and NTCIR in Asia, both of which have introduced cross-language ele-ments. This case study focuses specially on the TREC evaluations, recognizing,of course, that it merely represents one of many possible evaluation methodo-logies.
+The TREC QA tracks occurred on an annual cycle. Several months in advance
+of the actual evaluation, the document collection to be used in the evaluation wasmade available to all participants, as well as results from previous years (to serveas training data). The actual evaluation occurred during the summer: participantswere required to ‘freeze’ their systems (i.e., to conclude system development)before downloading the ofﬁcial test data. Results were due before a subsequentdeadline (typically, about a week). System results were evaluated manually by ateam of human assessors at NIST during the late summer or early fall. Each TRECcycle concluded with a workshop in November where all participants were invitedto discuss their results and plan for next year.
+One might think that evaluating answers to factoid questions would be straight-
+forward, but even such a seemingly simple task has many hidden complexities.First is the issue of granularity: although the goal of a question answering sys-tem is to directly identify the answer, it might seem a bit odd if the systemreturned only the exact answer (i.e., a short phrase). Consider the question ‘Who
+was the ﬁrst person to reach the South Pole?’ A response of ‘Roald Amundsen’might not be very helpful, since it provides the user with little context (Who washe? When was this feat accomplished? etc.). Giving the user a sentence such as‘Norwegian explorer Roald Amundsen was the ﬁrst person to reach the southpole, on December 14, 1911’ would seem to be preferable – indeed, Lin et al.(2003a) present results from a user study that conﬁrms this intuition.
+29In evaluat-
+ing answers to factoid questions, what exactly should be assessed? Short phrases?Sentences? A case can certainly be made for evaluating answers ‘in context,’ butrequiring exact answers makes the task more challenging and helps drive for-ward the state of the art. TREC eventually chose the route of requiring short, exactanswers, accompanied by a document from which that answer was extracted.
+
+“9781405155816_4_011” — 2010/5/8 — 11:59 — page 292 — #22
+292 Philip Resnik and Jimmy Lin
+Another issue is the notion of support: the document from which an answer
+derives should provide justiﬁcation for the answer. Consider a sample question,‘What Spanish explorer discovered the Mississippi River?’ An answer of ‘Her-nando de Soto,’ extracted from a document that reads ‘the sixteenth-centurySpanish explorer Hernando de Soto, who discovered the Mississippi River ...’
+would be considered correct. However, the same answer extract from a documentthat says ‘In 1542, Spanish explorer Hernando de Soto died while searching forgold along the Mississippi River ...’ would be considered unsupported ,s i n c et h e
+passage does not actually answer the question. Of course, what counts as evidencevaries from assessor to assessor.
+Finally, for a number of questions there are simply differences in interpretation.
+A well-known example is the question ‘Where is the Taj Mahal?’ In addition to thefamous structure in Agra, India, there is the Taj Mahal casino in Atlantic City, NewJersey. Whether or not the latter location was acceptable as an answer stirred quitea debate among both TREC assessors and participants. Such questions are actuallynot uncommon, especially since many noun phrases have ambiguous referents.This was resolved, somewhat arbitrarily, by instructing assessors to interpret suchquestions as always referring to the ‘most famous’ version of an entity.
+Judging the correctness of system responses is the most difﬁcult and time-
+consuming aspect of TREC QA evaluations. Once the appropriate label has beenassigned (e.g., correct, inexact, unsupported, incorrect), computing scores for system
+runs is relatively straightforward. The ofﬁcial metric varied from year to year, butthe most basic method to quantify system effectiveness is through accuracy – ofall the questions, how many were answered correctly.
+30
+The summative nature of the TREC QA evaluations provides a fair, meaning-
+ful comparison across a large number of systems. Ofﬁcial results from TREC areviewed as authoritative, and the best systems are often used as yardsticks forassessing the state of the ﬁeld. There are, of course, downsides to the TREC ques-tion answering tracks. Organizing and administering each evaluation consumesa signiﬁcant amount of resources and represents a signiﬁcant investment fromboth NIST and the participants (in choosing to participate). The other obviousdrawback of the TREC QA evaluations is the rigid yearly cycle.
+To support formative evaluations for system development between each TREC
+event, researchers have developed regular expressions for answers that mimic thebehavior of assessors, so that system output can be informally assessed withoutthe need for human intervention.
+31The regular expressions were created by man-
+ually examining actual system outputs and assessors’ judgments to capture correctanswers for each question. However, these answer patterns were simultaneouslytoo permissive and too restrictive. They were too restrictive in not being able tocapture all variants of correct answers – it was very difﬁcult to predict a prioriall variant forms of correct answers, e.g., different ways of writing numbers anddates. At the same time, the regular expressions were too permissive, in givingcredit to system responses that happened to coincidentally contain words in theanswer (without actually answering the question). Furthermore, the answer pat-terns did not address the problem of support: although it was possible to use the
+

@@ -1,0 +1,386 @@
+6
+Natural Language
+Generation
+David D. McDonald
+BBNTechnologies6.1 Introduction ..........................................................121
+GenerationComparedtoComprehension •ComputersAreDumb •The
+ProblemoftheSource
+6.2 ExamplesofGeneratedTexts:FromComplextoSimpleand
+BackAgain............................................................124
+Complex •Simple •Today
+6.3 TheComponentsofaGenerator ...................................126
+ComponentsandLevelsofRepresentation
+6.4 ApproachestoTextPlanning.......................................129
+TheFunctionoftheSpeaker •DesiderataforTextPlanning •Pushingvs.
+Pulling •PlanningbyProgressiveReﬁnementoftheSpeaker’sMessage •
+PlanningUsingRhetoricalOperators •TextSchemas
+6.5 TheLinguisticComponent..........................................134
+SurfaceRealizationComponents •RelationshiptoLinguisticTheory •
+ChunkSize •Assemblingvs.Navigating •SystemicGrammars •
+FunctionalUniﬁcationGrammars
+6.6 TheCuttingEdge.....................................................138
+StoryGeneration •Personality-SensitiveGeneration
+6.7 Conclusions...........................................................140References....................................................................141
+6.1 Introduction
+Natural language generation (NLG) is the process by which thought is rendered into language. It hasbeen studied by philosophers, neurologists, psycholinguists, child psychologists, and linguists. Here, weexaminewhatgenerationistothosewholookatitfromacomputationalperspective:peopleintheﬁeldsofartiﬁcialintelligenceandcomputationallinguistics.
+Fromthisviewpoint,the‘generator’—theequivalentofapersonwithsomethingtosay—isacomputer
+program. Its work begins with the initial intention to communicate, and then on to determining thecontentofwhatwillbesaid,selectingthewordingandrhetoricalorganizationandﬁttingittoagrammar,through to formatting the words of a written text or establishing the prosody of speech. Today, what ageneratorproducescanrangefromasinglewordorphrasegiveninanswertoaquestionoraslabelonadiagram,throughmulti-sentenceremarksandquestionswithinadialog,andontomultipageexplanationsandbeyonddependingonthecapacityandgoalsoftheprogramitisworkingfor—themachine‘speaker’withsomethingtosay—andthedemandsandparticularsofthecontext.
+121
+
+122 HandbookofNaturalLanguageProcessing
+Moduloanumberofcaveatsdiscussedlater,theprocessofgenerationisusuallydividedintothreeparts,
+often implemented as three separate programs: (1) identifying the goals of the utterance, (2) planninghow the goals may be achieved by evaluating the situation and available communicative resources, and(3)realizingtheplansasatext.
+Generationhasbeenpartofcomputationallinguisticsforaslongastheﬁeldhasexisted,thoughitonly
+became a substantial subﬁeld in the 1980s. It appeared ﬁrst in the 1950s as a minor aspect of machinetranslation.Inthe1960s,randomsentencegeneratorsweredeveloped,oftenforuseasgrammarcheckers.The1970ssawtheﬁrstcasesofdynamicallygeneratingthemotivatedutterancesofanartiﬁcialspeaker:composing answers to questions put to database query programs and providing simple explanationsfor expert systems. That period also saw the ﬁrst theoretically important generation systems. Thesesystemsreasoned,introspected,appreciatedtheconventionsofdiscourse,andusedsophisticatedmodelsof grammar. The texts they produced, while small in number, remain among the most ﬂuent in theliterature. By the beginning of the 1980s, generation had emerged as a ﬁeld of its own, with uniqueconcernsandissues.
+6.1.1 Generation Compared to Comprehension
+Tounderstandthoseissues,itwillbeusefultocomparegenerationwithitsfarmorestudiedandsophis-ticatedcousin, naturallanguagecomprehension. Evenafter40years, generationisoftenmisunderstoodas a simple variation on comprehension—a tendency thatshould be dispelled. Generation must be seenasaproblemofconstructionandplanning,notanalysis.
+As a process, generation has its own basis of organization, a fact that follows directly from intrinsic
+diﬀerences in information ﬂow. The processing in language comprehension typically follows the tradi-tional stages of a linguistic analysis: phonology, morphology, syntax, semantics, pragmatics/discourse;movinggraduallyfromthetexttotheintentionsbehindit.Incomprehension,the‘known’isthewordingof the text (and possibly its intonation). From the wording, the comprehension process constructs anddeduces the propositional content conveyed by the text and the probable intentions of the speaker inproducingit.Theprimaryprocessinvolvesscanningthewordsofthetextinsequence,duringwhichtheform of the text gradually unfolds. The need to scan imposes a methodology based on the managementof multiple hypotheses and predictions that feed a representation that must be expanded dynamically.Major problems are caused by ambiguity (one form can convey a range of alternative meanings), andbyunder-speciﬁcation(theaudiencegetsmoreinformationfrominferencesbasedonthesituationthanis conveyed by the actual text). In addition, mismatches in the speaker’s and audience’s model of thesituation(andespeciallyofeachother)leadtounintendedinferences.
+Generation has the opposite information ﬂow: from intentions to text, content to form. What is
+already known and what must be discovered is quite diﬀerent from comprehension, and this has manyimplications.Theknownisthegenerator’sawarenessofitsspeaker’sintentionsandmood,itsplans,andthe content and structure of any text the generator has already produced. Coupled with a model of theaudience,thesituation,andthediscourse,thisinformationprovidesthebasisformakingchoicesamongthealternativewordingsandconstructionsthatthelanguageprovides—theprimaryeﬀortindeliberatelyconstructingatext.
+Most generation systems do produce texts sequentially from left to right, but only after having made
+decisionstop-downforthecontentandformofthetextasawhole.Ambiguityinagenerator’sknowledgeisnotpossible(indeedoneoftheproblemsistonoticethatanambiguityhasinadvertentlybeenintroducedinto the text). Rather than under-speciﬁcation, a generator’s problem is how to choose how to signalits intended inferences from an oversupply of possibilities along with that what information should beomittedandwhatmustbeincluded.
+With its opposite ﬂow of information, it would be reasonable to assume that the generation process
+can be organized like the comprehension process but with the stages in opposite order, and to a certainextentthisistrue:pragmatics(goalselection)typicallyprecedesconsiderationofdiscoursestructureand
+
+NaturalLanguageGeneration 123
+coherence, whichusually precede semanticmatterssuch astheﬁttingof conceptsto words. Inturn, thesyntactic context of a word must be ﬁxed before the precise morphological and suprasegmental form itshould take can be known. However, we should avoid taking this as the driving force in a generator’sdesign, since to emphasize the ordering of representational levels derived from theoretical linguisticswould be to miss generation’s special character, namely, that generation is above all a planning process.Generation entails realizing goals in the presence of constraints and dealing with the implications oflimitationsonresources.
+∗
+This being said, the consensus among people who have studied both is that generation is the more
+diﬃcultofthetwo.Whatapersonneedstoknowinordertodevelopacomputerprogramthatproducesﬂuent text is either trivial (the text is entered directly into the code, perhaps with some parameters, andproduced as is—virtually every commercial program in wide use that produces text uses this ‘template’method)orelseitisquitediﬃcultbecauseonehastoworkoutasigniﬁcantnumberoftechniquesandfactsabout language that other areas of language research have never considered. It is probably no accidentthat for most of its history advances in NLG have only come through the work of graduate students ontheirPhDtheses.
+Thisalsogoesalongwaytowardexplainingwhysolittleworkhasbeendoneongenerationascompared
+with comprehension. At a general meeting, papers on parsing will outnumber those on generation byeasily ﬁve to one or more. Instead, most work on generation is reported at the international workshopsongeneration,whichhavebeenheldnearlyeveryyearsince1983.
+6.1.2 Computers Are Dumb
+Two other diﬃculties with doing research on generation should be cited before moving on. One justalluded to is the relative stupidity of computer programs, and with it the lack of any practical need fornatural language generation as those in the ﬁeld view it—templates will do just ﬁne. We have seen thiswiththepopularsuccessofprogramssuchasAlice(Wallace),perhapsthebestknownofthechatterbotsthat use a large set of stimulus-response rules and clever script writing to simulate an intelligent agentwhileinfacthavingvirtuallynocomprehensionofwhattheyaresayingorwhatissaidtothem—alineofworkthatgoesbacktoWeizenbaum’sEliza(1966).
+Peoplewhostudygenerationtendmoretobescientiststhanengineersandaretryingtounderstandthe
+humancapacitytouselanguage—withallitssubtletiesofnuance,andthecomplexity,evenarbitrariness,of its motivations. Computers, on the other hand, do not think very subtle thoughts. The authors oftheirprograms,evenartiﬁcialintelligenceprograms,inevitablyleaveouttherationalesandgoalsbehindthe instructions for their behavior, and with very few exceptions,
+†computer programs do not have any
+emotional or even rhetorical attitudes toward the people who are using them. Without the richness ofinformation,perspective,andintentionthathumansbringtowhattheysay,computershavenobasisformakingthedecisionsthatgointonaturalutterances.Itdoesnotmakesensetoincludeanaturallanguagegeneratorinone’ssystemifthereisnothingforittodo.
+6.1.3 The Problem of the Source
+The other diﬃculty is ultimately more serious and is in large part responsible for the relative lack ofsophisticationintheﬁeldascomparedwithotherlanguageprocessingdisciplines.Thisistheproblemof
+∗Examplesoflimitedresourcesincludetheexpressivecapacityofthesyntacticandlexicaldevicesagivenlanguagehappens
+tohave,orthelimitedspaceavailableinasentenceoraﬁguretitlegiventheprosestylethathasbeenchosen.
+†Theexceptionsareprogramsdeliberatelywrittentoentertainorinteractwithpeople.Theanimatedcharactersdeveloped
+at Zoesis Inc. are a prime example (Loyall et al. 2004) as is the work of Mateas and Stern (2002) on Facade that uses thesame technology. While less emotionally grounded, the synthetic characters developed at the USC Institute for CreativeTechnologies such as their Iraqi Tutor or Mission Rehearsal Exercise are also rich enough to know what to say and why;see,e.g.,Traumetal.(2007)orSwartoutetal.(2006).
+
+124 HandbookofNaturalLanguageProcessing
+thesource.Weknowvirtuallynothingaboutwhatagenerationsystemshouldstartfromifitistospeakaswellaspeopledo.
+Evenwhenapproachedasaprobleminartiﬁcialintelligenceratherthenhumanpsycholinguistics,this
+lackofadeﬁnitiveandwell-understoodstartingpointremainsaproblem,sinceunlikethesituationwithautomatedchessplayersortheexpertsystemsthatcontrolfactories,weknownexttonothingabouthowouronlyexamplesofeﬀectivenaturallanguagegenerators—people—goaboutthebusinessofproducinganutterance.
+Inlanguagecomprehensionthesourceisobvious;weallknowwhatawrittentextoranacousticsignal
+is.Ingeneration,thesourceisa‘stateofmind’insideaspeakerwith‘intentions’actingina‘situation’—allterms of art with very slippery meanings. Studying it from a computational perspective, as we are here,we presume that this state of mind has a representation, but there are dozens of formal (consistentlyimplementable) representations used within the Artiﬁcial Intelligence (AI) community that have (whatwe assume is) the necessary expressive power, with no a priori reason to expect one to be better thananotherasthementalsourceofanutterance.Worseyetisthelackofconsistencybetweenresearchgroupsintheirchoiceofprimitivetermsandrelations—doestherepresentationofamealbottom-outwith‘eat,’or must that notion necessarily be expanded into a manner, a result, and a time period, with ‘eat’ just aruntimeabstraction.
+The lack of a consistent answer to the question of the generator’s source has been at the heart of the
+problemofhowtomakeresearchongenerationintelligibleandengagingfortherestofthecomputationallinguistics community, and it has complicated eﬀorts to evaluate alternative treatments even for peoplein the ﬁeld. As a result, the ever-increasing eﬀort at comparative evaluation has focused on isolatedsubproblemssuchasthegenerationofreferringexpressions.
+6.2 Examples of Generated Texts: From Complex to Simple and
+Back Again
+Ifwelookatthedevelopmentofnaturallanguagegenerationintermsofthesortsoftextsdiﬀerentsystemshaveproduced,weencountersomethingofaparadox.Astheﬁeldadvanced,thetextsgotsimpler.Onlyinthelastdecadehavemostgenerationsystemsbeguntoproducetextswiththesophisticationandﬂuencythatwaspresentinthesystemsoftheearly1970s.
+6.2.1 Complex
+OnedramaticexamplethatdevelopedduringtheearliestperiodisJohnClippinger’sprogramErma(1977),which modeled an actual psychoanalytic patient talking to her therapist. It emulated one paragraph ofspeechbythepatientexcerptedfromextensivetranscriptsofherconversations.TheeﬀortwasjointworkbyClippingerinhis1974PhDthesisandRichardBrowninhisBachelor’sthesis(1974).
+Theparagraphwastheresultofacomputationallycomplexmodel ofthepatient’sthoughtprocesses:
+fromtheﬁrstidentiﬁcationofagoal,throughplanning,criticism,andreplanningofhowtoexpressit,andﬁnallylinguisticrealization.ClippingerandBrown’sprogramhadamultiprocessingcapability—itcouldcontinuetothinkandplanwhiletalking.Thisallowedthemtodevelopamodelof‘restart’phenomenaingeneration,includingthemotivationbehindﬁllerslike“ uh”ordubitativeslike“youknow .”Textsegments
+shown below in parenthesis are what Erma was planning to say before it cut itself oﬀ and restarted. Inotherrespects,thisisanactualparagraphfromatranscriptofthepatientreproducedineverydetail,butfromaﬁrstprinciplesmodelofthoughtandgeneration.
+YouknowforsomereasonIjustthoughtaboutthebillandpaymentagain.(Youshouldn’tgivemeabill.)<Uh>I was thinking that I (shouldn’t be given a bill) of asking you whether it wouldn’t be all
+
+NaturalLanguageGeneration 125
+rightforyounottogivemeabill.Thatis,Iusuallyby(theendofthemonthknowtheamountofthebill), well, Iimmediatelythoughtoftheobjectionstothis, butmyideawasthatIwouldsimplycountupthenumberofhoursandgiveyouacheckattheendofthemonth .
+There has yet to be another program in the literature that can even begin to approach the human-likequalityofthistext.
+∗OntheotherhandErmaonlyeverproducedthatonetextandsomeparameter-driven
+variations, and neither Brown’s multilevel, resumable, interrupt-driven computational architecture norClippinger’srichsetofthinking,critiquing,andlinguisticmoduleswereeverfollowedupbyotherpeople.
+6.2.2 Simple
+Bytheendofthedecadeofthe1970s,generationbegantoberecognizedasaﬁeldwithsharedassumptionsand not just the work of scattered individuals. It also began to attract the attention of the research-funding community, a mixed blessing perhaps, since while the additional resources now allowed workongenerationtobepursuedbyresearchteamsinsteadofisolatedgraduatestudents,theneedtoconformto the expectations of other groups—particularly in the choice of source representation and conceptualvocabulary—substantially limits the creative options. Probably as a direct result, the focus of the workduring the 1980s moved within the generator, and the representations and architecture of the speakerbecameablackboxbehindanimpenetrablewall.
+Nevertheless, the greatly increased number of people working in the ﬁeld led to many important
+developments.Ifthetextsthatthevariousgroups’systemsproducedwerenotofthehighestquality,thiswas oﬀset by increased systematicity in the techniques in use, and a markedly greater understanding ofsomeofthespeciﬁcissuesingeneration.Amongthesewerethefollowing:
+•The implications of separating the processing of a generator into distinct modules and levels ofrepresentation,especiallyinregardtowhichoperations(lexicalchoice,linearordering,andsuch)tookplaceatwhichlevel
+•Theuseofpronounsandotherformsofsubsequentreference
+•The possibilities and techniques for ‘aggregating’ minimal propositions to form syntacticallycomplextexts
+•Therelationshipbetweenhow lexical choiceis done and thechoiceof representationused in thesource
+Here is an example of text produced by systems developed in the late 1980s—a generator that is not atleast this ﬂuent today would be well behind the state of the art. This is from Marie Meteer’s Spokesmansystem(1992),andsetinamilitarydomain;thetextshownhereisanexcerptfromapage-longgeneratedoperationsorder(OPORD).Noticetheuseofsimpleformattingelements.
+2.MISSION10thCorpsdefendinassignedsectortodefeatthe8thCombinedArmsArmy.3.EXECUTIONa.52dMechanizedDivision(1)ConductcoveringforceoperationsalongavenuesBandCtodefeattheleadregimentsoftheﬁrst
+tacticalechelonintheCFAinassignedsector .
+A text like this will never win any prizes for literature, but unlike its hand-crafted predecessors of the1970s, itcanbeproducedmechanicallyfromanycomparableinputwithoutanyhumaninterventionorﬁnetuning.
+∗OnenotableearlyexceptionwasinRichardGabriel’sthesis(1981,1986)whereheseamlesslywovethreemachinegenerated
+paragraphsdescribingaprocedurethatwereindistinguishablefromtherest. Todaywealsoseemundanereportandwebpages that are mixtures of generations from ﬁrst principles (from a semantic model) and frozen templates selected bypeoplethatarehardtellfromthe‘realthing.’
+
+126 HandbookofNaturalLanguageProcessing
+The source OPORD for this text was a battle order data structure that was automatically constructed
+byasimulationsystemthatwaspartofSIMNET(Cosby1999)thatfoughtvirtualbattlesindetailagainsthumantroopsintanksimulators—anexcellentsourceofmaterialforageneratortoworkwith.
+6.2.3 Today
+Now,asweneartheendoftheﬁrstdecadeofthetwenty-ﬁrstcentury,wehavereachedapointwhereawelldesigned and linguistically sophisticated system can achieve the ﬂuency of the special-purpose systemsof the 1970s, but will operate on a better understood theoretical base. As an example of this, considerJacquesRobin’sStreak(1993,1996).Itoperateswithinasublanguage,inthiscasethelanguageofsports:it writes short summaries of basketball games. Like all news reporting, this genre is characterized byinformation-dense,syntacticallyrichsummarytexts,textsthatremainchallengingtothebestofsystems.WithStreak, Robinhasappreciatedtheextensivereferencestohistoricalinformationinthesetexts, andhisexperiencehasimportantimplicationsforhowtoapproachtheproductionofsummariesofallsorts.
+Technically,Streakisasystembasedonrevision.Itbeginsbyproducingarepresentationofthesimple
+factsthatwillprovideanchorsforlaterextensions.Hereisanexampleofwhatitcouldstartfrom(Robin1996:206).
+Dallas, TX—Charles Barkley scored 42 points Sunday as the Phoenix Suns defeated the DallasMavericks123–97.
+This initial text is then modiﬁed as salient historical or ancillary information about this game and theplayers’pastrecordsisconsidered.Hereistheﬁnalform.
+Dallas, TX—Charles Barkley tied a season high with 42 points and Danny Ainge came oﬀ the benchto add 21 Sunday as the Phoenix Suns handed the Dallas Mavericks their league worst 13th straighthomedefeat123–97.
+Notice what has happened. Initial forms have been progressively replaced with phrases that carry moreinformation: “ scored N points ” has become “t i e das e a s o nh i g hw i t hNp o i n t s .” Syntactic formulations
+have been changed (“defeat X ” has become “hand X(a) defeat ”), where the new choice is able to carry
+informationthattheoriginalcouldnot(thenounformof“ defeat”canbemodiﬁedby“theirleagueworst ”
+and“Nthstraighthome ”).Thisissophisticatedlinguisticreasoningthathasbeenmatchedbyonlyafew
+earliersystems.
+Given the rich architectures available in generation systems today, the production of detailed, if
+mundane, information derived directly from an application program has become almost a cookbookoperation in the sense that practitioners of the art can readily engineer a system with these abilities in arelatively short period of time. Much of what makes these modern generators eﬀective is that they areapplied to very speciﬁc domains, domains where the corpus of text can be described as belonging toa ‘sublanguage’ (see, e.g., Kittredge and Lehrberger 1982). That is to say, they restrict themselves to aspecialized area of discourse with a very focused audience and stipulated content, thereby reducing theoptionsforwordchoiceandsyntacticstyletoamanageableset.Inparticular,museumexhibitshavebeenaveryproﬁtableareaforNLGbecausetheyprovideanaturalsettingfortailoringtexttoappreciatewhatexhibitspeoplehavealreadyheardabout.TheILEXsystem,forexample,focusedonorderingissuesandthedynamicgenerationoftextinWebpages(e.g.,O’Donnelletal.2001orDaleetal.1998).
+6.3 The Components of a Generator
+Toproduceatextinthecomputationalparadigm,therehastobeaprogramwithsomethingtosay—wecan call this ‘the application’ or ‘the speaker.’ And there must be a program with the competence to
+
+NaturalLanguageGeneration 127
+render the application’s intentions into ﬂuent prose appropriate to the situation—what we will call ‘thegenerator’—whichisthenaturallanguagegenerationsystemproper.
+Given that the task is to engineer the production of text or speech for a purpose—emulating what
+people do and/or making it available to machines—then both of these components, the speaker and thegenerator, are necessary. Studying the language side of the process without anchoring the work withrespect to the conceptual models and intentional structures of an application may be appropriate fortheoreticallinguisticsorthestudyofgrammaralgorithms,butnotforlanguagegeneration.Indeed,someofthemostexcitingworkcomesfromprojectswherethegeneratorisonlyasmallpart.
+∗
+As described earlier, the very earliest work on sophisticated language production interleaved the
+functions of the speaker and the generator into a single system. Today, there will invariably be threeor four components (if not a dozen) dividing the work amongst themselves according to a myriad ofdiﬀerentcriteria.Wewilldiscussthephilosophiesgoverningthesecriterialater.
+6.3.1 Components and Levels of Representation
+Given the point of view we adopt in this chapter, we will say that generation starts in the mind of thespeaker(theexecutionstatesofthecomputerprogram)asitactsuponanintentiontosaysomething—toachievesomegoalthroughtheuseoflanguage: toexpressfeelings, togossip, toassembleapamphletonhowtostopsmoking(Reiteretal.2003).6.3.1.1 TasksRegardlessoftheapproachtaken,generationproperinvolvesatleastfourtasks.
+a. Informationmustbe selectedforinclusionintheutterance.
+Dependingonhowthisinformationisreiﬁedintorepresentationalunits(apropertyofthespeaker’smental model), parts of the units may have to be omitted, other units added in by default, andperspectivestakenontheunitstoreﬂectthespeaker’sattitudetowardthem.
+b. Theinformationmustbegivena textualorganization.
+It must be ordered, both sequentially and in terms of linguistic relations such as modiﬁcation orsubordination. Thecoherencerelationshipsamongtheunitsoftheinformationmustbereﬂectedin this organization so that the reasons why the information was included will be apparent to theaudience.
+c.Linguisticresources mustbechosentosupporttheinformation’srealization.
+Ultimately these resources will come down to choices of particular words, idioms, syntactic con-structions, productive morphological variations, etc., but the form they take at the ﬁrst momentthattheyareassociatedwiththeselectedinformationwillvarygreatlybetweenapproaches.(Notethattochoosearesourceisnotipsofactotosimultaneouslydeployitinitsﬁnalform—afactthatisnotalwaysappreciated.)
+d. Theselectedandorganizedresourcesmustbe realizedasanactualtextandwrittenoutorspoken.
+Thisstagecanitselfinvolveseverallevelsofrepresentationandinterleavedprocesses.
+6.3.1.2 Coarse ComponentsThese four tasks are usually divided among three components as listed below. The ﬁrst two are oftenspokenofasdeciding‘whattosay,’thethirddeciding‘howtosayit.’
+∗SeeforexampletheintegrationofgenerationintodynamicallyproducedmoviesthatactastourguidesinthePeachsystem
+(Callawayetal.2005,StockandZancanaro2007).
+
+128 HandbookofNaturalLanguageProcessing
+1. Theapplicationprogramor‘speaker.’
+Itdoesthethinkingandmaintainsamodelofthesituation.Itsgoalsarewhatinitiatetheprocess,and it is its representation of concepts and the world that supplies the source on which the othercomponentsoperate.
+2. Atextplanner.
+It selects (or receives) units from the application and organizes them to create a structure for theutterance as a text by employing some knowledge of rhetoric. It appreciates the conventions forsignaling information ﬂow in a linguistic medium: what information is new to the interlocutors,whatisold;whatitemsareinfocus;andwhethertherehasbeenashiftintopic.
+3. Alinguisticcomponent.
+It realizes the planner’s output as an utterance. In its traditional form during the 1970s and early1980s it supplied all of the grammatical knowledge used in the generator. Today this knowledgeis likely to be more evenly distributed throughout the system. This component’s task is to adapt(and possibly to select) linguistic forms to ﬁt their grammatical contexts and to orchestrate theircomposition. This process leads, possibly incrementally, to a surface structure for the utterance,whichisthenreadouttoproducethegrammaticallyandmorphologicallyappropriatewordingfortheutterance.
+How these roughly drawn components interact is a matter of considerable debate and no little amountof confusion, as no two research groups are likely to agree on precisely what kinds of knowledge orprocessingappearinagivencomponentorwhereitsboundariesshouldlie.Therehavebeenattemptstostandardizetheprocess,mostnotablytheRAGSproject(see,e.g.,Cahilletal.1999),buttodatetheyhavefailedtogainanytraction.
+Onecamp,makingananalogytotheapparentabilitiesofpeople,holdsthattheprocessismonotonic
+and indelible. A completely opposite camp extensively revises its (abstract) draft texts. Some groupsorganize the components as a pipeline; others use blackboards. Nothing conclusive about the relativemeritsofthesealternativescanbesaidtoday.Wecontinuetobeinaperiodwherethebestadviceistoleta1000ﬂowersbloom.6.3.1.3 Representational LevelsThere are necessarily one or more intermediate levels between the source and the text simply becausetheproductionofanutteranceisaserialprocessextendedintime. Mostdecisionswillinﬂuenceseveralparts of the utterance at once, and consequently cannot possibly be acted upon at the moment they aremade. Without some representation of the results of these decisions there would be no mechanism forrememberingthemandutteranceswouldbeincoherent.
+The consensus favors at least three representational levels, roughly the output of each of the com-
+ponents. In the ﬁrst or ‘earliest’ level, the information units of the application that are relevant to thetext planner form a messagelevel—the source from which the later components operate. Depending
+on the system, this level can consist of anything from an unorganized heap of minimal proposi-tions or RDF to an elaborate typed structure with annotations about the relevance and purposes ofitsparts.
+All systems include one or more levels of surface syntactic structure . These encode the phrase
+structure of the text and the grammatical relations among its constituents. Morphological special-ization of word stems and the introduction of punctuation or capitalization are typically done asthis level is read out and the utterance uttered. Common formalisms at this level include sys-temic networks, tree-adjoining and categorial grammar, and functional uniﬁcation, though practicallyevery linguistic theory of grammar that has ever been developed has been used for generation atone time or another. Nearly all of today’s generation systems express their utterances as writ-ten texts—characters printed on a computer screen or printed out as a pamphlet—rather than
+
+NaturalLanguageGeneration 129
+as speech. Consequently generators seldom include an explicit level of phonological form andintonation.
+∗
+Inbetweenthemessageandthesurfacestructureisalevel(orlevels)ofrepresentationatwhichasystem
+canreasonaboutlinguisticoptionswithoutsimultaneouslybeingcommittedtosyntacticdetailsthatareirrelevanttotheproblemathand.Instead,abstractlinguisticstructuresarecombinedwithgeneralizationsoftheconceptsinthespeaker’sdomain-speciﬁcmodelandsophisticatedconceptsfromlexicalsemantics.Thelevelisvariouslycalled textstructure, deepsyntax ,abstractsyntacticstructure , andthelike. Insome
+designs,itwillemployrhetoricalcategoriessuchaselaborationortemporallocation.Alternativelyitmaybebasedonabstractlinguisticconceptssuchasthematrix–adjunctdistinction.Itisusuallyorganizedastrees of constituents with a layout roughly parallel to that of the ﬁnal text. The leaves of these trees maybedirectmappingsofunitsfromtheapplicationormaybesemanticstructuresspeciﬁctothatlevel.
+6.4 Approaches to Text Planning
+Even though the classic conception of the division of labor in generation between a text planner and alinguisticcomponent—wherethelatteristhesolerepositoryofthegenerator’sknowledgeoflanguage—wasprobablyneverreallytrueinpracticeandiscertainlynottruetoday,itremainsaneﬀectiveexpositorydevice.Inthissection,weconsidertextplanninginarelativelypureform,concentratingonthetechniquesfordeterminingthecontentoftheutteranceanditslarge-scale(supra-sentential)organization.
+It is useful in this context to consider a distinction put forward by the psycholinguist Willem Levelt
+(1989),between‘macro’and‘micro’planning.
+•Macro-planning refers to the process(es) that choose the speech acts, establish the content,
+determinehowthesituationdictatesperspectives,andsoon.
+•Micro-planning is a cover term for a group of phenomena: determining the detailed (sentence-
+internal)organizationoftheutterance,consideringwhethertousepronouns,lookingatalternativeways to group information into phrases, noting the focus and information structure that mustapply,andothersuchrelativelyﬁne-grainedtasks.These,alongwithlexicalchoice,arepreciselythesetoftasksthatfallintothisnebulousmiddlegroundthatismotivatingsomuchoftoday’swork.
+6.4.1 The Function of the Speaker
+Fromthegenerator’sperspective,thefunctionoftheapplicationthatitisworkingforistosetthescene.Sinceittakesnoovertlylinguisticactionsbeyondinitiatingtheprocess,wearenotinclinedtothinkoftheapplicationprogramasapartofthegeneratorproper.Nevertheless,theinﬂuenceitwieldsindeﬁningthesituation and the semantic model from which the generator works is so strong that it must be designedin concert with the generator if high-quality results are to be achieved. This is the reason why we oftenspeak of the application as the ‘speaker,’ emphasizing the linguistic inﬂuences on its design and its tightintegrationwiththegenerator.
+Thespeakerestablisheswhatcontentispotentiallyrelevant.Itmaintainsanattitudetowarditsaudience
+(as a tutor, reference guide, commentator, executive summarizer, copywriter, etc.). It has a history ofpast transactions. It is the component with the model of the present state and its physical or conceptualcontext.Thespeakerdeploysarepresentationofwhatitknows,andthisimplicitlydeterminesthenatureand the expressive potential of the ‘units’ of speaker stuﬀ that the generator works from to produce the
+∗Again, theexceptionsaresystemsthatarespeciﬁcallydesignedtotalkwithpeople, particularlymulti-modalsystemsthat
+combine speech with gesture. The work by Justine Cassell on Rea (2000) is a prime example. The need to coordinate(animated)gesturewiththeproductionofthespeechdowntothesyllablemotivatesalevelrepresentingcoordinatedactionplans.
+
+130 HandbookofNaturalLanguageProcessing
+utterance(thesource).Wecancollectivelycharacterizeallofthisasthe‘situation’inwhichthegenerationoftheutterancetakesplace,inthesenseofBarwiseandPerry(1983)(seealsoDevlin1991).
+Inthesimplestcase,theapplicationconsistsofjustapassivedatabaseofitemsandpropositions.and
+thesituationisaselectedsubsetofthosepropositions(the‘relevantdata’)thathasbeenselectedthroughsome means, often by following the thread of a set of identiﬁers chosen in response to a question fromtheuser.
+In some cases, the situation is a body of raw data and the job of speaker is to make sense of it in
+linguistically communicable terms before any signiﬁcant work can be done by the other components.Theliteratureincludesseveralimportantsystemsofthissort.Probablythemostthoroughlydocumentedis the Ana system developed by Karen Kukich (1986), where the input is a set of time points giving thevaluesofstockindexesandtradingvolumesduringthecourseofaday.
+Whenthespeakerisacommentator, thesituationcanevolvefrommomenttomomentinactualreal
+time.The
+SOCCERsystem(Andreetal.1988)didcommentaryforfootballgamesthatwerebeingdisplayed
+on the user’s screen. This led to some interesting problems in how large a chunk of information couldreasonablybegeneratedatatime,sincetoosmallachunkwouldfailtoseethelargerintentionsbehindasequenceofindividualpassesandinterceptions,whiletoolargeachunkwouldtakesolongtoutterthatthecommentatorwouldfallbehindtheaction.
+Oneofthecrucialtasksthatmustoftenbeperformedatthejuncturebetweentheapplicationandthe
+generatorisenrichingtheinformationthattheapplicationsuppliessothatitwillusetheconceptsthatapersonwouldexpecteveniftheapplicationhadnotneededthem.Wecanseeanexampleofthisinoneoftheearliest,andstillamongthemostaccomplishedgenerationsystems,AnthonyDavey’sProteus(1974).
+Proteus played games of tic-tac-toe (noughts and crosses) and provided commentary on the results.
+Hereisanexampleofwhatitproduced:
+Thegamestartedwithmytakingacorner, andyoutookanadjacentone. IthreatenedyoubytakingthemiddleoftheedgeoppositethatandadjacenttotheonewhichIhadjusttakenbutyoublockeditandthreatenedme.Iblockedyourdiagonalandforkedyou.Ifyouhadblockedmine,youwouldhaveforked me, but you took the middle of the edge opposite of the corner which I took ﬁrst and the onewhichyouhadjusttakenandsoIwonbycompletingmydiagonal .
+Proteusbeganwithalistofthemovesinthegameithadjustplayed. Inthissampletext, thelistwasthefollowing.Movesarenotatedagainstanumberedgrid;squareoneistheupperleftcorner.Proteus(P)isplayingitsauthor(D).
+P:1 D:3 P:4 D:7 P:5 D:6 P:9
+One is tempted to call this list of moves the ‘message’ that Proteus’s text-planning component has beentasked by its application (the game player) to render into English—and it is what actually crosses theinterface between them—but consider what this putative message leaves out when compared with theultimate text: where are the concepts of move and countermove or the concept of a fork? The gameplaying program did not need to think in those terms to carry out its task and performed perfectly wellwithoutthem,butiftheywerenotinthetextwewouldneverforamomentthinkthatthesequencewasagameoftic-tac-toe.
+DaveywasabletogettextsofthiscomplexityandnaturalnessonlybecauseheimbuedProteuswitha
+richconceptualmodelofthegame,andconsequentlycouldhaveitusetermslike‘block’or‘threat’withassurance. Like most instances where exceptionally ﬂuent texts have been produced, Davey was able toget this sort of performance from Proteus because he had the opportunity to develop the thinking partof the system as well its linguistic aspects, and consequently could insure that the speaker supplied richperspectivesandintentionsforthegeneratortoworkwith.
+This, unfortunately, is quite a common state of aﬀairs in the relationship between a generator and
+its speaker. The speaker, as an application program carrying out a task, has a pragmatically complete
+
+NaturalLanguageGeneration 131
+but conceptually impoverished model of what it wants to relate to its audience. Concepts that must beexplicitinthetextareimplicitbutunrepresentedintheapplication’scodeanditremainstothegenerator(Proteus in this case) to make up the diﬀerence. Undoubtedly the concepts were present in the mind oftheapplication’shumanprogrammer,butleavingthemoutmakesthetaskeasiertoprogramandrarelylimitstheapplication’sabilities.Theproblemofmostgeneratorsisineﬀecthowtoconvertwatertowine,compensatinginthegeneratorforlimitationsintheapplication(McDonaldandMeteer1988).
+6.4.2 Desiderata for Text Planning
+Thetasksofatextplanneraremanyandvaried.Theyincludethefollowing:
+•Construingthespeaker’ssituationinrealizabletermsgiventheavailablevocabularyandsyntacticresources, an especially important task when the source is raw data. For example, precisely whatpointsofthecompassmakethewind“ easterly”(Bourbeauetal.1990,Reiteretal.2005)
+•Determiningtheinformationtoincludeintheutteranceandwhetheritshouldbestatedexplicitlyorleftforinference
+•Distributingtheinformationintosentencesandgivingitanorganizationthatreﬂectstheintendedrhetorical force, as well as the appropriate conceptual coherence and textual cohesion given thepriordiscourse
+Sinceatexthasbothaliteralandarhetoricalcontent,nottomentionreﬂectionsofthespeaker’saﬀectandemotions,thedeterminationofwhatthetextistosayrequiresnotonlyaspeciﬁcationofitspropositions,statements, references, etc., butalsoaspeciﬁcationofhowtheseelementsaretoberelatedtoeachotheras parts of a single coherent text (what is evidence, what is a digression) and of how they are structuredas a presentation to the audience to which the utterance is addressed. This presentation informationestablishes what is thematic, where the shifts in perspective are, how new information ﬁts within thecontextestablishedbythetextthatprecededit,andsoon.
+How to establish the simple, literal information content of the text is well understood, and a number
+of diﬀerent techniques have been extensively discussed in the literature. How to establish the rhetoricalcontent of the text, however, is only beginning to be explored, and in the past was done implicitly or byrote by directly coding it into the program. There have been some experiments in deliberate rhetoricalplanning, notably by Hovy (1990) and DiMarco and Hirst (1993). The speciﬁcation and expression ofaﬀect is only just beginning to be explored, prompted by the ever increasing use of ‘language enabled’synthetic characters in games, for example, Mateas and Stern (2003), and avatar-based man–machineinteraction,forexample,Piweketal.(2005)orStreitetal.(2006).
+6.4.3 Pushing vs. Pulling
+To begin our examination of the major techniques in text planning, we need to consider how thetext planner and speaker are connected. The interface between the two is based on one of two logicalpossibilities:‘pushing’or‘pulling.’
+Theapplicationcanpushunitsofcontenttothetextplanner,ineﬀecttellingthetextplannerwhatto
+say and leaving it the job of organizing the units into a text with the desired style and rhetorical eﬀect.Alternatively,theapplicationcanbepassive,takingnopartinthegenerationprocess,andthetextplannerwillpullunitsfromit.Inthisscenario,thespeakerisassumedtohavenointentionsandonlythesimplestongoingstate(oftenitisadatabase).Alloftheworkisthendoneonthegenerator’ssideofthefence.
+Textplannersthatpullcontentfromtheapplicationestablishtheorganizationofthetexthandinglove
+withitscontent,usingmodelsofpossibletextsandtheirrhetoricalstructureasthebasisoftheiractions.Their assessment of the situation determines which model they will use. Speakers that push content tothetextplanner typicallyusetheirown representationof thesituationdirectlyasthecontentsource. Atthetimeofwriting, thepullschoolofthoughthasdominatednew, theoreticallyinterestingworkintext
+
+132 HandbookofNaturalLanguageProcessing
+planning, while virtually all practical systems are based on simple push applications or highly stylized,ﬁxed‘schema’-basedpullplanners.
+6.4.4 Planning by Progressive Reﬁnement of the Speaker’s Message
+This technique—often called ‘direct replacement’—is easy to design and implement, and is by far themost mature approach of those we will cover. In its simplest form, it amounts to little more than isdonebyordinarydatabasereportgeneratorsormail-mergeprogramswhentheymakesubstitutionsforvariables in ﬁxed strings of text. In its sophisticated forms, which invariably incorporate multiple levelsofrepresentationandcomplexabstractions,ithasproducedsomeofthemostﬂuentandﬂexibletextsinthe ﬁeld. Three systems discussed earlier did their text planning using progressive reﬁnement: Proteus,Erma,andSpokesman.
+Progressive reﬁnement is a push technique. It starts with a data structure already present in the
+applicationandthenitgraduallytransformsthatdataintoatext.Thesemanticcoherenceoftheﬁnaltextfollowsfromtheunderlyingsemanticcoherencethatispresentinthedatastructurethattheapplicationpassestothegeneratorasitsmessage.
+The essence of progressive reﬁnement is to have the text planner add additional information on top
+of the basic skeleton provided by the application. We can see a good example of this in Davey’s Proteussystem,whereinthiscasetheskeletonisthesequenceofmoves.Theorderingofthemovesmuststillberespected in the ﬁnal text because Proteus is a commentator and the sequence of events described in atextisimplicitlyunderstoodasreﬂectingasequenceintheworld.Proteusonlydepartsfromtheorderingwhenitservesausefulrhetoricalpurpose,asintheexampletextwhereitdescribesthealternativeeventsthatcouldhaveoccurredifitsopponenthadmadeadiﬀerentmoveearlyon.
+On top of the skeleton, Proteus looks for opportunities to group moves into compound complex
+sentencesbyviewingthesequenceofmovesintermsoftheconceptsoftic-tac-toe.Forexample,itlooksfor pairs of forced moves (i.e., a blocking move to counter a move that had set up two in a row). It alsolooksformoveswithstrategicallyimportantconsequences(amovecreatingafork).Foreachsemanticallysigniﬁcant pattern that it knows how to recognize, Proteus has one or more text organization patternsthatcanexpressit.Forexample,thepattern‘high-levelactionfollowedbyliteralstatementofthemove’mightyield“ Ithreatenedyoubytakingthemiddleoftheedgeoppositethat .”Alternatively,Proteuscould
+haveused‘literalmovefollowedbyitshigh-levelconsequence’pattern:“Itookthemiddleoftheoppositeedge,threateningyou.”
+Thechoiceofrealizationisleftuptoa specialist,whichtakesintoaccountasmuchinformationasthe
+designerofthesystem,Daveyinthiscase,knowshowtobringtobear.Similarly,aspecialistisemployedtoelaborateontheskeletonwhenlargerscalestrategicphenomenaoccur.Inthecaseofafork,thispromptstheadditionalrhetoricaltaskofexplainingwhattheotherplayermighthavedonetoavoidthefork.
+Proteus’ techniques are an example of the standard design for a progressive reﬁnement text planner:
+start with a skeletal data structure that is a rough approximation of the ﬁnal text’s organization usinginformationprovidedbythespeakerdirectlyfromitsinternalmodelofthesituation.Thestructurethengoes through some number of successive steps of processing and re-representation as its elements areincrementallytransformedormappedtostructuresthatarecloserandclosertoasurfacetext,becomingprogressively less domain oriented and more linguistic at each step. The Streak system described earlierfollows the same design, replacing simple syntactic and lexical forms with more complex ones with agreatercapacitytocarrycontent.
+Control is usually vested in the structure itself, using what is known as data-directed control.E a c h
+element of the data is associated with a specialist or an instance of some standard mapping which takescharge of assembling the counterpart of the element within the next layer of representation. The wholeprocessisoftenorganizedintoapipelinewhereprocessingcanbegoingonatmultiplerepresentationallevels simultaneously as the text is produced in its natural left to right order as it would unfold if beingspokenbyaperson.
+
+NaturalLanguageGeneration 133
+A systematic problem with progressive reﬁnement follows directly from its strengths, namely, that
+its input data structure, the source of its content and control structure, is also a straightjacket. Whileit provides a ready and eﬀective organization for the text, the structure does not provide any vantagepoint from which to deviate from that organization even if that would be more eﬀective rhetorically.Thisremainsaseriousproblemwiththeapproach,andispartofthemotivationbehindthetypesoftextplannerswewilllookatnext.
+6.4.5 Planning Using Rhetorical Operators
+Thenexttext-planningtechniquethatwewilllookatcanbelooselycalled‘formalplanningusingrhetoricaloperators.’Itisapulltechniquethatoperatesoverapoolofrelevantdatathathasbeenidentiﬁedwithinthe application. The chunks in the pool are typically full propositions—the equivalents of single simpleclausesiftheywererealizedinisolation.
+This technique assumes that there is no useful organization to the propositions in the pool, or,
+alternatively,thatsuchorganizationasisthereisorthogonaltothediscoursepurposeathand,andshouldbeignored.Instead,themechanismsofthetextplannerlookformatchesbetweentheitemsintherelevantdatapoolandtheplanner’sabstractpatterns,andselectandorganizetheitemsaccordingly.
+Threedesignelementscometogetherinthepracticeofoperator-basedtextplanning,allofwhichhave
+theirrootsinworkdoneinthelater1970s:
+•The use of formal means–ends reasoning techniques adapted from the robot-action planningliterature
+•Aconceptionofhowcommunicationcouldbeformalizedthatderivesfromspeech-acttheoryandspeciﬁcworkdoneattheUniversityofToronto
+•Theoriesofthelarge-scale‘grammar’ofdiscoursestructure
+Means–ends analysis, especially as elaborated in the work by Sacerdoti (1977), is the backbone of thetechnique.Itprovidesacontrolstructurethatdoesatop-down,hierarchicalexpansionofgoals.Eachgoalisexpandedthroughtheapplicationofasetofoperatorsthatinstantiateasequenceofsubgoalsthatwillachieveit.Thisprocessofmatchingoperatorstogoalsterminatesinpropositionsthatcandirectlyrealizetheactionsdictatedbyterminalsubgoals.Thesepropositionsbecometheleavesofatree-structuredtextplan, with the goals as the nonterminals and the operators as the rules of derivation that give the treeitsshape.
+6.4.6 Text Schemas
+Thethirdtext-planningtechniquewedescribeistheuseofpreconstructed,ﬁxednetworksthatarereferredtoas‘schemas’followingthecoinageofthepersonwhoﬁrstarticulatedthisapproach, KathyMcKeown(1985).Schemasareapulltechnique.Theymakeselectionsfromapoolofrelevantdataprovidedbytheapplication according to matches with patterns maintained by the system’s planning knowledge—justlike an operator-based planner. The diﬀerence is that the choice of (the equivalent of the) operators isﬁxedratherthanactivelyplanned.Means–endsanalysis-basedsystemsassembleasequenceofoperatorsdynamically as the planning is underway. A schema-based system comes to the problem with the entiresequencealreadyinhand.
+Given that characterization of schemas, it would be easy to see them as nothing more than compiled
+plans,andonecanimaginehowsuchacompilermightworkifameans–endsplannerweregivenfeedbackabout the eﬀectiveness of its plans and could choose to reify it’s particularly eﬀective ones (though noone has ever done this). However, that would miss a important fact about system design that it is oftensimplerandjustaseﬀectivetosimplywritedownaplanbyroteratherthantoattempttodevelopatheoryoftheknowledgeofcontextandcommunicativeeﬀectivenessthatwouldbedeployedinthedevelopmentof the plan and from that attempt to construct a plan from ﬁrst principles, which is essentially what the
+
+134 HandbookofNaturalLanguageProcessing
+means–endsapproachtotextplanningdoes.Itisnoaccidentthatschema-basedsystems(andevenmoreso progressive reﬁnement systems) have historically produced longer and more interesting texts thanmeans–endssystems.
+Schemasareusuallyimplementedastransitionnetworks,whereaunitofinformationisselectedfrom
+thepoolaseacharcistraversed.Themajorarcsbetweennodestendtocorrespondtochainsofcommonobjectreferencesbetweenunits:causefollowedbyeﬀect,sequencesofeventsthataretracedstepbystepthroughtime, andsoon. Selfloopsreturningbacktothesamenodedictatetheadditionofattributestoanobject,sideeﬀectsofanaction,etc.
+The choice of what schema to use is a function of the overall goal. McKeown’s original system, for
+example, dispatched on a three-way choice between deﬁning an object, describing it, or distinguishingit from another type of object. Once the goal is determined, the relevant knowledge pool is separatedoutfromtheotherpartsofthereferenceknowledgebaseandtheselectedschemaisapplied.Navigationthroughtheschema’snetworkisthenamatterofwhatunitsorchainsofunitsareactuallypresentinthepoolincombinationwiththeteststhatthearcsapply.
+Givenacloseﬁtbetweenthedesignoftheknowledgebaseandthedetailsoftheschema,theresulting
+texts can be quite good. Such faults as they have are largely the result of weakness in other parts of thegeneratorandnotinitscontent-selectioncriteria.Experiencehasshownthatbasicschemascanbereadilyabstracted and ported to other domains (McKeown et al. 1990). Schemas do have the weakness whencomparedtosystemswithexplicitoperatorsanddynamicplanningthat,whenusedininteractivedialogs,donotnaturallyprovidethekindsofinformationthatisneededforrecognizingthesourceofproblems,which makes it diﬃcult to revise any utterances that are initially not understood (Moore and Swartout1991, Paris 1991). But, for most of the applications to which generation systems are put, schemas are asimple and easily elaborated technique that is probably the design of choice whenever the needs of thesystemornatureofthespeaker’smodelmakeitunreasonabletouseprogressivereﬁnement.
+6.5 The Linguistic Component
+Inthissection,welookatthecoreissuesinthemostmatureandwelldeﬁnedofalltheprocessesinnaturallanguage generation, the application of a grammar to produce a ﬁnal text from the elements that weredecideduponbytheearlierprocessing.Thisistheoneareainthewholeﬁeldwhereweﬁndtrueinstancesofwhatsoftwareengineerswouldcallproperlymodularcomponents:bodiesofcodeandrepresentationswith well-deﬁned interfaces that can be (and have been) shared between widely varying developmentgroups.
+6.5.1 Surface Realization Components
+To reﬂect the narrow scope (but high proﬁciency) of these components, I refer to them here as surfacerealization components. ‘Surface’ (as opposed to deep) because what they are charged with doing isproducingtheﬁnalsyntacticandlexicalstructureofthetext—whatlinguistsintheChomskiantraditionwouldcallasurfacestructure;and‘realization’becausewhattheydoneverinvolvesplanningordecisionmaking: They are in eﬀect carrying out the orders of the earlier components, rendering (realizing) theirdecisionsintotheshapethattheymusttaketobepropertextsinthetargetlanguage.
+The job of a surface realization component is to take the output of the text planner, render it into a
+form that can be conformed (in a theory-speciﬁc way) to a grammar, and then apply the grammar toarrive at the ﬁnal text as a syntactically structured sequence of words, which are read out to become theoutputofthegeneratorasawhole.Therelationshipsbetweentheunitsoftheplanaremappedtosyntacticrelationships. They are organized into constituents and given a linear ordering. The content words aregivengrammaticallyappropriatemorphologicalrealizations.Functionwords(“ to,”“of,”“has,”andsuch)
+areaddedasthegrammardictates.
+
+NaturalLanguageGeneration 135
+6.5.2 Relationship to Linguistic Theory
+Practically without exception, every modern realization component is an implementation of one of therecognized grammatical formalisms of theoretical linguistics. It is also not an exaggeration to say thatvirtuallyeveryformalisminthealphabetsoupofalternativesthatismodernlinguisticshasbeenusedasthebasisofsomerealizerinsomeprojectsomewhere.
+The grammatical theories provide systems of rules, sets of principles, systems of constraints, and,
+especially,arichsetofrepresentations,which,alongwithalexicon(notatrivialpartintoday’stheories),attempttodeﬁnethespaceofpossibletextsandtextfragmentsinthetargetnaturallanguage.Thedesignersoftherealizationcomponentsdevisewaysofinterpretingthesetheoreticalconstructsandnotationsintoeﬀectivemachineryforconstructingtextsthatconformtothesesystems.
+Itisimportanttonotethatallgrammarsarewoefullyincompletewhenitcomestoprovidingaccounts
+(or even descriptions) of the actual range of texts that people produce, and no generator within thepresent state of the art is going to produce a text that is not explicitly in the competence of the surfacegrammar is it using. Generation is in a better situation in this respect than comprehension is, however.Asaconstructivediscipline,weatleasthavethecapabilityofextendingourgrammarswheneverwecandetermine a motive (by the text planner) and a description (in terms of the grammar) for some newconstruction.Asdesigners,wecanalsochoosewhethertouseaconstructornot,leavingouteverythingthat is problematic. Comprehension systems on the other hand, must attempt to read the texts theyhappentobeconfrontedwithandsowillinevitablybefacedatalmosteveryturnwithconstructsbeyondthecompetenceoftheirgrammar.
+6.5.3 Chunk Size
+Oneofthesideeﬀectsofadoptingthegrammaticalformalismsofthetheoreticallinguisticscommunityisthateveryrealizationcomponentgeneratesacompletesentenceatatime,withafewnotableexceptions.
+∗
+Furthermorethischoiceof‘chunksize’becomesanarchitecturalnecessity,notafreelychosenoption.Asimplementationsofestablishedtheoriesofgrammar,realizersmustadoptthesamescopeoverlinguisticpropertiesastheirparenttheoriesdo;anythinglargerorsmallerwouldbeundeﬁned.
+Therequirementthattheinputtomostsurfacerealizationcomponentsspecifythecontentofanentire
+sentence at a time has a profound eﬀect on the planners that must produce these speciﬁcations. Givena set of propositions to be communicated, the designer of a planner working in this paradigm is morelikelytothinkintermsofasuccessionofsentencesratherthantryingtointerleaveonepropositionwithintherealizationofanother(althoughsomeofthismaybeaccomplishedbyaggregationorrevision).Suchlocksteptreatmentscanbeespeciallyconﬁningwhenhigherorderpropositionsaretobecommunicated.For example, the natural realization of such a proposition might be adding “only ” inside the sentence
+that realizes its argument, yet the full-sentence-at-a-time paradigm makes this exceedingly diﬃcult toappreciateasapossibilityletalonecarryout.
+6.5.4 Assembling vs. Navigating
+Grammars, and with them the processing architectures of their realization components, fall intotwocamps.
+∗The Mumble-86 realizer (Meteer et al. 1987), when it was used as part of Jeﬀ Conklin’s Genaro system (Conklin and
+McDonald 1982) determined sentence length and composition dynamically according to a “weight” calculated from thecharacteroftheconstructionsitcontainedandbeganthepopulatethenextsentenceonceathresholdparameterhadbeenexceeded.ThiswaspossiblebecauseMumbleisbasedonlexicalizedTreeAdjoiningGrammar,wherethegrammarchunkscanbeassmallasasingleword.
+
+136 HandbookofNaturalLanguageProcessing
+•The grammar provides a set of relatively small structural elements and constraints on theircombination.
+•Thegrammarisasinglecomplexnetworkordescriptivedevicethatdeﬁnesallthepossibleoutputtexts in a single abstract structure (or in several structures, one for each major constituent typethatitdeﬁnes:clause,nounphrase,thematicorganization,andsoon).
+Whenthegrammarconsistsofasetofcombinableelements, thetaskoftherealizationcomponentistoselectfromthissetandassemblethemintoacompositerepresentationfromwhichthetextisthenreadout.Whenthegrammarisasinglestructure, thetaskistonavigatethroughthestructure, accumulatingandreﬁningthebasisfortheﬁnaltextalongthewayandproducingitallatoncewhentheprocesshasﬁnished.
+Assembly-style systems can produce their texts incrementally by selecting elements from the early
+partsofthetextﬁrst,andcantherebyhaveanaturalrepresentationof‘whathasalreadybeensaid’whichis a valuable resource for making decisions about whether to use pronouns and other position-basedjudgments.Navigation-basedsystems,becausetheycanseethewholetextatonceasitemerges,canallowconstraintsfromwhatwillbethelaterpartsofthetexttoeﬀectrealizationdecisionsinearlierparts, buttheycanﬁnditdiﬃcult,evenimpossible,tomakecertainposition-basedjudgments.
+Amongthesmall-elementlinguisticformalismsthathavebeenusedingenerationwehaveconventional
+productionrulerewritesystems,CCG,SegmentGrammar,andTreeAdjoiningGrammar(TAG).Amongthesingle-structureformalisms,wehaveSystemicGrammarandanytheorythatusesfeaturestructures,forexample,HPSGandLFG.Welookattwooftheseindetailbecauseoftheirinﬂuencewithinthecommunity.
+6.5.5 Systemic Grammars
+Understandingandrepresentingthecontextintowhichtheelementsofanutteranceareﬁtandtheroleofthecontextintheirselectionisacentralpartofthedevelopmentofagrammar.Itisespeciallyimportantwhentheperspectivethatthegrammariantakesisafunctionalratherthanastructuralone—theviewpointadoptedinSystemicGrammar. Astructuralperspectiveemphasizestheelementsoutofwhichlanguageis built (constituents, lexemes, prosodics, etc.). A functional perspective turns this on its head and askswhatisthespectrumofalternativepurposesthatatextcanserve(its‘communicativepotential’).Doesitintroduceanewobjectwhichwillbethecenteroftherestofthediscourse?Isitreinforcingthatobject’sprominence?Isitshiftingthefocustosomethingelse?Doesitquestion?Enjoin?Persuade?Themultitudeof goals that a text and its elements can serve provides the basis for a paradigmatic (alternative based)ratherthanastructural(formbased)viewoflanguage.
+The Systemic Functional Grammar (SFG) view of language originated in the early work of Michael
+Halliday(1967,1985)andHallidayandMatthiessen(2004)andhasawidefollowingtoday.Ithasalwaysbeenanaturalchoiceforworkinlanguagegeneration(Davey’sProteussystemwasbasedonit)becausemuch of what a generator must do is to choose among the alternative constructions that the languageprovides based on the context and the purpose they are to serve—something that a systemic grammarrepresentsdirectly.
+A systemic grammar is written as a specialized kind of decision tree: ‘If this choice is made, then
+this set of alternatives becomes relevant; if a diﬀerent choice is made, those alternatives can be ignored,but this other set must now be addressed.’ Sets of (typically disjunctive) alternatives are grouped into‘systems’ (hence “systemic grammar”) and connected by links from the prior choice(s) that made themrelevant to the other systems that they in turn make relevant. These systems are described in a naturaland compelling graphic notation of vertical bars listing each system and lines connecting them to othersystems.(TheNigelsystemicgrammar,developedatISI(Matthiessen1983),requiredanentireoﬃcewallforitspresentationusingthisnotation.)
+In a computational treatment of SFG for language generation, each system of alternative choices
+has an associated decision criteria. In the early stages of development, these criteria are often left tohuman intervention so as to exercise the grammar and test the range of constructions it can motivate
+
+NaturalLanguageGeneration 137
+(e.g.,Fawcett1981).IntheworkatISI,thisevolvedintowhatwascalled‘inquirysemantics,’whereeachsystemhadanassociatedsetofpredicatesthatwouldtestthesituationinthespeaker’smodelandmakesits choices accordingly. This makes it in eﬀect a ‘pull’ system for surface realization; something that inotherpublicationshasbeencalled grammar-driven controlasopposedtothe message-driven approachof
+asystemlikeMumble(seeMcDonaldetal.1987).
+As the Nigel grammar grew into the Penman system (Penman Natural Language Group 1989) and
+gainedawidefollowinginthelate1980sandearly1990s,thecontrolofthedecisionmakingandthedatathat fed it moved from the grammar’s input speciﬁcation and into the speaker’s knowledge base. At theheart of the knowledge base—the taxonomic lattice that categorizes all of the types of objects that thespeakercouldtalkaboutanddeﬁnestheirbasicproperties—anupperstructurewasdeveloped(Bateman1997,Batemanetal.1995).Thissetofcategoriesandpropertieswasdeﬁnedinsuchawayastobeabletoprovide the answers needed to navigate through the system network. Objects in application knowledgebasesbuiltintermsofthisupperstructure(byspecializingitscategories)areassuredaninterpretationinterms of the predicates that the systemic grammar needs because these are provided implicitly throughthelocationoftheobjectsinthetaxonomy.
+Mechanically,theprocessofgeneratingatextusingasystemicgrammarconsistsofwalkingthroughthe
+setofsystemsfromtheinitialchoice(whichforaspeechactmightbewhetheritconstitutesastatement,aquestion,oracommand)throughtoitsleaves,followingseveralsimultaneouspathsthroughthesystemnetworkuntilithasbeencompletelytraversed.Severalparallelpathsbecauseintheanalysesadoptedbysystemicists, theﬁnalshapeofatextisdictatedbythreeindependentkindsofinformation: experiential ,
+focusing on content; interpersonal, focusing on the interaction and stance toward the audience; and
+textual,focusingonformandstylistics.
+As the network is traversed, a set of features that describe the text are accumulated. These may be
+used to ‘preselect’ some of the options at a lower ‘strata’ in the accumulating text, as for example whenthe structure of an embedded clause is determined by the traversal of the network that determines thefunctionalorganizationofitsparentclause.Thefeaturesdescribingthesubordinate’sfunctionarepassedthrough to what will likely be a recursive instantiation of the network that was traversed to form theparent, and they serve to ﬁx the selection in key systems, for example, dictating that the clause shouldappearwithoutanactor,forexample,asaprepositionallymarkedgerund:“ Youblockedmebytakingthe
+corneroppositemine .”
+Theactualtexttakesshapebyprojectingthelexicalrealizationsoftheelementsoftheinputspeciﬁcation
+onto selected positions in a large grid of possible positions as dictated by the features selected from thenetwork. The words may be given by the ﬁnal stagesof the system network (as systemicistssay: ‘lexis asmostdelicategrammar’)oraspartoftheinputspeciﬁcation.
+6.5.6 Functional Uniﬁcation Grammars
+Having a functional or purpose-oriented perspective in a grammar is largely a matter of the gram-mar’s content, not its architecture. What sets functional approaches to realization apart from structuralapproaches is the choice of terminology and distinctions, the indirect relationship to syntactic surfacestructure, and, when embedded in a realization component, the nature of its interface to the earliertext-planning components. Functional realizers are concerned with purposes, not contents. Just as afunctionalperspectivecanbeimplementedinasystemnetwork, itcanbeimplementedinanannotatedTAG(Yangetal.1991)or,inwhatwewillturntonow,inauniﬁcationgrammar.
+A uniﬁcation grammar is also traversed, but this is less obvious since the traversal is done by the
+built-inuniﬁcationprocessandisnotsomethingthatitsdevelopersactivelyconsider.(Exceptforreasonsof eﬃciency, the early systems were notoriously slow because nondeterminism led to a vast amount ofbacktracking;asmachineshavegottenfasterandthealgorithmshavebeenimproved,thisisnolongeraproblem.)
+
+138 HandbookofNaturalLanguageProcessing
+Theterm‘uniﬁcationgrammar’emphasizestherealizationmechanismusedinthistechnique,namely
+merging the component’s input with the grammar to produce a fully speciﬁed, functionally annotatedsurfacestructurefromwhichthewordsofthetextarethenreadout.Themergingisdoneusingaparticularform of uniﬁcation; a thorough introduction can be found in McKeown (1985). In order to be mergedwith the grammar, the input must be represented in the same terms; it is often referred to as a ‘deep’syntacticstructure.
+Uniﬁcation is not the primary design element in these systems however, it just happened to be the
+control paradigm that was in vogue when the innovative data structure of these grammars—featurestructures—was introduced by linguists as a reaction against the pure phrase structure approaches ofthe time (the late 1970s). Feature structures (FS) are much looser formalisms than unadorned phrasestructures;theyconsistofsetsofmultilevelattribute-valuepairs.AtypicalFSwillincorporateinformationfrom(atleast)threelevelssimultaneously:meaning,(surface)form,andlexicalidentities.FSallowgeneralprinciples of linguistic structure to be stated more freely and with greater attention to the interactionbetweentheselevelsthanhadbeenpossiblebefore.
+Theadaptionoffeature-structure-basedgrammarstogenerationwasbegunbyMartinKay(1984),who
+developedtheideaoffocusingonfunctionalrelationshipsinthesesystems—functionalinthesamesenseas it is employed in systemic grammar, with the same attendant appeal to people working in generationwhowantedtoexperimentwiththefeature-structurenotation.
+Kay’s notion of a ‘functional’ uniﬁcation grammar (FUG) was ﬁrst deployed by Appelt (1985), and
+thenadoptedbyMcKeown.McKeown’sstudents,particularlyMichaelElhadad,madethegreateststridesin making the formalism eﬃcient. He developed the FUF system, which is now widely used (Elhadad1991,ElhadadandRobin1996).Elhadadalsotookthestepofexplicitlyadoptingthegrammaticalanalysisand point of view of systemic grammarians, demonstrating quite eﬀectively that grammars and therepresentationsthatembodythemareseparateaspectsofsystemdesign.
+6.6 The Cutting Edge
+Therehasbeenagreatdealoftechnicaldevelopmentinthelastdecade.Forexample,wehavenewsurfacerealizerssuchasMathewStone’sSPUD(Stoneetal.2001)thatworksatthesemanticandsyntacticlevelsimultaneously, or Michael White’s work based on the CCG grammar formalism (White and Baldridge2003).Template-basedrealizershavealsomadeacomeback(e.g.,McRoyetal.2003).Andperhapsmostofalltherehasbeenanmassiveinﬂuxofmachine-learning-basedmachineryintothegenerationastherehasintherestofcomputationallinguistics(see,e.g.,LangkildeandKnight1998,BangaloreandRambow2000).
+However, for the most part these developments are just giving us better (or just alternative) ways of
+doing the things we already know how to do. In this ﬁnal section I want to instead brieﬂy describe twosystemsthatarebreakingentirelynewground.
+6.6.1 Story Generation
+Thesubjectmatter,orgenre,ofnearlyallworkisexpository,providingexplanationsorsimplyconveyinginformation. But much if not most of human talk is based on telling stories. Around the turn of themillennium Charles Callaway developed the StoryBook system (2002), which deployed the organizingprinciplesofarichmodelofnarrativeandthefullpanoplyofgenerationfacilities
+∗togeneratevariations
+onthestoryofLittleRedRidingHood.Hereisanexcerpt.
+∗Anarrativeorganizerthatsegmentedandstructuredatheelementofprovidedbythenarrativeplanner,didlexicalchoice
+andmaintainedadiscoursehistory;asentenceplanner;arevisioncomponent;andasurfacerealizer(basedonFUF)thatknowshowtoformatprosewithembeddeddialog.
+
+NaturalLanguageGeneration 139
+Once upon a time a woodman and his wife lived in a pretty cottage on the borders of a great forest.They had one little daughter, a sweet child, who was a favorite with everyone. She was the joy of hermother’sheart.Topleaseher,thegoodwomanmadeheralittlescarletcloakandhood.ShelookedsoprettyinitthateveryonecalledherLittleRedRidingHood .
+StoryBook begins its substantive work at the start of the microplanning phase of generation after thecontentofcouldbesaidhasbeenestablishedandorganizedintoanarrativestreambyasimpleFSAactinginlieuofarealnarrativeplanner.Theexcerptofthisstreambelowdrawsonanontologyofconceptsandrelationsthatprovidestherawmaterialforthemicrolevelnarrativeplanner.
+(...;; “once upon a time there was a woodman and his
+(actor-property exist-being woodman001)(refinement and-along-with woodman001 wife001)(refinement belonging-to woodman001 wife001)(specification exist-being process-step-type once-upon-a-time) ...)
+Notice how lexical and ‘close to the surface’ the terms in this micro-planner input are. This permitsthe revision facilities in StoryBook to know enough about the individual abstract elements of the text toreadilyformulatehighlycomposedprose.
+6.6.2 Personality-Sensitive Generation
+Remarkably few generation systems have been developed where the speaker could be said to have aparticular personality. Clippinger and Brown’s Erma certainly did, albeit at the cost of an intense, one-oﬀ programming eﬀort. Eduard Hovy’s Pauline (1990) was the ﬁrst to show how this could be donesystematically albeit just for exposition. First of all there must be a large number of relevant ‘units’ ofcontentthatcouldbeincludedorignoredorsystematicallylefttoinferenceaccordingtothedesiredleveldetailorchoiceofperspective.Secondandmoreimportantistheuseofamultilevel‘standoﬀ’architecturewhereby pragmatic notions (‘use high style,’ ‘be brief’) are progressively reinterpreted through one ormore level of description as features that a generator can actually attend to (e.g., word choice, sentencelength,clausecomplexity).
+ThecurrentlymostthoroughandimpressivetreatmentofpersonalityingenerationisFrançoisMairesse
+andMarilynWalker’sPersonagesystem(2007,2008).Herearetwogeneratedexamplesinthedomainofrestaurantrecommendation,onewithalowextroversionratingandthenonewithahighrating.
+∗
+5 (2.83)Right,Imean,LeMaraisistheonlyrestaurantthatisanygood.
+3 (6.0)I am sure you would like Le Marais, you know. The atmosphere is acceptable, the servers are
+nice and it’s a french, kosher and steak house place. Actually, the food is good, even if its price is 44dollars.
+Personage is based on modeling the correlation of a substantial number of language variables (e.g.,verbosity,repetition,ﬁlledpauses,stuttering)withpersonalityascharacterizedbytheBigFivepersonalitytraits.Thismodelthendrivesastatisticalmicroplanner(Stentetal.2004)whoseoutputispassedthroughasurfacerealizerbasedonMel’cuk’s MeaningTextTheoryofLanguage (LavoieandRambow1998).(Yet
+anotherexampleisthefrequentlyeclecticcombinationsoftheoriesandtechniquesthatcharacterizeworkin computational linguistics because of the people doing the work and the accidents of history of whotheystudiedwith.)
+∗Utterancenumbersand1–7extraversionrankingfromMairesseandWalker(2007,p.496).
+
+140 HandbookofNaturalLanguageProcessing
+6.7 Conclusions
+Thischapterhascoveredthebasicissuesandperspectivesthathavegovernedworkonnaturallanguagegeneration. With the beneﬁt of hindsight it has tried to identify the axes that distinguish the diﬀerenttacks people have taken during the last 40 years: does the speaker intentionally ‘push’ directives to thetextplanner, ordoestheplanner‘pull’dataoutofapassivedatabase; doessurfacerealizationconsistof‘assembling’asetofcomponentsorof‘navigating’throughonelargestructure?
+Giventhispast,whatcanwesayaboutthefuture?Onethingwecanbereasonablysureofisthatthere
+willberelativelylittleworkdoneonsurfacerealization.Peopleworkingonspeechordoingcomputationalpsycholinguistics may see the need for new architectures at this level, and the advent of a new style oflinguistictheorymaypromptsomeonetoapplyittogeneration;butmostgroupswillelecttoseerealizationasasolvedproblem—acompletemodulethattheycanftpfromacollaboratingsite.
+Bythatsametoken,thelinguisticsophisticationandreadyavailabilityofthematurerealizers(Penman,
+FUF)willmeanthattheﬁeldwillnolongersustainabstractworkintextplanning;allplannerswillhaveto actually produce text, preferably pages of it, and that text should be of high quality. Toy output thatneglectstoproperlyusepronounsorisredundantandawkwardwillnolongerbeacceptable.
+The most important scientiﬁc achievement to look toward in the course of the next 10 years is the
+emergenceofacoherentconsensusarchitectureforthepresentlymuddled‘middleground’ofmicroplan-ning. Sitting between the point at which generation begins, where we have a strong working knowledgeofhowtofashionanddeployschemas,planoperators,andtheliketoselectwhatistobesaidandgiveitacoarseorganization,andthepointatwhichgenerationends,wherewehavesophisticated,oﬀ-the-shelfsurfacerealizationcomponentsthatonecanusewithonlyminimalpersonalknowledgeoflinguistics,wepresently have a grab bag of phenomena that no two projects deal with in the same way (if they handlethematall).
+In this middle ground lies the problem of where to use pronouns and other such reduced types of
+‘subsequent reference’; the problem of how to select the best words to use (‘lexical choice’) and to pickamongalternativeparaphrases;andtheproblemhowtocollapsethesetofpropositionsthattheplannerselects,eachofwhichmightbeitsownsentenceifgeneratedindividually,intoﬂuentcomplexsentencesthatarefreeofredundancyandﬁtthesystem’sstylisticgoals(aggregation).
+At this point, about all that is held in common in the community are the names of these problems
+and what their eﬀects are in the ﬁnal texts. That at least provides a common ground for comparing theproposals and systems that have emerged, but the actual alternatives in the literature tend to be so farapart in the particulars of their treatments that there are few possibilities for one group to build on theresultsofanother.
+Totakejustoneexample,itisentirelypossiblethataggregation—thepresenttermofartingeneration
+forhowtoachievewhatotherswhatotherscall‘cohesion’(HallidayandHasan1976)orjust‘ﬂuency’—isnotacoherentnotion.Considerthatforaggregationtooccurtheremustbeseparate,independentthingsto be aggregated. It might turn out that this is an artifact of the architecture of today’s popular textplannersandnotatallanaturalkind,thatis,somethingthatishandledwiththesameproceduresandatthesamepointsintheprocessingforallthediﬀerentinstancesofitthatweseeinrealtexts.
+Whatever the outcome of such questions, we can be sure that they will be pursued vigorously by
+an ever-burgeoning number of people. The special interest group on generation (SIGGEN) has over400 members, the largest of all the special interest groups under the umbrella of the Association forComputational Linguistics (ACL). The ﬁeld is international in scope, with major research sites fromAustraliatoIsrael.
+Thereismuchchallengingworkremainingtobedonethatwillkeepthoseofuswhoworkinthisﬁeld
+engaged for years, more likely decades to come. Whether the breakthroughs will come from traditionalgrantfundedresearchorfromthestudiosandbasementsofgamemakersandentrepreneursisimpossibletosay.Whateverthefuture,thisisthebestpartofthenaturallanguageprobleminwhichtowork.
+

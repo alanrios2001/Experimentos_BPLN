@@ -1,0 +1,1013 @@
+p/CX /CX14 Clustering
+Clustering algorithms partition a set of objects into groups or
+clusters . Figure 14.1 gives an example of a clustering of 22 high-frequency clusters
+words from the Brown corpus. The ﬁgure is an example of a dendrogram , dendrogram
+a branching diagram where the apparent similarity between nodes at the
+bottom is shown by the height of the connection which joins them. Eachnode in the tree represents a cluster that was created by merging twochild nodes. For example, inandonform a cluster and so do with and
+for. These two subclusters are then merged into one cluster with four ob-
+jects. The “height” of the node corresponds to the decreasing similarityof the two clusters that are being merged (or, equivalently, to the orderin which the merges were executed). The greatest similarity between anytwo clusters is the similarity between inandon– corresponding to the
+lowest horizontal line in the ﬁgure. The least similarity is between be
+and the cluster with the 21 other words – corresponding to the highest
+horizontal line in the ﬁgure.
+While the objects in the clustering are all distinct as tokens, normally
+objects are described and clustered using a set of features and values (of-ten known as the data representation model ), and multiple objects may
+data represen-
+tation model have the same representation in this model, so we will deﬁne our clus-
+tering algorithms to work over bags – objects like sets except that they bags
+allow multiple identical items. The goal is to place similar objects in the
+same group and to assign dissimilar objects to diﬀerent groups.
+What is the notion of ‘similarity’ between words being used here? First,
+the left and right neighbors of tokens of each word in the Brown cor-pus were tallied. These distributions give a fairly true implementationof Firth’s idea that one can categorize a word by the words that occuraround it. But now, rather than looking for distinctive collocations, as in
+
+p/CX /CX496 14 Clustering
+be not he I it this the his a and but in on with for at from of to as is was
+Figure 14.1 A single-link clustering of 22 frequent English words represented
+as a dendrogram.
+chapter 5, we are capturing and using the whole distributional pattern of
+the word. Word similarity was then measured as the degree of overlap inthe distributions of these neighbors for the two words in question. For
+example, the similarity between inandonis large because both words oc-
+cur with similar left and right neighbors (both are prepositions and tendto be followed by articles or other words that begin noun phrases, forinstance). The similarity between isandheis small because they share
+fewer immediate neighbors due to their diﬀerent grammatical functions.Initially, each word formed its own cluster, and then at each step in the
+
+p/CX /CX497
+clustering, the two clusters that are closest to each other are merged into
+a new cluster.
+There are two main uses for clustering in Statistical NLP. The ﬁgure
+demonstrates the use of clustering for exploratory data analysis (EDA). exploratory data
+analysis Somebody who does not know English would be able to derive a crude
+grouping of words into parts of speech from ﬁgure 14.1 and this insight
+may make subsequent analysis easier. Or we can use the ﬁgure to evalu-ate neighbor overlap as a measure of part-of-speech similarity, assumingwe know what the correct parts of speech are. The clustering makesapparent both strengths and weaknesses of a neighbor-based represen-tation. It works well for prepositions (which are all grouped together),but seems inappropriate for other words such as thisandthewhich are
+not grouped together with grammatically similar words.
+Exploratory data analysis is an important activity in any pursuit that
+deals with quantitative data. Whenever we are faced with a new problemand want to develop a probabilistic model or just understand the basiccharacteristics of the phenomenon,
+EDA is the ﬁrst step. It is always a
+mistake to not ﬁrst spend some time getting a feel for what the data athand look like. Clustering is a particularly important technique for
+EDAin
+Statistical NLPbecause there is often no direct pictorial visualization for
+linguistic objects. Other ﬁelds, in particular those dealing with numeri-cal or geographic data, often have an obvious visualization, for example,maps of the incidence of a particular disease in epidemiology. Any tech-nique that lets one visualize the data better is likely to bring to the forenew generalizations and to stop one from making wrong assumptionsabout the data.
+There are other well-known techniques for displaying a set of objects
+in a two-dimensional plane (such as pages of books); see section 14.3 forreferences. When used for
+EDA, clustering is thus only one of a number
+of techniques that one might employ, but it has the advantage that it canproduce a richer hierarchical structure. It may also be more convenientto work with since visual displays are more complex. One has to worryabout how to label objects shown on the display, and, in contrast to clus-
+tering, cannot give a comprehensive description of the object next to its
+visual representation.
+The other main use of clustering in
+NLPis for generalization .W e r e - generalization
+ferred to this as forming bins orequivalence classes in section 6.1. But
+there we grouped data points in certain predetermined ways, whereashere we induce the bins from data.
+
+p/CX /CX498 14 Clustering
+As an example, suppose we want to determine the correct preposition
+to use with the noun Friday for translating a text from French into En-
+glish. Suppose also that we have an English training text that containsthe phrases on Sunday ,on Monday ,a n d on Thursday , but not on Friday .
+That onis the correct preposition to use with Friday can be inferred as
+follows. If we cluster English nouns into groups with similar syntactic
+and semantic environments, then the days of the week will end up inthe same cluster. This is because they share environments like “ until
+day-of-the-week,” “ lastday-of-the-week,” and “day-of-the-week morning .”
+Under the assumption that an environment that is correct for one mem-ber of the cluster is also correct for the other members of the cluster,we can infer the correctness of on Friday from the presence of on Sun-
+day,on Monday andon Thursday . So clustering is a way of learning .
+learning
+We group objects into clusters and generalize from what we know about
+some members of the cluster (like the appropriateness of the prepositionon)t oo t h e r s .
+Another way of partitioning objects into groups is classiﬁcation ,w h i c h
+classiﬁcation
+is the subject of chapter 16. The diﬀerence is that classiﬁcation is su-
+pervised and requires a set of labeled training instances for each group.
+Clustering does not require training data and is hence called unsuper-
+vised because there is no “teacher” who provides a training set with class
+labels. The result of clustering only depends on natural divisions in thedata, for example the diﬀerent neighbors of prepositions, articles andpronouns in the above dendrogram, not on any pre-existing categoriza-tion scheme. Clustering is sometimes called automatic or unsupervisedclassiﬁcation, but we will not use these terms in order to avoid confusion.
+There are many diﬀerent clustering algorithms, but they can be clas-
+siﬁed into a few basic types. There are two types of structures pro-duced by clustering algorithms, hierarchical clusterings andﬂatornon-
+hierarchical
+ﬂat
+non-hierarchicalhierarchical clusterings . Flat clusterings simply consist of a certain num-
+ber of clusters and the relation between clusters is often undetermined.Most algorithms that produce ﬂat clusterings are iterative . They start
+iterative
+with a set of initial clusters and improve them by iterating a reallocation
+operation that reassigns objects.
+A hierarchical clustering is a hierarchy with the usual interpretation
+that each node stands for a subclass of its mother’s node. The leaves ofthe tree are the single objects of the clustered set. Each node representsthe cluster that contains all the objects of its descendants. Figure 14.1 isan example of a hierarchical cluster structure.
+
+p/CX /CX499
+Another important distinction between clustering algorithms is whe-
+ther they perform a soft clustering orhard clustering . In a hard assign- soft clustering
+hard clusteringment, each object is assigned to one and only one cluster. Soft assign-
+ments allow degrees of membership and membership in multiple clus-ters. In a probabilistic framework, an object x
+ihas a probability distribu-
+tionPjxiover clusterscjwherePcjjxiis the probability that xiis a
+member ofcj. In a vector space model, degree of membership in multiple
+clusters can be formalized as the similarity of a vector to the center ofeach cluster. In a vector space, the center of the Mpoints in a cluster c,
+otherwise known as the centroid orcenter of gravity is the point:
+centroid
+center of gravity
+~1
+MX
+~x2c~x (14.1)
+In other words, each component of the centroid vector ~is simply the
+average of the values for that component in the Mpoints inc.
+In hierarchical clustering, assignment is usually ‘hard.’ In non-hierarch-
+ical clustering, both types of assignment are common. Even most softassignment models assume that an object is assigned to only one cluster.The diﬀerence from hard clustering is that there is uncertainty about
+which cluster is the correct one. There are also true multiple assignment
+models, so-called disjunctive clustering models, in which an object can
+disjunctive
+clustering truly belong to several clusters. For example, there may be a mix of
+syntactic and semantic categories in word clustering and book would fully
+belong to both the semantic “object” and the syntactic “noun” category.We will not cover disjunctive clustering models here. See (Saund 1994)for an example of a disjunctive clustering model.
+Nevertheless, it is worth mentioning at the beginning the limitations
+that follow from the assumptions of most clustering algorithms. A hardclustering algorithm has to choose one cluster to which to assign ev-ery item. This is rather unappealing for many problems in
+NLP.I t i s a
+commonplace that many words have more than one part of speech. Forinstance play can be a noun or a verb, and fastc a nb ea na d j e c t i v eo ra n
+adverb. And many larger units also show mixed behavior. Nominalized
+clauses show some verb-like (clausal) behavior and some noun-like (nom-
+inalization) behavior. And we suggested in chapter 7 that several sensesof a word were often simultaneously activated. Within a hard clusteringframework, the best we can do in such cases is to deﬁne additional clus-ters corresponding to words that can be either nouns or verbs, and so on.Soft clustering is therefore somewhat more appropriate for many prob-
+
+p/CX /CX500 14 Clustering
+Hierarchical clustering:
+Preferable for detailed data anal-
+ysis
+Provides more information thanﬂat clustering
+No single best algorithm (each ofthe algorithms we describe hasbeen found to be optimal forsome application)
+Less eﬃcient than ﬂat clustering(fornobjects, one minimally has
+to compute an nnmatrix of
+similarity coeﬃcients, and then
+update this matrix as one pro-
+ceeds)Non-hierarchical clustering:
+Preferable if eﬃciency is a con-
+sideration or data sets are verylarge
+K-means is the conceptually sim-plest method and should proba-b l yb eu s e dﬁ r s to nan e wd a t a
+set because its results are often
+suﬃcient
+K-means assumes a simple Eucli-
+dean representation space, and
+so cannot be used for many datasets, for example, nominal datalike colors
+In such cases, the EM algorithmis the method of choice. It can ac-commodate deﬁnition of clustersand allocation of objects basedon complex probabilistic models.
+Table 14.1 A summary of the attributes of diﬀerent clustering algorithms.
+lems in NLP, since a soft clustering algorithm can assign an ambiguous
+word like play partly to the cluster of verbs and partly to the cluster of
+nouns.
+The remainder of the chapter looks in turn at various hierarchical and
+non-hierarchical clustering methods, and some of their applications in
+NLP. In table 14.1, we brieﬂy characterize some of the features of cluster-
+ing algorithms for the reader who is just looking for a quick solution toan immediate clustering need.
+For a discussion of the pros and cons of diﬀerent clustering algorithms
+see Kaufman and Rousseeuw (1990). The main notations that we will usein this chapter are summarized in table 14.2.
+14.1 Hierarchical Clustering
+The tree of a hierarchical clustering can be produced either bottom-up,by starting with the individual objects and grouping the most similar
+
+p/CX /CX14.1 Hierarchical Clustering 501
+Notation Meaning
+Xfx1;:::;xng the set ofnobjects to be clustered
+Cfc1;:::;cj;:::ckgthe set of clusters (or cluster hypotheses)
+PX powerset (set of subsets) of X
+sim; similarity function
+S group average similarity function
+m Dimensionality of vector space Rm
+Mj Number of points in cluster cj
+~scj Vector sum of vectors in cluster cj
+N number of word tokens in training corpus
+wi;:::;j tokensithroughjof the training corpus
+ function assigning words to clusters
+Cw1w2 number of occurrences of string w1w2
+Cc 1c2 number of occurrences of string w1w2s.t.
+w1c1,w2c2
+~j Centroid for cluster cj
+j Covariance matrix for cluster cj
+Table 14.2 Symbols used in the clustering chapter.
+ones, or top-down, whereby one starts with all the objects and divides
+them into groups so as to maximize within-group similarity. Figure 14.2describes the bottom-up algorithm, also called agglomerative clustering .
+agglomerative
+clustering Agglomerative clustering is a greedy algorithm that starts with a separate
+cluster for each object (3,4). In each step, the two most similar clusters
+are determined (8), and merged into a new cluster (9). The algorithm
+terminates when one large cluster containing all objects of Shas been
+formed, which then is the only remaining cluster in C(7).
+Let us ﬂag one possibly confusing issue. We have phrased the clus-
+tering algorithm in terms of similarity between clusters, and thereforewe join things with maximum similarity (8). Sometimes people think in
+terms of distances between clusters, and then you want to join things that
+are the minimum distance apart. So it is easy to get confused between
+whether you’re taking maximums or minimums. It is straightforward toproduce a similarity measure from a distance measure d, for example by
+simx;y1=1dx;y .
+Figure 14.3 describes top-down hierarchical clustering, also called divi-
+divisive clustering
+sive clustering (Jain and Dubes 1988: 57). Like agglomerative clustering
+
+p/CX /CX502 14 Clustering
+1Given: a set Xfx1;:::xngof objects
+2 a function sim: PXPX!R
+3fori:1tondo
+4ci:fxigend
+5C:fc1;:::;cng
+6j:n1
+7while C>1
+8cn1;cn2:arg maxcu;cv2CCsimcu;cv
+9cjcn1[cn2
+10C:Cnfcn1;cn2g[fcjg
+11j:j1
+Figure 14.2 Bottom-up hierarchical clustering.
+1Given: a set Xfx1;:::xngof objects
+2 a function coh: PX!R
+3 a function split: PX!PXPX
+4C:fXgfc1g
+5j:1
+6while9ci2Cs.t.jcij>1
+7cu:arg mincv2Ccohcv
+8cj1;cj2splitcu
+9C:Cnfcug[fcj1;cj2g
+10j:j2
+Figure 14.3 Top-down hierarchical clustering.
+it is a greedy algorithm. Starting from a cluster with all objects (4), each
+iteration determines which cluster is least coherent (7) and splits thiscluster (8). Clusters with similar objects are more coherent than clus-
+ters with dissimilar objects. For example, a cluster with several identical
+members is maximally coherent.
+Hierarchical clustering only makes sense if the similarity function is
+monotonic:
+monotonic
+(14.2) Monotonicity.
+8c;c0;c00S:m i n(
+simc;c0;simc;c00
+simc;c0[c00
+In other words, the operation of merging is guaranteed to not increase
+similarity. A similarity function that does not obey this condition makes
+
+p/CX /CX14.1 Hierarchical Clustering 503
+Function Deﬁnition
+single link similarity of two most similar members
+complete link similarity of two least similar members
+group-average average similarity between members
+Table 14.3 Similarity functions used in clustering. Note that for group-average
+clustering, we average over all pairs, including pairs from the same cluster. Forsingle-link and complete-link clustering, we quantify over the subset of pairsfrom diﬀerent clusters.
+the hierarchy uninterpretable since dissimilar clusters, which are placed
+far apart in the tree, can become similar in subsequent merging so that‘closeness’ in the tree does not correspond to conceptual similarity any-more.
+Most hierarchical clustering algorithms follow the schemes outlined in
+ﬁgures 14.2 and 14.3. The following sections discuss speciﬁc instancesof these algorithms.
+14.1.1 Single-link and complete-link clustering
+Table 14.3 shows three similarity functions that are commonly used in in-formation retrieval (van Rijsbergen 1979: 36ﬀ). Recall that the similarityfunction determines which clusters are merged in each step in bottom-upclustering. In single-link clustering the similarity between two clusters isthe similarity of the two closest objects in the clusters. We search over
+all pairs of objects that are from the two diﬀerent clusters and select the
+pair with the greatest similarity.
+Single-link clusterings have clusters with good local coherence since the
+local coherence
+similarity function is locally deﬁned. However, clusters can be elongated
+or “straggly” as shown in ﬁgure 14.6. To see why single-link clusteringproduces such elongated clusters, observe ﬁrst that the best moves inﬁgure 14.4 are to merge the two top pairs of points and then the two
+bottom pairs of points, since the similarities a=b,c=d,e=f,a n dg=hare
+the largest for any pair of objects. This gives us the clusters in ﬁgure 14.5.The next two steps are to ﬁrst merge the top two clusters, and then thebottom two clusters, since the pairs b=candf=gare closer than all others
+that are not in the same cluster (e.g., closer than b=fandc=g). After doing
+these two merges we get ﬁgure 14.6. We end up with two clusters that
+
+p/CX /CX504 14 Clustering
+012345678012345
+×e×f×g×h×a×b×c×d
+3
+2dd2d
+Figure 14.4 A cloud of points in a plane.
+012345678012345
+×e×f×g×h×a×b×c×d
+Figure 14.5 Intermediate clustering of the points in ﬁgure 14.4.
+are locally coherent (meaning that close objects are in the same cluster),
+but which can be regarded as being of bad global quality. An example ofbad global quality is that ais much closer to ethan tod,y e taanddare
+in the same cluster whereas aandeare not.
+The tendency of single-link clustering to produce this type of elongated
+cluster is sometimes called the chaining eﬀect since we follow a chain of
+chaining effect
+large similarities without taking into account the global context.
+Single-link clustering is closely related to the minimum spanning tree minimum spanning
+tree (MST) of a set of points. The MSTis the tree that connects all objects with
+edges that have the largest similarities. That is, of all trees connectingthe set of objects the sum of the length of the edges of the
+MST is mini-
+
+p/CX /CX14.1 Hierarchical Clustering 505
+012345678012345
+×e×f×g×h×a×b×c×d
+Figure 14.6 Single-link clustering of the points in ﬁgure 14.4.
+012345678012345
+×e×f×g×h×a×b×c×d
+Figure 14.7 Complete-link clustering of the points in ﬁgure 14.4.
+mal. A single-link hierarchy can be constructed top-down from an MSTby
+removing the longest edge in the MST so that two unconnected compo-
+nents are created, corresponding to two subclusters. The same operationis then recursively applied to these two subclusters (which are also
+MSTs).
+Complete-link clustering has a similarity function that focuses on glo-
+balcluster quality (as opposed to locally coherent clusters as in the case
+of single-link clustering). The similarity of two clusters is the similarityof their two most dissimilar members. Complete-link clustering avoidselongated clusters. For example, in complete-link clustering the two bestmerges in ﬁgure 14.5 are to merge the two left clusters, and then the
+
+p/CX /CX506 14 Clustering
+two right clusters, resulting in the clusters in ﬁgure 14.7. Here, the min-
+imally similar pair for the left clusters ( a=forb=e) is “tighter” than the
+minimally similar pair of the two top clusters ( a=d).
+So far we have made the assumption that ‘tight’ clusters are better than
+‘straggly’ clusters. This reﬂects an intuition that a cluster is a group of
+objects centered around a central point, and so compact clusters are to be
+preferred. Such an intuition corresponds to a model like the Gaussian dis-tribution (section 2.1.9), which gives rise to sphere-like clusters. But thisis only one possible underlying model of what a good cluster is. It is reallya question of our prior knowledge about and model of the data which de-termines what a good cluster is. For example, the Hawai’ian islands wereproduced (and are being produced) by a volcanic process which moves
+along a straight line and creates new volcanoes at more or less regular
+intervals. Single-link is a very appropriate clustering model here sincelocal coherence is what counts and elongated clusters are what we wouldexpect (say, if we wanted to group several chains of volcanic islands).It is important to remember that the diﬀerent clustering algorithms thatwe discuss will generally produce diﬀerent results which incorporate thesomewhat ad hoc biases of the diﬀerent algorithms. Nevertheless, in
+most
+NLPapplications, the sphere-shaped clusters of complete-link clus-
+tering are preferable to the elongated clusters of single-link clustering.
+The disadvantage of complete-link clustering is that it has time com-
+plexityOn3since there are nmerging steps and each step requires
+On2comparisons to ﬁnd the smallest similarity between any two ob-
+jects for each cluster pair (where nis the number of objects to be clus-
+tered).1In contrast, single-link clustering has complexity On2.O n c e
+thennsimilarity matrix for all objects has been computed, it can be
+updated after each merge in On : if clusterscuandcvare merged into
+cjcu[cv, then the similarity of the merge with another cluster ckis
+simply the maximum of the two individual similarities:
+simcj;ckmaxsimcu;ck;simcv;ck
+Each of then−1 merges requires at most nconstant-time updates.
+Both merging and similarity computation thus have complexity On2
+1. ‘On3’ is an instance of ‘Big Oh’ notation for algorithmic complexity. We assume that
+the reader is familiar with it, or else is willing to skip issues of algorithmic complexity.It is deﬁned in most books on algorithms, including (Cormen et al. 1990). The notationdescribes just the basic dependence of an algorithm on certain parameters, while ignoringconstant factors.
+
+p/CX /CX14.1 Hierarchical Clustering 507
+in single-link clustering, which corresponds to an overall complexity of
+On2.
+Single-link and complete-link clustering can be graph-theoretically in-
+terpreted as ﬁnding a maximally connected and maximally completegraph (or clique), respectively, hence the term “complete link” for the
+latter. See (Jain and Dubes 1988: 64).
+14.1.2 Group-average agglomerative clustering
+Group-average agglomerative clustering is a compromise between single-
+link and complete-link clustering. Instead of the greatest similarity be-tween elements of clusters (single-link) or the least similarity (completelink), the criterion for merges is average similarity. We will see presentlythat average similarity can be computed eﬃciently in some cases so that
+the complexity of the algorithm is only On
+2. The group-average strat-
+egy is thus an eﬃcient alternative to complete-link clustering while avoid-ing the elongated and straggly clusters that occur in single-link cluster-ing.
+Some care has to be taken in implementing group-average agglomera-
+tive clustering. The complexity of computing average similarity directlyisOn
+2. So if the average similarities are computed from scratch each
+time a new group is formed, that is, in each of the nmerging steps, then
+the algorithm would be On3. However, if the objects are represented as
+length-normalized vectors in an m-dimensional real-valued space and if
+the similarity measure is the cosine , deﬁned as in (14.3): cosine
+sim~v;~wPm
+i1viwiqPm
+i1viPm
+i1wi~x~y (14.3)
+then there exists an algorithm that computes the average similarity of a
+cluster in constant time from the average similarity of its two children.Given the constant-time for an individual merging operation, the overalltime complexity is On
+2.
+We writeXfor the set of objects to be clustered, each represented by
+am-dimensional vector:
+XRm
+For a cluster cjX, the average similarity Sbetween vectors in cjis
+
+p/CX /CX508 14 Clustering
+deﬁned as follows. (The factor jcjjjcjj−1calculates the number of
+(non-zero) similarities added up in the double summation.)
+Scj1
+jcjjjcjj−1X
+~x2cjX
+~x~y2cjsim~x;~y (14.4)
+LetCbe the set of current clusters. In each iteration, we identify the
+two clusterscuandcvwhich maximize Scu[cv. This corresponds to
+step 8 in ﬁgure 14.2. A new, smaller, partition C0is then constructed by
+mergingcuandcv(step 10 in ﬁgure 14.2):
+C0C−fcu;cvg[fcu[cvg
+For cosine as the similarity measure, the inner maximization can be
+done in linear time (Cutting et al. 1992: 328). One can compute the av-erage similarity between the elements of a candidate pair of clusters inconstant time by precomputing for each cluster the sum of its members
+~sc
+j.
+~scjX
+~x2cj~x
+The sum vector ~scjis deﬁned in such a way that: (i) it can be easily
+updated after a merge (namely by simply summing the ~sof the clusters
+that are being merged), and (ii) the average similarity of a cluster can beeasily computed from them. This is so because the following relationshipbetween~sc
+jandScjholds:
+~scj~scjX
+~x2cj~x~scj (14.5)
+X
+~x2cjX
+~y2cj~x~y
+jcjjjcjj−1ScjX
+~x2cj~x~x
+jcjjjcjj−1Scjjcjj
+Thus,Scj~scj~scj−jcjj
+jcjjjcjj−1
+Therefore, if~sis known for two groups ciandcj, then the average
+similarity of their union can be computed in constant time as follows:
+Sci[cj~sci~scj~sci~scj
+jcijjcjjjcijjcjj−1(14.6)
+
+p/CX /CX14.1 Hierarchical Clustering 509
+Given this result, this approach to group-average agglomerative clus-
+tering has complexity On2, reﬂecting the fact that initially all pairwise
+similarities have to be computed. The following step that performs n
+mergers (each in linear time) has linear complexity, so that overall com-plexity is quadratic.
+This form of group-average agglomerative clustering is eﬃcient enough
+to deal with a large number of features (corresponding to the dimensionsof the vector space) and a large number of objects. Unfortunately, theconstant time computation for merging two groups (by making use ofthe quantities ~sc
+j) depends on the properties of vector spaces. There is
+no general algorithm for group-average clustering that would be eﬃcientindependent of the representation of the objects that are to be clustered.
+14.1.3 An application: Improving a language model
+Now that we have introduced some of the best known hierarchical clus-tering algorithms, it is time to look at an example of how clustering canbe used for an application. The application is building a better language
+language model
+model . Recall that language models are useful in speech recognition
+and machine translation for choosing among several candidate hypothe-ses. For example, a speech recognizer may ﬁnd that President Kennedy
+andprecedent Kennedy are equally likely to have produced the acous-
+tic observations. However, a language model can tell us what are ap r i -
+orilikely phrases of English. Here it tell us that President Kennedy is
+much more likely than precedent Kennedy , and so we conclude that Pres-
+ident Kennedy is probably what was actually said. This reasoning can
+be formalized by the equation for the noisy channel model, which weintroduced in section 2.2.4. It says that we should choose the hypothe-sisHthat maximizes the product of the probability given by the language
+model,PH , and the conditional probability of observing the speech
+signalD(or the foreign language text in machine translation) given the
+hypothesis,PDjH.
+ˆHarg max
+HPHjDarg max
+HPDjHPH
+PDarg max
+HPDjHPH
+Clustering can play an important role in improving the language model
+(the computation of PH )b yw a yo f generalization . As we saw in chap-
+ter 6, there are many rare events for which we do not have enough train-ing data for accurate probabilistic modeling. If we mediate probabilistic
+
+p/CX /CX510 14 Clustering
+inference through clusters, for which we have more evidence in the train-
+ing set, then our predictions for rare events are likely to be more accurate.This approach was taken by Brown et al. (1992c). We ﬁrst describe theformalization of the language model and then the clustering algorithm.
+The language model
+The language model under discussion is a bigram model that makes a
+ﬁrst order Markov assumption that a word depends only on the previousword. The criterion that we optimize is a decrease in cross entropy or,
+cross entropy
+equivalently, perplexity (section 2.2.8), the amount by which the language perplexity
+model reduces the uncertainty about the next word. Our aim is to ﬁnd
+a functionthat assigns words to clusters which decreases perplexity
+compared to a simple word bigram model.
+We ﬁrst approximate the cross entropy of the corpus Lw1:::wN
+for the cluster assignment function by making the Markov assumption
+that a word’s occurrence only depends on its predecessor:
+HL;−1
+NlogPw 1;:::;N (14.7)
+−1
+N−1logNY
+i2Pwijwi−1 (14.8)
+−1
+N−1X
+w1w2Cw1w2logPw2jw1 (14.9)
+Now we make the basic assumption of cluster-based generalization that
+the occurrence of a word from cluster c2only depends on the cluster c1
+of the preceding word:2
+HL;−1
+N−1X
+w1w2Cw1w2logPc 2jc1Pw2jc2 (14.10)
+Formula (14.10) can be simpliﬁed as follows:
+HL;−2
+4X
+w1w2Cw1w2
+N−1logPw2jc2logPc 2 (14.11)
+2. One can observe that this equation is very similar to the probabilistic models used in
+tagging, which we discuss in chapter 10, except that we induce the word classes fromcorpus evidence instead of taking them from our linguistic knowledge about parts ofspeech.
+
+p/CX /CX14.1 Hierarchical Clustering 511
+X
+w1w2Cw1w2
+N−1logPc 2jc1−logPc 23
+5
+−2
+4X
+w2P
+w1Cw1w2
+N−1logPw2jc2Pc 2 (14.12)
+X
+c1c2Cc 1c2
+N−1logPc 2jc1
+Pc 23
+5
+−2
+4X
+wPw logPwX
+c1c2Pc 1c2logPc 1c2
+Pc 1Pc 23
+5 (14.13)
+Hw−Ic1;c2 (14.14)
+In (14.13) we rely on the approximationsP
+w1Cw1w2
+N−1Pw2and
+Cc 1c2
+N−1Pc 1c2, which hold for large n. In addition, Pw2jc2Pc 2
+Pw2c2Pw2holds sincew2c2.
+Equation (14.14) shows that we can minimize the cross entropy by
+choosing the cluster assignment function such that the mutual infor-
+mation between adjacent clusters Ic1;c2is maximized. Thus we should
+get the optimal language model by choosing clusters that maximize thismutual information measure.
+Clustering
+The clustering algorithm is bottom-up with the following merge criterion
+which maximizes the mutual information between adjacent classes:
+MI-lossc
+i;cjX
+ck2Cnfci;cjgIck;ciIck;cj−Ick;ci[cj (14.15)
+In each step, we select the two clusters whose merge causes the smallest
+loss in mutual information. In the description of bottom-up clustering in
+ﬁgure 14.2, this would correspond to the following selection criterion for
+the pair of clusters that is to be merged next:
+cn1;cn2:arg min
+ci;cj2CCMI-lossci;cj
+The clustering is stopped when a pre-determined number kof clusters
+has been reached ( k1000 in (Brown et al. 1992c)). Several shortcuts are
+necessary to make the computation of the MI-loss function and the clus-tering of a large vocabulary eﬃcient. In addition, the greedy algorithm
+
+p/CX /CX512 14 Clustering
+(“do the merge with the smallest MI-loss”) does not guarantee an optimal
+clustering result. The clusters can be (and were) improved by moving in-dividual words between clusters. The interested reader can look up thespeciﬁcs of the algorithm in (Brown et al. 1992c).
+Here are three of the 1000 clusters found by Brown et al. (1992c):
+plan, letter, request, memo, case, question, charge, statement, draft
+day, year, week, month, quarter, half
+evaluation, assessment, analysis, understanding, opinion, conversa-
+tion, discussion
+We observe that these clusters are characterized by both syntactic and
+semantic properties, for example, nouns that refer to time periods.
+The perplexity for the cluster-based language model was 277 compared
+to a perplexity of 244 for a word-based model (Brown et al. 1992c: 476),so no direct improvement was achieved by clustering. However, a linearinterpolation (see section 6.3.1) between the word-based and the cluster-based model had a perplexity of 236, which is an improvement over theword-based model (Brown et al. 1992c: 476). This example demonstrates
+the utility of clustering for the purpose of generalization.
+We conclude our discussion by pointing out that clustering and cluster-
+based inference are integrated here. The criterion we optimize on inclustering, the minimization of HL;Hw−Ic
+1;c2, is at the same
+time a measure of the quality of the language model, the ultimate goal ofthe clustering. Other researchers ﬁrst induce clusters and then use theseclusters for generalization in a second, independent step. An integrated
+approach to clustering and cluster-based inference is preferable because
+it guarantees that the induced clusters are optimal for the particular typeof generalization that we intend to use the clustering for.
+14.1.4 Top-down clustering
+Hierarchical top down clustering as described in ﬁgure 14.3 starts out
+with one cluster that contains all objects. The algorithm then selects the
+least coherent cluster in each iteration and splits it. The functions weintroduced in table 14.3 for selecting the best pair of clusters to mergein bottom-up clustering can also serve as measures of cluster coherencein top-down clustering. According to the single-link measure, the coher-ence of a cluster is the smallest similarity in the minimum spanning tree
+
+p/CX /CX14.1 Hierarchical Clustering 513
+for the cluster; according to the complete-link measure, the coherence
+is the smallest similarity between any two objects in the cluster; and ac-cording to the group-average measure, coherence is the average similaritybetween objects in the cluster. All three measures can be used to selectthe least coherent cluster in each iteration of top-down clustering.
+Splitting a cluster is also a clustering task, the task of ﬁnding two sub-
+clusters of the cluster. Any clustering algorithm can be used for thesplitting operation, including the bottom-up algorithms described aboveand non-hierarchical clustering. Perhaps because of this recursive needfor a second clustering algorithm, top-down clustering is less often usedthan bottom-up clustering.
+However, there are tasks for which top-down clustering is the more nat-
+ural choice. An example is the clustering of probability distributions us-
+ing the Kullback-Leibler (KL) divergence . Recall that KL divergence which
+Kullback-Leibler
+divergence we introduced in section 2.2.5 is deﬁned as follows:
+DpkqX
+x2Xpxlogpx
+qx(14.16)
+This “dissimilarity” measure is not deﬁned for p x> 0a n dqx0. In
+cases where individual objects have probability distributions with manyzeros, one cannot compute the matrix of similarity coeﬃcients for allobjects that is required for bottom-up clustering.
+An example of such a constellation is the approach to distributional
+clustering of nouns proposed by (Pereira et al. 1993). Object nouns arerepresented as probability distributions over verbs, where q
+nvis esti-
+mated as the relative frequency that, given the object noun n, the verbv
+is its predicate. So for example, for the noun apple and the verb eat,w e
+will have qnv0:2 if one ﬁfth of all occurrences of apple as an object
+noun are with the verb eat. Any given noun only occurs with a limited
+number of verbs, so we have the above-mentioned problem with singu-larities in computing KL divergence here, which prevents us from usingbottom-up clustering.
+To address this problem, distributional noun clustering instead per-
+distributional
+noun clustering forms top-down clustering. Cluster centroids are computed as (weighted
+and normalized) sums of the probability distributions of the membernouns. This leads to cluster centroid distributions with few zeros thathave a deﬁned KL divergence with all their members. See Pereira et al.(1993) for a complete description of the algorithm.
+
+p/CX /CX514 14 Clustering
+14.2 Non-Hierarchical Clustering
+Non-hierarchical algorithms often start out with a partition based on ran-
+domly selected seeds (one seed per cluster), and then reﬁne this initialpartition. Most non-hierarchical algorithms employ several passes of re-
+reallocating
+allocating objects to the currently best cluster whereas hierarchical algo-
+rithms need only one pass. However, reallocation of objects from onecluster to another can improve hierarchical clusterings too. We saw anexample in section 14.1.3, where after each merge objects were movedaround to improve global mutual information.
+If the non-hierarchical algorithm has multiple passes, then the ques-
+tion arises when to stop. This can be determined based on a measure
+of goodness or cluster quality. We have already seen candidates of such
+a measure, for example, group-average similarity and mutual informa-tion between adjacent clusters. Probably the most important stoppingcriterion is the likelihood of the data given the clustering model whichwe will introduce below. Whichever measure we choose, we simply con-tinue clustering as long as the measure of goodness improves enough ineach iteration. We stop when the curve of improvement ﬂattens or when
+goodness starts decreasing.
+The measure of goodness can address another problem: how to deter-
+mine the right number of clusters. In some cases, we may have someprior knowledge about the right number of clusters (for example, theright number of parts of speech in part-of-speech clustering). If this isnot the case, we can cluster the data into nclusters for diﬀerent values
+ofn. Often the goodness measure improves with n. For example, the
+more clusters the higher the maximum mutual information that can be
+attained for a given data set. However, if the data naturally fall into acertain number kof clusters, then one can often observe a substantial
+increase in goodness in the transition from k−1t okclusters and a small
+increase in the transition from ktok1. In order to automatically deter-
+mine the number of clusters, we can look for a kwith this property and
+then settle on the resulting kclusters.
+A more principled approach to ﬁnding an optimal number of clusters
+is the Minimum Description Length (
+MDL) approach in the AUTOCLASS Minimum
+Description Length
+AUTOCLASSsystem (Cheeseman et al. 1988). The basic idea is that the measure of
+goodness captures both how well the objects ﬁt into the clusters (whichis what the other measures we have seen do) and how many clusters thereare. A high number of clusters will be penalized, leading to a lower good-
+
+p/CX /CX14.2 Non-Hierarchical Clustering 515
+ness value. In the framework of MDL, both the clusters and the objects
+are speciﬁed by code words whose length is measured in bits. The moreclusters there are, the fewer bits are necessary to encode the objects. Inorder to encode an object, we only encode the diﬀerence between it andthe cluster it belongs to. If there are more clusters, the clusters describe
+objects better, and we need fewer bits to describe the diﬀerence between
+objects and clusters. However, more clusters obviously take more bitsto encode. Since the cost function captures the length of the code forboth data and clusters, minimizing this function (which maximizes thegoodness of the clustering) will determine both the number of clustersand how to assign objects to clusters.
+3
+It may appear that it is an advantage of hierarchical clustering that the
+number of clusters need not be determined. But the full cluster hierarchy
+of a set of objects does not deﬁne a particular clustering since the treecan be cut in many diﬀerent ways. For a usable set of clusters in hier-archical clustering one often needs to determine a desirable number ofclusters or, alternatively, a value of the similarity measure at which linksof the tree are cut. So there is not really a diﬀerence between hierarchicaland non-hierarchical clustering in this respect. For some non-hierarchical
+clustering algorithms, an advantage is their speed.
+We cover two non-hierarchical clustering algorithms in this section, K-
+means and the EM algorithm. K-means clustering is probably the simplestclustering algorithm and, despite its limitations, it works suﬃciently wellin many applications. The EM algorithm is a general template for a familyof algorithms. We describe its incarnation as a clustering algorithm ﬁrstand then relate it to the various instantiations that have been used in
+Statistical
+NLP, some of which like the inside-outside algorithm and the
+forward-backward algorithm are more fully treated in other chapters ofthis book.
+14.2.1 K-means
+K-means is a hard clustering algorithm that deﬁnes clusters by the cen- K-means
+ter of mass of their members. We need a set of initial cluster centers in
+the beginning. Then we go through several iterations of assigning eachobject to the cluster whose center is closest. After all objects have been
+assigned, we recompute the center of each cluster as the centroid or mean
+recomputation
+3.AUTOCLASS can be downloaded from the internet. See the website.
+
+p/CX /CX516 14 Clustering
+1Given: a setXf~x1;:::;~xngRm
+2 a distance measure d:RmRm!R
+3 a function for computing the mean :PR!Rm
+4Selectkinitial centers ~f1;:::;~fk
+5while stopping criterion is not true do
+6 forall clusterscjdo
+7cjf~xij8~fld~xi;~fjd~xi;~flg
+8 end
+9 forall means~fjdo
+10~fjcj
+11 end
+12end
+Figure 14.8 The K-means clustering algorithm.
+~of its members (see ﬁgure 14.8), that is ~1=jcjjP
+~x2cj~x.T h e d i s -
+tance function is Euclidean distance.
+A variant of K-means is to use the L1norm instead (section 8.5.2):
+L1~x;~yX
+ljxl−ylj
+This norm is less sensitive to outliers. K-means clustering in Euclidean
+space often creates singleton clusters for outliers. Clustering in L1space
+will pay less attention to outliers so that there is higher likelihood ofgetting a clustering that partitions objects into clusters of similar size.
+TheL
+1norm is often used in conjunction with medoids as cluster centers. medoids
+The diﬀerence between medoids and centroids is that a medoid is one of
+the objects in the cluster – a prototypical class member. A centroid, theaverage of a cluster’s members, is in most cases not identical to any ofthe objects.
+The time complexity of K-means is On since both steps of the itera-
+tion areOn and only a constant number of iterations is computed.
+Figure 14.9 shows an example of one iteration of the K-means algo-
+rithm. First, objects are assigned to the cluster whose mean is closest.Then the means are recomputed. In this case, any further iterations willnot change the clustering since an assignment to the closest center doesnot change the cluster membership of any object, which in turn meansthat no center will be changed in the recomputation step. But this is
+
+p/CX /CX14.2 Non-Hierarchical Clustering 517
+012345601234567
+×
+×××
+/Bullet/Circle/Bullet/Circle
+assignment012345601234567
+×
+×××
+/Bullet/Circle/Bullet/Circle
+recomputation of means
+Figure 14.9 One iteration of the K-means algorithm. The ﬁrst step assigns
+objects to the closest cluster mean. Cluster means are shown as circles. Thesecond step recomputes cluster means as the center of mass of the set of objects
+that are members of the cluster.
+not the case in general. Usually several iterations are required before the
+algorithm converges.
+One implementation problem that the description in ﬁgure 14.8 does
+not address is how to break ties in cases where there are several centers
+with the same distance from an object. In such cases, one can either
+assign objects randomly to one of the candidate clusters (which has thedisadvantage that the algorithm may not converge) or perturb objectsslightly so that their new positions do not give rise to ties.
+Here is an example of how to use K-means clustering. Consider these
+twenty words from the New York Times corpus in chapter 5.
+Barbara, Edward, Gov, Mary,
+NFL, Reds, Scott, Sox, ballot, ﬁnance,
+inning, payments, polls, proﬁt, quarterback, researchers, science,score, scored, seats
+
+p/CX /CX518 14 Clustering
+Cluster Members
+1 ballot (0.28), polls (0.28), Gov(0.30), seats (0.32)
+2 proﬁt (0.21), ﬁnance (0.21), payments (0.22)
+3 NFL(0.36), Reds (0.28), Sox(0.31), inning (0.33),
+quarterback (0.30), scored (0.30), score (0.33)
+4 researchers (0.23), science (0.23)
+5 Scott (0.28), Mary (0.27), Barbara (0.27), Edward (0.29)
+Table 14.4 An example of K-means clustering. Twenty words represented as
+vectors of co-occurrence counts were clustered into 5 clusters using K-means.The distance from the cluster centroid is given after each word.
+Table 14.4 shows the result of clustering these words using K-means with
+k5. We used the data representation from chapter 8 that is also the
+basis of table 8.8 on page 302. The ﬁrst four clusters correspond to thetopics ‘government,’ ‘ﬁnance,’ ‘sports,’ and ‘research,’ respectively. Thelast cluster contains names. The beneﬁt of clustering is obvious here.The clustered display of the words makes it easier to understand whattypes of words occur in the sample and what their relationships are.
+Initial cluster centers for K-means are usually picked at random. It de-
+pends on the structure of the set of objects to be clustered whether thechoice of initial centers is important or not. Many sets are well-behavedand most initializations will result in clusterings of about the same qual-ity.
+For ill-behaved sets, one can compute good cluster centers by ﬁrst run-
+ning a hierarchical clustering algorithm on a subset of the objects. This
+is the basic idea of the Buckshot algorithm. Buckshot ﬁrst applies group-
+Buckshot
+average agglomerative clustering ( GAAC ) to a random sample of the data
+that has size square root of the complete set. GAAC has quadratic time
+complexity, but since pn2n, applying GAAC to this sample results
+in overall linear complexity of the algorithm. The K-means reassignmentstep is also linear, so that the overall complexity is On .
+14.2.2 The EM algorithm
+One way to introduce the EM algorithm is as a ‘soft’ version of K-means
+clustering. Figure 14.10 shows an example. As before, we start with aset of random cluster centers, c
+1andc2. In K-means clustering we would
+
+p/CX /CX14.2 Non-Hierarchical Clustering 519
+01230123
+×××/Bullet/Circle/Bullet/Circlec1
+c2
+initial state01230123
+×××
+/Bullet/Circle
+/Bullet/Circlec1
+c2
+after iteration 101230123
+/Bullet/Circle/Bullet/Circle
+×××c1
+c2
+after iteration 2
+Figure 14.10 An example of using the EM algorithm for soft clustering.
+arrive at the ﬁnal centers shown on the right side in one iteration. The
+EM algorithm instead does a soft assignment, which, for example, makes
+the lower right point mostly a member of c2, but also partly a member
+ofc1. As a result, both cluster centers move towards the centroid of all
+three objects in the ﬁrst iteration. Only after the second iteration do wereach the stable ﬁnal state.
+An alternative way of thinking of the EM algorithm is as a way of es-
+timating the values of the hidden parameters of a model. We have seensome data X, and can estimate PXjp, the probability of the data
+according to some model p with parameters . But how do we ﬁnd the
+model which maximizes the likelihood of the data? This point will be amaximum in the parameter space, and therefore we know that the prob-ability surface will be ﬂat there. So for each model parameter 
+i,w ew a n t
+to set@
+@ilogP:::0 and solve for the i. Unfortunately this (in gen-
+eral) gives a non-linear set of equations for which no analytical methodsof solution are known. But we can hope to ﬁnd the maximum using the
+EM algorithm.
+In this section, we will ﬁrst introduce the EM algorithm for the estima-
+tion of Gaussian mixtures, the soft clustering algorithm that ﬁgure 14.10is an example of. Then we will describe the EM algorithm in its mostgeneral form and relate the general form to speciﬁc instances like theinside-outside algorithm and the forward-backward algorithm.
+
+p/CX /CX520 14 Clustering
+EM for Gaussian mixtures
+In applying EM to clustering, we view clustering as estimating a mixture
+of probability distributions. The idea is that the observed data are gener-ated by several underlying causes. Each cause contributes independentlyto the generation process, but we only see the ﬁnal mixture – without in-formation about which cause contributed what. We formalize this notionby representing the data as a pair. There is the observable dataXf~x
+ig, observable
+where each~xixi1;:::;ximTis simply the vector that corresponds to
+theithdata point. And then there is the unobservable dataZf~zig, unobservable
+where within each ~zizi1;:::;zik, the component zijis 1 if object iis
+a member of cluster j(that is, it is assumed to be generated by that
+underlying cause) and 0 otherwise.
+We can cluster with the EM algorithm if we know the type of distribu-
+tion of the individual clusters (or causes). When estimating a Gaussianmixture, we make the assumption that each cluster is a Gaussian. The EM
+algorithm then determines the most likely estimates for the parameters
+of the distributions (in our case, the mean and variance of each Gaussian),and the prior probability (or relative prominence or weight) of the indi-vidual causes. So in sum, we are supposing that the data to be clusteredconsists ofnm-dimensional objects Xf~x
+1:::~xngRmgenerated byk
+Gaussians n 1:::nk.
+Once the mixture has been estimated we can view the result as a clus-
+tering by interpreting each cause as a cluster. For each object ~xi,w ec a n
+compute the probability P!jj~xithat clusterjgeneratedi. An object
+can belong to several clusters, with varying degrees of conﬁdence.
+Multivariate normal distributions. The (multivariate) m-dimensional
+Gaussian family is parameterized by a mean or center ~jand anmm Gaussian
+invertible positive deﬁnite symmetric matrix, the covariance matrix j. covariance matrix
+The probability density function for a Gaussian is given by:
+nj~x;~mj;j1q
+2mjjjexp
+−1
+2~x−~jT−1
+j~x−~j
+(14.17)
+Since we are assuming that the data is generated by kGaussians, we
+wish to ﬁnd the maximum likelihood model of the form:
+kX
+j1jn~x;~j;j (14.18)
+
+p/CX /CX14.2 Non-Hierarchical Clustering 521
+Main Pwijcjnj~xi;jj
+c l u s t e r W o r d 12345
+1 ballot 0.63 0.12 0.04 0.09 0.11
+1 polls 0.58 0.11 0.06 0.10 0.14
+1 Gov 0.58 0.12 0.03 0.10 0.17
+1 seats 0.55 0.14 0.08 0.08 0.15
+2 proﬁt 0.11 0.59 0.02 0.14 0.15
+2 ﬁnance 0.15 0.55 0.01 0.13 0.16
+2 payments 0.12 0.66 0.01 0.09 0.11
+3 NFL 0.13 0.05 0.58 0.09 0.16
+3 Reds 0.05 0.01 0.86 0.02 0.06
+3 Sox 0.05 0.01 0.86 0.02 0.06
+3 inning 0.03 0.01 0.93 0.01 0.02
+3 quarterback 0.06 0.02 0.82 0.03 0.07
+3 score 0.12 0.04 0.65 0.06 0.13
+3 scored 0.08 0.03 0.79 0.03 0.07
+4 researchers 0.08 0.12 0.02 0.68 0.10
+4 science 0.12 0.12 0.03 0.54 0.19
+5 Scott 0.12 0.12 0.11 0.11 0.54
+5 Mary 0.10 0.10 0.05 0.15 0.59
+5 Barbara 0.15 0.11 0.04 0.12 0.57
+5 Edward 0.16 0.18 0.02 0.12 0.51
+Table 14.5 An example of a Gaussian mixture. The ﬁve cluster centroids from
+table 14.4 are the means ~jof the ﬁve clusters. A uniform diagonal covari-
+ance matrix 0:05Iand uniform priors j0:2 were used. The posterior
+probabilitiesPwijcjcan be interpreted as cluster membership probabilities.
+In this model, we need to assume a prior or weight jfor each Gaussian,
+so that the integral of the combined Gaussians over the whole space is 1.
+Table 14.5 gives an example of a Gaussian mixture, using the centroids
+from the K-means clustering in table 14.4 as cluster centroids ~j(this is a
+common way of initializing EM for Gaussian mixtures). For each word, the
+cluster from table 14.4 is still the dominating cluster. For example, ballot
+has a higher membership probability in cluster 1 (its cluster from the K-means clustering) than in other clusters. But each word also has somenon-zero membership in all other clusters. This is useful for assessingthe strength of association between a word and a topic. Comparing two
+
+p/CX /CX522 14 Clustering
+members of the ‘sports’ cluster, inning andscore , we can see that inning
+is strongly associated with ‘sports’ ( p0:93) whereas score has some
+aﬃnity with other clusters as well (e.g., p0:12 with the ‘government’
+cluster). This is a good example of the utility of soft clustering.
+We now develop the EM algorithm for estimating the parameters of a
+Gaussian mixture. Let us write j~j;j;j. Then, for the parameters
+of the model, we end up with 1;:::;kT. The log likelihood of the
+dataXgiven the parameters is:
+lXjlognY
+i1P~xilognY
+i1kX
+j1jnj~xi;~j;j (14.19)
+nX
+i1logkX
+j1jnj~xi;~j;j
+The set of parameters with the maximum likelihood gives us the best
+model of the data (assuming that it was generated by a mixture of k
+Gaussians). So our goal is to ﬁnd parameters that maximize the log
+likelihood given in the equation above. Here, we have to ﬁddle with all
+the parameters so as to try to make the likelihood of each data pointa maximum, while still observing various constraints on the values ofthe parameters (so that the area under the pdf remains 1, for instance).This is a nasty problem in constrained optimization. We cannot calculatethe maximum directly since it involves the log of a sum. Instead, weapproximate the solution by iteration using the EM algorithm.
+The EM algorithm is an iterative solution to the following circular state-
+ments:
+Estimate: If we knew the value of we could compute the expected val-
+ues of the hidden structure of the model.
+Maximize: If we knew the expected values of the hidden structure of the
+model, then we could compute the maximum likelihood value of .
+We break the circularity by beginning with a guess for and iterating
+back and forth between an expectation step and a maximization step ,
+expectation step
+maximization stephence the name EM algorithm. In the expectation step, we compute ex-
+pected values for the hidden variables zijwhich can be interpreted as
+cluster membership probabilities. Given the current parameters, we com-pute how likely it is that an object belongs to any of the clusters. Themaximization step computes the most likely parameters of the model
+
+p/CX /CX14.2 Non-Hierarchical Clustering 523
+given the cluster membership probabilities. This procedure improves our
+estimates of the parameters so that the parameters of a cluster better re-ﬂect the properties of objects with high probability of membership init.
+A key property of the EM algorithm is monotonicity: With each iteration
+of E and M steps, the likelihood of the model given the data increases.
+This guarantees that each iteration produces model parameters that aremore likely given the data we see. However, while the algorithm willeventually move to a local maximum, it will often not ﬁnd the globallybest solution. This is an important diﬀerence from least-squares methodslike
+SVD(covered in chapter 15), which are guaranteed to ﬁnd the global
+optimum.
+In what follows we describe the EM algorithm for estimating a Gaussian
+mixture. We follow here the discussion in (Dempster et al. 1977), (Mitchell1997: ch. 6), and (Ghahramani 1994). See also (Duda and Hart 1973: 193).
+To begin, we initialize all the parameters. Here, it would be appropriate
+to initialize the covariance matrices 
+jof each Gaussian as an identity
+matrix, each of the weights jas1
+k, and thekmeans~jare each chosen
+to be a random perturbation away from a data point randomly selected
+fromX.
+TheE-step is the computation of parameters hij.hijis the expectation
+of the hidden variable zijwhich is 1 if n jgenerated~xiand 0 otherwise.
+hijEzijj~xi;P~xijnj;
+Pk
+l1P~xijnl;(14.20)
+TheM-step is to recompute the parameters (mean, variance, and
+prior for each Gaussian) as maximum likelihood estimates given expectedvaluesh
+ij:
+~0
+jPn
+i1hij~xiPn
+i1hij(14.21)
+0
+jPn
+i1hij~xi−~0
+j~xi−~0
+jT
+Pn
+i1hij(14.22)
+These are the maximum-likelihood estimates for the mean and variance
+of a Gaussian (Duda and Hart 1973: 23).
+The weights of the Gaussians are recomputed as:
+0
+jPn
+i1hijPk
+j1Pn
+i1hijPn
+i1hij
+n(14.23)
+
+p/CX /CX524 14 Clustering
+Once means, variances, and priors have been recomputed, we repeat ,
+by performing the next iteration of the E and M steps. We keep iteratingas long as the log likelihood keeps improving signiﬁcantly at each step.
+EM and its applications in Statistical
+NLP
+This description of the EM algorithm has been for clustering and Gaus-
+sian mixtures, but the reader should be able to recognize other applica-
+tions of EM as instantiations of the same general scheme, for example,
+the forward-backward algorithm and the inside-outside algorithm, whichwe covered in earlier chapters. Here is the most general formulation ofEM (Dempster et al. 1977: 6).
+Deﬁne a function Qas follows:
+Qj
+kElX;ZjjX;k
+Here, thezare the hidden variables (the vectors zi1;:::;ziMabove), thex
+are the observed data (the vectors ~xiabove). are the parameters of the
+model, the mean, variances and priors in the case of Gaussian mixtures.lx;zjis (the log of) the joint probability distribution of observable
+and unobservable data given the parameters .
+Then the E and M step take the following form:
+E-step: Compute Qjk.
+M-step: Choose k1to be a value of that maximizes Qjk.
+For the Gaussian mixture case, computing Qcorresponds to computing
+thehij, the expected values of the hidden variable z. The M step chooses
+the parameters that maximize Qjk.
+This general formulation of EM is not literally an algorithm. We are
+not told how to compute the M-step in general. (There are cases whereit cannot be computed.) However, for a large class of problems thereexist such algorithms, for example, for all distributions of the exponentialfamily, of which the Gaussian distribution is an example. The remainder
+of this section brieﬂy discusses how certain other algorithms covered in
+this book are instances of the EM algorithm.
+Baum-Welch reestimation. In the Baum-Welch or forward-backward al-
+gorithm (see section 9.3.3), the E step computes (i) for each state i, the
+expected number of transitions from iin the observed data; (ii) for each
+
+p/CX /CX14.2 Non-Hierarchical Clustering 525
+pairi;j of states, the expected number of transitions from state ito
+statej. The unobservable data here are the unobservable state transi-
+tions. In the E step, we compute expected values for these unobservablesgiven the current parameters of the model.
+The M step computes new maximum likelihood estimates of the param-
+eters given the expected values for the unobservables. For Baum-Welch,
+these parameters are the initial state probabilities 
+i, the state transition
+probabilitiesaijand the symbol emission probabilities bijk.
+Inside-outside algorithm. The unobservable data in this algorithm (see
+section 11.3.4) are whether a particular rule Nj!is used to generate a
+particular subsequence wpqof words or not. The E step computes expec-
+tations over these data, corresponding to the expected number of timesthat a particular rule will be used. We use the symbols u
+ip;q;j;r;s
+andvip;q;j for these expectations in section 11.3.4. (The diﬀerence
+between theuiand theviis that theuiare for rules that produce nonter-
+minals and the viare for rules that produce preterminals. The subscript
+irefers to sentence iin the training set.)
+The M step then computes maximum-likelihood estimates of the pa-
+rameters based on the fiandgi. The parameters here are the rule proba-
+bilities and maximum-likelihood simply consists of summing and renor-malizing thef
+iorgifor a particular nonterminal.
+Unsupervised word sense disambiguation. The unsupervised word
+sense disambiguation algorithm in section 7.4 is a clustering algorithm
+very similar to EM estimation of Gaussian mixtures, except that the prob-
+ability model is diﬀerent. The E step again computes expectations ofhidden binary variables z
+ijthat record cluster memberships, but the
+probabilities are computed based on the Bayesian independence modeldescribed in that section, not a Gaussian mixture. The probability thata cluster (or sense, which is what we interpret each cluster as) gener-ates a particular word is then recomputed in the M step as a maximum-
+likelihood estimate given the expectation values.
+K-means. K-means can be interpreted as a special case of estimating a
+Gaussian mixture with EM. To see this, assume that we only recomputethe mean of each Gaussian in each iteration of the algorithm. Priors andvariances are ﬁxed. If we ﬁx the variances to be very small, then the shape
+
+p/CX /CX526 14 Clustering
+of the Gaussian will be that of a sharp peak that falls oﬀ steeply from the
+center. As a result, if we look at the probability Pnjj~xiof the ‘best’
+clusterjand the probability Pnj0j~xiof the next best cluster j0, then the
+ﬁrst will be much larger than the second.
+This means that based on the posterior probabilities computed in the
+E step, each object will be a member of one cluster with probability very
+close to 1.0. In other words, we have an assignment that is a hard assign-ment for the purpose of recomputing the means since the contributionsof objects with a very small membership probability will have a negligibleinﬂuence on the computation of the means.
+So an EM estimation of a Gaussian mixture with ﬁxed small variances
+is very similar to K-means. However, there is a diﬀerence for ties. Even in
+the case of small variances, tied objects will have equal probabilities of
+membership for two clusters. In contrast, K-means makes a hard choicefor ties.
+Summary. The EM algorithm is very useful, and is currently very popu-
+lar, but it is sensible to also be aware of its deﬁciencies. On the down-side,
+the algorithm is very sensitive to the initialization of the parameters, and
+unless parameters are initialized well, the algorithm usually gets stuckin one of the many local maxima that exist in the space. One possibilitythat is sometimes used is to use the results of another clustering algo-rithm to initialize the parameters for the EM algorithm. For instance, theK-means algorithm is an eﬀective way of ﬁnding initial estimates for thecluster centers for EM of Gaussian mixtures. The rate of convergence of
+the EM algorithm can also be very slow. While reestimation via the EM
+algorithm is guaranteed to improve (or at least to not have a detrimen-tal eﬀect on) the likelihood of the data according to the model, it is alsoimportant to remember that it isn’t guaranteed to improve other thingsthat aren’t actually in the model, such as the ability of a system to assignpart of speech tags according to some external set of rules. Here there isa mismatch between what the EM algorithm is maximizing and the objec-
+tive function on which the performance of the system is being evaluated,
+and, not surprisingly, in such circumstances the EM algorithm might havedeleterious eﬀects. Finally, it is perhaps worth pointing out that the EMalgorithm is only really called for when there isn’t a more straightforwardway of solving the constrained optimization problem at hand. In simplecases where there is an algebraic solution or the solution can be found
+
+p/CX /CX14.3 Further Reading 527
+by a simple iterative equation solver such as Newton’s method, then one
+may as well do that.
+14.3 Further Reading
+General introductions to clustering are (Kaufman and Rousseeuw 1990)
+and (Jain and Dubes 1988). Overviews of work on clustering in informa-
+tion retrieval can be found in (van Rijsbergen 1979), (Rasmussen 1992)and (Willett 1988).
+Algorithms for constructing minimum spanning trees can be found in
+minimum spanning
+tree (Cormen et al. 1990: ch. 24). For the general case, these algorithms run in
+Onlognwherenis the number of nodes in the graph.
+To the extent that clustering is used for data analysis and compre-
+hension, it is closely related to visualization techniques that project a
+high-dimensional space onto (usually) two or three dimensions. Threecommonly used techniques are principal component analysis (
+PCA) (see principal
+component analysis (Biber et al. 1998) for its application to corpora), Multi-Dimensional
+Scaling ( MDS) (Kruskal 1964a,b) and Kohonen maps or Self-Organizing
+Maps ( SOM) (Kohonen 1997). These spatial representations of a multi-
+dimensional space are alternatives to the dendrogram in ﬁgure 14.1.
+Clustering can also be viewed as a form of category induction in cog-
+nitive modeling. Many researchers have attempted to induce syntacticcategories by clustering corpus-derived word representations (Brill et al.1990; Finch 1993). We used the clustering method proposed by Schütze(1995) for ﬁgure 14.1. Waterman (1995) attempts to ﬁnd clusters of se-mantically related words based on syntactic evidence.
+An early inﬂuential paper in which object nouns are clustered on the
+basis of verbs in a way similar to (Pereira et al. 1993) is (Hindle 1990). Li
+and Abe (1998) develop a symmetric model of verb-object pair clusteringin which clusters generate both nouns and verbs. A pure verb cluster-ing approach is adopted by Basili et al. (1996). An example of adjectiveclustering can be found in (Hatzivassiloglou and McKeown 1993).
+The eﬃciency of clustering algorithms is becoming more important as
+text collections and
+NLPdata sets increase in size. The Buckshot algo-
+rithm was proposed by Cutting et al. (1992). Even more eﬃcient constant-
+time algorithms (based on precomputation of a cluster hierarchy) are de-scribed by Cutting et al. (1993) and Silverstein and Pedersen (1997).
+
+p/CX /CX528 14 Clustering
+14.4 Exercises
+Exercise 14.1 [««]
+Retrieve the word space data from the website and do a single-link, complete-
+link, and group-average clustering of a subset.
+Exercise 14.2 [«]
+Construct an example data set for which the K-means algorithm takes more than
+one iteration to converge.
+Exercise 14.3 [«]
+Create a data set with 10 points in a plane where each point is a distance of 1
+or less from the origin. Place an eleventh point (the outlier) in turn at distance(a) 2, (b) 4, (c) 8, and (d) 16 from the origin. For each of these cases run K-meansclustering with two clusters (i) in Euclidean space and (ii) in L
+1space. (Pick the
+initial two centers from the 10 points near the origin.) Do the two distancemeasures give diﬀerent results? What are the implications for data sets withoutliers?
+Exercise 14.4 [««]
+Since the EM algorithm only ﬁnds a local minimum, diﬀerent starting conditions
+will lead to diﬀerent clusterings. Run the EM algorithm 10 times with diﬀerentinitial seeds on the 1000 most frequent words from the website and analyzethe diﬀerences. Compute the percentage of pairs of words that are in the samecluster in all 10 clusterings, in 9 clusterings, etc.
+Exercise 14.5 [«]
+Discuss the trade-oﬀ between time and the quality of clustering that needs to be
+made when choosing one of the three agglomerative algorithms or K-means.
+Exercise 14.6 [«]
+The model proposed by Brown et al. (1992c) is optimal in that it ﬁnds clusters
+that improve the evaluation measure directly. But it actually did not improve themeasure in their experiment, or only after linear interpolation. What are possiblereasons?
+Exercise 14.7 [«]
+Show that K-means converges if there are no ties. Compute as a goodness mea-
+sure of the clustering the sum squared error that is incurred when each object isreplaced by its cluster’s center. Then show that this goodness measure decreases(or stays the same) in both the reassignment and the recomputation steps.
+

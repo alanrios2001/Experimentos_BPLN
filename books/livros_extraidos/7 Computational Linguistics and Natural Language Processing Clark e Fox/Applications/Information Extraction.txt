@@ -1,0 +1,312 @@
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 517 — #1
+18 Information Extraction
+RALPH GRISHMAN
+1 Introduction
+Information extraction (IE) is the process of identifying and classifying instancesof some sort in text, based on some semantic criterion. This deﬁnition covers awide range of tasks, including:•name extraction: identifying the names in a text and classifying them as
+people, organizations, locations, etc.;
+•entity extraction: identifying all phrases which refer to objects of speciﬁc
+semantic classes, and linking phrases which refer to the same object;
+•relation extraction: identifying pairs of entities in a speciﬁc semantic relation;
+•event extraction: identifying instances of events of a particular type, and the
+arguments of each event.
+In this chapter we shall consider each of these types of extraction tasks andmethods for addressing them.
+Information extraction systems began as large collections of handwritten rules,
+which required considerable skill and time to develop. Since the mid-1990s, therehas been a gradual transition to corpus-trained methods – initially supervisedmethods, more recently minimally supervised or even unsupervised methods. Weshall trace this development for each of the types of extraction.
+In contrast to semantic analysis (see Chapter 15,
+COMPUTATIONAL SEMANTICS ),
+where the goal is to capture and formalize as much of the meaning as possible,the goal here is to only capture selected types of relations, types of events, andother semantic distinctions which are speciﬁed in advance. By limiting the task,we intend to make the task tractable: to identify information which we know howto extract (to some degree of accuracy).
+We will concentrate on methods which apply to ‘free text,’ which appears
+with minimal markup, such as news reports, business reports, and scientiﬁcand technical articles. Procedures have been developed for extraction from textwith much more markup (‘semi-structured text’), as is typical for web pages;
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 518 — #2
+518 Ralph Grishman
+these procedures, generally called ‘wrappers,’ rely heavily on the markup and theregularity of web page layout (that pages on the same site will mark up similaritems in similar ways).
+Information extraction systems are developed for a particular domain and incor-
+porate the semantic structures of that domain. Much of the work on IE has been inthe general news domain, and we shall draw our examples from that domain.However, there has been substantial work in other domains which have largequantities of text, repeated entities and events of the same type, and where thereis a need to distill the information to a structured database form. Medical recordsand the biomedical literature, in particular, have received considerable attention.
+2 Historical Background
+The ideas of information extraction can be traced back to the proposals of ZelligHarris in the 1950s to identify the main semantic structures of scientiﬁc sublan-guages and then to automatically extract these structures from text (Harris 1958).This led to the work of Naomi Sager on extraction from scientiﬁc papers and laterfrom medical records (Sager et al., 1987). By the 1980s a number of groups weredeveloping small systems for extracting different types of events from news andmilitary texts.
+To introduce some systematic evaluation to the ﬁeld of information extraction,
+the US Navy organized the Message Understanding Conferences (MUCs), withthe ﬁrst one in 1987. Eventually seven MUCs were held, with the last in 1998.
+1
+Because IE covers such a broad range of possible tasks, the course of research anddevelopment in IE was heavily inﬂuenced by these conferences, and the tasks theydeﬁned. The ﬁrst MUCs essentially involved event extraction. MUC-6 (Grishman& Sundheim 1996) recognized that name and entity extraction were essential pre-requisites for event extraction, and so introduced them as separate evaluationstermed ‘named entity’ and ‘template element’; MUC-7 added a relation extractiontask called ‘template relation.’
+The ACE (Automatic Content Extraction) workshops followed MUC, starting in
+2000, as evaluation forums for IE.
+2The ACE tasks have grown over the years to
+include entity, relation, and event extraction. Other innovations included multi-lingual extraction (MUC was primarily monolingual, though MUC-5 includedJapanese) and multiple genres (including broadcast transcripts and weblogs).
+This chapter will generally follow the ACE task organization, though we shall
+start with name extraction, which has been the most intensively studied andapplied IE task.
+3 Name Extraction
+Most types of text are replete with names. Consequently, being able to identifythese names, and determine whether they are the names of people, organizations,
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 519 — #3
+Information Extraction 519
+locations, or other entities is an essential ﬁrst step in extracting information froma text.
+When extracted, this information is typically represented in XML markup:
+Mr <name type="person">Harry Hoople</name> was named CEO of
+<name type="organization">Harry’s Hogs</name> of<name type="location">San Francisco</name>.
+This task and notation were introduced as part of the MUC-6 evaluation.3
+For news stories, these three types are fairly standard, but there are much richer
+type inventories, including type hierarchies with up to 200 name types (Sekine &Nobata 2004). Other domains will of course involve other name types; genomicstexts, for example, involve gene and protein names. For a recent survey of the taskand approaches, see Nadeau and Sekine (2007).
+3.1 Hand coded rules
+The ﬁrst systems for performing named entity extraction were based on handconstructed rules. These rules consisted of regular expressions which, when theymatched the text, caused a portion of the matched text to be tagged as a namedentity. For example,
+(capitalized-token)+ "Inc." →organization
+(where the ‘ +’ indicates one or more instances) or
+"Mr" [capitalized-token? initial? capitalized-token] →person
+(where the ‘?’ indicates optionality). In the latter case, the tokens in square brack-ets (excluding ‘Mr’) are taken as the person’s name. Some person names can berecognized from common ﬁrst names:
+common-first-name initial? capitalized-token →person
+Such common ﬁrst names can be obtained from census data. These patterns can becomplemented by lists of well-known people, companies, and locations, availablefrom Wikipedia
+4and lists of major corporations.
+The accuracy of recognition can typically be improved by several percent
+through the use of a cache: a list of names in the document which have already
+been identiﬁed and classiﬁed. Many names will appear more than once in a doc-ument. One instance may be in a context which allows the name to be classiﬁed,while another instance is in an uninformative context; by making two passes andidentifying instances of the same name, we can classify both instances correctly.For example, in
+Prescott Adams announced the appointment of a new vice president for sales. Mr Adamsexplained ...
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 520 — #4
+520 Ralph Grishman
+the tagger may initially be uncertain whether ‘Prescott Adams’ is the name of a ﬁrmor person. However, once it encounters ‘ Mr Adams’ it can tag ‘ Prescott Adams’a s
+a person with considerable conﬁdence. Such a cache can even be extended to anentire collection of documents (Borthwick 1999).
+Such hand coded rules are hard to beat if developed with a large test collection
+for assessing each rule revision, but require considerable skill and effort.
+3.2 Supervised learning
+Hand tagging a corpus with NE (named entity) information, using a small setof name classes, is a relatively straightforward and intuitive task. Consequently,there has been considerable work on training NE taggers from an NE-annotatedcorpus.
+NE tagging involves identifying the extent and type of each name in the text.
+This can be reformulated as a task of assigning a tag to each token by using BIO
+tags. The ﬁrst token of a person name is tagged B-PERSON; subsequent tokens
+are tagged I-PERSON. Similarly, organization names are tagged with B-ORG and
+I-ORG; location names are tagged with B-LOCATION andI-LOCATION. Tokens
+which are not part of a name are assigned the tag O. For example,
+Mr O
+Harry B-PERSON
+Hoople I-PERSON
+was O
+named O
+CEO O
+of O
+Harry’s B-ORG
+Hogs I-ORG
+of O
+San B-LOCATION
+Francisco I-LOCATION
+. O
+Assigning a tag to each token in a sequence is termed a sequence tagging task.
+Several other natural language processing tasks can be formulated as sequencetagging tasks, including part-of-speech tagging and chunking. A number of dif-ferent types of models have been developed and applied to these tasks; some ofthese are discussed in Chapter 5,
+MAXIMUM ENTROPY MODELS .
+One of the earliest corpus-trained NE tagging systems was Nymble (Bikel et al.,
+1997), an HMM (hidden Markov model). Nymble used a simple state space, witha single state for each name type plus an ‘other’ (no name) state; context infor-mation (for example, that ‘ Mr’ precedes a person name) was captured by using
+bigram- and unigram-conditioned probabilities and several levels of smoothing.Alternatively, context information can be captured by using multiple states foreach name type.
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 521 — #5
+Information Extraction 521
+HMMs were followed by maximum entropy models (including MEMMs –
+maximum entropy Markov models), which provided greater ﬂexibility in incorpo-rating specialized features (such as particular lists of names or patterns of tokens)into the model (Borthwick et al., 1998).
+Since then a wide range of other sequence models have been applied to NE
+tagging, including conditional random ﬁelds and models based on support vectormachines (Tjong Kim Sang & de Meulder 2003).
+3.3 Weakly supervised learners
+If one instance of a token sequence is a name of a given type, other instances ofthe same sequence are likely to represent a name of the same type. We can takeadvantage of this property to create a ‘bootstrapping’ name tagger which is givenonly a small ‘seed’ set of names (or name contexts).
+Suppose we start with a few indicative name contexts; for example, that ‘Mr’o r
+‘Mrs’ is followed by a person name, and that a name ending in ‘ Inc.’ or ‘Corp.,’ for
+example, is an organization name. We take a large, untagged corpus and tag allinstances of names matching one of these patterns. Next, we tag all other instancesof the same names. Then we examine the set of newly tagged names to see whetherthere are any contexts (besides those in the seed) which are consistently associatedwith names of a particular type. If so, we add them to the seed contexts and repeatthe process.
+An early description of this process was given in Strzalkowski and Wang (1996).
+Collins and Singer (1999) characterized this as an example of co-training anddescribed several co-training procedures. Such bootstrapping is most effective ifthe name classes come close to exhaustively covering the set of names; if nec-essary, additional classes can be introduced to improve performance (Lin et al.,2003b).
+These basic methods have been extended to the acquisition of hundreds or thou-
+sands of classes using web-scale corpora (Etzioni et al., 2005). To avoid the needfor creating seed sets for each class, one can use patterns of the type introducedby Hearst (1992): looking for ‘Xs u c ha sY ’ will ﬁnd class names ‘X ’ and their
+instances ‘Y ’. For example, it would ﬁnd ‘British publishers’p a i r e dw i t h‘ Blackwell,’
+‘Macmillan,’ etc. These instances Ycan then be used as a seed for ﬁnding addi-
+tional patterns and names. This enables the completely unsupervised creation oflarge labeled name classes, just by starting from the name of the class (Pa¸ sca &
+van Durme 2008).
+3.4 Evaluation
+NE performance is measured in terms of recall, precision, and F-measure, bycomparison with a hand tagged key (see Chapter 11,
+EVALUATION OF NLP
+SYSTEMS ).
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 522 — #6
+522 Ralph Grishman
+recall=number of correct tags
+number of tags in key
+precision =number of correct tags
+number of tags in system response
+F=2
+1/recall +1/precision
+The MUC scorer gave partial credit to names which were properly identiﬁed butincorrectly classiﬁed. This produced somewhat higher scores than the CoNLLscorer, which only credited names which were correctly classiﬁed.
+While percentage recall, precision, and F-scores for the best systems on news
+data are typically in the high 80s or low 90s, scores of corpus-trained systemsare very dependent on the nature and similarity of the training and test corpora.Differences in genre, topic, or even time period between training and test (Mota &Grishman 2008) can lead to signiﬁcant fall-off in performance. This must be keptin mind when acquiring a tagger trained on one type of corpus and applying it toquite different text.
+The examples shown here are for mixed-case English text. Statistical taggers
+have also been applied to monocase text, as might be produced by speech-to-textsystems, with performance degradations of a few percent on perfect transcripts.NE taggers have by now been applied to dozens of languages. The general strate-gies described above are broadly applicable, although special measures or featuresmay be required for a particular language. In particular, for languages wherenames are inﬂected, it may be necessary to do morphological analysis prior toor as part of name tagging, so that inﬂected names will be recognized even if theinﬂected form does not appear in the training data.
+4 Entity Extraction
+Names are referring expressions – they refer to ‘entities,’ mostly things in the realworld. A natural extension of name tagging is ﬁnding all referring expressions –names, nominal phrases (those headed by common nouns), and pronouns – andidentifying those which refer to the same entity.
+Such an ‘entity extraction’ task was introduced as part of the ACE evaluations,
+extending the ‘template element’ task in MUC-6 and 7. It involves:•identifying and classifying all phrases which refer to entities of speciﬁedsemantic types; this includes names, noun phrases, and pronouns. These arereferred to as entity mentions ;
+•linking together all entity mentions which refer to the same entity.
+Identifying the noun phrases is a standard task of syntactic analysis. For eachnoun phrase, we determine its extent and its syntactic head. For example, in the
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 523 — #7
+Information Extraction 523
+sentence ‘The famous linguist from Limerick loved linguini ,’ the ﬁrst noun phrase has
+extent ‘ The famous linguist from Limerick ’ and head ‘linguist.’ Extents may be nested;
+thus this ﬁrst noun phrase contains a second noun phrase with extent and head‘Limerick .’
+For noun phrases headed by a name, the semantic type of the phrase is the
+type of the name, as determined by name extraction. For noun phrases headedby a noun, the semantic type of the phrase is determined primarily by the sense(meaning) of the head of the phrase. For monosemous nouns (those with a singlesense), a system need only look up a table mapping the noun sense to a semantictype. For polysemous nouns (those with multiple senses), context must be usedto differentiate a ‘power plant’f r o ma‘ potted plant’o ra‘ range of mountains ’f r o ma
+‘range of options .’ There is an extensive literature on this task of word-sense disam-
+biguation: using the words in the immediate context to identify the probable sense(and hence semantic type).
+Linking together the entity mentions to form an entity is a problem of anaphora
+resolution, which is discussed in detail in Chapter 21,
+DISCOURSE PROCESSING .
+5 Relation Extraction
+In the context of information extraction, a relation represents some relationship
+between two entities; a relation mention is an expression of this relationship, and
+involves two entity mentions. Examples of relationships include•location (permanent or temporary):
+Omaha-based Berkshire HathawayFred Smith, now living in Paris
+•citizenship or origin (between a person and a country):
+New Zeland-born Rachel Hunterthe famous Greek philosophers
+•afﬁliation (between a person and an organization):
+the president of Ford
+•and family relationships:
+Fred’s brother
+Both relations and events are predications involving multiple entities; relations,being binary, are somewhat simpler to recognize.
+Note that in some cases the same word (such as ‘ president ’o r‘ brother’) expresses
+the relationship and serves as one of the arguments of the relationship. Thus, in thelast example, both ‘Fred ’a n d‘ brother’ are classiﬁed (by entity extraction) as entity
+mentions of type person .
+5Relation extraction then, based on the word ‘brother,’
+recognizes an instance of a relation mention.
+Our ﬁnal goal, in extracting information from the document, is to identify rela-
+tions between entities. This is achieved by combining the relation mentions with
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 524 — #8
+524 Ralph Grishman
+coreference information from entity extraction. For example, if we had the phrase‘Fred’s brother, Harry ,’ coreference analysis would establish ‘brother’a n d‘ Harry ’a s
+coreferential (i.e., as mentions of the same entity), so we could establish a famil-ial relation between the entities with names ‘ Fred’a n d‘ Harry .’ Taking this a step
+further, in the sentence
+Fred introduced us to his brother, Harry
+we would identify a relation mention between ‘his’a n d‘ brother,’ coreference
+between ‘Fred’a n d‘ his’ (assuming there are no other plausible antecedents), and
+coreference between ‘ brother’a n d‘ Harry ,’ and combine these to establish the
+relation between ‘ Fred’a n d‘ Harry .’
+Relations were introduced in MUC-7 as ‘template relations’ and were limited
+to three relationships: employee_of, product_of, and location_of. A larger set ofrelations was introduced as one of the ACE tasks in 2002.
+5.1 Hand coded rules and supervised methods
+As is evident from the above examples, most (though not all) relations areexpressed at a relatively short range, within a single noun phrase or clause. Thismakes it feasible to create patterns by hand to capture many of these relations.
+It also suggests an approach to creating a relation tagger; namely, train a classi-
+ﬁer on all pairs of ‘nearby’ entity mentions, with the outcome being either a typeof relation or ‘no relation.’ The trained classiﬁer can then be applied to all pairs ofnearby entity mentions in the document to be tagged.
+The connection between the two entities can be characterized by the sequence of
+words between the two mentions, the sequence of chunks, or as a path in a tree –either a full parse-tree or a shallow parse. Finding the best characterization hasbeen the topic of research on relation extraction over the past few years.
+As we have noted, most relations occur at relatively short range within a sin-
+gle sentence. Accordingly, most examples can be classiﬁed based on the headsof the two mentions, their semantic class (person, organization, ...) a n d t h e
+intervening words. However, because the intervening words may include irrel-evant modiﬁers (‘ president of the rapidly growing fast-food company’) or arguments
+(‘Fred operated a hot-dog stand in Chicago ’→located-in(Fred, Chicago)), a clas-
+siﬁer based on word sequences alone is not adequate. Such examples can behandled by using the path in the dependency tree between the entity mentions(Culotta & Sorensen 2004). For the last example, the dependency tree would beas in Figure 18.1, so the path in the tree connecting the nodes ‘Fred’a n d‘ Chicago’
+would be ‘ operated–in ’ (i.e., would consist of the two nodes ‘operated ’a n d‘ in’i n
+sequence).
+Less frequently, a wider context than the words (or the path in the dependency
+tree) between the mentions is required. For example, in ‘ Fred and Mary were married
+for 20 years,’ the only intervening word is ‘and,’ but the predicate (‘were married’) isneeded to identify the relation (Zhou et al., 2007).
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 525 — #9
+Information Extraction 525
+operated
+in
+Chicagostand
+hot-dog aFred
+Figure 18.1 Example dependency tree.
+Improved performance has been obtained by systems which combine evi-
+dence from several levels – words, chunks, and parses (Kambhatla 2004; Zhao &Grishman 2005). Using multiple levels of representation also reduces the impact oferrors in syntactic analysis, a general problem for information extraction. In gen-eral, a ‘deeper’ representation (words →chunks →parses →regularized parses)
+is better at capturing the semantic relations of information extraction. However,deeper analyses are more likely to be incorrect analyses; chunking is more accu-rate than parsing. By combining evidence from multiple levels, we are able to gainsome of the beneﬁts of each level.
+When paths in parse or dependency trees are used for relation detection, they
+can be treated as atomic properties (only examples with identical paths are con-sidered) or reduced to sets of features, such as the individual steps in the path,for feature-based classiﬁers such as maximum-entropy classiﬁers. However, ﬁnd-ing an appropriate set of features to capture the notion of ‘similar paths’ may bedifﬁcult. This similarity may be more directly captured in kernel-based classiﬁerssuch as support vector machines, by deﬁning a kernel over paths or trees (Zelenkoet al., 2003; Culotta & Sorensen 2004) and combining multiple kernels (Zhao &Grishman 2005).
+5.2 Weakly supervised and unsupervised methods
+As for name extraction, the cost of manual annotation and the availability of largeamounts of raw text data led to an interest in bootstrapping methods for relationextraction. The bootstrapping begins with a set of pairs of names which are exam-ples of the relation of interest. For example, we might have a set of author–bookpairs ([Herman Melville, Moby Dick], [J. R. R. Tolkien, The Hobbit], ...) . W el o o k
+for all instances of these pairs in close proximity in a large corpus, and collect thesequences of intervening words (the patterns). We then look for other instances ofthese patterns. New pairs which appear in several of these patterns are added tothe original set of pairs and the process repeats. This approach was introduced byBrin (1998) and extended by Agichtein and Gravano (2000).
+As with supervised methods, these approaches vary in how the patterns are
+characterized, although the goal has been in general to use fast methods so thatlarge amounts of text can be analyzed. Brin (1998) used ﬁxed word sequences;
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 526 — #10
+526 Ralph Grishman
+Agichtein and Gravano (2000) used a weighted bag of words. More recently,Bunescu and Mooney (2007) used a subsequence kernel on the word sequences.
+One crucial issue in such bootstrapping is ﬁltering or ranking the patterns, since
+the patterns which are found may be very general and ambiguous. For example,one common pattern linking book and author is likely to be a comma (‘,’), buta comma may of course have other signiﬁcance. Agichtein and Gravano (2000)extracted company–headquarters location pairs, and relied on the fact that a com-pany would (generally) have only one headquarters location; a pattern whichextracted a company along with a location different from that previously extractedfor the same company would be treated as a less reliable pattern. Bunescu andMooney (2007) used a single bootstrapping step and provided explicit negative aswell as positive examples.
+Instead of a bootstrapping method which grows the set of linguistic patterns
+expressing a single relation, we can use a similar approach to group the patternsinto clusters of like-meaning expressions, thereby identifying the dominant rela-tion types in a corpus in a completely unsupervised fashion (Hasegawa et al.,2004). We deﬁne a similarity metric between patterns based on the number ofoverlapping argument pairs, and then use a clustering procedure based on thissimilarity to group the patterns.
+Finally, we should note that these bootstrapping methods only apply to exam-
+ples involving pairs of names. Applying them to cover relations involving nom-inals or pronouns would require some systematic extensions; these have not yetbeen explored.
+6 Event Extraction
+Event extraction was the ﬁrst information extraction task to be studied. Given aspeciﬁcation of a type of event (‘terrorist attack ,’ ‘plane crash ,’ ‘hiring of a corporate
+executive ’), it involves identifying instances of this event and, for each instance,
+identifying its arguments and modiﬁers. In MUC terminology, the characteriza-tion of the event type was called a scenario , and the set of slots to be ﬁlled (which
+sometimes included the effects of the central event) was called a scenario template.
+One special case of event extraction arises when we know in advance that each
+document contains exactly one instance of an event, and the task is to ﬁnd thearguments and modiﬁers. Examples include lecture announcements (where theobjective is to extract the speaker, title, date, time, location of a talk), CVs ( curric-
+ula vitae , where the goal is to extract speciﬁed biographical information), classiﬁed
+advertisements, etc. This task is often referred to as ‘implicit relation extraction’(IRE). IRE is essentially a sequential modeling task (like name tagging), but withthe constraint (in most cases) that there is only one instance of each ﬁeld in a doc-ument. There is a considerable literature on IRE, as well as several standard testcorpora. This section will focus, however, on the more general event task, wherethe number of events of a given type in a document is not known.
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 527 — #11
+Information Extraction 527
+6.1 Hand coded rules
+As in the case of other types of extraction, the earliest systems consisted of handconstructed ‘patterns’. For events, the arguments to be identiﬁed may be names,but may also be general noun phrases. The constructs evoking events will typi-cally be clauses and may include a variety of modiﬁers in addition to the centralarguments, so some degree of syntactic analysis is required, at least sufﬁcient topull out the subject and object of relevant verbs; the patterns will be stated in termsof these syntactic relations. For example, the extraction patterns for executive suc-cession (the hiring and ﬁring of executives) might include a subject–verb–objectstructure such as:
+NP(org) fire NP(person)
+where NP(org) matches a noun phrase of semantic class organization (i.e., either
+the name of an organization or a pronoun or nominal referring to an organiza-tion), NP(person) matches a noun phrase of class person, and fire is an active
+verb group with head verb ‘ﬁre .’ Imposing semantic constraints on the subject and
+object allows us to distinguish this sense of ‘ﬁre’ from other usages, such as ‘ the
+policeman ﬁred his gun.’
+An extraction task speciﬁes a ‘template’ to be ﬁlled with the arguments of an
+event. For example, for executive succession it would include the organization,the person, the position, and the action (starting or ending the given position).The complete extraction rule would combine the pattern with a speciﬁcation ofhow the template was to be ﬁlled:
+NP(org)1 fire NP(person)2 →
+event(org: 1, person: 2, position: -, action: end)
+Similar rules would be included for noun phrases with their modiﬁers:
+the retirement of NP(person)1 as NP(position)2 →
+event(org: -, person: 1, position: 2, action: end)
+A simple extraction system may ﬁll the templates with the NP strings. In ACE
+terminology, it would generate event mentions containing references to entity men-
+tions (and possibly other types of arguments, such as the position in the example
+above). This is not generally satisfactory, however, since it may yield templateslots ﬁlled with uninformative strings such as ‘she’o r‘ the executive,’ even if these
+people have been named elsewhere in the document. As we did for relations, weneed to couple entity and event extraction, that is, identify the NP as a mentionof a particular entity, and put a reference to the entity in the template slot. In thatway, if the entity was explicitly named elsewhere in the article, this informationcan be retrieved. It does mean, however, that coreference accuracy will be a criticalfactor in event extraction accuracy.
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 528 — #12
+528 Ralph Grishman
+Since these patterns are based on syntactic relations (subject, object, noun
+modiﬁer) it is natural to apply them to a parse generated by a full-sentence parser.As corpus-trained parsers (Chapter 13,
+STATISTICAL PARSING ) have improved in
+accuracy this approach has been more widely adopted. However, extraction sys-tems based on regular expressions, such as the FASTUS system (Appelt et al.,1993), have also proven to be effective. Such regular expressions must be able notonly to match the required arguments but to skip over modiﬁers not relevant tothe template, as in:
+the unexpected retirement on Friday of John Smith, the well-known linguist, as executive vicepresident
+The regular expression patterns will be stated not in terms of general noun phrasesbut in terms of phrases of particular semantic types; this greatly reduces theattachment ambiguities compared to general syntactic pattern matching.
+6.2 Supervised systems
+A variety of approaches have been used to train event extractors from taggeddata. Some of these build patterns similar in structure to those used in hand codedsystems. For example, WHISK (Soderland 1999) develops a rule from each train-ing instance, starting with a most general pattern and incrementally making thepattern more speciﬁc. Each step is taken to optimize some balance of numberof examples matched in the training set and number of incorrect matches. Thepattern serves both to identify the event and to capture the event arguments.
+An alternative approach uses standard classiﬁers, such as k-nearest neighbors
+or maximum entropy, which can incorporate a wide variety of features. Separateclassiﬁers are built to identify the presence of an event and to determine whethera particular entity mention is an argument of that event (Ahn 2006b).
+6.3 Weakly supervised systems
+As with the other extraction tasks, there has been strong interest in movingtowards minimally supervised methods in order to reduce the labor required toport a system to a new event type. The need is particularly great in the case ofevent extraction because of the large variety of possible tasks: while a handful ofname types can account for the large majority of names in the news, these entitiesmay be involved in dozens or hundreds of different types of events.
+One approach was based on the distinction between relevant documents (docu-
+ments which contained at least one instance of an event of interest) and irrelevantdocuments. Predicate–argument patterns which occurred much more often in rele-vant documents than in irrelevant documents are good candidates to be extractionpatterns for the event. Riloff (1996) showed that the formula
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 529 — #13
+Information Extraction 529
+score=freq in relevant documents
+freq in all documents×log (freq in relevant documents )
+could be used to rank the patterns, producing a pattern set (at some scorethreshold) whose performance was fairly close to that of hand produced patterns.
+This approach still requires manual judgments of document relevance for a sub-
+stantial text collection. Yangarber et al. (2000) extended this to a bootstrappingapproach in which the seed is a small set of extraction patterns. These patternsare used to retrieve some relevant documents and then the best new patterns areextracted using a variant of the Riloff metric (modiﬁed to capture the degree ofconﬁdence in the relevance). As in the case of bootstrapping for name extrac-tion, performance can be improved by concurrent bootstrapping of multiple eventtypes (Yangarber 2003). Sudo et al. (2003) used keywords as seeds, retrieving rel-evant documents with an information retrieval system. They showed the beneﬁtof allowing arbitrary dependency subtrees to be used as patterns; while these aremore difﬁcult to count efﬁciently, they yield better extraction performance thanmore constrained patterns. Sekine and Oda (2007) demonstrated that this proce-dure, given a topic described by some keywords, could, within a minute, createan information extraction system for topic-related events and apply this system toconstruct tables of extracted information about such events.
+One fundamental obstacle to the practical use of such ‘on demand information
+extraction’ is the ability to capture paraphrase relations between events. The Riloffmetric can pick out predicates which are ‘on topic,’ but within that set cannot eas-ily identify those with the same meaning. For example, in the executive successionscenario, it might ﬁnd ‘ hired,’ ‘selected,’ and ‘ﬁred,’ but not know that the ﬁrst two
+convey the same information. There has been some success, described above, inidentifying paraphrases of relations involving named entities, based on commonarguments. A similar approach can in principle be applied to ﬁnd event para-phrases, but the task is much more challenging because the argument structuresfor events can be much more variable (arguments can be pronominalized or omit-ted and appear only in the wider context). Paraphrase acquisition from corporahas become a major research topic of its own.
+Event extraction, like relation extraction, can in principle be extended to unsu-
+pervised acquisition: to identify the most common types of events in a body of text,capture their argument structure, and group synonymous or near-synonymousevents. This combines a number of challenges which are starting to be addressed inan integrated fashion (Shinyama & Sekine 2006). But much more will be requiredto meet the goal set forth by Z. Harris a half century ago ...t os y s t e m a t i c a l l yl e a r n
+the information structures of a sublanguage (Harris 1958).
+7 Concluding Remarks
+Most of the research and, in particular, nearly all of the evaluation of informa-tion extraction until now has involved single-document extraction. This simpliﬁes
+
+“9781405155816_4_018” — 2010/5/14 — 17:23 — page 530 — #14
+530 Ralph Grishman
+evaluation; in addition, evaluation corpora are likely to be quite small and so willmost likely have only one or a few documents mentioning a given entity or event.
+In practice, however, what we often want from a system is a set of facts, which
+may have come from a single document or been gleaned from the combined evi-dence of multiple documents. In situations where a fact cannot be deﬁnitivelyextracted from a single document (for example, because the predicted probabilityof an event is low but non-zero), it may be possible to retrieve related documentsfrom which more deﬁnitive information can be extracted (Ji & Grishman 2008).This will be increasingly important for web-based extraction, since information istypically encoded several times, with different forms of expression.
+In this chapter we have presented a general progression from hand coded to
+supervised to weakly supervised systems for information extraction. Here too theredundancy of information provided by the web will be critical to improving theresults of weakly supervised and unsupervised learning.
+The web provides us with a very rich source of information – information
+which is, however, not easy to process because it is locked up in many linguisticforms. Information extraction, by structuring and standardizing the informationrepresentation, can be the key to unlocking this information for many applications.
+NOTES
+1 Proceedings of MUC-3 through 7 are available through the ACL Anthology web site,
+http://aclweb.org/anthology-new/
+2 www.nist.gov/speech/tests/ace/3 MUC-6 introduced the term ‘named entities’ (NE) for the task, and this name has per-
+sisted, but it should not be confused with the term ‘entities’ used in ACE for the taskinvolving coreference.
+4 www.wikipedia.org5 Strictly speaking, the full extent of the second mention is ‘ Fred’s brother .’ For clarity, we
+shall refer to entity mentions by their head, in this case ‘ brother .’
+

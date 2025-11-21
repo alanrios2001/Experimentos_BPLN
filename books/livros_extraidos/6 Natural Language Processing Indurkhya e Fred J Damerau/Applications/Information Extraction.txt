@@ -1,0 +1,617 @@
+21
+Information Extraction
+Jerry R. Hobbs
+UniversityofSouthernCalifornia
+Ellen Riloff
+UniversityofUtah21.1 Introduction ..........................................................51121.2 DiversityofIETasks.................................................513
+Unstructuredvs.Semi-StructuredText •Single-Documentvs.
+Multi-DocumentIE •AssumptionsaboutIncomingDocuments
+21.3 IEwithCascadedFinite-StateTransducers .......................516
+ComplexWords •BasicPhrases •ComplexPhrases •DomainEvents •
+TemplateGeneration:MergingStructures
+21.4 Learning-BasedApproachestoIE..................................522
+SupervisedLearningofExtractionPatternsandRules •Supervised
+LearningofSequentialClassiﬁerModels •WeaklySupervisedand
+UnsupervisedApproaches •Discourse-OrientedApproachestoIE
+21.5 HowGoodIsInformationExtraction? ............................525Acknowledgments ..........................................................526References....................................................................526
+21.1 Introduction
+Information extraction (IE) is the process of scanning text for information relevant to some interest,
+includingextractingentities,relations,and,mostchallenging,events—orwhodidwhattowhom,when,andwhere.Itrequiresdeeperanalysisthankeywordsearches,butitsaimsfallshortoftheveryhardandlong-termproblemoftextunderstanding,whereweseektocapturealltheinformationinatext,alongwiththespeaker’sorwriter’sintention.IErepresentsamidpointonthisspectrum,wheretheaimistocapturestructuredinformationwithoutsacriﬁcingfeasibility.IEtypicallyfocusesonsurfacelinguisticphenomenathatdonotrequiredeepinference,anditfocusesonthephenomenathataremostfrequentintexts.
+IE technology arose in response to the need for eﬃcient processing of texts in specialized domains.
+Full-sentenceparsersexpendedalotofeﬀortintryingtoarriveatparsesoflongsentencesthatwerenotrelevant to the domain, or that contained much irrelevant material, thereby increasing the chances forerror.IEtechnology,bycontrast,focusesononlytherelevantpartsofthetextandignorestherest.
+TypicalapplicationsofIEsystemsareingleaningbusiness,government,ormilitaryintelligencefroma
+largenumberofsources;insearchesoftheWorldWideWebformorespeciﬁcinformationthankeywordscan discriminate; for scientiﬁc literature searches; in building databases from large textual corpora; andinthecurationofbiomedicalarticles. TheneedforIEiswellillustratedinbiomedicine, wheretherearemore than half a million articles a year, and large amounts of money are spent on curatorial activities.Similarly, in intelligence gathering, an analyst in 1990 said that reading everything she was supposed toreadwouldbelikereading WarandPeace everyday;in1995thesameanalystsaiditwaswaybeyondthat.
+Named entity recognition (NER) is one of the most common uses of IE technology (e.g., Bikel et al.
+1999, Collins and Singer 1999, Cucerzan and Yarowsky 1999, Fleischman and Hovy 2002, Sang andMeulder2003).
+511
+
+512 HandbookofNaturalLanguageProcessing
+NER systems identify diﬀerent types of proper names, such as person and company names, and
+sometimes special types of entities, such as dates and times, that can be easily identiﬁed using surface-level textual patterns. NER is especially important in biomedical applications, where terminology is aformidableproblem.ButitisimportanttonotethatIEismuchmorethanjustNER.Amuchmorediﬃcultand potentially much more signiﬁcant capability is the recognition of events and their participants. Forexample,ineachofthesentences
+“MicrosoftacquiredPowerset.”“PowersetwasacquiredbyMicrosoft.”
+we would like to recognize not only that Microsoft and Powerset are company names, but also that anacquisitioneventtookplace, thattheacquiringcompanywasMicrosoft, andtheacquiredcompanywasPowerset.
+Much of the technology in IE was developed in response to a series of evaluations and associated
+conferencescalledtheMessageUnderstandingConference(MUC),heldbetween1987and1998.
+ExceptfortheearliestMUCs,theseevaluationswerebasedonacorpusofdomain-speciﬁctexts,such
+asnewsarticlesonjointventures.Participatingteamsweresuppliedwithatrainingcorpusandatemplatedeﬁnitionfortheeventsandtheirroles.Forjointventures,therolesweresuchthingsastheparticipatingcompanies, thejointventurecompanythatwasformed, theactivityitwouldengagein, andtheamountofmoneyitwascapitalizedfor.Thesystemswerethenrunonapreviouslyunseentestcorpus.Asystem’sperformancewasmeasuredonrecall(whatpercentageofthecorrectanswersdidthesystemget),precision(whatpercentageofthesystem’sanswerswerecorrect),and F-score.TheF-scoreisaweightedharmonic
+meanbetweenrecallandprecision,computedbythefollowingformula:
+F=(β
+2+1)PR
+β2P+R
+where
+Pisprecision
+Risrecall
+βisaparameterencodingtherelativeimportanceofrecallandprecision
+Ifβ=1, they are weighted equally. If β>1, precision is more important; if β<1, recall is more
+important.∗AtypicaltextinthejointventuresdomainusedinMUC-5(July1993)(MUC-5Proceedings
+1993)isthefollowing:
+BridgestoneSportsCo.saidFridayithassetupajointventureinTaiwanwithalocalconcern
+andaJapanesetradinghousetoproducegolfclubstobeshippedtoJapan.
+Thejointventure,BridgestoneSportsTaiwanCo.,capitalizedat20millionnewTaiwandollars,
+will start production in January 1990 with production of 20,000 iron and “metal wood” clubs amonth.
+Theinformationtobeextractedfromthistextisshowninthefollowingtemplates:
+∗Wheninacourtroomyoupromisetotellthewholetruth,youarepromising100%recall.Whenyoupromisetotellnothing
+butthetruth,youarepromising100%precision.
+
+InformationExtraction 513
+TIE-UP-1:Relationship: TIE-UP
+Entities: “BridgestoneSportsCo.”“alocalconcern”“aJapanesetradinghouse”
+JointVentureCompany: “BridgestoneSportsTaiwanCo.”Activity: ACTIVITY-1
+Amount: NT$20000000
+ACTIVITY-1:Activity: PRODUCTIONCompany: “BridgestoneSportsTaiwanCo.”Product: “ironand‘metalwood’clubs”StartDate: DURING:January1990
+IE research has since been stimulated by the Automatic Content Extraction (ACE) evaluations.∗The
+ACEevaluationshavefocusedonidentifyingnamedentities,extractingisolatedrelations,andcoreferenceresolution.
+IEsystemshavebeendevelopedforavarietyofdomains,includingterroristevents(MUC-4Proceedings
+1992, Soderland et al. 1995, Riloﬀ 1996b, Chieu et al. 2003), joint ventures (MUC-5 Proceedings 1993),management succession (MUC-6 Proceedings 1995), plane crashes (MUC-7 Proceedings 1998), vehiclelaunches(MUC-7Proceedings1998),corporateacquisitions(Freitag1998b,FreitagandMcCallum2000,Finn and Kushmerick 2004), disease outbreaks (Grishman et al. 2002, Patwardhan and Riloﬀ 2007,Phillips and Riloﬀ 2007), job postings (Freitag and McCallum 2000, Caliﬀ and Mooney 2003), rentalads (Soderland 1999, Ciravegna 2001), resumes (Yu et al. 2005), and seminar announcements (Freitag1998b,Ciravegna2001,ChieuandNg2002,CaliﬀandMooney2003,FinnandKushmerick2004,GuandCercone 2006). There has also been a great deal of work on IE in biological and medical domains (e.g.,Friedman1986,Subramaniametal.2003,Ananiadouetal.2004,Hirschmanetal.2005,AnaniadouandMcNaught2006,Yakushijietal.2006),whichisdiscussedingreaterdepthinChapter25ofthisbook.
+21.2 Diversity of IE Tasks
+TheMUCsledtoanincreasedinterestintheIEtaskandthecreationofadditionalIEdatasets.Researchersbegan to work on IE problems for new domains and focused on diﬀerent aspects of the IE problem. Inthefollowingsections,weoutlinesomeofthefundamentaldistinctionsthatcutacrossdiﬀerentIEtasks.
+21.2.1 Unstructured vs. Semi-Structured Text
+Historically,mostnaturallanguageprocessing(NLP)systemshavebeendesignedtoprocess unstructured
+text, whichconsistsofnaturallanguagesentences. Incontrasttostructureddatawherethesemanticsofthedataisdeﬁnedbyitsorganization(e.g., databaseentries), themeaningof unstructured textdependsentirelyonlinguisticanalysisandnaturallanguageunderstanding.Examplesofunstructuredtextincludenews stories, magazine articles, and books.
+†Figure 21.1 shows an example of a seminar announcement
+thatiswrittenasunstructuredtext.
+∗http://www.itl.nist.gov/iad/mig/tests/ace/
+†Thesetextformscanincludesomestructuredinformationaswell,suchaspublicationdatesandauthorby-lines.Butmost
+ofthetextinthesegenresisunstructured.
+
+514 HandbookofNaturalLanguageProcessing
+Professor John Skvoretz, U. of South Carolina, Columbia, will present a seminar entitled“Embedded Commitment,” on Thursday, May 4th from 4-5:30 in PH 223D.
+FIGURE21.1 Exampleofanunstructuredseminarannouncement.
+Laura Petitte
+Department of Psychology
+McGill University
+Thursday, May 4, 1995
+12:00 pm
+B a k e rH a l l3 5 5
+Name: Dr. Jeﬀrey D. HermesAﬃliation: Department of AutoImmune DiseasesResearch & Biophysical Chemistry Merck Research LaboratoriesTitle: “MHC Class II: A Target for Speciﬁc Immunomodulation of the ImmuneResponse”Host/e-mail: Robert Murphy, murph@a.crf.cmu.eduDate: Wednesday, May 3, 1995Time: 3:30 p.m.Place: Mellon Institute Conference RoomSponsor: MERCK RESEARCH LABORATORIES
+FIGURE21.2 Examplesofsemi-structuredseminarannouncements.
+Semi-structured text consists of natural language that appears in a document where the physical
+layout of the language plays a role in its interpretation. For example, consider the seminar announce-ments depicted in Figure 21.2. The reader understands that the speaker is Laura Petitte, who is fromthe Department of Psychology at McGill University, because seminar speakers and their aﬃliationstypically appear at the top of a seminar announcement. If McGill University had appeared belowBaker Hall 355 in the announcement, then we would assume that the seminar takes place at McGillUniversity.
+SeveralIEdatasetshavebeencreatedspeciﬁcallytohandledomainsthatoftenincludesemi-structured
+text, such as seminar announcements, job postings, rental ads, and resumes. To accommodate semi-structured text, IE systems typically rely less on syntactic parsing and more on positional features thatcapturethephysicallayoutofthewordsonthepage.
+21.2.2 Single-Document vs. Multi-Document IE
+Originally, IE systems were designed to locate domain-speciﬁc information in individual documents.Givenadocumentasinput,theIEsystemidentiﬁesandextractsfactsrelevanttothedomainthatappearinthedocument.Wewillrefertothistaskas single-documentIE.
+TheabundanceofinformationavailableontheWebhasledtothecreationofnewtypesofIEsystems
+that seek to extract facts from the Web or other very large text collections (e.g., Brin 1998, Fleischmanetal. 2003, Etzionietal. 2005, Pascaetal. 2006, Bankoetal. 2007, Pasca2007). Wewillrefertothistaskasmulti-documentIE.
+Single-documentIEisfundamentallydiﬀerentfrommulti-documentIE,althoughbothtypesofsystems
+mayusesimilartechniques.Onedistinguishingissueisredundancy.Asingle-documentIEsystemmustextractdomain-speciﬁcinformationfromeachdocumentthatitisgiven.Ifthesystemfailstoﬁndrelevant
+
+InformationExtraction 515
+information in a document, then that is an error. This task is challenging because many documentsmention a fact only once, and the fact may be expressed in an unusual or complex linguistic context(e.g., one requiring inference). In contrast, multi-document IE systems can exploit the redundancy ofinformationinitslargetextcollection.Manyfactswillappearinawidevarietyofcontexts,sothesystemusually has multiple opportunities to ﬁnd each piece of information. The more often a fact appears,the greater the chance that it will occur at least once in a linguistically simple context that will bestraightforwardfortheIEsystemtorecognize.
+∗
+Multi-documentIEissometimesreferredtoas“open-domain”IEbecausethegoalisusuallytoacquire
+broad-coverage factual information, which will likely beneﬁt many domains. In this paradigm, it doesnotmatterwheretheinformationoriginated.Someopen-domainIEsystems,suchasKnowItAll(Etzionietal. 2005)andTextRunner(Bankoetal. 2007), haveaddressedissuesofscaletoacquirelargeamountsof information from the Web. One of the major challenges in multi-document IE is cross-documentcoreferenceresolution:whenaretwodocumentstalkingaboutthesameentities?Someresearchershavetackled this problem (e.g., Bagga and Baldwin 1998, Mann and Yarowsky 2003, Gooi and Allan 2004,Niu et al. 2004, Mayﬁeld et al. 2009), and in 2008 the ACE evaluation expanded its focus to includecross-documententitydisambiguation(Strasseletal.2008).
+21.2.3 Assumptions about Incoming Documents
+TheIEdatasetsusedintheMUCsconsistofdocumentsrelatedtothedomain,butnotallofthedocumentsmention a relevant event. The data sets were constructed to mimic the challenges that a real-world IEsystemmustface,whereafundamentalpartoftheIEtaskistodeterminewhetheradocumentdescribesarelevantevent,aswellastoextractinformationabouttheevent.IntheMUC-3throughMUC-7IEdatasets,onlyabouthalfofthedocumentsdescribeadomain-relevanteventthatwarrantsIE.
+Other IE data sets make diﬀerent assumptions about the incoming documents. Many IE data sets
+consist only of documents that describe a relevant event. Consequently, the IE system can assumethat each document contains information that should be extracted. This assumption of relevant-only
+documents allowsanIEsystemtobemoreaggressiveaboutextractinginformationbecausethetextsare
+known to be on-topic. For example, if an IE system is given stories about bombing incidents, then itcanextractthenameofeverypersonwhowaskilledorinjuredandinmostcasestheywillbevictimsofa bombing. If, however, irrelevant stories are also given to the system, then it must further distinguishbetweenpeoplewhoarebombingvictimsandpeoplewhowerekilledorinjuredinothertypesofevents,suchasrobberiesorcarcrashes.
+SomeIEdatasetsfurthermaketheassumptionthateachincomingdocumentcontainsonlyoneevent
+of interest. We will refer to these as single-event documents. The seminar announcements, corporate
+acquisitions, and job postings IE data sets only contain single-event documents. In contrast, the MUCdata sets and some others (e.g., rental ads and disease outbreaks) allow that a single document maydescribemultipleeventsofinterest.IftheIEsystemcanassumethateachincomingdocumentdescribesonlyonerelevantevent,thenalloftheextractedinformationcanbeinsertedinasingleoutputtemplate.
+†
+If multiple events are discussed in a document, then the IE system must perform discourse analysisto determine how many diﬀerent events are being reported and to associate each piece of extractedinformationwiththeappropriateeventtemplate.
+∗Thisissueparallelsthediﬀerencebetweensingle-documentandmulti-documentquestionanswering(QA)systems.Light
+et al. (2001) found that the performance of QA systems in TREC-8 was directly correlated with the number of answeropportunitiesavailableforaquestion.
+†Note that coreference resolution of entities is still an issue, however. For example, a document may mention multiple
+victims so the IE system needs to determine whether an extracted victim refers to a previously mentioned victim or anewone.
+
+516 HandbookofNaturalLanguageProcessing
+21.3 IE with Cascaded Finite-State Transducers
+Probably the most important idea that emerged in the course of the MUC evaluations was the decom-position of the IE process into a series of subproblems that can be modeled with “cascaded ﬁnite-statetransducers” (Lehnert et al. 1991, 1992, Joshi 1996, Hobbs et al. 1997, Cunningham et al. 2002). Aﬁnite-state automaton reads one element at a time of a sequence of elements; each element transitionstheautomatonintoanewstate,basedonthetypeofelementitis,e.g.,thepartofspeechofaword.Somestates are designated as ﬁnal, and a ﬁnal state is reached when the sequence of elements matches a validpattern. In a ﬁnite-state transducer, an output entity is constructed when ﬁnal states are reached, e.g., arepresentation of the information in a phrase. In a cascaded ﬁnite-state transducer, there are diﬀerentﬁnite-statetransducersatdiﬀerentstages.Earlierstageswillpackageastringofelementsintosomethingthenextstagewillviewasasingleelement.
+Inthetypicalsystem,theearlierstagesrecognizesmallerlinguisticobjectsandworkinalargelydomain-
+independentfashion.Theyusepurelylinguisticknowledgetorecognizeportionsofthesyntacticstructureof a sentence that linguistic methods can determine reliably, requiring relatively little modiﬁcation oraugmentationasthesystemismovedfromdomaintodomain.Thelaterstagestaketheselinguisticobjectsasinputandﬁnddomain-dependentpatternswithinthem.InatypicalIEsystem,thereareﬁvelevelsofprocessing:
+1. Complex Words: This includes the recognition of multiwords and proper name entities, such as
+people,companies,andcountries.
+2. BasicPhrases:Sentencesaresegmentedintonoungroups,verbgroups,andparticles.3. ComplexPhrases:Complexnoungroupsandcomplexverbgroupsareidentiﬁed.4. DomainEvents:ThesequenceofphrasesproducedatLevel3isscannedforpatternsofinterestto
+theapplication,andwhentheyarefound,semanticstructuresarebuiltthatencodetheinformationaboutentitiesandeventscontainedinthepattern.
+5. MergingStructures:Semanticstructuresfromdiﬀerentpartsofthetextaremergediftheyprovide
+informationaboutthesameentityorevent.Thisprocessissometimescalled templategeneration,
+andisacomplexprocessnotdonebyaﬁnite-statetransducer.
+As we progress through the ﬁve levels, larger segments of text are analyzed and structured. In each ofstages 2 through 4, the input to the ﬁnite-state transducer is the sequence of chunks constructed in thepreviousstage.TheGATEproject(Cunninghametal.2002)isawidelyusedtoolkitthatprovidesmanyofthecomponentsneededforsuchanIEpipeline.
+This decomposition of the natural-language problem into levels is essential to the approach. Many
+systems have been built to do pattern matching on strings of words. The advances in IE have dependedcrucially on dividing that process into separate levels for recognizing phrases and recognizing patternsamongthephrases.Phrasescanberecognizedreliablywithpurelysyntacticinformation,andtheyprovidepreciselytheelementsthatarerequiredforstatingthepatternsofinterest.
+Sections21.3.1through21.3.5illustratethisprocessontheBridgestoneSportstext.
+21.3.1 Complex Words
+Theﬁrstlevelofprocessingidentiﬁesmultiwordssuchas“setup,”“tradinghouse,”“newTaiwandollars,”and“jointventure,”andcompanynameslike“BridgestoneSportsCo.”and“BridgestoneSportsTaiwanCo.” Thenamesofpeopleandlocations, dates, times, andotherbasicentitiesarealsorecognizedatthislevel.Languagesingeneralareveryproductiveintheconstructionofshort,multiwordﬁxedphrasesandpropernamesemployingspecializedmicrogrammars,andthisisthelevelatwhichtheyarerecognized.
+Some names can be recognized by their internal structure. A common pattern for company names is
+“ProperNameProductName,”asin“AcmeWidgets.”Otherscanonlyberecognizedbymeansofatable.
+
+InformationExtraction 517
+InternalstructurecannottellusthatIBMisacompanyandDNAisnot. Itisalsosometimespossibletorecognize the types of proper names by the context in which they occur. For example, in the followingsentences:
+a.XYZ’ssalesb.VaclavHavel,53,presidentoftheCzechRepublic
+we might not know that XYZ is a company and Vaclav Havel is a person, but the immediate contextestablishesthat.Thesecanbegivenanunderspeciﬁedrepresentationthatisresolvedbylaterstages.
+21.3.2 Basic Phrases
+TheproblemofsyntacticambiguityinnaturallanguageisAI-complete.Thatis,wewillnothavesystemsthatreliablyparseEnglishsentencescorrectlyuntilwehaveencodedmuchofthereal-worldknowledgethatpeoplebringtobearintheirlanguagecomprehension.Forexample,nounphrasescannotbereliablyidentiﬁedbecauseoftheprepositionalphraseattachmentproblem.However,certainsyntacticconstructscan be identiﬁed with reasonable reliability. One of these syntactic constructs is the noun group, whichis the head noun of a noun phrase together with its determiners and other left modiﬁers (these aresometimescalled“baseNPs”).Anotheriswhatwearecallingthe“verbgroup,”thatis,theverbtogetherwithitsauxiliariesandanyinterveningadverbs.Moreover,ananalysisthatidentiﬁestheseelementsgivesusexactlytheunitswemostneedforsubsequentdomain-dependentprocessing. Thetaskofidentifyingthese simple noun and verb groups is sometimes called “syntactic chunking.” The basic phrases in theﬁrstsentenceoftext(1)areasfollows,where“CompanyName”and“Location”arespecialkindsofnoungroupthatwouldbeidentiﬁedbyNER:
+CompanyName: BridgestoneSportsCo.VerbGroup: saidNounGroup: FridayNounGroup: itVerbGroup: hadsetupNounGroup: ajointventurePreposition: inLocation: TaiwanPreposition: withNounGroup: alocalconcernConjunction: andNounGroup: aJapanesetradinghouseVerbGroup: toproduceNounGroup: golfclubsVerbGroup: tobeshippedPreposition: toLocation: Japan
+Noungroupscanberecognizedbyarelativelysimpleﬁnite-stategrammarencompassingmostofthe
+complexity that can occur in English noun groups (Hobbs et al. 1992), including numbers, numericalmodiﬁers like “approximately,” other quantiﬁers and determiners, participles in adjectival position,comparative and superlative adjectives, conjoined adjectives, and arbitrary orderings and conjunctionsofprenominalnounsandnoun-likeadjectives.Thus,amongthenoungroupsthatcanberecognizedare
+“approximately5kg”“morethan30people”“thenewlyelectedpresident”
+
+518 HandbookofNaturalLanguageProcessing
+“thelargestleftistpoliticalforce”“agovernmentandcommercialproject”
+The principal ambiguities that arise in this stage are due to noun–verb ambiguities. For example, “thecompanynames”couldbeasinglenoungroupwiththeheadnoun“names,”oritcouldbeanoungroup“the company” followed by the verb “names.” One can use a lattice representation to encode the twoanalysesandresolvetheambiguityinthestageforrecognizingdomainevents.
+Verb groups (and predicate adjective constructions) can be recognized by an even simpler ﬁnite-
+state grammar that, in addition to chunking, also tags them as Active Voice, Passive Voice, Gerund,and Inﬁnitive. Verbs are sometimes locally ambiguous between active and passive senses, as the verb“kidnapped”inthefollowingtwosentences:
+“Severalmenkidnappedthemayortoday.”“Severalmenkidnappedyesterdaywerereleasedtoday.”
+ThesecasescanbetaggedasActive/Passive,andthedomain-eventstagecanlaterresolvetheambiguity.Some work has also been done to train a classiﬁer to distinguish between active voice and “reduced”passivevoiceconstructions(IgoandRiloﬀ2008).
+The breakdown of phrases into nominals, verbals, and particles is a linguistic universal. Whereas the
+precise parts of speech thatoccur in any language can vary widely, every language has elements that arefundamentallynominalincharacter,elementsthatarefundamentallyverbalorpredicative,andparticlesorinﬂectionalaﬃxesthatencoderelationsamongtheotherelements(Croft1991).
+21.3.3 Complex Phrases
+Some complex noun groups and verb groups can be recognized reliably on the basis of domain-independent,syntacticinformation.Forexample:
+•Theattachmentofappositivestotheirheadnoungroup
+“Thejointventure,BridgestoneSportsTaiwanCo.,”
+•Theconstructionofmeasurephrases
+“20,000ironand‘metalwood’clubsamonth”
+•Theattachmentof“of”and“for”prepositionalphrasestotheirheadnoungroups
+“productionof20,000ironand‘metalwood’clubsamonth”
+•Noungroupconjunction
+“alocalconcernandaJapanesetradinghouse”
+In the course of recognizing basic and complex phrases, domain-relevant entities and events can
+be recognized and the structures for these can be constructed. In the sample joint-venture text, entitystructures can be constructed for the companies referred to by the phrases “Bridgestone Sports Co.,”“a local concern,” “a Japanese trading house,” and “Bridgestone Sports Taiwan Co.” Information aboutnationalityderivedfromthewords“local”and“Japanese”canberecorded.Correspondingtothecomplexnoungroup“Thejointventure,BridgestoneSportsTaiwanCo.,”thefollowingrelationshipstructurecanbebuilt:
+Relationship: TIE-UP
+Entities: –JointVentureCompany: “BridgestoneSportsTaiwanCo.”Activity: –Amount: –
+Correspondingtothecomplexnoungroup“productionof20,000ironand‘metalwood’clubsamonth,”thefollowingactivitystructurecanbebuiltup:
+
+InformationExtraction 519
+Activity: PRODUCTIONCompany: –Product: “ironand‘metalwood’clubs”StartDate: –
+Complexverbgroupscanalsoberecognizedinthisstage.Considerthefollowingvariations:
+“GMformedajointventurewithToyota.”
+“GMannounceditwasforming ajointventurewithToyota.”
+“GMsignedanagreementforming ajointventurewithToyota.”
+“GMannounceditwassigninganagreementtoform ajointventurewithToyota.”
+Althoughthesesentencesmaydiﬀerinsigniﬁcanceforsomeapplications,oftentheywouldbeconsideredequivalentinmeaning.Ratherthandeﬁningeachofthesevariations,withalltheirsyntacticvariants,atthedomaineventlevel,theusershouldbeabletodeﬁnecomplexverbgroupsthatsharethesamesigniﬁcance.Thus, “formed,” “announced it was forming,” “signed an agreement forming,” and “announced it wassigninganagreementtoform”mayallbeequivalent,andoncetheyaredeﬁnedtobeso,onlyonedomaineventpatternneedstobeexpressed.Verbgroupconjunction,asin
+“Terrorists kidnappedandkilled threepeople.”
+canbetreatedasacomplexverbgroupaswell.
+21.3.4 Domain Events
+The next stage is recognizing domain events, and its input is list of the basic and complex phrasesrecognized in the earlier stages, in the order in which they occur. Anything that was not identiﬁed as abasic or complex phrase in a previous stage can be ignored in this stage; this can be a signiﬁcant sourceofrobustness.
+Identifying domain events requires a set of domain-speciﬁc patterns both to recognize phrases that
+correspond to an event of interest and to identify the syntactic constitutents that correspond to theevent’sroleﬁllers.Inearlyinformationsystems,thesedomain-speciﬁc“extractionpatterns”weredeﬁnedmanually.InSections21.4.1and21.4.3,wedescribeavarietyoflearningmethodsthathavesubsequentlybeendevelopedtoautomaticallygeneratedomain-speciﬁcextractionpatternsfromtrainingcorpora.
+The patterns for events of interest can be encoded as ﬁnite-state machines, where state transitions
+are eﬀected by phrases. The state transitions are driven oﬀ the head words in the phrases. Thatis, each pair of relevant head word and phrase type—such as “company-NounGroup” and “formed-PassiveVerbGroup”—has an associated set of state transitions. In the sample joint-venture text, thedomaineventpatterns
+<Company/ies>< Set-up>< Joint-Venture> with<Company/ies>
+and
+<Produce>< Product>
+wouldbeinstantiatedintheﬁrstsentence,andthepatterns
+<Company ><Capitalized> at<Currency>
+and
+<Company ><Start><Activity> in/on<Date>
+inthesecond.Thesefourpatternswouldresultinthefollowingfourstructuresbeingbuilt:
+
+520 HandbookofNaturalLanguageProcessing
+Relationship: TIE-UP
+Entities: “BridgestoneSportsCo.”
+“alocalconcern”“aJapanesetradinghouse”
+JointVentureCompany: –Activity: –
+Amount: –
+Activity: PRODUCTIONCompany: –Product: “golfclubs”StartDate: –
+Relationship: TIE-UP
+Entities: –
+JointVentureCompany: “BridgestoneSportsTaiwanCo.”Activity: –
+Amount: NT$20000000
+Activity: PRODUCTIONCompany: “BridgestoneSportsTaiwanCo.”Product: –StartDate: DURING:January1990
+ThethirdoftheseisanaugmentationoftheTIE-UPstructurediscoveredinthecomplexphrasephase.Certainkindsof“pseudo-syntax”canbedoneatthisstage,includingrecognizingrelativeclausesand
+conjoinedverbphrases,asdescribedinHobbsetal.(1997).
+Manysubject–verb–objectpatternsareofcourserelatedtoeachother.Thesentence:
+“GMmanufacturescars.”
+illustrates a general pattern for recognizing a company’s activities. But the same semantic content canappearinavarietyofways,including
+“CarsaremanufacturedbyGM.”“...GM,whichmanufacturescars... ”
+“...cars,whicharemanufacturedbyGM ...”
+“...carsmanufacturedbyGM ...”
+“GMistomanufacturecars.”“CarsaretobemanufacturedbyGM.”“GMisacarmanufacturer.”
+Theseareallsystematicallyrelatedtotheactivevoiceformofthesentence.Therefore,thereisnoreasona developer should have to specify all the variations. A simple tool would be able to generate all ofthe variants of the pattern from the simple active voice Subject–Verb–Object form. It would also allowadverbials to appear at appropriate points. These transformations would be executed at compile time,producingthemoredetailedsetofpatterns,sothatatruntimethereisnolossofeﬃciency.
+
+InformationExtraction 521
+Thisfeatureisnotmerelyacleverideaformakingasystemmoreconvenienttoauthor.Itrestsonthe
+fundamentalideathatunderliesgenerativetransformationalgrammar,butisrealizedinawaythatdoesnotimpacttheeﬃciencyofprocessing.
+Inrecentyears,full-sentenceparsinghasimproved,inlargepartthroughtheuseofstatisticaltechniques.
+Consequently,someIEsystemshavebeguntorelyonfullparsersratherthanshallowparsingtechniques.
+21.3.5 Template Generation: Merging Structures
+All the ﬁrst four stages of processing operate within the bounds of single sentences. The ﬁnal level ofprocessingoperatesoverthewholetext.Itstaskistoseethatalltheinformationcollectedaboutasingleentity, relationship, or event is combined into a uniﬁed whole. This is one of the primary ways thatthe problem of coreference is dealt with in IE, including both NP coreference (for entities) and eventcoreference. One event template is generated for each event, which coalesces all of the informationassociated with that event. If an input document discusses multiple events of interest, then the IEsystemmustgeneratemultipleeventtemplates.Generatingmultipleeventtemplatesrequiresadditionaldiscourseanalysisto(a)correctlydeterminehowmanydistincteventsarereportedinthedocument,and(b)correctlyassigneachentityandobjecttotheappropriateeventtemplate.
+Among the criteria that need to be taken into account in determining whether two structures can be
+merged are the internal structure of the noun groups, nearness along some metric, and the consistency,ormoregenerally,thecompatibilityofthetwostructures.
+In the analysis of the sample joint-venture text, we have produced three activity structures. They are
+all consistent because they are all of type PRODUCTION and because “iron and ‘metal wood’ clubs” isconsistentwith“golfclubs.”Hence,theyaremerged,yielding:
+Activity: PRODUCTIONCompany: “BridgestoneSportsTaiwanCo.”Product: “ironand‘metalwood’clubs”StartDate: DURING:January1990
+Similarly, the two relationship structures that have been generated are consistent with each other, so
+theycanbemerged,yielding:
+Relationship: TIE-UP
+Entities: “BridgestoneSportsCo.”“alocalconcern”“aJapanesetradinghouse”
+JointVentureCompany: “BridgestoneSportsTaiwanCo.”Activity: –
+Amount: NT$20000000
+The entity and event coreference problems are very hard, and constitute active and important areas
+of research. Coreference resolution was a task in the later MUC evaluations (MUC-6 Proceedings 1995,MUC-7 Proceedings 1998), and has been a focus of the ACE evaluations. Many recent research eﬀortshaveappliedmachinelearningtechniquestotheproblemofcoreferenceresolution(e.g.,DaganandItai1990, McCarthy and Lehnert 1995, Aone and Bennett 1996, Kehler 1997, Cardie and Wagstaﬀ 1999,Harabagiuetal.2001,Soonetal.2001,NgandCardie2002,BeanandRiloﬀ2004,McCallumandWellner2004,Yangetal.2005,HaghighiandKlein2007).
+SomeattemptstoautomatethetemplategenerationprocesswillbediscussedinSection21.4.4.
+
+522 HandbookofNaturalLanguageProcessing
+21.4 Learning-Based Approaches to IE
+AswediscussedinSection21.3,earlyIEsystemsusedhand-craftedpatternsandrules,oftenencodedincascadedﬁnite-statetransducers.Hand-builtIEsystemswereeﬀective,butmanuallycreatingthepatternsandruleswasextremelytime-consuming.Forexample,itwasestimatedthatittookapproximately1500person-hoursofeﬀorttocreatethepatternsusedbytheUMassMUC-4system(Lehnertetal.1992,Riloﬀ1993).
+Consequently, researchers began to use statistical techniques and machine learning algorithms to
+automatically create IE systems for new domains. In the following sections, we overview four types oflearning-basedIEmethods:supervisedlearningofpatternsandrules,supervisedlearningofsequentialIEclassiﬁers,weaklysupervisedandunsupervisedlearningmethodsforIE,andlearning-basedapproachesformoreglobalordiscourse-orientedapproachestoIE.
+21.4.1 Supervised Learning of Extraction Patterns and Rules
+Supervised learning methods originally promised to dramatically reduce the knowledge engineeringbottleneck required to create an IE system for a new domain. Instead of painstakingly writing patternsandrulesbyhand, knowledgeengineeringcouldbereducedtothemanualannotationofacollectionoftrainingtexts.Thehopewasthatatrainingsetcouldbeannotatedinamatterofweeks,andnearlyanyonewithknowledgeofthedomaincoulddotheannotationwork.
+∗AswewillacknowledgeinSection21.4.3,
+manualannotationisitselfasubstantialendeavor,andagoalofrecentresearcheﬀortsistoeliminatethisbottleneckaswell. ButsupervisedlearningmethodswereanimportantﬁrststeptowardautomatingthecreationofIEsystems.
+The earliest pattern learning systems used specialized techniques, sometimes coupled with small
+amounts of manual eﬀort. AutoSlog (Riloﬀ 1993) and PALKA (Kim and Moldovan 1993) were the ﬁrstIE pattern learning systems. AutoSlog (Riloﬀ 1993, 1996a) matches a small set of syntactic templatesagainst the text surrounding a desired extraction and creates one (or more) lexico-syntactic patterns byinstantiating the templates with the corresponding words in the sentence. A “human in the loop” mustthenmanuallyreviewthepatternstodecidewhichonesareappropriatefortheIEtask.PALKA(KimandMoldovan 1993) uses manually deﬁned frames and keywords that are provided by a user and creates IEpatternsbymappingclausescontainingthekeywordsontotheframe’sslots.Thepatternsaregeneralizedbasedonthesemanticfeaturesofthewords.
+SeveralsystemsuserulelearningalgorithmstoautomaticallygenerateIEpatternsfromannotatedtext
+corpora. LIEP (Huﬀman 1996) creates candidate patterns by identifying syntactic paths that relate therole ﬁllers in a sentence. The patterns that perform well on training examples are kept, and as learningprogressestheyaregeneralizedtoaccommodatenewtrainingexamplesbycreatingdisjunctionsofterms.CRYSTAL (Soderland et al. 1995) learns extraction rules using a uniﬁcation-based covering algorithm.CRYSTAL’srulesare“conceptnode”structuresthatincludelexical,syntactic,andsemanticconstraints.WHISK (Soderland 1999) was an early system that was speciﬁcally designed to be ﬂexible enough tohandle structured, semi-structured, and unstructured texts. WHISK learns regular expression rules thatconsistofwords, semanticclasses, andwildcardsthatmatchanytoken. (LP)
+2(Ciravegna2001)induces
+twodiﬀerentkindsofIErules: taggingrules tolabelinstancesasdesiredextractions,and correctionrules
+tocorrectmistakesmadebythetaggingrules.Freitagcreatedarule-learningsystemcalledSRV(Freitag1998b) and later combined it with a rote learning mechanism and a Naive Bayes classiﬁer to explore amulti-strategyapproachtoIE(Freitag1998a).
+Relationallearningmethodshavealsobeenusedtolearnrule-likestructuresforIE(e.g.,RothandYih
+2001, Caliﬀ and Mooney 2003, Bunescu and Mooney 2004, 2007). RAPIER (Caliﬀ and Mooney 1999,
+∗In contrast, creating IE patterns and rules by hand typically requires computational linguists who understand how the
+patternsorruleswillbeintegratedintotheNLPsystem.
+
+InformationExtraction 523
+2003) uses relational learning methods to generate IE rules, where each rule has a pre-ﬁller, ﬁller, andpost-ﬁllercomponent.Eachcomponentisapatternthatconsistsofwords,POStags,andsemanticclasses.RothandYih(2001)proposeaknowledgerepresentationlanguageforpropositionalrelationsandcreateatwo-stageclassiﬁerthatﬁrstidentiﬁescandidateextractionsandthenselectsthebestones.BunescuandMooney(2004)useRelationalMarkovNetworkstorepresentdependenciesandinﬂuencesacrossentitiesandextractions.
+IEpatternlearningmethodshavealsobeendevelopedforrelatedapplicationssuchasquestionanswer-
+ing(RavichandranandHovy2002),wherethegoalistolearnpatternsforspeciﬁctypesofquestionsthatinvolverelationsbetweenentities(e.g.,identifyingthebirthyearofaperson).
+21.4.2 Supervised Learning of Sequential Classiﬁer Models
+AnalternativeapproachviewsIEasaclassiﬁcationproblemthatcanbetackledusingsequentiallearningmodels. Instead of using explicit patterns or rules to extract information, a machine learning classiﬁeris trained to sequentially scan a text from left to right and label each word as an extraction or a non-extraction. A typical labeling scheme is called IOB, where each word is classiﬁed as an “I” if it is insidea desired extraction, “O” if it is outside a desired extraction, or “B” if it is the beginning of a desiredextraction. The sentence below has been labeled with IOB tags corresponding to phrases that should beextractedasfactsaboutabombingincident.
+Alleged/Bguerrilla/Iurban/Icommandos/Ilaunched/Otwo/Bhighpower/Ibombs/Iagainst/Oa/Bcar/Idealership/Iin/Odowntown/OSan/BSalvador/Ithis/Bmorning/I.In the example above, the IOB tags indicate that ﬁve phrases should be extracted: “Alleged guerrilla
+urban commandos,” “two highpower bombs,” “a car dealership,” “San Salvador,” and “this morning.”Note that the “B” tag is important to demarcate where one extraction begins and another one ends,particularly in the case when two extractions are adjacent. For example, if only “I” and “O” tags wereused, then “San Salvador” and “this morning” would run together and appear to be a single extraction.Dependingonthelearningmodel,adiﬀerentclassiﬁermaybetrainedforeachtypeofinformationtobeextracted (e.g., one classiﬁer might be trained to identify perpetrator extractions, and another classiﬁermaybetrainedtoidentifylocationextractions).OrasingleclassiﬁercanbetrainedtoproducediﬀerenttypesofIOBtagsforthediﬀerentkindsofroleﬁllers(e.g., B
+perpetratorandBlocation)(ChieuandNg2002).
+A variety of sequential classiﬁer models have been developed using Hidden Markov Models
+(HMMs) (Freitag and McCallum 2000, Yu et al. 2005, Gu and Cercone 2006), Maximum EntropyClassiﬁers (Chieu and Ng 2002), Conditional Random Fields (Peng and McCallum 2004, Choi et al.2005), and Support Vector Machines (SVMs) (Zelenko et al. 2003, Finn and Kushmerick 2004, Li et al.2005, Zhao and Grishman 2005). Freitag and McCallum (2000) use HMMs and developed a method toautomatically explore diﬀerent structures for the HMM during the learning process. Gu and Cercone(2006)useHMMsinatwo-stepIEprocess:oneHMMretrievesrelevanttextsegmentsthatlikelycontainaﬁller,andasecondHMMidentiﬁesthewordstobeextractedinthesetextsegments.FinnandKushmerick(2004)alsouseatwo-stepIEprocessbutinadiﬀerentway:oneSVMclassiﬁeridentiﬁesstartandendtagsfor extractions, and a second SVM looks at tags that were orphaned (i.e., a start tag was found withouta corresponding end tag, or vice versa) and tries to identify the missing tag. The second classiﬁer aimsto improve IE recall by producing extractions that otherwise would have been missed. Yu et al. (2005)createdacascadedmodelofHMMsandSVMs.Intheﬁrstpass,anHMMsegmentsresumesintoblocksthat represent diﬀerent types of information. In the second pass, HMMs and SVMs extract informationfromtheblocks,withdiﬀerentclassiﬁerstrainedtoextractdiﬀerenttypesofinformation.
+Chapter 9 in this book explains how to create classiﬁers and sequential prediction models using
+supervisedlearningtechniques.
+
+524 HandbookofNaturalLanguageProcessing
+21.4.3 Weakly Supervised and Unsupervised Approaches
+Supervised learning techniques substantially reduced the manual eﬀort required to create an IE systemforanewdomain.However,annotatingtrainingtextsstillrequiresasubstantialinvestmentoftime,andannotating documents for IE can be deceptively complex (Riloﬀ 1996b). Furthermore, since IE systemsare domain-speciﬁc, annotated corpora cannot be reused: a new corpus must be annotated for eachdomain.
+To further reduce the knowledge engineering required to create an IE system, several methods have
+been developed in recent years to learn extraction patterns using weakly supervised and unsupervisedtechniques.AutoSlog-TS(Riloﬀ1996b)isaderivativeofAutoSlogthatrequiresasinputonlyapreclassiﬁedtraining corpus in which texts are identiﬁed as relevant or irrelevant with respect to the domain but arenotannotatedinanyotherway.AutoSlog-TS’slearningalgorithmisatwo-stepprocess.Intheﬁrststep,AutoSlog’s syntactic templates are applied to the training corpus exhaustively, which generates a largeset of candidate extraction patterns. In the second step, the candidate patterns are ranked based on thestrengthoftheirassociationwiththerelevanttexts.Ex-Disco(Yangarberetal.2000)tookthisapproachone step further by eliminating the need for a preclassiﬁed text corpus. Ex-Disco uses a small set ofmanually deﬁned seed patterns to partition a collection of unannotated text into relevant and irrelevantsets.Thepatternlearningprocessisthenembeddedinabootstrappingloopwhere(1)patternsarerankedbased on the strength of their association with the relevant texts, (2) the best pattern(s) are selected andadded to the pattern set, and (3) the corpus is re-partitioned into new relevant and irrelevant sets. BothAutoSlog-TS and Ex-Disco produce IE patterns that performed well in comparison to pattern sets usedby previous IE systems. However, the ranked pattern lists produced by these systems still need to bemanuallyreviewed.
+∗
+StevensonandGreenwood(2005)alsobeginwithseedpatternsandusesemanticsimilaritymeasures
+toiterativelyrankandselectnewcandidatepatternsbasedontheirsimilaritytotheseeds.StevensonandGreenwoodusepredicate-argumentstructuresastherepresentationfortheirIEpatterns,asdidSurdeanuetal.(2003)andYangarber(2003)inearlierwork.Sudoetal.(2003)createdanevenricher subtreemodel
+representation for IE patterns, where an IE pattern can be an arbitrary subtree of a dependency tree.Thesubtreepatternsarelearnedfromrelevantandirrelevanttrainingdocuments.BunescuandMooney(2007)developedaweaklysupervisedmethodforrelationextractionthatusesMultipleInstanceLearning(MIL)techniqueswithSVMsandstringkernels.
+Meta-bootstrapping(RiloﬀandJones1999)isabootstrappingmethodthatlearnsIEpatternsandalso
+generates noun phrases that belong to a semantic class at the same time. Given a few seed nouns thatbelongtoatargetedsemanticclass,themeta-bootstrappingalgorithmiterativelylearnsanewextractionpattern and then uses the learned pattern to hypothesize additional nouns that belong to the semanticclass.Thepatternslearnedbymeta-bootstrappingaremoreakintoNERpatternsthaneventrolepatterns,however, because they identify noun phrases that belong to general semantic classes, irrespective of anyevents.
+Recently,PhillipsandRiloﬀ(2007)showedthatbootstrappingmethodscanbeusedtolearneventrole
+patterns by exploiting role-identifying nouns as seeds. A role-identifying noun is a word that, by virtue
+of its lexical semantics, identiﬁes the role that the noun plays with respect to an event. For example,thedeﬁnitionoftheword kidnapper istheagentofakidnappingevent. Byusingrole-identifyingnouns
+as seeds, the Basilisk bootstrapping algorithm (Thelen and Riloﬀ 2002) can be used to learn both eventextractionpatternsaswellasadditionalrole-identifyingnouns.
+Finally,ShinyamaandSekine(2006)havedevelopedanapproachforcompletelyunsupervisedlearning
+ofIEpatterns. Giventextsforanewdomain, relationdiscoverymethodsareusedtopreemptivelylearnthetypesofrelationsthatappearindomain-speciﬁcdocuments.TheOn-DemandInformationExtraction(ODIE) system (Sekine 2006) accepts a user query for a topic, dynamically learns IE patterns for salient
+∗The human reviewer discards patterns that are not relevant to the IE task and assigns an event role to the patterns that
+arekept.
+
+InformationExtraction 525
+relationsassociatedwiththetopic,andthenappliesthepatternstoﬁllinatablewithextractedinformationrelatedtothetopic.
+21.4.4 Discourse-Oriented Approaches to IE
+Most of the IE systems that we have discussed thus far take a relatively localized approach to IE. TheIE patterns or classiﬁers focus only on the local context surrounding a word or phrase when makingan extraction decision. Recently, some systems have begun to take a more global view of the extractionprocess. Gu and Cercone (2006) and Patwardhan and Riloﬀ (2007) use classiﬁers to ﬁrst identify theevent-relevant sentences in a document and then apply an IE system to extract information from thoserelevantsentences.
+Finkeletal.(2005)imposepenaltiesintheirlearningmodeltoenforcelabelconsistencyamongextrac-
+tionsfromdiﬀerentpartsofadocument.MaslennikovandChua(2007)usedependencyandRST-baseddiscourserelationstoconnectentitiesindiﬀerentclausesandﬁndlong-distancedependencyrelations.
+Finally, as we discussed in Section 21.3.5, IE systems that process multiple-event documents need
+to generate multiple templates. Template generation for multiple events is extremely challenging, andonlyafewlearningsystemshavebeendevelopedtoautomatethisprocessfornewdomains. WRAP-UP(Soderland and Lehnert 1994) was an early supervised learning system that uses a collection of decisiontreestomakeaseriesofdiscoursedecisionstoautomatethetemplategenerationprocess.Morerecently,Chieu et al. (2003) developed a system called ALICE that generates complete templates for the MUC-4terrorismdomain(MUC-4Proceedings1992).ALICEusesasetofclassiﬁersthatidentifyextractionsforeachtypeofslotanda templatemanager todecidewhentocreateanewtemplate.Thetemplatemanager
+uses general-purpose rules (e.g., a conﬂicting date will spawn a new template) as well as automaticallyderived“seedwords”thatareassociatedwithdiﬀerentincidenttypestodistinguishbetweenevents.
+21.5 How Good Is Information Extraction?
+Extracting information about events from free text is a challenging problem that is still far from solved.Figure 21.3 illustrates how the various MUC systems progressed from year to year. The vertical axis isprecision,andthehorizontalaxisisrecall.Wehaveplottedthetopone-thirdofthesystemscoresinthesmallellipseandthetoptwo-thirdsinthelargeellipse.
+We can see that between MUC-3 and MUC-4, the top systems moved up from the high 40s to the
+high50s.TheprincipaldiﬀerenceinMUC-5isthatmoresystemsareinthehigh50s.ByMUC-6thetoptwo-thirdsofthesystemsareallinatightclusterwithrecallinthehigh50sandprecisioninthelow60s.TheprincipaldiﬀerencebetweenMUC-6andMUC-7isthatinMUC-7therewerefewerparticipants.
+Thisis a picture of hill-climbing, where thereis a 60% barrier thatdetermines the top of the hill. The
+tasks in these evaluations were somewhat diﬀerent, as were the corpora, nevertheless they all seemed toexhibitaceilingaround60%recallandprecision.Althoughgoodprogresshasbeenmadeinautomatingthe construction of IE systems using machine learning techniques, current state-of-the-art systems stillhave not broken through this 60% barrier in performance on the MUC data sets (e.g., Soderland 1999,Chieuetal.2003,MaslennikovandChua2007).
+∗
+Thereareseveralpossibleexplanationsforthisbarrier.Detailedanalysisoftheperformanceofsomeof
+the systems revealed that the biggest source of mistakes was in entity and event coreference; more workcertainlyneedstobedoneonthis.Anotherpossibilityisthat60%iswhatthetextwearsonitssleeve;therestisimplicitandrequiresinferenceandaccesstoworldknowledge.
+∗The one exception is that Maslennikov and Chua (2007) report an Fscore of 72% on a modiﬁed version of the MUC-6
+corpus.
+
+526 HandbookofNaturalLanguageProcessing
+How did the field progress ?
+The 60% barrierP
+60%MUC-3: 1991 MUC-4: 1992
+MUC-6: 1995 MUC-7: 1998MUC-5: 1993
+60%
+R
+P
+60%
+RP
+60%
+RP
+R60%P
+R
+FIGURE21.3 ChronologyofMUCsystemperformance.
+Another explanation is that there is a Zipf distribution of problems that need to be solved. When we
+solve the more common problems, we get a big boost in performance. But we have solved all the most
+common problems, and now we are in the long tail of the distribution. We might take care of a dozen
+new problems we ﬁnd in the training data, only to ﬁnd that none of these problems occur in the test
+data, sothereisnoeﬀectonmeasuredperformance. Onepossiblesolutionisactivelearning(e.g., Lewis
+and Catlett 1994, Liere and Tadepalli 1997, McCallum and Nigam 1998, Thompson et al. 1999) and the
+automatedselectionofraretrainingexamplesinthetailforadditionalmanualannotation.Thiscouldhelp
+to reduce the overall amount of annotated training data that is required, while still adequately covering
+therarecases.
+Aﬁnalpossibilityisbothsimpleanddisconcerting.GoodNERsystemstypicallyrecognizeabout90%
+of the entities of interest in a text, and this is near human performance. To recognize an event and its
+arguments requires recognizing about four entities, and .904is about 60%. If this is the reason for the
+60% barrier, it is not clear what we can do to overcome it, short of solving the general natural language
+probleminawaythatexploitstheimplicitrelationsamongtheelementsofatext.
+Acknowledgments
+ThisworkwassupportedinpartbytheDepartmentofHomelandSecurityGrantN0014-07-1-0152.We
+are grateful to Doug Appelt, Ray Mooney, and Siddharth Patwardhan, who provided extremely helpful
+commentsonanearlierdraftofthischapter.
+References
+Ananiadou, S. and J. McNaught (Eds.) (2006). Text Mining for Biology and Biomedicine . Artech House,
+Inc.,Norwood,MA.
+Ananiadou,S.,C.Friedman,andJ.Tsujii(2004).Introduction:Namedentityrecognitioninbiomedicine.
+JournalofBiomedicalInformatics37 (6).
+
+InformationExtraction 527
+Aone, C. and S. W. Bennett (1996). Applying machine learning to anaphora resolution. In S. Wermter,
+E.Riloﬀ, andG.Scheler(Eds.), Connectionist, Statistical, andSymbolicApproachestoLearningfor
+NaturalLanguageProcessing ,pp.302–314.Springer-Verlag,Berlin,Germany.
+Bagga, A. and B. Baldwin (1998). Entity-based cross-document coreferencing using the vector space
+model.In Proceedingsofthe17thInternationalConferenceonComputationalLinguistics ,Montreal,
+Canada.
+Banko, M., M. Cafarella, S. Soderland, M. Broadhead, and O. Etzioni (2007). Open information extrac-
+tion from the web. In Proceedings of the Joint Conference on Artiﬁcial Intelligence (IJCAI-2007) ,
+Seattle,WA.
+Bean, D. and E. Riloﬀ (2004). Unsupervised learning of contextual role knowledge for coreference
+resolution. In ProceedingsoftheAnnualMeetingoftheNorthAmericanChapteroftheAssociation
+forComputationalLinguistics(HLT/NAACL2004) ,Boston,MA.
+Bikel, D. M., R. Schwartz, and R. M. Weischedel (1999). An algorithm that learns what’s in a name.
+MachineLearning 34 (1),211–231.
+Brin, S. (1998). Extracting patterns and relations from the World Wide Web. In WebDB Workshop at
+EDBT-98,Valencia,Spain.
+Bunescu, R. and R. Mooney (2004, July). Collective information extraction with relational Markov
+networks.In Proceedingofthe42ndAnnualMeetingoftheAssociationforComputationalLinguistics ,
+Barcelona,Spain,pp.438–445.
+Bunescu,R.andR.Mooney(2007).Learningtoextractrelationsfromthewebusingminimalsupervision.
+InProceedingsofthe45thAnnualMeetingoftheAssociationforComputationalLinguistics ,Prague,
+CzechRepublic.
+Caliﬀ, M. and R. Mooney (1999). Relational learning of pattern-matching rules for information
+extraction. In Proceedings of the 16th National Conference on Artiﬁcial Intelligence, Stockholm,
+Sweden.
+Caliﬀ,M.andR.Mooney(2003).Bottom-uprelationallearningofpatternmatchingrulesforinformation
+extraction. JournalofMachineLearningResearch4 ,177–210.
+Cardie, C. and K. Wagstaﬀ (1999). Noun phrase coreference as clustering. In Proceedings of the Joint
+ConferenceonEmpiricalMethodsinNLPandVeryLargeCorpora ,CollegePark,MD.
+Chieu, H. and H. Ng (2002). A maximum entropy approach to information extraction from semi-
+structured and free text. In Proceedings of the 18th National Conference on Artiﬁcial Intelligence,
+Edmonton,Alberta,Canada.
+Chieu, H., H. Ng, and Y. Lee (2003). Closing the gap: Learning-based information extraction rivaling
+knowledge-engineering methods. In Proceedings of the 41th Annual Meeting of the Association for
+ComputationalLinguistics ,Sapporo,Japan.
+Choi,Y.,C.Cardie,E.Riloﬀ,andS.Patwardhan(2005).Identifyingsourcesofopinionswithconditional
+random ﬁelds and extraction patterns. In Proceedings of Human Language Technology Confer-
+ence and Conference on Empirical Methods in Natural Language Processing , Vancouver, Canada,
+pp.355–362.
+Ciravegna, F. (2001). Adaptive information extraction from text by rule induction and generalisation.
+InProceedingsofthe17thInternationalJointConferenceonArtiﬁcialIntelligence,Seattle,WA.
+Collins,M.andY.Singer(1999).Unsupervisedmodelsfornamedentityclassiﬁcation.In Proceedingsof
+theJointSIGDATConferenceonEmpiricalMethodsinNaturalLanguageProcessingandVeryLargeCorpora(EMNLP/VLC-99),CollegePark,MD.
+Croft, W. A. (1991). Syntactic Categories and Grammatical Relations . University of Chicago Press,
+Chicago,IL.
+Cucerzan, S. and D. Yarowsky (1999). Language independent named entity recognition combining
+morphologicalandcontextualevidence. In ProceedingsoftheJointSIGDATConferenceonEmpir-
+ical Methods in Natural Language Processing and Very Large Corpora (EMNLP/VLC-99) , College
+Park,MD.
+
+528 HandbookofNaturalLanguageProcessing
+Cunningham,H.,D.Maynard,K.Bontcheva,andV.Tablan(2002).GATE:Aframeworkandgraphical
+developmentenvironmentforrobustnlptoolsandapplications.In Proceedingsofthe40thAnnual
+MeetingoftheAssociationforComputationalLinguistics ,Philadelphia,PA.
+Dagan, I. and A. Itai (1990). Automatic processing of large corpora for the resolution of anaphora
+references. In Proceedings of the 13th International Conference on Computational Linguistics
+(COLING-90) ,Helsinki,Finland,pp.330–332.
+Etzioni, O., M. Cafarella, A. Popescu, T. Shaked, S. Soderland, D. Weld, and A. Yates (2005). Unsuper-
+visednamed-entityextractionfromtheWeb:Anexperimentalstudy. ArtiﬁcialIntelligence165 (1),
+91–134.
+Finkel, J., T. Grenager, and C. Manning (2005, June). Incorporating non-local information into infor-
+mation extraction systems by Gibbs sampling. In Proceedings of the 43rd Annual Meeting of the
+AssociationforComputationalLinguistics ,AnnArbor,MI,pp.363–370.
+Finn, A. and N. Kushmerick (2004, September). Multi-level boundary classiﬁcation for information
+extraction. In Proceedings of the 15th European Conference on Machine Learning , Pisa, Italy,
+pp.111–122.
+Fleischman,M.andE.Hovy(2002,August).Finegrainedclassiﬁcationofnamedentities.In Proceedings
+oftheCOLINGConference ,Taipei,Taiwan.
+Fleischman, M., E. Hovy, and A. Echihabi (2003). Oﬄine strategies for online question answering:
+Answering questions before they are asked. In Proceedings of the 41th Annual Meeting of the
+AssociationforComputationalLinguistics ,Sapporo,Japan.
+Freitag, D. (1998a). Multistrategy learning for information extraction. In Proceedings of the 15th
+InternationalConferenceonMachineLearning,Madison,WI.MorganKaufmannPublishers.
+Freitag, D. (1998b). Toward general-purpose learning for information extraction. In Proceedings of the
+36thAnnualMeetingoftheAssociationforComputationalLinguistics ,Madison,WI.
+Freitag, D. and A. McCallum (2000, August). Information extraction with HMM structures learned by
+stochastic optimization. In Proceedings of the 17th National Conference on Artiﬁcial Intelligence,
+Austin,TX,pp.584–589.
+Friedman,C.(1986).Automaticstructuringofsublanguageinformation. AnalyzingLanguageinRestricted
+Domains:SublanguageDescriptionandProcessing .LawrenceErlbaumAssociates,Hillsdale,NJ.
+Gooi, C. and J. Allan (2004). Cross-document coreference on a large scale corpus. In Proceedings of the
+Annual Meeting of the North American Chapter of the Association for Computational Linguistics(HLT/NAACL2004),Boston,MA.
+Grishman, R., S. Huttunen, and R. Yangarber (2002). Real-time event extraction for infectious disease
+outbreaks.In ProceedingsofHLT2002(HumanLanguageTechnologyConference),SanDiego,CA.
+Gu, Z. and N. Cercone (2006, July). Segment-based hidden Markov models for information extraction.
+InProceedings of the 21st International Conference on Computational Linguistics and 44th Annual
+MeetingoftheAssociationforComputationalLinguistics ,Sydney,Australia,pp.481–488.
+Haghighi, A. and D. Klein (2007). Unsupervised coreference resolution in a nonparametric Bayesian
+model.In Proceedingsofthe45thAnnualMeetingoftheAssociationforComputationalLinguistics ,
+Prague,CzechRepublic.
+Harabagiu,S.,R.Bunescu,andS.Maiorana(2001).Textandknowledgeminingforcoreferenceresolution.
+InProceedings of the The Second Meeting of the North American Chapter of the Association for
+ComputationalLinguistics ,Pittsburgh,PA.
+Hirschman, L., A. Yeh, C. Blaschke, and A. Valencia (2005, May). Overview of BioCreAtIvE: Critical
+assessmentofinformationextractionforbiology. BMCBioinformatics6 (Suppl1),S1.
+Hobbs, J. R., D. E. Appelt, J. Bear, D. Israel, and M. Tyson (1992). FASTUS: A system for extract-
+ing information from natural-language text. SRI Technical Note 519, SRI International, MenloPark,CA.
+Hobbs,J.R.,D.E.Appelt,J.Bear,D.Israel,M.Kameyama,M.Stickel,andM.Tyson(1997).FASTUS:A
+cascadedﬁnite-statetransducerforextractinginformationfromnatural-languagetext.InE.Roche
+
+InformationExtraction 529
+andY.Schabes(Eds.), FiniteStateDevicesforNaturalLanguageProcessing ,pp.383–406.MITPress,
+Cambridge,MA.
+Huﬀman, S. (1996). Learning information extraction patterns from examples. In S. Wermter, E. Riloﬀ,
+and G. Scheler (Eds.), Connectionist, Statistical, and Symbolic Approaches to Learning for Natural
+LanguageProcessing ,pp.246–260.Springer-Verlag,Berlin,Germany.
+Igo, S. and E. Riloﬀ (2008). Learning to identify reduced passive verb phrases with a shallow parser. In
+Proceedingsofthe23rdNationalConferenceonArtiﬁcialIntelligence,Chicago,IL.
+Joshi, A. K. (1996). A parser from antiquity: An early application of ﬁnite state transducers to natural
+languageparsing.In EuropeanConferenceonArtiﬁcialIntelligence96WorkshoponExtendedFinite
+StateModelsofLanguage,Budapest,Hungary,pp.33–34.
+Kehler, A. (1997). Probabilistic coreference in information extraction. In Proceedings of the Second
+ConferenceonEmpiricalMethodsinNaturalLanguageProcessing ,Providence,RI.
+Kim, J. and D. Moldovan (1993). Acquisition of semantic patterns for information extraction from
+corpora.In ProceedingsoftheNinthIEEEConferenceonArtiﬁcialIntelligenceforApplications ,Los
+Alamitos,CA,pp.171–176.IEEEComputerSocietyPress.
+Lehnert,W.,C.Cardie,D.Fisher,E.Riloﬀ,andR.Williams(1991).UniversityofMassachusetts:Descrip-
+tionoftheCIRCUSsystemasusedforMUC-3.In ProceedingsoftheThirdMessageUnderstanding
+Conference(MUC-3) ,SanMateo,CA,pp.223–233.MorganKaufmann.
+Lehnert, W., C. Cardie, D. Fisher, J. McCarthy, E. Riloﬀ, and S. Soderland (1992). University of Mas-
+sachusetts: Description of the CIRCUS system as used for MUC-4. In Proceedings of the Fourth
+MessageUnderstandingConference(MUC-4),SanMateo,CA,pp.282–288.MorganKaufmann.
+Lewis, D. D. and J. Catlett (1994). Heterogeneous uncertainty sampling for supervised learning. In
+Proceedingsofthe11thInternationalConferenceonMachineLearning ,NewBrunswick,MJ.
+Li,Y.,K.Bontcheva,andH.Cunningham(2005,June).UsingunevenmarginsSVMandperceptronfor
+information extraction. In Proceedings of Ninth Conference on Computational Natural Language
+Learning,AnnArbor,MI,pp.72–79.
+Liere,R.andP.Tadepalli(1997).Activelearningwithcommitteesfortextcategorization.In Proceedings
+ofthe14thNationalConferenceonArtiﬁcialIntelligence,Providence,RI.
+Light, M., G. Mann, E. Riloﬀ, and E. Breck (2001). Analyses for elucidating current question answering
+technology. JournalforNaturalLanguageEngineering 7 (4),325–342.
+Mann, G. and D. Yarowsky (2003). Unsupervised personal name disambiguation. In Proceedings of the
+SeventhConferenceonNaturalLanguageLearning(CoNLL-2003) ,Edmonton,Canada.
+Maslennikov,M.andT.Chua(2007).Amulti-resolutionframeworkforinformationextractionfromfree
+text. InProceedings of the 45th Annual Meeting of the Association for Computational Linguistics ,
+Prague,CzechRepublic.
+Mayﬁeld, J., D. Alexander, B. Dorr, J. Eisner, T. Elsayed, T. Finin, C. Fink, M. Freedman, N. Garera,
+P. McNamee, S. Mohammad, D. Oard, C. Piatko, A. Sayeed, Z. Syed, R. Weischedel, T. Xu,and D. Yarowsky (2009). Cross-document coreference resolution: A key technology for learningby reading. In Working Notes of the AAAI 2009 Spring Symposium on Learning by Reading and
+LearningtoRead,Stanford,CA.
+McCallum, A. K. and K. Nigam (1998). Employing EM and pool-based active learning for
+text classiﬁcation. In Proceedings of the 15th International Conference on Machine Learning ,
+Madison,WI.
+McCallum, A. and B. Wellner (2004). Conditional models of identity uncertainty with application to
+nouncoreference.In 18thAnnualConferenceonNeuralInformationProcessingSystems ,Whistler,
+Canada.
+McCarthy, J. and W. Lehnert (1995). Using decision trees for coreference resolution. In Proceedings of
+theFourteenthInternationalJointConferenceonArtiﬁcialIntelligence ,Denver,CO.
+MUC-4 Proceedings (1992). Proceedings of the Fourth Message Understanding Conference (MUC-4) ,
+Baltimore,MD.MorganKaufmann.
+
+530 HandbookofNaturalLanguageProcessing
+MUC-5 Proceedings (1993). Proceedings of the Fifth Message Understanding Conference (MUC-5) ,
+SanFrancisco,CA.
+MUC-6 Proceedings (1995). Proceedings of the Sixth Message Understanding Conference (MUC-6) ,
+Columbia,MD.
+MUC-7 Proceedings (1998). Proceedings of the Seventh Message Understanding Conference (MUC-7) ,
+Fairfax,VA.
+Ng, V. and C. Cardie (2002). Improving machine learning approaches to coreference resolution.
+InProceedings of the 40th Annual Meeting of the Association for Computational Linguistics ,
+Philadelphia,PA.
+Niu, C., W. Li, and R. K. Srihari (2004). Weakly supervised learning for cross-document person name
+disambiguationsupportedbyinformationextraction.In Proceedingsofthe42ndAnnualMeetingof
+theAssociationforComputationalLinguistics ,Barcelona,Spain.
+Pasca,M.(2007).Weakly-superviseddiscoveryofnamedentitiesusingwebsearchqueries.In Proceedings
+of the 16th ACM Conference on Information and Knowledge Management (CIKM-07), Lisbon,Portugal,pp.683–690.
+Pasca,M.,D.Lin,J.Bigham,A.Lifchits,andA.Jain(2006).Namesandsimilaritiesontheweb:Factextrac-
+tioninthefastlane.In Proceedingsofthe21stInternationalConferenceonComputationalLinguistics
+and 44th Annual Meeting of the Association for Computational Linguistics (COLING/ACL-06) ,
+Sydney,Australia,pp.809–816.
+Patwardhan,S.andE.Riloﬀ(2007).Eﬀectiveinformationextractionwithsemanticaﬃnitypatternsand
+relevantregions.In Proceedingsof2007theConferenceonEmpiricalMethodsinNaturalLanguage
+Processing(EMNLP-2007) ,Prague,CzechRepublic.
+Peng,F.andA.McCallum(2004).Accurateinformationextractionfromresearchpapersusingconditional
+randomﬁelds.In ProceedingsoftheAnnualMeetingoftheNorthAmericanChapteroftheAssociation
+forComputationalLinguistics(HLT/NAACL2004) ,Boston,MA.
+Phillips, W. and E. Riloﬀ (2007). Exploiting role-identifying nouns and expressions for information
+extraction. In Proceedings of the 2007 International Conference on Recent Advances in Natural
+LanguageProcessing(RANLP-07) ,Boroverts,Bulgaria,pp.468–473.
+Ravichandran, D. and E. Hovy (2002). Learning surface text patterns for a question answering sys-
+tem. InProceedings of the 40th Annual Meeting on Association for Computational Linguistics ,
+Philadelphia,PA.
+Riloﬀ,E.(1993).Automaticallyconstructingadictionaryforinformationextractiontasks.In Proceedings
+ofthe11thNationalConferenceonArtiﬁcialIntelligence,Washington,DC.
+Riloﬀ,E.(1996a).Anempiricalstudyofautomateddictionaryconstructionforinformationextractionin
+threedomains. ArtiﬁcialIntelligence85 ,101–134.
+Riloﬀ, E. (1996b). Automatically generating extraction patterns from untagged text. In Proceedings of
+the 13th National Conference on Artiﬁcial Intelligence, Portland, OR pp. 1044–1049. The AAAIPress/MITPress.
+Riloﬀ, E. and R. Jones (1999). Learning dictionaries for information extraction by multi-level
+bootstrapping.In Proceedingsofthe16thNationalConferenceonArtiﬁcialIntelligence,Orlando,FL.
+Roth, D. and W. Yih (2001, August). Relational learning via propositional algorithms: An informa-
+tion extraction case study. In Proceedings of the 17th International Joint Conference on Artiﬁcial
+Intelligence ,Seattle,WA,pp.1257–1263.
+Sang, E. F. T. K. and F. D. Meulder (2003). Introduction to the conll-2003 shared task: Language-
+independent named entity recognition. In Proceedings of CoNLL-2003, Edmonton, Canada,
+pp.142–147.
+Sekine, S. (2006). On-demand information extraction. In Proceedings of Joint Conference of the Interna-
+tional Committee on Computational Linguistics and the Association for Computational Linguistics(COLING/ACL-06) ,Edmonton,Canada.
+
+InformationExtraction 531
+Shinyama, Y. and S. Sekine (2006, June). Preemptive information extraction using unrestricted relation
+discovery. In Proceedings of the Human Language Technology Conference of the North American
+ChapteroftheAssociationforComputationalLinguistics ,NewYork,pp.304–311.
+Soderland, S. (1999). Learning information extraction rules for semi-structured and free text. Machine
+Learning,34,233–272.
+Soderland,S.andW.Lehnert(1994).Wrap-Up:Atrainablediscoursemoduleforinformationextraction.
+JournalofArtiﬁcialIntelligenceResearch2 ,131–158.
+Soderland,S.,D.Fisher,J.Aseltine,andW.Lehnert(1995).CRYSTAL:Inducingaconceptualdictionary.
+InProceedingsofthe14thInternationalJointConferenceonArtiﬁcialIntelligence,Montreal,Canada,
+pp.1314–1319.
+Soon, W., H. Ng, and D. Lim (2001). A machine learning approach to coreference of noun phrases.
+ComputationalLinguistics27 (4),521–541.
+Stevenson, M. and M. Greenwood (2005, June). A semantic approach to IE pattern induction. In
+Proceedings of the 43rd Annual Meeting of the Association for Computational Linguistics ,A n n
+Arbor,MI,pp.379–386.
+Strassel, S., M. Przybocki, K. Peterson, Z. Song, and K. Maeda (2008). Linguistic resources and eval-
+uation techniques for evaluation of cross-document automatic content extraction. In Proceedings
+of the Sixth International Language Resources and Evaluation Conference (LREC-08), Marrakech,
+Morocco.
+Subramaniam,L.V.,S.Mukherjea,P.Kankar,B.Srivastava,V.S.Batra,P.V.Kamesam,andR.Kothari
+(2003). Informationextractionfrombiomedicalliterature: Methodology, evaluationandanappli-cation. In CIKM ’03: Proceedings of the Twelfth International Conference on Information and
+KnowledgeManagement,NewOrleans,LA,pp.410–417.
+Sudo, K., S. Sekine, and R. Grishman (2003). An improved extraction pattern representation model for
+automatic IE pattern acquisition. In Proceedings of the 41st Annual Meeting of the Association for
+ComputationalLinguistics (ACL-03),Edmonton,Canada.
+Surdeanu, M., S. Harabagiu, J. Williams, and P. Aarseth (2003). Using predicate-argument struc-
+tures for information extraction. In Proceedings of the 41st Annual Meeting of the Association
+forComputationalLinguistics ,Sapporo,Japan.
+Thelen,M.andE.Riloﬀ(2002).Abootstrappingmethodforlearningsemanticlexiconsusingextraction
+patterncontexts.In Proceedingsofthe2002ConferenceonEmpiricalMethodsinNaturalLanguage
+Processing ,Philadelphia,PA,pp.214–221.
+Thompson, C. A., M. E. Caliﬀ, and R. J. Mooney (1999). Active learning for natural language parsing
+and information extraction. In Proceedings of the Sixteenth International Conference on Machine
+Learning,Bled,Slarnia.
+Yakushiji, A., Y. Miyao, T. Ohta, J. Tateisi, and Y. Tsujii (2006). Automatic construction of predicate-
+argument structure patterns for biomedical information extraction. In Proceedings of the 2006
+ConferenceonEmpiricalMethodsinNaturalLanguageProcessing ,Sydney,Australia.
+Yang, X., J. Su, and C. L. Tan (2005). Improving pronoun resolution using statistics-based seman-
+tic compatibility information. In Proceedings of the 43rd Annual Meeting of the Association for
+ComputationalLinguistics ,AnnArbor,MI.
+Yangarber, R. (2003). Counter-training in the discovery of semantic patterns. In Proceedings of the 41st
+AnnualMeetingoftheAssociationforComputationalLinguistics ,Sapporo,Japan.
+Yangarber, R., R. Grishman, P. Tapanainen, and S. Huttunen (2000). Automatic acquisition of domain
+knowledgeforinformationextraction.In ProceedingsoftheEighteenthInternationalConferenceon
+ComputationalLinguistics (COLING2000),Saarbrucken,Germany.
+Yu,K.,G.Guan,andM.Zhou(2005,June).Resuméinformationextractionwithcascadedhybridmodel.
+InProceedings of the 43rd Annual Meeting of the Association for Computational Linguistics ,A n n
+Arbor,MI,pp.499–506.
+
+532 HandbookofNaturalLanguageProcessing
+Zelenko, D., C. Aone, and A. Richardella (2003). Kernel methods for relation extraction. Journal of
+MachineLearningResearch3 ,1083–1106.
+Zhao,S.andR.Grishman(2005).Extractingrelationswithintegratedinformationusingkernelmethods.
+InProceedingsofthe43rdAnnualMeetingoftheAssociationforComputationalLinguistics (ACL-05),
+AnnArbor,MI,pp.419–426.
+

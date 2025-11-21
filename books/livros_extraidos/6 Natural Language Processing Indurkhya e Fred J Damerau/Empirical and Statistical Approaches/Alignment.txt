@@ -1,0 +1,1446 @@
+16
+Alignment
+Dekai Wu
+TheHongKongUniversityofScienceandTechnology16.1 Introduction ..........................................................36716.2 DeﬁnitionsandConcepts ...........................................369
+Alignment •ConstraintsandCorrelations •ClassesofAlgorithms
+16.3 SentenceAlignment..................................................378
+Length-BasedSentenceAlignment •LexicalSentenceAlignment •
+Cognate-BasedSentenceAlignment •MultifeatureSentenceAlignment •
+CommentsonSentenceAlignment
+16.4 Character,Word,andPhraseAlignment..........................386
+MonotonicAlignmentforWords •Non-MonotonicAlignmentfor
+Single-TokenWords •Non-MonotonicAlignmentforMultitokenWords
+andPhrases
+16.5 StructureandTreeAlignment......................................391
+CostFunctions •Algorithms •StrengthsandWeaknessesofStructure
+andTreeAlignmentTechniques
+16.6 BiparsingandITGTreeAlignment ................................394
+Syntax-DirectedTransductionGrammars(orSynchronousCFGs) •
+InversionTransductionGrammars •CostFunctions •Algorithms •
+GrammarsforBiparsing •StrengthsandWeaknessesofBiparsingand
+ITGTreeAlignmentTechniques
+16.7 Conclusion............................................................402Acknowledgments ..........................................................403References....................................................................403
+16.1 Introduction
+Inthischapter, we discussthework done onautomaticalignmentof paralleltextsfor various purposes.Fundamentally,analignmentalgorithmacceptsasinputa bitextandproducesasoutputa bisegmentation
+relation that identiﬁes corresponding segments between the texts. A bitext consists of two texts that aretranslations of each other.
+∗Bitext alignment fundamentally lies at the heart of all data-driven machine
+translation methods, and the rapid research progress on alignment since 1990 reﬂects the advent ofstatistical machine translation (SMT) and example-based machine translation (EBMT) approaches. Yettheimportanceofalignmentextendsaswelltomanyotherpracticalapplicationsfortranslators,bilinguallexicographers,andevenordinaryreaders.
+∗In a “Terminological note” prefacing his book, Veronis (2000) cites Alan Melby pointing out that the alternative term
+parallel text creates an unfortunate and confusing clash with the translation theory and terminological community, who
+use the same term instead to mean what NLP and computational linguistics researchers typically refer to as non-parallel
+corporaorcomparablecorpora—textsindiﬀerentlanguagesfromthesamedomain,butnotnecessarilytranslationsofeach
+other.
+367
+
+368 HandbookofNaturalLanguageProcessing
+AutomaticallylearnedresourcesforMT,NLP,andhumans .
+Bitext alignment methods are the core of many methods for machine learning of languageresources to be used by SMT or other NLP applications, as well as human translators andlinguists. The side eﬀects of alignment are often of more interest than the aligned text itself.Alignment algorithms oﬀer the possibility of extracting various sorts of knowledge resources,suchas(a)phrasalbilexiconslistingwordorcollocationtranslations;(b)translationexamplesatthesentence,constituent,and/orphraselevel;or(c)tree-structuredtranslationpatternssuchas transfer rules, translation frames, or treelets. Such resources constitute a database that maybe used by SMT and EBMT systems (Nagao 1984), or they may be taken as training data forfurthermachinelearningtominedeeperpatterns. Alignmenthasalsobeenemployedtoinfersentencebracketingorconstituentstructureasasideeﬀect.
+Biconcordances .
+Historically,theﬁrstapplicationforbitextalignmentalgorithmswastoautomatetheproductionof the cross-indexing for bilingual concordances (Warwick and Russell 1990; Karlgren et al.1994; Church and Hovy 1993). Such concordances are consulted by human translators toﬁnd the previous contexts in which a term, idiom, or phrase was translated, thereby helpingthe translator to maintain consistency with preexisting translations, which is important ingovernment and legal documents. An additional beneﬁt of biconcordances is a large increaseinnavigationeaseinbitexts.
+Bitextforreaders.
+Alignedbitexts,inadditiontotheiruseintranslators’concordances,arealsousefulforbilingualreadersandlanguagelearners.
+Linkedbiconcordancesandbilexicons.
+Analignedbitextcanbeautomaticallylinkedwithabilexicon,providingamoreeﬀectiveinter-faceforlexicographers,corpusannotators,aswellashumantranslators.ThiswasimplementedintheBICORDsystem(KlavansandTzoukermann1990).
+Translationvalidation .
+A word-level bitext alignment system can be used within a translation checking tool thatattemptstoautomaticallyﬂagpossibleerrors, inthesamewaythatspellingandstylecheckersoperate(Macklovitch1994).Thealignmentsysteminthiscaseisprimedtosearchfordeceptivecognates(fauxamis )suchaslibrary/librarie inEnglishandFrench.
+Awidevarietyoftechniquesnowexist,rangingfromthemostsimple(countingcharactersorwords)
+to the more sophisticated, sometimes involving linguistic data (lexicons) that may or may not havebeen automatically induced themselves. Some techniques work on precisely translated parallel corpora,whileothersworkonnoisy,comparable,ornonparallelcorpora.Sometechniquesmakeuseofapparentmorphological features, while others rely on cognates and loan-words; of particular interest is workdone on languages that do not have a common writing system. Some techniques align only shallow,ﬂat chunks, while others align compositional, hierarchical structures. The robustness and generality ofdiﬀerenttechniqueshavegeneratedmuchdiscussion.
+Techniques have been developed for aligning segments at various granularities: documents, para-
+graphs, sentences, constituents, collocations or phrases, words, and characters, as seen in the examplesin Figure 16.1. In the following sections, we ﬁrst discuss the general concepts underlying alignmenttechniques. Each of the major categories of alignment techniques are considered in turn in subsequentsections:document-structurealignment,sentencealignment,alignmentfornoisybitexts,wordalignment,constituentandtreealignment,andbiparsingalignment.
+We attempt to use a consistent notation and conceptual orientation throughout. Particularly when
+discussing algorithms, we stick to formal data constructs such as “token,” “sequence,” and “segment,”rather than linguistic entities. Many algorithms for alignment are actually quite general and can oftenbeappliedatmanylevelsofgranularity.Unfortunately,thisisoftenobscuredbytheuseoflinguistically
+
+Alignment 369
+Kâtip dan miş gösleri mahmur
+(b) Turkish–English character/word/phrase alignmentUyku Uyan
+The scribe had woken up from his sleep ,,
+with sleepy eyes10
+11 7 22
+(a) Sentence/paragraph alignment14 15 430 15 12
+?
+1 to 1 1 to 2 1 to 1 1 to 1
+0 to 1
+?
+FIGURE16.1 Alignmentexamplesatvariousgranularities.
+loadedtermssuchas“word,”“phrase,”or“sentence.”Forthesereasons,sometechniqueswediscussmay
+appearsuperﬁciallyquiteunliketheoriginalworksfromwhichourdescriptionswerederived.
+16.2 Deﬁnitions and Concepts
+16.2.1 Alignment
+Thegeneralproblemofaligningaparalleltextis,moreprecisely,toﬁnditsoptimalparallelsegmentation
+orbisegmentation undersomesetofconstraints:
+Input.
+Abitext (e,f). Assumethatthevector econtainsasequenceof Ttokense0,...,eT−1andEis
+theset {0,1,2, ...,T−1}.Similarly,thevector fcontainsasequenceof Vtokensf0,...,fV−1
+andFistheset {0,1,2, ...,V−1}.∗Whenthedirectionoftranslationisrelevant, fistheinput
+language( foreign)string,and eistheoutputlanguage( emitted)string.†
+∗We use the following notational conventions: bold letters are vectors, calligraphic letters are sets, and capital (non-bold)
+lettersareconstants.
+†TheeandfconventiondatesbacktoearlystatisticalMTworkwheretheinputforeignlanguagewasFrenchandtheoutput
+languageemittedwasEnglish.
+
+370 HandbookofNaturalLanguageProcessing
+S΄
+V˝
+V΄
+N΄
+NPPS
+English–Chinese character/word/phase tree alignment (d)TheThe authority will be accountable to
+English–Chinese character/word/phase alignment (c)the financial secretary .
+ authority will be accountable to the financial secretary .
+FIGURE16.1 (continued)
+Output.
+Abisegmentation of the bitext, designated by a set Aofbisegments , where each bisegment
+(p,r)couplesan emitted segment pto a foreign segment rand often can instead more con-
+veniently be uniquely identiﬁed by its span pair (s,t,u,v). Any emitted segment phas a span
+span(p)=(s,t)thatboundsthepassage es..tformedbythesubsequenceoftokens es,...,et−1
+where 0 ≤s≤t≤T. Similarly, any foreign segment rhas a span span(r)=(u,v),w h i c h
+boundsthepassage fu..vformedbythesubsequenceoftokens fu,...,fv−1where0 ≤u≤v≤V.
+Conversely, we write p=seg(s,t)andr=seg(u,v)when the span uniquely identiﬁes
+a segment. Otherwise, for models that permit more than one segment to label the same
+span, we instead write segs(s,t)orsegs(u,v)to denote the set of segments that label the
+span.
+Note that a bisegmentation inherently deﬁnes two monolingual segmentations, on both of the
+monolingualtexts eandf.
+
+Alignment 371
+Where is
+English–Chinese character/word/phase alignment (e)secretary the of finance when needed ?
+(f) English–Chinese character/word/phase tree alignmentWhere secretarythe of finance when needed ?is
+FIGURE16.1 (continued)
+16.2.1.1 Monotonic Alignment
+Theterm“alignment”hasbecomesomethingofamisnomerincomputationallinguistics.Technically,in
+analignmentthecoupledpassagesmustoccurinthesameorderinbothtexts,thatis,withnocrossings.
+Manyalignmenttechniqueshavetheirrootsinspeechrecognitionapplications,whereacousticwaveforms
+need to be aligned to transcriptions that are of course in the same order. In bitext research, the term
+“alignment”originallydescribedthereasonableapproximatingassumptionthatparagraphandsentence
+translationsalwayspreservetheoriginalorder.
+However, “wordalignment”wassubsequentlyco-optedtomeancouplingofwordswithinsentences,
+evenwhenword-couplingmodelsdonotassumethatorderismonotonicallypreservedacrosstranslation.
+Sincethispermitspermutationswherethewordsegmentsarereorderedintranslation,properlyspeaking,
+such a non-monotonic “alignment” is rather a bisegmentation, which can be seen as a (partial) binary
+relationfromthesegments es..ttothesegments fu..v.Toavoidconfusion,wewillusetheterm monotonic
+alignment ormonotonealignment wheneverwemean“alignment”initspropersense.
+
+372 HandbookofNaturalLanguageProcessing
+16.2.1.2 Disjoint (Flat) AlignmentAs shown in Figure 16.1a through c and e, a common type of alignment is the simple, ﬂat case ofdisjointalignment whereallsegmentsarerestrictedtobe disjointinbothlanguages,meaningthatnotwo
+segments e
+s..tandes′..t′participatinginthealignmentoverlapand,likewise,notwosegments es..tandes′..t′
+participatinginthealignmentoverlap. Thatis, for anytwobisegments (s,t,u,v)and(s′,t′,u′,v′), either
+s≤t′ort≤s′,andeither u≤v′orv≤u′.
+In the simplest case of disjoint alignment where every segment is exactly one token long, i.e., where
+t−s=1andv −u=1,then Acanrepresentanon-totalmany-to-manymapfrom EtoF.
+16.2.1.3 Compositional (Hierarchical) Tree AlignmentAnothercommontypeofalignmentisthemoregeneral,hierarchicalcaseof compositionalalignment or
+treealignment wheresmallerbisegmentsmaybenestedwithinlargerbisegments,asshowninFigure16.1d
+and f. The simplest case is to align sentences within paragraphs that are themselves aligned. A morecomplexcaseistocouplenestedconstituentsinsentences.
+More precisely, two segments e
+s..tandes′..t′participating in the alignment may be either disjoint or
+nested, i.e., for any two bisegments q=(s,t,u,v)andq′=(s′,t′,u′,v′), eitherqandq′are disjoint in E
+sothats≤t′ort≤s′,ortheyarenestedsothat s≤s′≤t′≤tors′≤s≤t≤t′;andsimilarlyfor F.
+Acompositionalalignmentformsatree,wheretheexternalleafnodesareasetofdisjoint(bi)segments,
+andinternalnodesarebisegmentswhosechildrenarenested(bi)segments.16.2.1.4 Subtokens and SubtokenizationSome models are designed to align tokens primarily at one granularity, yet the tokens can be furtherbroken into even ﬁner pieces for secondary purposes. Tokens, after all, are just segments at a speciﬁclevel of disjoint ﬂat segmentation that has been designated as primitive with respect to some algorithm.Subtokenization is especially common with compositional and hierarchical alignments, in applicationssuchasparagraph/sentencealignmentortree-structuredwordalignment.
+Intuitively, e
+′is asubtokenization ofeif it reﬁnes the tokens in einto ﬁner-grained subtokens (Guo
+1997).Moreprecisely,letthetokensin eande′bebothdeﬁnedonsomeprimitivealphabet /Sigma1.L e tG(e)
+bethestringgenerationoperationthatmapsanytoken esintothestringin /Sigma1∗thatthetokenrepresents,
+andassumeboth eande′generatethesamestring,i.e., G(e0..T)=G(e′0..T′).Thene′isasubtokenization
+ofeifeverytoken escorrespondstotheconcatenationofoneormoretokens e′s′..t′,i.e.,G(es)=G(e′s′..t′).
+16.2.1.5 Bijective, Injective, Partial, and Many-to-Many AlignmentsWhenwearespeakingwithrespecttoparticular monolingual disjointsegmentationsof(bothsidesof)a
+bitext,afewotherconceptsareoftenuseful.
+Where the pair of monolingual segmentations comes from depends on our assumptions. In some
+situations, we might assume monolingual segmentations that are ﬁxed by monolingual preprocessorssuchasmorphologicalanalyzersorword/phrasesegmenters.
+Inothersituations,wemayinsteadassumewhatevermonolingualsegmentationsresultfromaligning
+a bitext. In the trivial case, we can simply assume the two monolingual segmentations that are inher-ently deﬁned by the alignment’s output bisegmentation. A more useful case, under compositional treealignment,istoassumethemonolingualsegmentationsimposedbytheleafnodesofthetree.
+Whatever assumptions we use to arrive at a pair of monolingual segmentations, then, in a 1-to-1
+alignment orbijective alignment , every segment in each text is coupled to exactly one segment in the
+other text. A bijective alignment is total, meaning that no segment remains uncoupled. In practice,
+bijective alignments are almost never achievable except at the chapter/section granularity, or perhaps attheparagraphgranularityforextremelytighttranslations. Ordinarily, weaimfora partialalignment ,i n
+which some segments remain uncoupled singletons; and/or we aim for a many-to-many alignment ,i n
+whichsegmentsmaybecoupledtomultiplesegments. Anotheroften-usefulapproximatingassumption
+
+Alignment 373
+isthatthealignmentisa(partial)functionfromalanguage-0positiontoalanguage-1position(butnotnecessarilyviceversa).Sucharelationisa many-to-1 orright-unique alignmentandiswritten v=a
+′(t).
+Similarly,a 1-to-many orleft-unique orinjectiverelationiswritten t=a(v).Abijective1-to-1alignment
+isinjectiveinbothdirections,i.e.,bothleft-uniqueandright-unique.Forconvenience,wewillsometimesfreely switch between the set notation
+Aand the function notation a(·)to refer to the same injective
+alignment.
+Unless we specify otherwise, “alignments” are non-monotonic, many-to-many, partial, and non-
+compositional.
+16.2.2 Constraints and Correlations
+Every alignment algorithm inputs a bitext and outputs a set of couplings. The techniques are nearly allstatistical in nature, due to the need for robustness in the face of imperfect translations. Much of thevariation between techniques lies in the other kinds of information—constraints and correlations—thatplay a role in alignment. Some alignment techniques require one or more of these as inputs, and bringthem to bear on the alignment hypothesis space. Others derive or learn such kinds of information asby-products.Insomecasestheby-productsareofsuﬃcientqualityastobetakenasoutputsintheirownright,asmentionedabove.Importantkindsofinformationincludethefollowing.
+Bijectivityconstraint
+Bijectivityistheassumptionthatthecoupling betweenpassagesis1-to-1(usuallyinthesenseof partial bijective maps, which allow some passages to remain uncoupled). This assumptionisinapplicableatcoarsergranularitiesthanthesentence-level.However,itissometimesusefulfor word-level alignment, despite being clearly inaccurate. For example, consider the casewhere the words within a sentence pair are being aligned (Melamed 1997). If only one wordinthelanguage-0sentenceremainsuncoupledandsimilarlyforthelanguage-1sentence,thenthe bijectivity assumption implies a preference for coupling those two words, by the processof elimination. Such beneﬁts can easily outweigh errors caused by the inaccuracies of theassumption.
+Monoticityconstraint
+This assumption reduces the problem of coupling bitext passages to a properly monotonicalignmentproblem:coupledpassagesoccurinthesameorderinbothsidesofthebitext.
+Segmentconstraints(disjointandcompositional)
+Asegment constraint prevents an alignment algorithm from outputting any bisegment that
+crossesthemonolingualsegment’sboundaries.Thatis,ifasegment e
+s..tistakenasaconstraint,
+then for any bisegmentation (s′,t′,u′,v′)that forms part of an alignment, either (s,t)and
+(s′,t′)are disjoint in eso thats≤t′ort≤s′, or they are nested so that s≤s′≤t′≤tor
+s′≤s≤t≤t′.
+Two cases of monolingual segment constraints are very common. A disjoint segmentation
+lets algorithms for disjoint (ﬂat) alignment focus on a coarser granularity than the raw tokenlevel;forexample,forsentencealignmentitisusualtoﬁrstbreaktheinputtextsintosentencesegments.Ontheotherhand,a compositionalsegmentation ofoneorbothofthemonolingual
+texts can be obtained by monolingually parsing the text(s), imposing the resulting nestedsegmentsasconstraints.
+Bisegmentconstraints(anchorandslackconstraints)
+An anchor is a known bisegment, i.e., a pair of segments (or boundaries, in the case of zero-length segments) that is ap r i o r iknown to be coupled, and is a hard constraint. As shown in
+Figure 16.2, anchor constraints are bisegment constraints that can be thought of as conﬁrmed
+positionswithinthematrixthatrepresentsthealignmentcandidatespace.Thespecialboundarycasesofthebisegments (0,0,0,0) and(T,T,V,V)aretheoriginandterminus,respectively.
+
+374 HandbookofNaturalLanguageProcessing
+Language 1
+passagesLanguage 2
+passages
+D
+CTerminus
+Origin
+FIGURE16.2 Anchors.
+Language 1
+passagesLanguage 2
+passages
+D
+C
+FIGURE16.3 Slackbisegmentsbetweenanchors.
+Whentakentogetherwiththemonotonicityconstraint,asetofanchorsdividestheproblem
+intoasetofsmaller, independentalignmentproblems. Betweenanytwoanchorsarepassages
+whose alignment is still undetermined, but whose segment couplings must remain inside
+the region bounded by the anchors. As shown in Figure 16.3, the correct alignment could
+take any (monotonic) path through the rectangular region delimited by the anchors. We call
+the candidate subspace between adjacent anchors a slack bisegment . A set of slack bisegments
+canbeusedeitherasbisegmentconstraints( slackconstraints ),asforexampledescribedbelow,
+ortodeﬁnefeatures.
+Therearetwocommoncasesofanchor/slackbisegmentconstraints:
+1.Endconstraints .Mosttechniquesmaketheassumptionthattheoriginandterminusare
+anchor boundaries. Some techniques also assume a coupling between the ﬁrst and last
+passages.
+2.Incremental constraints . A previous processing stage may produce an alignment of a
+largerpassagesize.Ifwearewillingtocommittothecoarseralignment,weobtainaset
+ofanchorboundariesand/orslackbisegments.
+Thelatterkindofanchoroccursincompositionalalignmentmethodsbasedon iterativereﬁne-
+mentschemes,whichprogressivelylaydownanchorsinaseriesofpassesthatgraduallyrestrict
+
+Alignment 375
+Language 1
+passagesLanguage 2
+passages
+D
+C
+FIGURE16.4 Bandingtheslackbisegmentsusingvariance.
+the alignment candidate space. At the outset, candidate couplings may lie anywhere in the
+global (root) slack bisegment comprising the entire rectangular matrix; eventually, they are
+restrictedtofallwithinmanysmalllocal(leaf)slackbisegments.Eachslackbisegmentbetween
+adjacent anchors is a smaller alignment subproblem that can be processed independently. A
+variation on this scheme is hierarchical iterative reﬁnement , which produces a compositional
+alignmentbyperformingonepassateachlevelinapredeﬁnedhierarchyoftokengranularities.
+The ﬁrst pass aligns segments at the coarsest token level (commonly, sections or paragraphs);
+this level is chosen so that the total numbers ( TandV) of tokens (commonly, paragraphs or
+sentences)aresmall.Committingtotheoutputofthisstageyieldsabisegmentationthatistaken
+as the slack bisegment constraints for the next pass, which aligns segments at the next ﬁner
+tokenlevel(commonly,paragraphsorsentences).Thisapproachistakensothatthealignment
+subproblemcorrespondingtoanyslackbisegmenthassmall TandVvalues.Thealignmentis
+reﬁnedoneachpassuntilthesentence-levelgranularityisreached; ateachpass, thequadratic
+cost is kept in check by the small number of tokens within each slack bisegment (between
+adjacentanchors).
+Bands
+A common heuristic constraint is to narrow the shape of the rectangular slack bisegments
+instead into slack bands that more closely resemble bands, as shown in Figure 16.4. We call
+thisbanding.Bandingreliesontheassumptionthatthecorrectcouplingswillnotbedisplaced
+toofarfromtheaverage,whichisthediagonalbetweenadjacentanchors.Diﬀerentnarrowing
+heuristicsarepossible.
+One method is to model the variance assuming the displacement for each passage is inde-
+pendently and identically distributed. This means the standard deviation at the midpoint of a
+T:Vbitext isO√(T)for the language-0 axis and O√(V)for the language-1 axis. Kay and
+Röscheisen(1993)approximatethisbyusingabandingfunctionsuchthatthemaximumwidth
+ofabandatitsmidpointis O√(T).∗
+Anothermethod,duetoSimardandPlamondon(1996),istopruneareasoftheslackbiseg-
+ment that are further from the rectangle’s diagonal than some threshold, where the threshold
+isproportionaltothedistancebetweentheanchors.Thisresultsinslackbandsoftheshapein
+Figure16.5.
+∗Theydonotgivetheprecisefunction.
+
+376 HandbookofNaturalLanguageProcessing
+Language 1
+passagesLanguage 2
+passages
+D
+C
+FIGURE16.5 Bandingtheslackbisegmentsusingwidththresholds.
+Banding has the danger of overlooking correct couplings if there are large diﬀerences in
+the translations. Kay and Röscheisen (1993) report a maximum displacement of 10 sentences
+from the diagonal, in a bitext of 255:300 sentences. However, most bitext, especially in larger
+collections, contains signiﬁcantly more noise. The width of the band can be increased, but at
+signiﬁcantcomputationalexpense.
+Guides
+A heuristic constraint we call guiding, due to Dagan et al. (1993), is applicable when a rough
+guidealignment already exists as the result of some earlier heuristic estimate. The preexisting
+alignmentcanbeusedasaguidetoseekamoreaccuratealignment.Assumingthepreexisting
+alignmentisdescribedbythemappingfunction a0(v),ausefulalignmentrangeconstraintisto
+deﬁneanallowabledeviationfrom a0(v)intermsofsomedistance d:alanguage-0position tis
+apossiblecandidatetocouplewithalanguage-1position viﬀ
+a0(v)−d≤t≤a0(v)+d (16.1)
+This is depicted in Figure 16.6. We denote the set of (s,s+1,t,t+1)couplings that meet all
+alignmentrangeconstraintsas B.
+Alignmentrangeconstraints
+Monotonicity, anchors, banding, and guiding are all special cases of alignment range con-
+straints.Therearemanyotherpossiblewaystoformulaterestrictionsonthespaceofallowable
+alignments. In general, alignment range constraints play an important role. Some alignment
+techniques are actually computationally infeasible without strong ap r i o r ialignment range
+constraints.Othertechniquesemployaniterativemodiﬁcationofalignmentrangeconstraints,
+similartoiterativereﬁnementwithanchors.
+Bilexiconconstraints
+Abilexiconholdsknowntranslationpairsor bilexemes .Ingeneral,machinetranslationmodels
+workwithphrasalbilexicons,thatmaycontaincharacters,tokens,words,phrases,compounds,
+multi-word expressions, or collocations—particularly for non-alphabetic languages where the
+diﬀerenceisnotsoclear.
+Thestrongestlexeme-couplingconstraintscomefromlexemes(ortokens,includingpunctua-
+tion)thathave1-to-1deterministictranslations.Theseineﬀectprovideanchorsifmonotonicity
+isassumed.However,therarityofsuchcaseslimitstheirusefulness.
+
+Alignment 377
+Language 1
+passagesLanguage 2
+passages
+D
+C
+FIGURE16.6 Guidingbasedonapreviousroughalignment.
+A bilexicon usually supplies lexical translations that are 1-to-many or many-to-many. The
+setofknowntranslationscanbeusedtocutdownonthespaceofcandidatecouplings.Clearly,
+whateverpruningmethodisusedmuststillallowforunknownwordtranslations,sincetrans-
+lationisnotalwaysword-by-word,andsincebilexiconshaveImperfectcoverage(especiallyin
+methodsthatlearnabilexiconastheyperformthealignment).
+Aweightedbilexicon storesadditionalinformationaboutthe degreeofcorrelationorassocia-
+tioninwordpairs.Thiscanbeparticularlycleaninprobabilisticalignmenttechniques.Various
+otherstatisticalor adhocscorescanalsobeemployed.
+Cognates
+Cognates are word pairs with common etymological roots, for example, the bilexemes
+ﬁnanced:ﬁnancier orgovernment:gouvernement in English and French. For alphabetic lan-
+guagesthatsharethesame(ordirectlymappable)alphabets,itispossibletoconstructheuristic
+functions that compare the spelling of two words or passages. In the simplest case, the func-
+tion returns true or false (a decision function), acting like a low-accuracy, easily constructed
+bilexicon with low memory requirements. Alternatively, a function that returns a score acts
+likeaweightedbilexicon.Ineithercase,acognatefunctioncanbeusedeitherinplaceoforin
+additiontoanalignmentbilexicon.
+Segmentlengths
+The lengths of passages at or above the sentence granularity can be strong features for deter-
+mining couplings. Most reported experiments indicate that the correlation is relatively strong
+even for unrelated languages, if the translation is tight. This means that the utility of this
+feature is probably more dependent on the genre than the language pair. Segment lengths are
+typically measured in bytes, characters, or simple word tokenizations. Length-based methods
+arediscussedinSection16.3.1.
+Syntacticparses
+Using syntactic information from automatic parsers to improve word alignment accuracy is
+increasinglycommon,forexample,asdiscussedinSections16.5and16.6.
+Languageuniversals
+Outsideoftherelativelysuperﬁcialfeaturesjustdiscussed,relativelylittleattempthasbeenmade
+to bring to bear constraints from theories about language-universal grammatical properties.
+One exception is discussed in Section 16.6. Language-universal constraints apply to all (or a
+largeclass)oflanguagepairs,withoutmakinglanguage-speciﬁcassumptions,andapplyatthe
+sentenceandwordgranularities.
+
+378 HandbookofNaturalLanguageProcessing
+16.2.3 Classes of Algorithms
+Broadly speaking, alignment techniques search for an optimal bisegmentation using (1) dynamic
+programming, (2) greedy best-ﬁrst, (3) discriminative, or (4) heuristic algorithms for constrained
+optimization.
+Althoughauthorsvarygreatlyonnotationsanddescriptions,themajorityofalignmentalgorithmscan
+in fact be formulated as search algorithms that attempt to minimize the total cost of A, the entire set of
+couplings,subjecttosomesetofconstraints:
+Cost(A)=∑
+(p,r)∈ACost(p,r) (16.2)
+Search techniques can be heuristic or exhaustive, and can employ greedy, backtracking, beam, or
+exhaustivestrategies.
+16.3 Sentence Alignment
+Sentence level techniques generally adopt a restriction to monotonic alignment, and are applicable to
+larger units as well, such as paragraphs and sections. Taking advantage of this, hierarchical iterative
+reﬁnement usually works rather well, by ﬁrst aligning paragraphs, yielding biparagraphs whose internal
+sentencescansubsequentlybealigned.
+Broadly speaking, sentence alignment techniques rely on sentence lengths, on lexical constraints and
+correlations,and/oroncognates.Otherfeaturescouldnodoubtbeused,buttheseapproachesappearto
+performwellenough.
+16.3.1 Length-Based Sentence Alignment
+Thelength-basedapproachexaminesthelengthsofthesentences.Itisthemosteasilyimplementedtech-
+nique,andperformsnearlyaswellaslexicaltechniquesfortightlytranslatedcorporasuchasgovernment
+transcripts.Theoverallideaistousedynamicprogrammingtoﬁndaminimumcost(maximumprobabil-
+ity)alignment,assumingasimplehiddengenerativemodelthatemitssentencesofvaryinglengths.Purely
+length-based techniques do not examine word identities at all, and regard the bitext as nothing more
+than a sequence of sentences whose lengths are the only observable feature; Figure 16.7 depicts how the
+alignmentalgorithmseestheexampleofFigure16.1a.Thelength-basedapproachtosentencealignment
+wasﬁrstintroducedbyGaleandChurch(1991a)andBrownetal.(1991),whodescribeessentiallysimilar
+techniques;amorethoroughevaluationisfoundinGaleandChurch(1993).
+Thisisaﬁrstexampleofthemostcommonsuccessfulmodelingparadigmforallsortsofalignmenttasks:
+searchforan optimalcostalignment thatexplainsthebitext,assumingitwasemittedbysomeunderlying
+generativemodel oftransduction.Thegenerativemodelisusuallystochastic,sothecostsbeingminimized
+Lengths of sentences in the bitext
+Language 1: 10
+12 14 15 12 11 230 15 12
+Language 2:
+FIGURE16.7 Examplesentencelengthsinaninputbitext.
+
+Alignment 379
+aresimplyweightsrepresentingnegativelogprobabilities.Inmostcases,thegenerativemodelsaremostclearlydescribedas transducers (proceduralautomata)orequivalent transductiongrammars
+∗(declarative
+rulesets),whichcanbeviewedinthreeways:
+Generation. Atransducerortransductiongrammargeneratesa transduction,whichisasetofstring
+translationpairsor bistrings,justasanordinary(monolingual)languagegrammargeneratesa
+language,whichisasetofstrings.Inthebilingualcase,atransductiongrammarsimultaneouslygeneratestwostrings (e,f)atonce,whicharetranslationpairs.Thesetofallbistringsthatcan
+begenerateddeﬁnesarelationbetweentheinputandoutputlanguages.
+Recognition. A transducer or transduction grammar accepts or biparses all bistrings of a
+transduction,justasalanguagegrammarparsesoracceptsallstringsofalanguage.
+Transduction. Atransducerortransductiongrammartranslatesor transduces foreigninputstrings
+ftoemittedoutputstrings e.
+Asweshallsee,thereisahierarchyofequivalenceclassesfortransductions—justasthereisChomsky’s
+hierarchyofequivalenceclassesforlanguages.Justasinthemonolingualcase,thereisatradeoﬀbetweengenerativecapacityandcomputationalcomplexity:themoreexpressiveclassesoftransductionsareordersofmagnitudemoreexpensivetobiparseandtrain:
+MONOLINGUAL BILINGUAL
+(Chomskyhierarchy)
+regularorﬁnite-statelanguages regularorﬁnite-statetransductions
+FSA O(n2) FST O(n4)
+or or
+CFG SDTG(orsynchronousCFG)
+thatis thatis
+rightregularorleftregular rightregularorleftregular
+context-freelanguages inversiontransductions
+CFG O(n3) ITG O(n6)
+or
+SDTG(orsynchronousCFG)
+thatis
+binaryorternaryorinverting
+syntax-directedtransductions
+SDTG O(n2n+2)
+or
+(orsynchronousCFG)
+Fortunately, for length-based sentence alignment, it suﬃces to model one of the simplest bilingual
+classes—ﬁnite-statetransductions—whichcanbegeneratedbya ﬁnite-statetransducer orFSTasdepicted
+inFigure16.8, orbyanequivalent ﬁnite-state transductiongrammar orFSTG,writtenasatransduction
+grammar that is right regular.†For sentence alignment, the natural tokens that are being aligned are
+sentences, but for length-based models, there is a also useful subtokenization at the byte, character, orsimple word level. The model emits bitext as a monotonic series of bisegments, each bisegment being ashort sequence of Eemitted sentence tokens in language 0 coupled with a short sequence of Fforeign
+∗Alsorecentlycalled“synchronousgrammars.”
+†FSTGsmayalsobewritteninleftregularform.
+
+380 HandbookofNaturalLanguageProcessing
+1-to-0
+Different bisegment output distributions0-to-1
+1-to-1
+2-to-1 1-to-22-to-2Different bisegment output distributions
+(a) FST model using transition network notation.
+...
+1-to-1 → [ei/ϵ1-to-0 ] for all segments of subtoken length iin language-0
+1-to-1 → [ϵ/fj0-to-1 ] for all segments of subtoken length jin language-1
+1-to-1 → [ei/fj1-to-1 ] for all 1-to-1 bisegments of subtoken lengths i,j
+1-to-1 → [ei/fj1-to-2 ] for all 1-to-2 bisegments of subtoken lengths i,j
+1-to-1 → [ei/fj2-to-1 ] for all 2-to-1 bisegments of subtoken lengths i,j
+1-to-1 → [ei/fj2-to-2 ] for all 2-to-2 bisegments of subtoken lengths i,j
+...
+(b) Alternative notation for the same model using FSTG transduction rule notation;
+same pattern for 1-to-0, 0-to-1, 2-to-1, 1-to-2, and 2-to-2 rules.
+FIGURE 16.8 Equivalent stochastic or weighted (a) FST and (b) FSTG notations for a ﬁnite-state bisegment
+generation process. Note that the node transition probability distributions are often tied to be the same for all
+node/nonterminaltypes.
+sentence tokens in language 1.∗For example, Figure 16.1a shows one sequence of 1-to-1, 1-to-2, and
+0-to-1bisegmentsthatcouldhavegeneratedthebitextlengthsequencesofFigure16.7.
+Formally, we denote a transducer or transduction grammar by G=(N,W0,W1,R,S),w h e r e Nis a
+ﬁnitesetofnodes (states)ornonterminals, W0isaﬁnitesetofwords (terminals)oflanguage0, W1isa
+ﬁnitesetofwords(terminals)oflanguage1, Risaﬁnitesetoftransductionrules(whichcanbewritten
+aseithertransitionrulesorrewriterules), and S∈Nisthestartnode(state)ornonterminal. Thespace
+of bisegments (terminal-pairs) X=(W0∪{ϵ})×(W1∪{ϵ})contains lexical translations denoted x/y
+andsingletonsdenoted x/ϵorϵ/y,wherex∈W0andy∈W1.
+Each node (state) or nonterminal represents one type of bisegment. The usual practice is to allow
+bisegment types representing at least the following E-to-Fconﬁgurations: 0-to-1, 1-to-0, 1-to-1, 1-to-2,
+and 2-to-1. Allowing 2-to-2 bisegments in addition is reasonable. It can be convenient to think of these
+bisegmenttypesasoperationsfortranslatinglanguage-0passagesintolanguage-1passages,respectively:
+insertion, deletion, substitution, expansion, contraction, and merger. Bisegments with three or more
+sentences in one language are not generally used, despite the fact that 1-to-3, 2-to-3, 3-to-3, 3-to-2, and
+3-to-1sentencetranslationsarefoundinbitextonceinawhile.Thisisbecausealignmentofsuchpassages
+using only the sentence length feature is too inaccurate to make the extra parameters and computation
+worthwhile. Similarly, itgenerallysuﬃcestoignorethestatehistory, bytyingallstatessotheysharethe
+sameoutgoingtransitionprobabilitydistribution,asimplemultinomialdistributionoverthebisegment
+∗Brown et al. (1991) describe this FST as a single-state hidden Markov model (HMM) that emits bisegments (which they
+call “beads”). However, the type of bisegment must be stochastically selected each time the state is reached, and then its
+outputprobabilities must beconditioned onthe bisegment type. This eﬀectively splits the single state into separatestates
+foreachbisegmenttype,asdescribedhere.
+
+Alignment 381
+typesthatcanbeestimatedfromasmallhand-alignedcorpus.Alternatively,EMcanbeusedtoestimatethisdistributionsimultaneouslywiththesegmentlengthdistributions.
+Theoutputdistributionforeachstate(i.e.,bisegmenttype)ismodeledasafunctionofitsmonolingual
+segments’ lengths as measured in subtokens (typically bytes, characters, or word subtokens). Given thebisegment type, the length l
+0=t−sof its emitted segment es..tis determined. The length of each
+sentence token in the emitted segment is assumed to be independent, and to follow some distribution.This distribution is implicitly Poisson in the case of Gale and Church (1991b). In Brown et al. (1991),relativefrequenciesareusedtoestimateprobabilitiesforshortsentencelengths(uptoapproximately80simpleEnglishandFrenchwords),andthedistributionforlongersentencesisﬁttothetailofaPoisson.SincetheempiricaldistributionforshortsentencesisfairlyPoisson-like,
+∗thesevariationsdonotappear
+tohaveasigniﬁcantimpact.
+Finally,thelength l1=v−uoftheforeignsegment fu..visdetermined,byassumingthatitsdiﬀerence
+from the length of the emitted segment follows some distribution, usually a normal distribution. ThefollowingdiﬀerencefunctionsareusedbyGaleandChurch(1991b)andBrownetal.(1991),respectively:
+δ(l
+0,l1)=(l1−l0c)√
+l0s2(16.3)
+δ(l0,l1)=logl1
+l0(16.4)
+Asidefromnormalizingthemeanandvariancetoone’sarbitrarypreference,theonlydecisioniswhetherto take the logarithm of the sentence length diﬀerence, which sometimes produces a better ﬁt to theempiricaldistribution.
+Theseassumptionsaresuﬃcienttocomputetheprobabilityofanybisegment.Itisconvenienttowrite
+a candidate bisegment as (bisegment-type, s,u)where its emitted segment begins with the sth passage in
+eanditsforeignsegmentbeginswiththe uthpassagein f(sinceweassumetotaldisjointsegmentations
+inbothlanguages, tandvcanbeinferred).Forinstance,acandidate1-to-2bisegmentthathypothesizes
+coupling e
+31..32withf36..38hastheestimatedprobability ˆP(1-to-2,31,36).
+Giventhisgenerativemodel,theactualalignmentalgorithmreliesondynamicprogramming(Bellman
+1957) to ﬁnd the maximum probability alignment. For each bisegment, we take Cost(p,r)to be its
+negativelogprobability,andweminimizeEquation16.2subjecttotheconstraintthatthebisegmentationisbijective,andisatotalcoverofallsentencetokensinbothlanguages.Therecurrencehasthestructureofdynamictime-warping(DTW)modelsandisbasedonthefactthattheprobabilityofanysequenceofbisegments can be computed by multiplying the probability of last bisegment with the total probabilityof all the bisegments that precede it. Let the minimum cost (maximum log probability) up to passages(t,v)beδ(t,v)=logP(e
+0..t,f0..v)where 0 ≤t≤Tand 0 ≤v≤V. The recurrence chooses the best
+conﬁgurationoverthepossibletypesofthelastbisegment.
+1. Initialization.
+δ(0,0)=0 (16.5)
+2. Recursion.
+δ(t,v)=min⎧⎪⎪⎪⎪⎨⎪⎪⎪⎪⎩ δ(t,v−1)−log ˆP(0-to-1,t,v−1)
+δ(t−1,v)−logˆP(1-to-0,t−1,v)
+δ(t−1,v−1)−log ˆP(1-to-1,t−1,v−1)
+δ(t−1,v−2)−log ˆP(1-to-2,t−1,v−2)
+δ(t−2,v−1)−log ˆP(2-to-1,t−2,v−1)
+δ(t−2,v−2)−log ˆP(2-to-2,t−2,v−2)(16.6)
+Notethattheformoftherecurrenceimposesasetofslopeconstraintsonthetimewarping.
+∗Forexample,seeFigure16.4inBrownetal.(1991).
+
+382 HandbookofNaturalLanguageProcessing
+The most signiﬁcant diﬀerence between the methods is that the Gale and Church (1991b) method
+measures sentence token lengths in terms of number of character subtokens, whereas the Brown et al.(1991) method uses number of simple English/French word subtokens (as determined by Europeanlanguage speciﬁc heuristics relying primarily on whitespace and punctuation separators). Gale andChurch (1993) report that using characters instead of words, holding all other factors constant, yieldshigheraccuracy(intheirexperiment,anerrorrateof4.2%forcharactersascomparedto6.5%forwords).The reasons are not immediately obvious, though Gale and Church (1993) use variance measures toarguethatthereislessuncertaintysincethenumberofcharactersislarger(117characterspersentence,as opposed to 17 words). However, these experiments were conducted only on English, French, andGerman,whoselargenumberofcognatesimprovethecharacterlengthcorrelation.
+Wu (1994) showed that for a large English and Chinese government transcription bitext, where the
+cognate eﬀect does not exist, the Gale and Church (1991b) method is somewhat less accurate than forEnglish,French,andGerman,althoughitisstilleﬀective.Churchetal.(1993)showthatsentencelengthsare well correlated for the English and Japanese AWK manuals, but do not actually align the sentences.We know of no experimental results comparing character and word length methods on non-cognatelanguages;thelackofsuchexperimentsisinpartbecauseofthewell-knowndiﬃcultiesindecidingwordboundariesinlanguagessuchasChinese(Chiangetal. 1992; Linetal. 1992; ChangandChen1993; Linetal.1993;WuandTseng1993;Sproatetal.1994;WuandFung1994).
+Bitextsinsomelanguagepairsmayexhibithighlydissimilarsentenceandclausestructures,leadingto
+very diﬀerent groupings than the simple bisegments we have been considering. For example, althoughthesentencebytelengthcorrelationsarestrongintheEnglish–Chinesegovernmenttranscriptionsusedby Wu (1994), Xu and Tan (1996) report that the CNS English–Chinese news articles they use haveverydiﬀerentclauseandsentencegroupings,andthereforesuggestgeneralizingthebisegmentstoallowmany-clause-to-many-clausecouplings.
+In general, length-based techniques perform well for tightly translated bitexts. However, they are
+susceptibletomisalignmentinthecasewherethebitextcontainslongstretchesofsentenceswithroughlyequal length, as for example in dialogues consisting of very short utterances, or in itemized lists. Onepossiblesolutionisdiscussedinthesectiononlexicaltechniques.
+Thebasicalgorithmis O(TV)inbothspaceandtime,thatis,approximatelyquadraticinthenumber
+of segments in the bitext. This is prohibitive for reasonably large bitexts. Three basic methods forcircumventingthisproblemarebanding,thehierarchicalvariantofiterativereﬁnement,andthresholding.
+Banding is often a feasible approach since the true alignment paths in many kinds of bitexts lie close
+enough to the diagonal as to fall within reasonable bands. However, banding is not favored when theothertwoapproachescanbeused,sincetheymakefewerassumptionsaboutthealignmentpath.
+Hierarchicaliterativereﬁnementappearstoworkwellfortightlytranslatedbitextssuchasgovernment
+transcripts, which are typically organized as one document or section per session. Generally, only a fewpassesareneeded:document/section(optional),paragraph,speaker(optional),andsentence.
+Thresholding techniques prune the δmatrix so that some alignment preﬁxes are abandoned during
+the dynamic programming loop. Many variants are possible. Relative thresholding is more appropriatethan absolute thresholding; the eﬀect is to prune any alignment preﬁx whose probability is excessivelylower than the most probable alignment preﬁx of the same length. Beam search approaches are similar,but limit the number of “live” alignment preﬁxes for any given preﬁx length. It is also possible to deﬁnethebeamintermsofaupper/lowerboundedrange (v
+−,v+),sothattheloopiterationthatcomputesthe
+tth column of δ(t,v)only considers v−≤v≤v+. This approach is similar to banding, except that the
+centerofthebandisdynamicallyadjustedduringthedynamicprogrammingloop.
+Thresholdingcancauselargewarps(deletions,insertions)tobemissed.Chen(1993)suggestsaresyn-
+chronization method to improve the robustness of relative thresholding schemes against large warps,based on monitoring the size of the “live” preﬁx set during the dynamic programming loop. If this setreaches a predetermined size, indicating uncertainty as to the correct alignment preﬁx, the presenceof a large warp is hypothesized and the alignment program switches to a resynchronization mode. In
+
+Alignment 383
+this mode, both sides of the bitext are linearly scanned forward from the current point, seeking rarewords. When corresponding rare words are found in both sides, a resynchronization point is hypothe-sized. After collecting a set of possible resynchronization points, the best one is selected by attemptingsentencealignmentforsomesigniﬁcantnumberofsentencesfollowingthecandidateresynchronizationpoint, taking the resulting probability as an indication of the goodness of this resynchronization point.Resynchronizationcanimproveerrorratessigniﬁcantlywhenthebitextcontainslargewarps.
+16.3.2 Lexical Sentence Alignment
+The prototypical lexically based sentence alignment technique was proposed by Kay and Röscheisen(1988) in the ﬁrst paper to introduce a heuristic iterative reﬁnement solution to the bitext alignmentproblem.
+∗Themethodemploysbanding,andhasthestructureshowninAlgorithm1.†
+Algorithm1 LexicalSentenceAlign
+1:Initializethesetofanchor(sentence)alignments A
+2:repeat
+3:Compute the (sentence alignment) candidate space by banding between each adjacent pair ofanchors
+4:Collectword-similaritystatisticsfromthecandidatespace
+5:Buildabilexiconcontainingsuﬃcientlysimilarwords
+6:Collectsentence-similaritystatisticsfromthecandidatespace,withrespecttothebilexicon
+7:Addsuﬃcientlyconﬁdentcandidatestothesetofalignments A
+8:untilnonewcandidateswereaddedto A
+9:return A
+Althoughthisalgorithmcaneasilybeimplementedinastraightforwardform,itscostrelativetolexicon
+sizeandbitextlengthisprohibitiveunlessthedatastructuresandloopsareoptimized.Ingeneral,eﬃcientimplementationsofthelength-basedmethodsareeasiertobuildandyieldcomparableaccuracy, sothislexicalalgorithmisnotascommonlyused.
+A notable characteristic of this algorithm is that it constructs a bilexicon as a by-product. Various
+criteriafunctionsforacceptingacandidatebilexemearepossible, ratingeitherthewordpair’sdegreeofcorrelationoritsstatisticalsigniﬁcance.Forthecorrelationbetweenacandidatebilexeme (w,x),Kayand
+Röscheisen(1988)employDice’scoeﬃcient(vanRijsbergen1979),
+2N(w,x)
+N(w)+N(x)(16.7)
+whereasHarunoandYamazaki(1996)employmutualinformation(CoverandThomas1991),
+logNN(w,x)
+N(w)N(x)(16.8)
+For the statistical signiﬁcance, Kay and Röscheisen (1988) simply use frequency, and Haruno andYamazaki(1996)use t-score:
+P(w,x)−P(w)P(x)
+√P(w,x)/N(16.9)
+∗AsimpliﬁedversionofthemethodwassubsequentlyappliedtoasigniﬁcantlylargercorpusbyCatizoneetal.(1989).
+†For the sake of clarifying the common conceptual underpinnings of diﬀerent alignment techniques, our description uses
+diﬀerenttermsfromKayandRöscheisen(1988).Roughly,our AistheSentenceAlignmentTable,ourcandidatespaceis
+theAlignableSentenceTable,andourbilexiconistheWordAlignmentTable.
+
+384 HandbookofNaturalLanguageProcessing
+In either case, a candidate bilexeme must exceed thresholds on both correlation and signiﬁcance scorestobeacceptedinthebilexicon.
+Thebilexiconcanbeinitializedwithasmanypre-existingentriesasdesired;thismayimprovealignment
+performance signiﬁcantly, depending on how accurate the initial anchors are. Even when a good pre-existingbilexiconisavailable,accuracyisimprovedbycontinuingtoaddentriesstatistically,ratherthan“freezing” the bilexicon. Haruno and Yamazaki (1996) found that combining an initial seed bilexicon(40,000entriesfromacommercialmachine-readabletranslationdictionary)withstatisticalaugmentationsigniﬁcantlyoutperformedversionsofthemethodthateitherdidnotemploytheseedbilexiconorfrozethe bilexicon to the seed bilexicon entries only. Results vary greatly depending on the bitext, but showconsistentsigniﬁcantimprovementacrosstheboard.Precisionandrecallareconsistentlyinthemid-90%range,upfromﬁguresintherangeof60.
+With respect to applicability to non-Indo-European languages, the Haruno and Yamazaki (1996)
+experimentsshowthatthealgorithmisusableforJapanese–Englishbitexts,aslongastheJapanesesideispresegmentedandtagged.Asidefromthevariationsalreadydiscussed,twoothermodiﬁedstrategiesareemployed.Toimprovethediscriminativenessofthelexicalfeatures,anEnglish–Japanesewordcouplingisonlyallowedtocontributetoasentence-similarityscorewhentheEnglishwordoccursinonlyoneofthe candidate sentences to align to a Japanese sentence. In addition, two sets of thresholds are used formutual information and t-score, to divide the candidate word couplings into high-conﬁdence and low-
+conﬁdence classes. The high-conﬁdence couplings are weighted three times more heavily. This strategyattempts to limit damage from the many false translations that may be statistically acquired, but stillallowthelow-conﬁdencebilexiconentriestoinﬂuencethelateriterationswhennomorediscriminativeleverageisavailablefromthehigh-conﬁdenceentries.
+Itispossibletoconstructlexicalsentencealignmenttechniquesbasedonunderlyinggenerativemodels
+that probabilistically emit bisegments, similar to those used in length-based techniques. Chen (1993)describesaformulationstillusingbisegmenttypeswith0-to-1,1-to-0,1-to-1,1-to-2,and2-to-1sentencetokens, but at the same time, a subtokenization level where each bisegment is also viewed as a multisetof bilexemes. Instead of distributions that govern bisegment lengths, we have distributions governingthe generation of bilexemes. Word order is ignored,
+∗since this would be unlikely to improve accuracy
+signiﬁcantly despite greatly worsening the computational complexity. Even with this concession, thecost of alignment would be prohibitive without a number of additional heuristics. The basic methodemploys the same dynamic programming recurrence as Equation 16.6, with suitable modiﬁcations totheprobabilityterms;thequadraticcostwouldbeunacceptable,especiallysincethenumberofbilexemecandidates per bisegment candidate is exponential in the bisegment length. Chen employs the relativethresholding heuristic, with resynchronization. The probability parameters, which are essentially thesameasforthelength-basedmethodsexceptfortheadditionalbilexemeprobabilities,areestimatedusingtheViterbiapproximationtoEM.
+Like the Kay and Röscheisen (1988) method, this method induces a bilexicon as a side eﬀect. For the
+methodtobeabletobootstrapthisbilexicon,itisimportanttoprovideaseedbilexiconinitially.Thiscanbe accomplished manually, or by a rough estimation of bilexeme counts over a small manually alignedbitext. The quality of bilexicons induced in this manner has not been investigated, although relatedEM-basedmethodshavebeenusedforthispurpose(seebelow).
+ThealignmentprecisionofthismethodonCanadianHansardsbitextmaybemarginallyhigherthan
+the length-based methods. Chen (1993) reports 0.4% error as compared with 0.6% for the Brown et al.(1991) method (but this includes the eﬀect of resynchronization that was not employed by Brown et al.(1991)). Alignment recall improves by roughly 0.3%. Since the accuracy and coverage of the inducedbilexicon has not been investigated, it is unclear how many distinct bilexemes are actually needed toobtainthislevelofperformanceimprovement.Therunningtimeofthismethodis“tensoftimes”slowerthanlength-basedmethods,despitethemanyheuristicsearchapproximations.
+∗Similarly,inspirit,toIBMwordalignmentModel1,discussedelsewhere.
+
+Alignment 385
+To help reduce the running time requirements, it is possible to use a cheaper method to impose an
+initialsetofconstraintsonthecouplingmatrix.SimardandPlamondon(1996)employacognate-basedmethodwithinaframeworksimilartoSIMR(discussedlater)togenerateasetofanchors,andthenapplybanding.
+Theword_align method(Daganetal.1993)mayalsobeusedforlexicalsentencealignment,asdiscussed
+inSection16.4.2.
+16.3.3 Cognate-Based Sentence Alignment
+For some language pairs like English and French, the relatively high proportion of cognates makes itpossibletousecognatesasthekeyfeatureforsentencealignment.Simardetal.(1992),whoﬁrstproposedusing cognates, manually analyzed approximately 100 English-French bisentences from the CanadianHansards,andfoundthatroughly21%ofthewordsinbisentenceswerecognates.Incontrast,only6%ofthewordsinrandomlychosennon-translationsentencepairswerecognates.
+Cognate-based alignment can in fact be seen as a coarse approximation to lexical alignment, where
+the bilexemes are based on a heuristic operational deﬁnition of cognates, rather than an explicitly listedlexicon.TheSimardetal.(1992)method’scognateidentiﬁcationheuristicconsiderstwowords w,xtobe
+cognatesif
+1.w,xareidenticalpunctuationcharacters;
+2.w,xareidenticalsequencesoflettersanddigits,withatleastonedigit;or
+3.w,xaresequencesofletterswiththesamefour-characterpreﬁx.
+This heuristic is clearly inaccurate, but still discriminates true from false sentence pairs fairly well: itconsiders 30% of the words in bisentences to be cognates, versus only 9% in non-translation sentencepairs.
+Givensuchadeﬁnition,anyofthelexicalalignmentmethodscouldbeused,simplybysubstitutingthe
+heuristic for lexical lookup. The techniques that require probabilities on bilexemes would require that adistribution of suitable form be imposed. Simard et al. (1992) use the dynamic programming method;however, for the cost term, they use a scoring function based on a log-likelihood ratio rather than agenerativemodel.Thescoreofabisegmentcontaining ccognatesandaveragesentencelength nis
+−log(P(c|n,t)
+P(c|n,¬t)·P(bisegment-type ))
+(16.10)
+Thepurecognate-basedmethoddoesnotperformaswellasthelength-basedmethodsfortheCanadian
+Hansards. In tests on the same bitext sample, Simard et al. (1992) obtain a 2.4% error rate, where theGaleandChurch(1991b)methodyieldsa1.8%errorrate.Thereasonappearstobethateventhoughthemeannumber ofcognatesdiﬀersgreatlybetweencoupled andnon-coupled sentencepairs, thevariancein the number of cognates is too large to separate these categories cleanly. Many true bisentences sharenocognates,whilemanynon-translationsentencepairsshareseveralcognatesbyaccident.
+Cognate-based methods are inapplicable to language pairs such as English and Chinese, where no
+alphabeticmatchingispossible.
+16.3.4 Multifeature Sentence Alignment
+Higher accuracy can be obtained by combining sentence length, lexical, and/or cognate features in asingle model. Since a length-based alignment algorithm requires fewer comparison tests than a lexicalalignment algorithm, all other things being equal, it is preferable to employ length-based techniqueswhen comparable accuracy can be obtained. However, as mentioned earlier, length-based techniquescan misalign when the bitext contains long stretches of sentences with roughly equal length. In this
+
+386 HandbookofNaturalLanguageProcessing
+case, it is possible to augment the length features with others. One method of combining features is byincorporatingthemintoasinglegenerativemodel.Alternatively,thelessexpensivelength-basedfeaturecan be used in a ﬁrst pass; afterward, the uncertain regions can be realigned using the more expensivelexical or cognate features. Uncertain regions can be identiﬁed either using low log probabilities in thedynamic programming table as indicators of uncertain regions, or using the size of the “live” preﬁx setduringthedynamicprogrammingloop.
+The method of Wu (1994) uses a single generative model that combines sentence length with lexical
+(bi)subtoken features, which in their case were English words and Chinese characters. A very smalltranslation lexicon of subtokens is chosen before alignment; to be eﬀective, each subtoken should occurofteninthebitextandshouldbehighlydiscriminative,i.e.,thetranslationofeachchosensubtokenshouldbeasclosetodeterministicaspossible.Thetotalsetofchosensubtokensshouldbesmall;otherwise,themodel degenerates into full lexical alignment with all the computational cost. The model assumes thatall subtokens in a bisegment, except for those that belong to the set of chosen subtokens, are generatedaccordingtothesamelengthdistributionasinthebasiclength-basedmodel.Thedynamicprogrammingalgorithmisgeneralizedtoﬁndthemaximumprobabilityalignmentunderthishybridmodel.Signiﬁcantperformance improvement can typically be obtained with this method, though the degree is highlydependentuponthebitextandthebitokenvocabularythatischosen.
+Simard et al. (1992) combine sentence length with cognate features using a two-pass approach. The
+ﬁrstpassistheGaleandChurch(1991b)methodwhichyieldsa1.8%errorrate.Thesecondpassemploysthecognate-basedmethod,improvingtheerrorrateto1.6%.
+16.3.5 Comments on Sentence Alignment
+Sentencealignmentcanbeperformedfairlyaccuratelyregardlessofthecorpuslengthandmethodused.Perhaps surprisingly, this holds even for lexicon-learning alignment methods, apparently because thedecreasedlexiconaccuracyisoﬀsetbytheincreasedconstraintsonalignablesentences.
+The advantages of the length-based method are its ease of implementation and speed. Although it is
+sometimesarguedthattheasymptotictimecomplexityofeﬃcientlyimplementedlexicalmethodsisthesameaslength-basedmethods, eventhentheconstantfactorforwouldbesigniﬁcantlycostlierthanthelength-basedmethods.
+The advantages of the lexical methods are greater robustness, and the side eﬀect of automatically
+extractingalexicon.
+Multifeaturemethodsappeartooﬀerthebestcombinationofrunningtime,space,accuracy,andease
+ofimplementationforaligningsentencesintightlytranslatedbitexts.
+16.4 Character, Word, and Phrase Alignment
+We now consider the case where the vectors eandfdenote sentences that are sequences of lexical
+units orlexemes—character or word/phrase tokens—to be aligned (rather than documents, sections, or
+paragraphsthataresequencesofsentencetokens,asintheprecedingsection).
+Theﬁrstnewdiﬃcultyishowtodeﬁnetheinput“word”tokens.Comparedtoparagraphorsentence
+tokens,itissigniﬁcantlymoreslipperytodeﬁnewhata wordtokenis.Thefrequentlyused,butsimplistic,
+tokenization assumption that whitespace and punctuation separates “words” does not really hold evenfor Western European languages—as for example, in the multi-“word” words put oﬀ,by the way ,inside
+out,thank you ,roller coaster, break a leg, and so on. For many other major languages, the simplifying
+assumptionisevenlessworkable.
+In Chinese, for example, which has tens of thousands of unique characters and is written without
+any spaces, any attempt to heuristically guess where “word” boundaries might lie is inherently highlyerror-prone.Prematurecommitmenttoartiﬁcial“word”boundariessigniﬁcantlyimpactsalignmentand
+
+Alignment 387
+translationaccuracy, sincethetokensmayhavebeenwronglysegmentedtobeginwith. Forthisreason,a conservative approach is to avoid ap r i o r iword tokenization altogether, and assume character tokens
+instead.
+Manysimplerwordalignmentmodelsinfactperformonly tokenalignment ,whereallbisegmentsare
+one token or zero tokens long, in both languages. Other models tackle the more realistic general case ofmultitokenalignment wherethelexemesbeingalignedmaybewords/phrasesspanningmultipletokens.
+For convenience, we will often use “word” and “lexeme” to refer generally to multitoken lexical units
+thatmaybecharacters,phrases,compounds,multi-wordexpressions,and/orcollocations.
+16.4.1 Monotonic Alignment for Words
+For languages that share very similar constituent ordering properties, or simply to obtain a very roughword alignment as a bootstrapping step toward more sophisticated word alignments, it is possible toapply many of the techniques discussed for sentence alignment and noisy bitext alignment. For suchapplications, we may make the simplifying assumption that word order is more or less monotonicallypreserved across translation. The same dynamic programming algorithms for monotonic alignment ofSection16.3.1canbeused,forexample,toperformmultitokenalignmentyieldingbisegmentsthatcouple0-to-1,1-to-0,1-to-1,1-to-2,or2-to-1 lexemetokens.
+Unless the languages are extremely similar, however, length-based features are of low accuracy. In
+general,usefulfeatureswillbethelexicalfeatures,andforsomelanguagepairsalsothecognatefeatures.
+16.4.2 Non-Monotonic Alignment for Single-Token Words
+For true coupling of words (as opposed to simple linear interpolation up to the word granularity),generally speaking, we must drop the monotonicity constraint. Realistically, translating a sentencerequirespermuting (orreordering ) its component lexemes. Motivations to move to a more accurate
+lexicalcouplingmodelinclude
+Alignmentaccuracy.
+Inprinciple,lexicalcouplingwithoutfalsemonotonicityassumptionsleadstohigheraccuracy.
+Sparsedata.
+Smallerbitextsshouldbealignable,withbilexiconsautomaticallyextractedintheprocess.Thelexical alignment models discussed above require large bitexts to ensure that the counts forgoodbilexemesarelargeenoughtostandoutinthenoisyword-couplinghypothesisspace.
+Translationmodeling.
+Accuratelexicalcouplingisnecessarytobootstraplearningofstructuraltranslationpatterns.
+Complexityofcouplingatthewordlevelrisesasaresultofrelaxingthemonotonicityconstraint.Partly
+forthisreason,theassumptionisusuallymadethatthewordcouplingcannotbemany-to-many.Ontheotherhand,modelsthatpermitone-to-manycouplingsarefeasible.TheTM-Alignsystem(Macklovitchand Hannan 1996) employs such a model, namely IBM Model 3 (Brown et al. 1988, 1990, 1993). Thismodelincorporatesa fertilitydistributionthatgovernstheprobabilityonthenumberoflanguage-1words
+generated by a language-0 word. Macklovitch and Hannan (1996) report that 68% of the words werecorrectlyaligned.Brokendownmoreprecisely,78%ofthecontentwordsarecorrectlyaligned,comparedtoonly57%ofthefunctionwords.
+∗
+Theword_align method(Daganetal. 1993)employsadynamicprogramming formulationsimilarto
+that discussed in Section 16.3.1, but has slope constraints that allow the coupling order to move slightly
+∗AlthoughtheIBMstatisticaltranslationmodelsareallbasedonwordalignmentmodels,theythemselveshavenotreported
+accuracyratesforwordalignment.
+
+388 HandbookofNaturalLanguageProcessing
+backward as well as forward. The method does not involve any coarser (section, paragraph, sentence)segmentationofthebitexts.Theoutputofthebasicalgorithmisapartialwordalignment.
+The method requires as input a set of alignment range constraints, to restrict the search window
+to a feasible size inside the dynamic programming loop. Dagan et al. (1993) employ char_align as a
+preprocessing stage to produce a rough alignment a
+0(·), and then use guiding to restrict the alignments
+consideredby word_align .
+An underlying stochastic channel model is assumed, similar to that of the IBM translation model
+(Brownetal.1990,1993).Weassumeeachlanguage-1wordisgeneratedbyalanguage-0word.Insertionsand deletions are permitted, as in the sentence alignment models. However we can no longer simplis-tically assume that bisegments describe both sides of the bitext in linear order,
+∗since the monotonicity
+assumptionhasbeendropped:thelanguage-1wordsdonotnecessarymaptolanguage-0wordsinorder.Tomodelthis,anewsetof oﬀsetprobabilitieso(k) areintroduced.Theoﬀset kofapairofcoupledword
+positions t,vis deﬁned as the deviation of the position tof the language-0 word from where it “should
+havebeen”givenwhere vis
+k(t,v)=t−a
+′(v) (16.11)
+wherea′(v)iswherethelanguage-0word“shouldhavebeen.”Wedeterminethisbylinearextrapolation
+along the slope of the diagonal, from the language-0 position a(v−)corresponding to the previous
+language-1word:
+a′(v)=a(v−)+(v−v−)T
+V(16.12)
+wherev−isthepositionofthemostrecentlanguage-1wordtohavebeencoupledtoalanguage-0word(as
+opposedtobeinganinsertion).Givenalanguage-0string w,thechannelmodelgeneratesthelanguage-1
+translation xwiththeprobability
+P(x|w)=∑
+aKV−1∏
+v=0P(xv|wa(v))·o(a(v)−a′(v)) (16.13)
+Intheorythisiscomputedoverallpossiblealignments a,butweapproximatebyconsideringonlythose
+withinthealignmentrangeconstraints:†
+P(x|w)=∑
+A⊂BK∏
+(t,v)∈AP(xv|wt)·o(t−a′(v)) (16.14)
+Assuming we have estimated distributions ˆP(x|w)andˆo(k), the alignment algorithm searches for the
+mostprobablealignment A∗:
+A∗=argmax
+A⊂B∏
+(t,v)∈AP(xv|wt)·o(t−a′(v)) (16.15)
+Thedynamicprogrammingsearchissimilartothesentencealignmentcases,exceptonthewordgranu-larityandwithdiﬀerentslopeconstraints.Itconsidersallvaluesof vproceedingleft-to-rightthroughthe
+words of the language-1 side, maintaining a hypothesis for each possible corresponding value of t.T h e
+∗Therearenostringsof“beads”asinBrownetal.(1991).
+†Rememberthat Aandarefertothesamealignment.
+
+Alignment 389
+recurrenceisasfollows.Let δ(t,v)denotetheminimumcostpartialalignmentuptothe vthwordofthe
+language-1side,suchthatthe vthwordiscoupledtothe tthpositionofthelanguage-0side.
+δ(t,v)=min{mint−:(t−,v−)⊂B∧t−−d≤t≤t−+dδ(t−,v−1)−logˆP(xv|wt)−logˆo(t−a′(v))
+δ(t,v−1)−logˆP(xv|ϵ)
+δ(t−1,v)−logˆP(ϵ|wt)(16.16)
+=min{mint−:(t−,v−)⊂B∧t−−d≤t≤t−+dδ(t−,v−1)−logˆP(xv|wt)−logˆo(t−(t−+(v−v−)C
+D))
+δ(t,v−1)−logˆP(xv|ϵ)
+δ(t−1,v)−logˆP(ϵ|wt)(16.17)(16.18)
+Thet
+−values that need to be checked are restricted to those that meet the alignment range constraints,
+and lie within doft. In practice, the probabilities of word insertion and deletion, ˆP(xv|ϵ)andˆP(ϵ|wi),
+canbeapproximatedwithsmallﬂooringconstants.
+The oﬀset and bilexeme probability estimates, ˆo(k)andˆP(x|w), are estimated using EM on the bitext
+before aligning it. The expectations can be accumulated with a dynamic programming loop of the samestructureasthatforalignment.AnapproximationthatDaganetal.(1993)makeduringtheEMtrainingistousetheinitialroughalignment a
+0(v)insteadof a′(v).
+An experiment performed by Dagan et al. (1993) on a small 160,000-word excerpt of the Canadian
+Hansards produced an alignment in which about 55% of the words were correctly aligned, 73% werewithinonewordofthecorrectposition,and84%werewithinthreewordsofthecorrectposition.
+Quantitative performance of word_align on non-alphabetic languages has not been extensively eval-
+uated, but Church et al. (1993) align the English and Japanese AWK manuals using the technique. TheJapanesetextmustﬁrstbesegmentedintowords,whichcanleadtoanincorrectlysegmentedtext.
+It is possible to use word_align as a lexical sentence alignment scheme, simply by post-processing its
+outputdowntothecoarsersentencegranularity.Theoutputsetofwordcouplingscanbeinterpretedasasetofcandidateanchors,ofhighercredibilitythantheusualsetofpossiblewordcouplings.Usingdynamicprogramming again, the post-processor may choose the set of sentence bisegments that maximizes the(probabilistically weighted) coverage of the candidate anchor set. However, it is not clear that theadditional word-order model would signiﬁcantly alter performance over a model such as that of Chen(1993).
+Many single-token word alignment methods, particularly the IBM models [See Section 17.7.1] are
+inherently asymmetric, leading to artifacts in the alignments that can degrade translation accuracy. Tocompensate, symmetrization methods are commonly used to improve the alignments (Och and Ney
+2003). IBM models are ﬁrst trained in both directions, giving two diﬀerent token alignments
+Aefand
+Afeforanysentencepair.Afamilyofvarioustypesofsymmetrizationheuristicscanthenbeapplied,for
+example,
+•Intersection: A=Aef∩Afe
+•Union: A=Aef∪Afe
+•Grow: Start with intersection. Iteratively extend Aby adding token couplings (t,t,v,v)that are
+found in only one of AeforAfe, providing that neither etnorfvhas a coupling in A,o rt h e
+alignment (t,t,v,v)hasahorizontalneighbor (t−1,t−1,v,v)or(t+1,t+1,v,v)oravertical
+neighbor (t,t,v−1,v−1)or(t,t,v+1,v+1).
+•Grow-diag:Sameasgrow,butallowdiagonalneighborsaswell(Koehnetal.2003).
+•Grow-diag-ﬁnal-and:SameasGrow-diagbutasaﬁnalstep,alsoaddnon-neighbortokencouplingsofwordsthatotherwisemeettherequirements(Koehnetal.2003).
+AsimplevariantoftheITGmodelofWu(1997)restrictedto1-to-1tokenalignmentcanalsobetrained
+viaEMWu(1995d)toproducehighlyaccuratesingle-tokenbisegmentations(Section16.6).
+
+390 HandbookofNaturalLanguageProcessing
+[.... graphical examples including a complete m-to-n couplingplus various sparse and medium-density couplings, all attemptingto describe exactly the same coupling of an m-token lexeme to ann-token lexeme ....]
+FIGURE16.9 Multitokenlexemesoflength mandnmustbecoupledinawkwardwaysifconstrainedtousingonly
+1-to-1single-tokenbisegments.
+16.4.3 Non-Monotonic Alignment for Multitoken Words and Phrases
+The techniques of the previous section make the simplifying assumption that a word/lexeme is a singletoken,i.e.,thatbisegmentscoupleonlysingletokens.Whenconfrontedwiththemorerealisticcasewhereanm-token lexeme needs to be coupled to an n-token lexeme, such models must resort to using some
+subset of the m×npossible 1-to-1 single-token couplings, as for example in Figure 16.9. Ultimately,
+this becomes problematic, because it forces models to make artiﬁcial, meaningless distinctions betweenthe many arbitary variations like those exempliﬁed in Figure 16.9. By failing to capture straightfor-ward sequence patterns, the 1-to-1 single-token simpliﬁcation wastes probability mass on unnecessaryalignmentambiguities,andcreatesneedlesscomputationalcomplexity.
+These problems do not arise in word alignment with m-to-nbisegments that couple multiple tokens
+(such as we also used for aligning sentences). Because this impacts translation quality signiﬁcantly,increasingly, alignment is seen in terms of ﬁnding segmentations of multitoken words/lexemes to align.Thisiscommonlyemphasizedbytermslike“multi-wordexpression,”“phrase,”and“phrasealignment.”
+The key to multitoken alignment is to integrate the segmentation decisions into the alignment cost
+optimization, since the optimal coupling of segments depends on how eandfare segmented, and vice
+versa.
+IBMModels4and5supportalimitedasymmetricformof1-to- nbisegments(Brownetal.1993),but
+stilldonotcopewellwithmultitokenwords/lexemessincetheycannotoccuronthe eside.
+In contrast, the general ITG model introduced by Wu (1997) fully integrates alignment and seg-
+mentation,producingmultitoken m-to-nword/phrasealignmentssubjecttocompositionallystructured
+constraints on lexeme and segment permutations, using an underlying generative model based on astochastictransductiongrammar(Section16.6).
+Generally speaking, multitoken alignment is best performed with respect to some bilexicon that
+enumerates possible translations for multitoken lexemes—i.e., a list of all legal bisegment types.
+∗Thus,
+there are two steps to multitoken alignment: (1) induce a bilexicon, and (2) compute a minimum-costbisegmentationofthebitextusingtheinducedbilexicon.
+In practice, very simple methods for inducing a (phrasal) bilexicon perform surprisingly well, if a
+good 1-to-1 token alignment is available to bootstrap from. A commonly used method is simply totake as a bilexeme every possible bisegment that is consistent with the 1-to-1 token alignment seen intrainingsentencepairs,uptosomemaximumtokenlength.Bilexemeprobabilitiesareestimatedsimplyusing relative frequency, and (optionally) very low-frequency bilexemes may be discarded. Althoughtheaccuracyofmultitokenalignmentwasnotdirectlyevaluated, experimentalresultsfromKoehnetal.(2003)indicatethatwhenevaluatedontranslationaccuracy,thisapproachoutperformsmorecomplicatedmethodsthatﬁlteroutbisegmentsviolatingsyntacticconstituentboundaries.
+Ontheotherhand,thequalityoftheinducedbilexiconhasproventobefairlysensitivetothequality
+of the initial 1-to-1 token alignment. The method of Koehn et al. (2003) employs the intersection ofIBM alignments trained via EM in both directions, supplemented with the grow-diag-ﬁnal-and familyof heuristics discussed in Section 16.4.2. However, comparative experiments by Saers and Wu (2009)indicatethathigheraccuracyisobtainedbyusingITGalignmentstrainedviaEMandrestrictedto1-to-1tokenalignment.
+∗Oftenreferredtoasa phrasetable inworkonphrase-basedSMT.
+
+Alignment 391
+Given an induced bilexicon, multitoken alignment of any sentence pair can then be obtained by
+computingaminimum-costbisegmentation,forexamplebyusingthedynamicprogrammingmethodof
+theITGbiparsingmodel(Section16.6)orgreedyorheuristicvariants.
+16.5 Structure and Tree Alignment
+Astructurealignment algorithmproducesanalignmentbetweenconstituents(orsentencesubstructures)
+within sentence pairs of a bitext. The segments to be aligned are labeled by the nodes in the constituent
+analysesofthesentences;theoutputset Acontainspairsoflabeledsegments (p,r)correspondingtothe
+couplednodes.Allexistingtechniquesprocessthebitextonebisentenceatatime,sosentencealignment
+always precedes structure alignment. Coupled constituents may be useful in translators’ concordances,
+but they are usually sought for use as examples in EBMT systems (Nagao 1984), phrase-based SMT
+systems (Koehn et al. 2003), and tree-based SMT systems like those of Wu (1997) and Chiang (2005).
+Alternatively,theexamplesconstitutetrainingdataformachinelearningoftransferpatterns.
+Tree alignment is the special case of structure alignment where the output Amust be a strictly
+compositional, hierarchical alignment. (The same constraint is applicable to dependency tree models.)
+Thismeansthattreealignmentobeysthefollowing:
+Crossingconstraint
+Suppose two nodes in language-0 p0andp1correspond to two nodes in language-0 r0andr1
+respectively,and p0dominates p1.Thenr0mustdominate r0.
+In other words, couplings between subtrees cannot cross each another, unless the subtrees’ immediate
+parentnodesarealsocoupledtoeachother.Mostofthetimethissimplifyingassumptionisaccurate,and
+itgreatlyreducesthespaceoflegalalignmentsandtherebythesearchcomplexity.Anexampleisshown
+inFigure16.10,whereboth SecurityBureau andpolicestation arepotentiallexicalcouplingsto 公安局,
+station . The security Bureau granted authority to the police
+FIGURE16.10 Thecrossingconstraint.
+
+392 HandbookofNaturalLanguageProcessing
+but the crossing constraint rules out the dashed-line couplings because of the solid-line couplings. Thecrossing constraint reﬂects an underlying cross-linguistic hypothesis that the core arguments of framestendtostaytogetheroverdiﬀerentlanguages.Aspecialcaseofthecrossingconstraintisthataconstituentwill not be coupled to two disjoint constituents in the other language, although it may be coupled tomultiplelevelswithinasingleconstituentsubtree.
+Structurealignmentisusuallyperformedusinga parse-parse-match strategy.Treealignmentmethods
+require as input the constituent analysis of each side of the bitext (with the exception of the biparsingmethods described later). Unfortunately, it is rarely possible to obtain bitext in which the constituentstructures of both sides have been marked. However, if suitable monolingual grammars for each of thelanguages are available, each side can (independently) be parsed automatically, yielding a low-accuracyanalysisofeachsides,beforethetreealignmentbegins.Avariantonthisistosupplyalternativeparsesforeachsentence,eitherexplicitlyinalist(Grishman1994)orimplicitlyinawell-formedsubstringtable(Kajiet al. 1992). Note that the parsed bitext is not parallel in the sense that corresponding sentences do notnecessarilyshareaparallelconstituentstructure.Itisdiﬃcult,ifnotimpossible,togiveaninterpretationbasedonsomeunderlyinggenerativemodel.
+The kind of structures that are to be coupled clearly depend on the linguistic theory under which the
+sidesareparsed.Thesimplestapproachistousesurfacestructure,whichcanberepresentedbybracketingeach side of the bitext (Sadler and Vendelmans 1990; Kaji et al. 1992). Another approach was describedbyMatsumotoetal.(1993),whouseLFG-like(Bresnan1982)uniﬁcationgrammarstoparseanEnglish–Japanese bitext. For each side, this yields a set of candidate feature-structures corresponding to theconstituent structures. The feature-structures are simpliﬁed to dependency trees. Structural alignmentis then performed on the dependency trees, rather than the original constituent trees. (Alignment ofdependencytreescanbeperformedinessentiallythesamewayasalignmentofconstituenttrees.)
+16.5.1 Cost Functions
+Various cost functions may be employed. Some of the qualitative desiderata, along with exemplar costfunctions,areasfollows.
+Coupleleafnodes(words/lexemes)thatarelexicaltranslations.
+Thisissimplywordalignment,recasthereasthespecialcaseofstructurealignmentattheleaflevel.Abilexiconisassumed.Filteringheuristicsmaybeemployed,forexample,toignoreanywordsthatarenotopen-classorcontentwords.Thesimplestcostfunctionofthistypeis
+Cost(p,r)=⎧⎨⎩−1i f (w,x)∈Bilexicon
+wherew=espan
+(p),x=fspan(r)
+0o t h e r w i s e(16.19)
+where,inotherwords,thepairofleafnodes p,rholdsthewords wandx.
+Alternatively,ifaprobabilisticbilexiconisavailable,asoftversionofthecostfunctionmaybeused,inwhichthenegativelogprobabilityofawordpairistakenasitscost(insteadof −1).
+Coupleleafnodes(words/lexemes)thataresimilar.
+Toovercomethespottycoverageofmostbilexicons,thesaurimaybeemployed.Oneapproach(Matsumoto et al. 1993) employs a single language-0 thesaurus to estimate the cost (dissimi-larity) between a word pair w,x. All possible translations of the language-1 word xare looked
+up in the language-0 thesaurus, and the length lof the shortest path from any one of them to
+wis taken as the cost. Matsumoto et al. (1993) use an additional biasing heuristic that always
+subtractsaconstant dfromthepathlengthtoget l(ifthepathlengthislessthanthe d,thenlis
+assumedtobezero).
+
+Alignment 393
+Cost(p,r)=⎧⎨⎩−6i f (w,x)∈Bilexicon
+wherew=espan
+(p),x=fspan(r)
+lotherwise(16.20)
+Coupleinternalnodesthatsharecoupledleafnodes(words/lexemes).
+LetAwordsdenote the subset of Athat deals with coupling of leaf nodes (usually this subset
+is precomputed in an earlier stage, according to one of the criteria above and possibly withadditionalconstraints).Let Keywords(p) bethesetofleavesof pthataredeemedimportant,for
+example,allthecontentwords.Thesimplestcostfunctionofthistypeis
+Cost(p,r)=⎧⎨⎩−1i f (w,x)∈
+Awords
+forallw∈Keywords (p),x∈Keywords (r)
+0o t h e r w i s e(16.21)
+ThiscostfunctioniswhatKajietal. (1992)ineﬀectuse, permittingnodestobematchedonlyiftheyshareexactlythesamesetofcoupledcontentwords.Asofterapproachistomaximizethenumberofsharedcoupledleafnodes.
+Cost(p,r)=∑
+w∈Keywords (p),x∈Keywords (r)Cost(w,x) (16.22)
+Again, probabilistic versions of these cost functions are straightforward, if a probabilisticbilexiconisavailable.
+Couplenodesthatshareasmanycoupledchildren/descendantsaspossible.
+Similarad hoccost functions to those above can be formulated. The idea is to maximize
+structural isomorphism. Through the recursion, this also attempts to share as many coupledleafnodesaspossible.
+16.5.2 Algorithms
+AlignmentstilloptimizesEquation16.2,butthebisegmentsmaynowbeeithercompositionalordisjoint.
+In general, constituent alignment has lower complexity than tree alignment, as there is no need to
+enforce the crossing constraint. Kaji et al. (1992) describe a simple bottom-up greedy strategy. Supposethatabracketedsentencepaircontains Planguage-0nodesand Rlanguage-1nodes.Thealgorithmsimply
+considersall P×Rpossiblecouplingsbetweennodepairs p,r,startingwiththesmallestspans.Anypair
+whosecostislessthanapresetthresholdisaccepted.Thus,asmanypairsaspossibleareoutput,solongastheymeetthethreshold.
+For tree alignment as opposed to constituent alignment, bottom-up greedy search is still possible but
+performance is likely to suﬀer due to the interaction of the coupling hypotheses. Crossing constraintsderivingfromearlymiscouplingscaneasilyprecludelatercouplingoflargeconstituents, evenwhenthelatercouplingwouldbecorrect.Forthisreason,moresophisticatedstrategiesareusuallyemployed.
+Matsumoto et al. (1993) employ a branch-and-bound search algorithm. The algorithm proceeds
+top-down, depth-ﬁrst. It hypothesizes constituent couplings at the highest level ﬁrst. For each couplingthat is tried, a lower bound on its cost is estimated. The algorithm always backtracks to expand thehypothesiswiththelowestexpectedcost.Thehypothesisisexpandedbyfurtherhypothesizingcouplingsinvolvingtheconstituent’simmediatechildren(subconstituents).
+Grishman (1994) employs a beam search. Search proceeds bottom-up, hypothesizing couplings of
+individualwordsﬁrst.Onlyhypotheseswhosecostislessthanapresetthresholdareretained.Eachstepinthesearchloopconsidersallcouplingsinvolvingthenextlargerconstituentsconsistentwiththecurrentsetofsmallerhypotheses.Thecostsofthelargerhypothesesdependonthepreviouslycomputedcostsofthesmallerhypotheses.
+
+394 HandbookofNaturalLanguageProcessing
+Dynamicprogrammingsearchprocedurescanbeconstructed.However,theworstcasecomplexityis
+exponential,sinceitgrowswiththenumberofpermutationsofconstituentsatanylevel.TheprocedureofKajietal.(1992)employstwoseparatewell-formedsubstringtablesasinput,oneforeachsentenceofthe input sentence pair, that are computed by separate dynamic-programming chart parsing processes.However, the actual coupling procedure is greedy, as described above. A true dynamic programmingapproach(Wu1995c)isdescribedlaterinSection16.6.4onbiparsingalignment(inwhichpermutationconstraintsguaranteepolynomialtimecomplexity).
+16.5.3 Strengths and Weaknesses of Structure and Tree Alignment
+Techniques
+ThemostappropriateapplicationofconstituentalignmentapproachesappearstobeforEBMTmodels.Given the same bitext, constituent alignment approaches can produce many more examples than stricttreealignmentapproaches(drivinguprecall),thoughmanyoftheexamplesareincorrect(drivingdownprecision). However, the nearest-neighbor tactics of EBMT models have the eﬀect of ignoring incorrectexamplesmostofthetime,sorecallismoreimportantthanprecision.
+Stricttreealignmentapproachestendtohavehigherprecision,sincetheeﬀectsoflocaldisambiguation
+decisionsarepropagatedtothelargercontexts, andviceversa. Forthisreason, thesemethodsappeartobemoresuitableformachinelearningoftransferpatterns.
+Constituentalignmenthasthreemainweaknessesstemmingfromtheparse-parse-matchapproach:
+Lackofappropriate,robust,monolingualgrammars.
+This condition is particularly relevant for many low-resource languages. A grammar for thispurpose must be robust since it must still identify constituents for the subsequent couplingprocessevenforunanticipatedorill-formedinputsentences.
+Mismatchofthegrammarsacrosslanguages.
+Thebest-matchingconstituenttypesbetweenthetwolanguagesmaynotincludethesamecorearguments. While grammatical diﬀerences can make this problem unavoidable, there is oftena degree of arbitrariness in a grammar’s chosen set of syntactic categories, particularly if thegrammar is designed to be robust. The mismatch can be exacerbated when the monolingualgrammarsaredesignedindependently,orunderdiﬀerenttheoreticalconsiderations.Forexam-ple,thenegativeresultsofOchetal.(2004)werewidelyinterpretedtobeduetothemismatchbetweenindependentparsersforthediﬀerentlanguages.
+Inaccurateselectionbetweenmultiplepossibleconstituentcouplings.
+Aconstituentinonesentencemayhaveseveralpotentialcouplingstotheother,andthecouplingheuristicmaybeunabletodiscriminatebetweentheoptions.
+16.6 Biparsing and ITG Tree Alignment
+Bilingual parsing approaches use the same grammar to simultaneously parse both sides of a bitext (Wu1995a).Incontrasttotheparse-parse-matchapproachesdiscussedinSection16.5.3,biparsingapproachesreadilyadmitinterpretationsbasedonunderlyinggenerative transductiongrammar models.Recallfrom
+Section 16.3.1 that a single transduction grammar governs the production of sentence pairs that aremutualtranslations.Themostusefulbiparsersaretheprobabilisticversions,whichworkwithstochastictransductiongrammarsthatinfactconstitutestructured bilinguallanguagemodels.
+Biparsing approaches unify many of the concepts discussed above. The simplest version accepts
+sentence-aligned, unparsed bitext as input. The result of biparsing includes parses for both sides of thebitext,plusthealignmentoftheconstituents.
+
+Alignment 395
+There are several major variants of biparsing. It is possible to perform biparsing alignment withouta
+linguistic grammar of either language, using the BITG technique discussed below. On the other hand,biparsingcanmakeuseofamonolingualgrammarifoneexists.Ifany aprioribracketsontheinputbitext
+areavailable,biparsingcanacceptthemasconstraints.
+16.6.1 Syntax-Directed Transduction Grammars (or Synchronous CFGs)
+Asidefromtheﬁnite-statetransductionsconsideredinSection16.3.1, theothermajorequivalenceclassof transductions from classic compiler theory is the class of syntax-directed transductions ,w h i c ha r e
+transductions that can be generated by a syntax-directed transduction grammar orSDTG(Lewis and
+Stearns 1968; Aho and Ullman 1969,b; Aho and Ullman 1972), which have also recently been called“synchronouscontext-freegrammars.”
+∗
+Aswiththeﬁnite-statemodelsinSection16.3.1, formally G=(N,W0,W1,R,S), theonlydiﬀerence
+beingthatthetransductionrulesin Raremoreexpressive.ThetransductionrulesinSDTGssuperﬁcially
+resemble the production rules in CFGs, except for generating terminal symbols on two streams insteadofone,andallowingtheright-hand-sidesymbolstobereorderedbyanypermutationforlanguage-1,asforexamplein A→a
+0a1a2a3::a1a3a0a2orsimply A→a0a1a2a3::1302.
+However,thesimilarityendsuponcloserinspection.UnlikemonolingualCFGs,bilingualSDTGs(or
+synchronous CFGS) do notform a single primary equivalence class. As seen in Section 16.3.1, in the
+Chomsky (1957) hierarchy, all CFGs form a single equivalence class, independent of the rank, which is
+themaximumnumber kofnonterminalsintherules’right-hand-sides.However,inthebilingualcaseof
+SDTGs, the hierarchy shatters into an inﬁnite number of classes—for any k>4, the class of SDTGs of
+rankkhasstrictlygreatergenerativecapacitythantheclassofSDTGsofrank k−1.(Thecasesof k=2
+andk=3aresuprisinglydiﬀerent,however,asinthediscussionofITGsbelow.)
+InSDTGs(orsynchronousCFGs),segmentordervariation(forwordsorphrases)betweenlanguages
+is accommodated by letting the symbols on each rule’s right-hand-side appear in diﬀerent order forlanguage-0andlanguage-1.Anypermutationoftheright-hand-sidesymbolsisallowed.
+Any SDTG trivially implements the crossing constraint. This is because in the generative model, at
+any time the rewrite process only substitutes for a single constituent, which necessarily corresponds tocontiguousspansin(bothof)thesentences.
+Themainissueforalignmentmodelsbasedontransductiongrammarsishowmuchﬂexibilitytoallow.
+It is obvious that ﬁnite-state transductions are insuﬃciently expressive at a subsentential granularity,since they do not allow reordering of words and phrases across languages. SDTGs were widely used inrule-based MT, as well as example-based MT (Nagao 1984). However, computational complexity forSDTGs (or synchronous CFGs) is excessively expensive. No polynomial-time biparsing or parametertrainingalgorithmisknownforthegeneralcase,sincegrowthinanumberofpossiblealignmentsfollowsthe number of permutations of right-hand-side symbols, which is exponential—resulting in algorithmsthatareO(n
+2n+2),asseeninthehierachyinSection16.3.1.
+16.6.2 Inversion Transduction Grammars
+Incurrentstate-of-the-artmachinetranslationmodels,anintermediateequivalenceclassoftransductionsthatoﬀersabalanceofgenerativecapacityandcomputationalcomplexityfallinginbetweenthatofFSTGsand SDTGs (or synchronous CFGs) has become widely used, namely that of inversion transduction
+grammars orITGs. Theoretical analyses and numerous empirical results have accumulated indicating
+a better ﬁt of inversion transductions to modeling translation and alignment between many human
+∗The motivation for the standard term “syntax-directed” stems from the roots of SDTGs in compiler theory, where the
+input–output connotation of the term reﬂects a transduction view, but the theory of course remains compatible with thegenerationorrecognition(biparsing)viewsaswell.Also,“transduction”and“translation”areoftenusedinterchangeably,asare“grammar”and“schema.”
+
+396 HandbookofNaturalLanguageProcessing
+language pairs, despite the fact that ITGs do not attempt to fully model so-called free word orderlanguages and “second-order” phenomena such as raising and topicalization (Wu 1995b, 1997). Giventhat the polynomial-time biparsing and training algorithms for ITGs are much less expensive than forSDTGs—no more than O(n
+6), as seen in the hierachy in Section 16.3.1—and translation accuracy is at
+the same time empirically higherusing ITGs, it is often worth accepting the restricted expressiveness of
+ITGconstraintsuponthespaceofpermittedreorderingpermutations.
+ForITGsthetransductionrulesin Raremoreexpressivethaninﬁnite-statemodels,butlessexpressive
+thaninSDTGs(orsynchronousCFGs).Forexample,inversiontransductionsdonotpermitthepermu-tation described by the transduction rule example in Section 16.6.1. A simple example of a permutationallowedininversiontransductionsisshowninFigure16.1candd.However,inversiontransductionsaresurprisinglyﬂexible;eventheextremereorderingshowninFigure16.1eandffallswithintheclass.
+Inversiontransductionscanbedescribedinatleastthreeequivalentways,asfollows.
+ITGsaretransductiongrammarswithonlystraightorinvertedrules.
+This means the order of right-hand-side symbols for language-1 is either the same aslanguage-0 (straight orientation) or exactly the reverse (inverted orientation). A straight rule
+is written A→[a
+0a1...ar−1], and an inverted rule is written A→⟨a0a1...ar−1⟩,w h e r e
+ai∈N∪Xandristherankoftherule.∗
+ITGs are the closest bilingual analogue of monolingual CFGs in that any ITG can be
+convertedtoa2-normalform—whichisnottrueforSDTGs(orsynchronousCFGs)ingeneral.Inparticular,atheoreminWu(1995c)showsthatforanyinversiontransductiongrammar G,
+there exists an equivalent inversion transduction grammar G
+′where all rules are either lexi-
+cal rules or binary rank syntactic rules (analogous to Chomsky normal form for monolingualCFGs),suchthateveryruletakesoneofthefollowingforms:
+S→ϵ/ϵ
+A→x/y
+A→x/ϵ
+A→ϵ/y
+A→[BC]
+A→⟨BC⟩
+w h e r ea sb e f o r ex andyare segments of one or more tokens (so the bisegments are typically
+phrasal), andA,B,a n dCare any nonterminals. The theorem leads directly to the second
+characterizationofITGs.
+ITGsaretransductiongrammarswithrulesofrank ≤2.
+That is, any SDTG whose rules are all binary-branching is an ITG. The equivalence followstrivially from the fact that the only two possible permutations of a rank-2 right-hand-side arestraightandinverted.ThismeansthatanySDTG(orsynchronousCFG)ofbinaryrank—havingatmosttwononterminalsontheright-hand-sideofanyrule—isanITG.(Similarly,anySDTG(orsynchronousCFG)thatisrightregularisaFSTG.)
+Thus, for example, any grammar computed by the binarization algorithm of Zhang et al.
+(2006)isanITG.Similarly,anygrammarinducedfollowingthehierarchicalphrase-basedtrans-lationmethod,whichalwaysyieldsabinarytransductiongrammar(Chiang2005),isanITG.
+ITGsaretransductiongrammarswithrulesofrank ≤3.
+Itcanbeshownthatallsixpossiblepermutationsofarank-3right-hand-sidecanbegeneratedusingonlystraightandinvertedrulesincombination.
+∗Thisnotationisausefulshorthandforthestraightrulethatcanalsobewritteninotherformssuchas A→a0a1...ar−1::
+a0a1...ar−1orA→a0a1...ar−1:: 0 1...r−1, and the inverted rule that can also be written in other forms such as
+A→a0a1...ar−1::ar−1...a1a0orA→a0a1...ar−1::r−1...10.
+
+Alignment 397
+1234 1 2 34 1234 1234 1234 1234
+12 34 1234 1234 1234 1234 1234
+1234 1234 1234 1234 12 341 2 3 4
+12 34 12 34 12 3 4 1234 1234 12 34
+12 34 12 34 12 3 4 1234 1234 12 34
+12 34 12 3 4 1234 12 34 123 4 12 34
+12 34 1234 1234 1234 1234 12341234 1 2 34 1234 1234 1234 1234
+FIGURE 16.11 The 24 complete alignments of length four, with ITG parses for 22. All nonterminal and terminal
+labelsareomitted.Ahorizontalbarunderaparsetreenodeindicatesaninvertedrule.
+The expressiveness of ITG constraints on reordering words, phrases, and constituents in diﬀerent
+natural languages is not straightforward to characterize formally. Some light is shed by Figure 16.11,
+which enumerates how ITGs can deal with the transposition of four adjacent constituents. This case is
+important because the number of core arguments of a frame is normally less than four, in nearly all
+linguistic theories. There are 4 !=24 possible permutations of four adjacent constituents, of which 22
+can be produced by combining straight and inverted rules. The remaining two permutations are highly
+distorted “inside-out” alignments, which are extremely rare in (correctly translated) bitext.∗For more
+thanfouradjacentconstituents,manypermutationscannotbegeneratedanddonotappearnecessary.
+TheITGhypothesis positsalanguageuniversal,namelythatthecoreargumentsofframes,whichexhibit
+greatorderingvariationbetweenlanguages,arerelativelyfewandsurfaceinsyntacticproximity.Ofcourse,
+this assumption over-simplistically blends syntactic and semantic notions, but the ITG hypothesis has
+held true empirically to a remarkably large extent. That semantic frames for diﬀerent languages share
+common core arguments is more plausible than syntactic frames, but ITGs depend on the tendency of
+syntactic arguments to correlate closely with semantics. If in particular cases this assumption does not
+hold, the biparsing algorithm can attempt to contain the damage by dropping some word couplings (as
+fewaspossible).FormoredetailedanalysesseeWu(1997)andSaersandWu(2009).
+16.6.3 Cost Functions
+Acostfunctioncanbederivednaturallyfromthegenerativemodel.FirstastochasticversionoftheITGis
+createdbyassociatingaprobabilitywitheachrule.Justasforordinarymonolingualparsing,probabilizing
+thegrammarpermitsambiguitiestoberesolvedbychoosingthemaximumlikelihoodparse.Forexample,
+theprobabilityoftheruleNN0.4→[AN]isaNN→[AN]=0.4. TheprobabilityofalexicalruleA0.001→x/y
+∗Infact,weknowofnoactualexamplesinanyparallelcorpusforlanguagesthatdonothavefreewordorder.
+
+398 HandbookofNaturalLanguageProcessing
+isbA(x,y)=0.001. Let W0,W1be the vocabulary sizes of the two languages, and N={A0,...,AN−1}
+bethesetofnonterminalswithindices0, ...,N−1.(Forconciseness,wesometimesabusethenotation
+by writing an index when we mean the corresponding nonterminal symbol, as long as this introducesnoconfusion.)AswithstochasticCFGs,theprobabilitiesforagivenleft-hand-sidesymbolmustsumtounity:∑
+1≤j,k≤N(ai→[jk]+ai→⟨jk⟩)+∑
+1≤x≤W0
+1≤y≤W1bi(x,y)=1
+Thesameconstituentstructureappliestobothsidesofthesentencepairunliketheearlierstructure/tree
+alignment cases. This means the alignment Ais more naturally thought of in terms of a single shared
+parse tree, rather than a set of couplings between constituents. We denote the parse tree by a set Qof
+nodes {q0,...,qQ−1}.Notethat Qcanalwaysbetransformedbackintoasetofcouplings A.
+Thenaturalcostfunctiontobeminimizedistheentropy(negativelogprobability)oftheparsetree Q:
+Cost(Q)=∑
+q∈Q{
+aRule(q)ifqisaninternalnode
+bRule(q)otherwise(16.23)
+16.6.4 Algorithms
+Thebiparsingalgorithmsearchesfortheminimumcostparsetreeontheinputsentencepair,andselectstheoptimalsegmentationatthesametime.Empirically,thisintegrated translation-drivensegmentation is
+highlyeﬀectiveattakingadvantageofthephrasalterminalsofITGstoavoidalignmenterrorscommonlycaused by word segmenters that prematurely commit to inappropriate segmentations during prepro-cessing. The probabilistic cost function optimizes the overlap between the structural analysis of the twosentences.ThealgorithmresemblestherecognitionalgorithmforHMMs(Viterbi1967)andCKYparsing(Kasami1965;Younger1967).
+Let the input English sentence be e
+0,...,eT−1and the corresponding input Chinese sentence be
+f0,...,fV−1. As an abbreviation we write es..tfor the sequence of words es,es+1,...,et−1, and similarly
+forfu..v;also,e s..s=ϵistheemptystring.
+Assuming an ITG in 2-normal form, it is convenient to use the 4-tuple (s,t,u,v)to uniquely identify
+each node of the parse tree q=seg(s,t,u,v), where the substrings es..tandfu..vboth derive from the
+nodeq.Denotethenonterminallabelon qbyℓ(q).Thenforanynode q=seg(s,t,u,v),deﬁne
+δq(i)=δstuv(i)=max
+subtreesof qP[subtreeof q,ℓ(q)=i,i∗⇒es..t/fu..v]
+asthemaximumprobabilityofanyderivationfrom ithatsuccessfullyparsesboth es..tandfu..v.Thenthe
+bestparseofthesentencepairhasprobability δ0,T,0,V(S).
+The algorithm computes δ0,T,0,V(S)using the following recurrences. Note that optimal segmentation
+in both languages is integrated into the algorithm: s..tandu..vare spans delimiting segments of one
+or more tokens; if s=toru=v, the span length is zero, meaning that the segment is the empty
+string ϵ. The argmax notation is generalized to the case where maximization ranges over multiple
+indices, by making the argument vector-valued. Note that []and⟨⟩are just constants. The condition
+(S−s)(t−S)+(U−u)(v−U)̸=0isawaytospecifythatthesubstringinonebutnotbothlanguages
+maybesplitintoanemptystring ϵandthesubstringitself;thisensuresthattherecursionterminates,but
+permitswordsthathavenomatchintheotherlanguagetomaptoan ϵinstead.
+1. Initialization
+δ0
+stuv(i)=bi(es..t/cu..v),0≤s≤t≤T
+0≤u≤v≤V(16.24)
+
+Alignment 399
+2. Recursion
+Foralli,s,t,u,vsuchthat{1≤i≤N
+0≤s<t≤T
+0≤u<v≤V
+t−s+v−u>2
+δstuv(i)=max[
+δ[]
+stuv(i),δ⟨⟩
+stuv(i),δ0
+stuv(i)]
+(16.25)
+θstuv(i)=⎧⎪⎨⎪⎩[]ifδ
+[]
+stuv(i)>δ⟨⟩
+stuv(i)andδ[]
+stuv(i)>δ0
+stuv(i)
+⟨⟩ifδ⟨⟩
+stuv(i)>δ[]
+stuv(i)andδ⟨⟩
+stuv(i)>δ0
+stuv(i)
+0o t h e r w i s e(16.26)
+where
+δ[]
+stuv(i)= max
+1≤j≤N
+1≤k≤N
+s≤S≤t
+u≤U≤v
+(S−s)(t−S)+(U−u)(v−U)̸=0ai→[jk]δsSuU(j)δStUv(k) (16.27)
+⎡⎢⎢⎢⎣ι
+[]stuv(i)
+κ[]
+stuv(i)
+σ[]
+stuv(i)
+υ[]
+stuv(i)⎤⎥⎥⎥⎦= argmax
+1≤j≤N
+1≤k≤N
+s≤S≤t
+u≤U≤v
+(S−s)(t−S)+(U−u)(v−U)̸=0ai→[jk]δsSuU(j)δStUv(k) (16.28)
+δ⟨⟩
+stuv(i)= max
+1≤j≤N
+1≤k≤N
+s≤S≤t
+u≤U≤v
+(S−s)(t−S)+(U−u)(v−U)̸=0ai→⟨jk⟩δsSUv(j)δStuU(k) (16.29)
+⎡⎢⎢⎢⎣ι
+⟨⟩stuv(i)
+κ⟨⟩
+stuv(i)
+σ⟨⟩
+stuv(i)
+υ⟨⟩
+stuv(i)⎤⎥⎥⎥⎦= argmax
+1≤j≤N
+1≤k≤N
+s≤S≤t
+u≤U≤v
+(S−s)(t−S)+(U−u)(v−U)̸=0ai→⟨jk⟩δsSUv(j)δStuU(k) (16.30)
+3. Reconstruction
+Initialize by setting the root of the parse tree to q1=(0,T,0,V)and its nonterminal label to
+ℓ(q1)=S.Theremainingdescendantsintheoptimalparsetreearethengivenrecursivelyforany
+q=(s,t,u,v)by
+LEFT(q)=⎧⎪⎪⎪⎪⎨⎪⎪⎪⎪⎩NIL ift−s+v−u≤2(
+s,σ[]
+q(ℓ(q)),u,υ[]
+q(ℓ(q)))
+ifθq(ℓ(q)) =[]andt−s+v−u>2(
+s,σ⟨⟩
+q(ℓ(q)), υ⟨⟩
+q(ℓ(q)),v)
+ifθq(ℓ(q)) =⟨ ⟩andt−s+v−u>2
+NIL otherwise(16.31)
+RIGHT(q)=⎧⎪⎪⎪⎪⎨⎪⎪⎪⎪⎩NIL ift−s+v−u≤2(
+σ[]
+q(ℓ(q)),t,υ[]
+q(ℓ(q)),v)
+ifθq(ℓ(q)) =[]andt−s+v−u>2(
+σ⟨⟩
+q(ℓ(q)),t,u,υ⟨⟩
+q(ℓ(q)))
+ifθq(ℓ(q)) =⟨ ⟩andt−s+v−u>2
+NIL otherwise(16.32)
+
+400 HandbookofNaturalLanguageProcessing
+ℓ(LEFT(q))=ιθq(ℓ(q))
+q (ℓ(q)) (16.33)
+ℓ(RIGHT(q))=κθq(ℓ(q))
+q (ℓ(q)) (16.34)
+The time complexity of this algorithm in the general case is /Theta1(N3T3V3)whereNis the number
+of distinct nonterminals and TandVare the lengths of the two sentences. (Compare this to the case
+monolingualparsing,whichisfasterbyafactorof V3.)Thecomplexityisacceptableforcorpusanalysis
+thatdoesnotrequirereal-timeparsing.
+16.6.5 Grammars for Biparsing
+Biparsing techniques may be used without a speciﬁc grammar, with a coarse grammar, or with detailedgrammars.
+Nolanguage-speciﬁcgrammar(theBITGtechnique).
+In the minimal case, no language-speciﬁc grammar is used (this is particularly useful whengrammarsdonotexistforbothlanguages).Instead,ageneric bracketinginversiontransduction
+grammar orBITGisused:
+Aa[]→[AA]
+Aa⟨⟩→⟨AA⟩
+Abij→ei/fjforalli,jlexicaltranslationpairs
+Abiϵ→ei/ϵforallilanguage-0vocabulary
+Abϵj→ϵ/fjforalljlanguage-1vocabulary
+This grammar is suﬃcient to cover the full range of word-order transpositions that can begeneratedunderanyITG(becausethe2-normalformimpliesthatruleswithrank >2arenot
+needed).TheunlabeledtreeinFigure16.1fisanexampleofaBITGbiparsetree.
+All probability parameters may be estimated by EM (Wu 1995d). However, in practice
+alignmentperformanceisnotverysensitivetotheexactprobabilities,androughestimatesareadequate. The b
+ijdistribution can be estimated through simpler EM-based bilexicon learning
+methods, as discussed later. For the two singleton rules, which permit any word in eithersentencetobeunmatched,asmall ϵ-constantcanbechosenfortheprobabilities b
+iϵandbϵj,so
+thattheoptimalbracketingresortstotheserulesonlywhenitisotherwiseimpossibletomatchthe singletons. Similarly, the parameters a[]anda⟨⟩can be chosen to be very small relative
+to theb
+ijprobabilities of lexical translation pairs. The result is that the maximum-likelihood
+parser selects the parse tree that best meets the combined lexical translation preferences, asexpressedbythe b
+ijprobabilities.
+BITG biparsing can be seen as being similar in spirit to word_align , but without positional
+oﬀsets. The maximum probability word alignment is chosen, but with little or no penaltyfor crossed couplings, as long as they are consistent with constituent structure (even if thecoupled words have large positional oﬀsets). The assumption is that the language-universalcore-arguments hypothesis modeled by ITGs is a good constraint on the space of alignmentsallowed.The word_align biastowardpreferringthesamewordorderinbothlanguagescanbe
+imitated to a large extent by choosing a⟨⟩to be slightly smaller than a[]and thereby giving
+preferingthestraightorientation.
+Empirically, the BITG technique is fairly sensitive to the bilexicon accuracy and coverage.
+This is due to the fact that a missed word coupling can adversely aﬀect many couplings of its
+
+Alignment 401
+dominating constituents. Also, in practice, additional heuristics are useful to compensate forambiguitiesthatarisefromtheunderconstrainednatureofaBITG.(Theextremecaseiswherebothsidesofasentencepairhavethesamewordorder;inthiscasethereisnoevidenceforanybracketing.)AnumberofheuristicsarediscussedinWu(1997).
+Coarsegrammar.
+PerformanceovertheBITGtechniquemayoftenbeimprovedbyintroducingasmallnumberof rules to capture frequent constituent patterns. This can be done by writing a very smallgrammar either for one of the languages (Wu 1995d) or for both languages simultaneously.The generic bracketing rules should still be retained, to handle all words that do not ﬁt theconstituent patterns. The labeled tree in Figure 16.1f is an example of a biparse tree with alinguisticgrammar.
+Detailedgrammar.
+Adetailedmonolingualgrammarforoneofthelanguagescanbeaugmentedtoconvertitintoan ITG. A simple but eﬀective heuristic for doing this simply mirrors each rule into straightandinvertedversions(WuandWong1998).Thisbiasestheconstituentsthatwillbealignedtoﬁt the selected language, at the expense of degraded parsing of the other language. Again, thelabeledtreeinFigure16.1fisanexampleofabiparsetreewithalinguisticgrammar.
+16.6.6 Strengths and Weaknesses of Biparsing and ITG Tree Alignment
+Techniques
+Biparsingmodelshaveastrongertheoreticalbasisforselectingalignments,astheyareclearlyformulatedwithrespecttoagenerativebilinguallanguagemodel.Thispermitsprobabilistictrading-oﬀbetweentheamountofinformationinthemonolingualparsesversusthelexicalcorrespondences.
+Biparsing techniques may be used with pre-bracketed bitext, just as with parse-parse-match tree
+alignment techniques, by including the brackets as ap r i o r iconstraints in the dynamic programming
+search (Wu 1997). Performance in this case is similar, except that the ordering constraints are slightlystronger with ITGs. Otherwise, the exhaustive dynamic programming search is more reliable than theheuristicsearchusedbytreealignmentmethods.
+The BITG technique can be used to produce a rough bracketing of bitext where no other parsers or
+grammars are available. It is the only approach under circumstances where no grammar is available forone or both of the languages (thereby precluding the possibility of preparsing the sides of the bitext).Clearlyitistheweakestofallthestructure/tree/biparsingalignmentmethodsintermsofparsingaccuracy.TheﬂipsideisthattheBITGtechniqueinfersnewbracketinghypotheses,whichcanbeusedforgrammarinduction.Infact,ZhangandGildea(2004)showthatunsupervisedBITGalignmentsempiricallyproducesigniﬁcantly better AER scores than a supervised tree-to-string model that depends on the output of amonolingual parser, due to the “impedance mismatch” between the syntactic structure of Chinese andEnglish.
+Similarly, if a grammar is available for only one of the languages, a biparsing approach can use just
+thesinglegrammarwhereasparse-parse-matchtechniquesdonotapply.Thebiparsingtechniqueisalsouseful if two grammars are available but use very diﬀerent constituent structures (as mentioned earlier,structure/treealignmentmethodsmaybeunabletocomeupwithgoodconstituentcouplingsunderthesecircumstances).
+Oneissuewith(non-BITG)biparsingtechniquesisthatitcanbediﬃcultandtime-consumingtowrite
+asinglegrammarthatparsesbothsideswell.Itisrelativelyeasytoparseonesidewell,byusingagrammarthat ﬁts one of the languages. However, the more language-speciﬁc details in the grammar, the morenonterminalsitrequirestokeeptherulesinsyncwithbothlanguages.Forthisreason,itisimportanttoretainbackupgenericrulesforrobustness.
+To avoid the manual construction of transduction grammars, a great deal of recent research has
+focused on automatic methods for inducing transduction grammars—generally ITGs of one form or
+
+402 HandbookofNaturalLanguageProcessing
+another, and occasionally SDTGs.∗One popular approach is the hierarchical phrase-based translation
+methodofChiang(2005),whichlearnsahighlylexicalizedITGinabinary-ranknormalformwitheitherstraightruleslike A→a
+0A1a2A3a4::a0A1a2A3a4(orsimply A→[a0A1a2A3a4])orinvertedruleslike
+A→a0A1a2A3a4::a4A3a2A1a0(or simply A→⟨a0A1a2A3a4⟩), where aiis any sequence of lexical
+translations x/yorsingletons x/ϵorϵ/y,andthereisonlyoneundiﬀerentiatednonterminalcategory A(as
+inBITGs).VariousotherlexicalizedandheadedvariantsofITGs—includingdependencymodels—havealsobeenshowntoimproveSMTaccuracy(Alshawietal.2000;CherryandLin2003;ZhangandGildea2005).
+Neither biparsing, nor structure/tree alignment techniques that work on surface constituency struc-
+tures,canaccommodatethegeneralcaseof“second-ordertransformations”suchasraising,topicalization,wh-movement, and gapping. Such transformations can cause the surface constituency structure to loseitsisomorphismwiththe“deep”structure’sframesandcorearguments.Noconsistentsetofcouplingsisthenpossiblebetweenthesurfacetreestructuresofthetwolanguages.Forthesephenomena,workingonthefeature-structuretreeinsteadoftheconstituencytreemayholdmorehope.
+Nevertheless,alargebodyofempiricalresearchhasshownthatinversiontransductionsappearoptimal
+forthevastmajorityofstatisticalMTmodels(e.g.,Luetal.2001;Luetal.2002;SimardandLanglais2003;Zhao and Vogel 2003). Zens and Ney (2003) show a signiﬁcantly higher percentage of word alignmentsarecoveredunderBITGconstraintsthanunderIBMconstraints,forGerman–English(96.5%vs.91.0%),English–German (96.9% vs. 88.1%), French–English (96.1% vs. 87.1%), and English–French (95.6% vs.87.6%).Wuetal.(2006)ﬁndsimilarresultsforArabic–English(96.2%)andEnglish–Arabic(97.0%).
+Furthermore,acomparisonofIBMversus(Bracketing)ITGconstraintsonJapanese–Englishtransla-
+tionbyZensetal. (2004)foundsigniﬁcantlyhigherMTaccuracymeasuredviaBLEU,NIST,WER,andPERscores.
+The excellent ﬁt of BITG reordering permutations to naturally occurring sentence translations has
+led to the development of automated MT evaluation metrics that correlate well with human judgment,such as invWER (Leusch et al. 2003) based on interpreting ITG constraints as a compositional blockgeneralizationofLevenshteinstringeditdistance,anditssuccessor,CDER(Leuschetal.2006).
+The biparsing algorithms for ITG alignment have moreover been successfully applied to numerous
+othertasksincludingparaphrasingandtextualentailment(Wu2006)andminingparallelsentencesfromverynonparallelcomparablecorpora(WuandFung2005).
+Forlanguageswithoutexplicitwordboundaries,particularlyAsianlanguages,thebiparsingtechniques
+areparticularlywellsuited.Withsegmentationintegratedintothebiparsingalgorithm,thewordsegmen-tationofthetextcanbechosenintandemwithchoosingthebracketingandcouplings,therebyselectingasegmentationthatoptimallyﬁtsthealignment(Wu1995c).
+16.7 Conclusion
+The alignment of matching passages can be performed at various granularities: document-structure,sentence, word, or constituent. A variety of techniques are available for each granularity, with trade-oﬀs in speed and memory requirements, accuracy, robustness to noisy bitext, ease of implementation,and suitability for unrelated and non-alphabetic languages. Sources of leverage include lexical transla-tions,cognates,endconstraints,passagelengths,syntacticparses,andassumptionsaboutmonotonicity,approximatemonotonicity,andwordorder.
+New approaches to alignment in SMT are continually being developed. Recent perspectives on the
+tremendous amount of research on syntax and tree-structured models can be seen, for example, in the“SyntaxandStructureinStatisticalTranslation”(SSST)seriesofworkshops(WuandChiang2007;Chiang
+∗RecallthatanySDTG(orsynchronousCFG)thatisbinaryrank,ternaryrank,oronlyallowsstraight/invertedpermutations
+isanITG;andanySDTGthatisright-regularorleft-regularisanFSTG.
+
+Alignment 403
+and Wu 2008; Wu and Chiang 2009). Heuristic association-based models are easier to implement thangenerative models, and can provide reasonable performance (Melamed 2000; Moore 2005a). Recently,discriminativetrainingmethodshavebeenappliedtowordalignment(Callison-Burchetal.2004;Moore2005b;Liuetal.2005;KleinandTaskar2005;FraserandMarcu2007;Lambertetal.2007;Maetal.2009);one potential advantage is to directly train model parameters to maximize some translation accuracyobjectivefunctionsuchasBLEU(Papinenietal.2002),ratherthanmeasuressuchas alignmenterrorrate
+orAER(Och and Ney 2003). Empirically, AER does not necessarily correlate with translation quality
+(Ayan and Dorr 2006); merely improving AER can reduce translation accuracy (Liang et al. 2006) andviceversa(Vilaretal.2006).
+Alignment models are the core of all modern SMT and EBMT models. They are also tremendously
+usefulinsupportingabroadrangeoffunctionalityintoolssuchastranslators’andlexicographers’work-stations, as is well surveyed in the volume edited by Veronis (2000) and the seminal ARCADE projectonevaluatingalignment(VeronisandLanglais2000). Increasinglytoday, alignmentalgorithmsthatarefaster,moreaccurate,andmorerobustarebeingusedforautomaticandsemi-automaticresourceacqui-sition, especially the extraction of phrasal translation lexicons as well as compositional and hierarchicaltree-structuredtranslationexamples.
+Acknowledgments
+This work was supported in part by the Defense Advanced Research Projects Agency (DARPA) underGALEContractNo.HR0011-06-C-0023,andbytheHongKongResearchGrantsCouncil(RGC)researchgrantsRGC6083/99E,RGC6256/00E,andDAG03/04.EG09. Anyopinions, ﬁndingsandconclusions, orrecommendationsexpressedinthismaterialarethoseoftheauthor(s)anddonotnecessarilyreﬂecttheviewsoftheDefenseAdvancedResearchProjectsAgency.
+References
+Aho, Alfred V. and Jeﬀrey D. Ullman (1969a). Properties of syntax-directed translations. Journal of
+ComputerandSystemSciences3 (3),319–334.
+Aho,AlfredV.andJeﬀreyD.Ullman(1969b).Syntex-directedtranslationsandthepushdownassembler.
+JournalofComputerandSystemSciences3 (1),37–56.
+Aho,AlfredV.andJeﬀreyD.Ullman(1972). TheTheoryofParsing,Translation,andCompiling(Volumes
+1and2).EnglewoodCliﬀs,NJ:Prentice-Hall.
+Alshawi, Hiyan, Shona Douglas, and Srinivas Bangalore (2000, Mar). Learning dependency translation
+modelsascollectionsofﬁnite-stateheadtransducers. ComputationalLinguistics26 (1),45–60.
+Ayan, Necip Fazil and Bonnie J. Dorr (2006, Jul). Going beyond AER: An extensive analysis of word
+alignmentsandtheirimpactonMT.In 21stInternationalConferenceonComputationalLinguistics
+and 44th Annual Meeting of the Association for Computational Linguistics (COLING-ACL’06) ,
+Sydney,Australia,pp.9–16.
+Bellman,Richard(1957). DynamicProgramming.Princeton,NJ:PrincetonUniversityPress.
+Bresnan,Joan(Ed.)(1982). TheMentalRepresentationofGrammaticalRelations .Cambridge,MA:MIT
+Press.
+Brown, Peter F., Jennifer C. Lai, and Robert L. Mercer (1991). Aligning sentences in parallel corpora.
+In29th Annual Meeting of the Association for Computational Linguistics (ACL-91) , Berkeley, CA,
+pp.169–176.
+Brown,PeterF.,JohnCocke,StephenA.DellaPietra,VincentJ.DellaPietra,FrederickJelinek,RobertL.
+Mercer,andPaulS.Roossin(1988,Aug).Astatisticalapproachtolanguagetranslation.In 12thInter-
+nationalConferenceonComputationalLinguistics(COLING-88) ,Budapest,Hungary,pp.71–76.
+
+404 HandbookofNaturalLanguageProcessing
+Brown, PeterF., JohnCocke, StephenA.DellaPietra, VincentJ.DellaPietra, FrederickJelinek, JohnD.
+Laﬀerty, Robert L. Mercer, and Paul S. Roossin (1990, Jun). A statistical approach to machinetranslation. ComputationalLinguistics16 (2),79–85.
+Brown, Peter F., Stephen A. Della Pietra, Vincent J. Della Pietra, and Robert L. Mercer (1993,
+Jun). The mathematics of statistical machine translation: Parameter estimation. Computational
+Linguistics19 (2),263–311.
+Callison-Burch, Chris, David Talbot, and Miles Osborne (2004, Jul). Statistical machine translation
+with word- and sentences-aligned parallel corpora. In 42nd Annual Meeting of the Association for
+ComputationalLinguistics(ACL-04) ,Barcelona,Spain,pp.176–183.
+Catizone, Roberta, Graham Russell, and Susan Warwick (1989, Aug). Deriving translation data from
+bilingualtexts.InUriZernik(Ed.), FirstLexicalAcquisitionWorkshop,Detroit,MI.
+Chang,Chao-HuangandCheng-DerChen(1993,Jun).HMM-basedpart-of-speechtaggingforChinese
+corpora.In WorkshoponVeryLargeCorpora(WVLC) ,Columbus,OH,pp.40–47.
+Chen,StanleyF.(1993).Aligningsentencesinbilingualcorporausinglexicalinformation.In 31stAnnual
+MeetingoftheAssociationforComputationalLinguistics(ACL-93) ,Columbus,OH,pp.9–16.
+Cherry, Colin and Dekang Lin (2003, Aug). A probability model to improve word alignment. In 41st
+Annual Meeting of the Association for Computational Linguistics (ACL-2003) , Sapporo, Japan,
+pp.88–95.
+Chiang, David (2005, Jun). A hierarchical phrase-based model for statistical machine translation. In
+43rdAnnualMeetingoftheAssociationforComputationalLinguistics(ACL-2005) ,AnnArbor,MI,
+pp.263–270.
+Chiang,DavidandDekaiWu(Eds.)(2008,Jun).In ProceedingsofSSST-2,SecondWorkshoponSyntaxand
+StructureinStatisticalTranslation,atACL-08:HLT .Columbus,OH:AssociationforComputational
+Linguistics.
+Chiang, Tung-Hui, Jing-Shin Chang, Ming-Yu Lin, and Keh-Yih Su (1992). Statistical models for word
+segmentationandunknownresolution.In ROCLING-92 ,Taipei,Taiwan,pp.121–146.
+Chomsky,Noam(1957). SyntacticStructures .TheHague,theNetherlands/Paris,France:Mouton.
+Church,KennethWardandEduardH.Hovy(1993).Goodapplicationsforcrummymachinetranslation.
+MachineTranslation8 ,239–358.
+Church, Kenneth Ward, Ido Dagan, William Gale, Pascale Fung, J. Helfman, and B. Satish (1993).
+Aligning parallel texts: Do methods developed for English-French generalize to Asian languages?InPaciﬁcAsiaConferenceonFormalandComputationalLinguistics ,Taipei,Taiwan,pp.1–12.
+Cover,ThomasM.andJoyA.Thomas(1991). ElementsofInformationTheory .NewYork:Wiley.
+Dagan,Ido,KennethWardChurch,andWilliamA.Gale(1993,June).Robustbilingualwordalignment
+for machine aided translation. In Proceedings of the Workshop on Very Large Corpora , Columbus,
+OH,pp.1–8.
+Fraser,AlexanderandDanielMarcu(2007,Sep).Measuringwordalignmentqualityforstatisticalmachine
+translation. ComputationalLinguistics33(3),293–303.
+Gale,WilliamA.andKennethWardChurch(1991a).Aprogramforaligningsentencesinbilingualcor-
+pora. In29th Annual Meeting of the Association for Computational Linguistics (ACL-91) , Berkley,
+CA,pp.177–184.
+Gale, William A. and Kenneth Ward Church (1991b, Feb). A program for aligning sentences
+in bilingual corpora. Technical Report 94, AT&T Bell Laboratories, Statistical Research,MurrayHill,NJ.
+Gale,WilliamA.andKennethWardChurch(1993,Mar).Aprogramforaligningsentencesinbilingual
+corpora.ComputationalLinguistics 19(1),75–102.
+Grishman,Ralph(1994,Aug).Iterativealignmentofsyntacticstructuresforabilingualcorpus.In Second
+AnnualWorkshoponVeryLargeCorpora(WVLC-2) ,Kyoto,Japan,pp.57–68.
+Guo,Jin(1997,Dec).Criticaltokenizationanditsproperties. ComputationalLinguistics23(4),569–596.
+
+Alignment 405
+Haruno, Masahiko and Takefumi Yamazaki (1996, Jun). High-performance bilingual text alignment
+using statistical and dictionary information. In 34th Annual Conference of the Association for
+ComputationalLinguistics(ACL-96) ,SantaCruz,CA,pp.131–138.
+Kaji,Hiroyuki,YuukoKida,andYasutsuguMorimoto(1992,Aug).Learningtranslationtemplatesfrom
+bilingualtext.In 14thInternationalConferenceonComputationalLinguistics(COLING-92) ,Nantes,
+France,pp.672–678.
+Karlgren, Hans, Jussi Karlgren, Magnus Nordström, Paul Pettersson, and Bengt Wahrolén (1994, Aug).
+Dilemma–aninstantlexicographer.In 15thInternationalConferenceonComputationalLinguistics
+(COLING-94) ,Kyoto,Japan,pp.82–84.
+Kasami, T. (1965). An eﬃcient recognition and syntax analysis algorithm for context-free languages.
+TechnicalReportAFCRL-65-758,AirForceCambridgeResearchLaboratory,Bedford,MA.
+Kay,MartinandM.Röscheisen(1988).Text-translationalignment.TechnicalReportP90-00143,Xerox
+PaloAltoResearchCenter,PaloAlto,CA.
+Kay, Martin and M. Röscheisen (1993). Text-translation alignment. Computational Linguistics 19 (1),
+121–142.
+Klavans, Judith and Evelyne Tzoukermann (1990, Aug). The BICORD system. In 13th International
+ConferenceonComputationalLinguistics(COLING-90) ,Helsinki,Finland,Volume3,pp.174–179.
+Klein, Dan and Ben Taskar (2005, Jun). Max-margin methods for nlp: Estimation, structure, and
+applications.In TutorialatACL-05 ,AnnArbor,MI.
+Koehn, Philipp, Franz Josef Och, and Daniel Marcu (2003, May). Statistical phrase-based translation.
+InHuman Language Technology Conference of the North American Chapter of the Association
+for Computational Linguistics (HLT/NAACL-2003), Companion Volume , Edmonton, Canada,
+pp.48–54.
+Lambert, Patrik, Rafael E. Banchs, and Josep M. Crego (2007, Apr). Discriminative alignment training
+withoutannotateddataformachinetranslation.In HumanLanguageTechnologies2007:TheConfer-
+enceoftheNorthAmericanChapteroftheAssociationforComputationalLinguistics(NAACL-HLT2007),Rochester,NY,pp.85–88.
+Leusch, Gregor, Nicola Ueﬃng, and Hermann Ney (2003, Sep). A novel string-to-string distance mea-
+sure with applications to machine translation evaluation. In Machine Translation Summit IX (MT
+SummitIX),NewOrleans,LA.
+Leusch, Gregor, Nicola Ueﬃng, and Hermann Ney (2006, Apr). Cder: Eﬃcient mt evaluation using
+block movements. In EACL-2006 (11th Conference of the European Chapter of the Association for
+ComputationalLinguistics) ,Trento,Italy,pp.241–248.
+Lewis, PhilipM.andRichardE.Stearns(1968). Syntax-directedtransduction. JournaloftheAssociation
+forComputingMachinery15 (3),465–488.
+Liang, Percy, Ben Taskar, and Dan Klein (2006). Alignment by agreement. In Human Language Tech-
+nology Conference of the North American chapter of the Association for Computational Linguistics(HLT-NAACL2006) ,NewYork,pp.104–111.
+Lin,Yi-Chung,Tung-HuiChiang,andKeh-YihSu(1992).Discriminationorientedprobabilistictagging.
+InProceedingsoftheROCLING-92,Taipei,Taiwan,pp.85–96.
+Lin, Ming-Yu, Tung-Hui Chiang, and Keh-Yih Su (1993). A preliminary study on unknown word
+problem in Chinese word segmentation. In Proceedings of the ROCLING-93, Taipei, Taiwan,
+pp.119–141.
+Liu, Yang, Qun Liu, and Shouxun Lin (2005, Jun). Log-linear models for word alignment. In 43rd
+Annual Meeting of the Association for Computational Linguistics (ACL-05) , Ann Arbor, MI,
+pp.459–466.
+Lu,Yajuan,ShengLi,TiejunZhao,andMuyunYang(2002,Aug).Learningchinesebracketingknowledge
+basedonabilinguallanguagemodel.In 17thInternationalConferenceonComputationalLinguistics
+(COLING-02) ,Taipei,Taiwan.
+
+406 HandbookofNaturalLanguageProcessing
+Lu,Yajuan,MingZhou,ShengLi,ChangningHuang,andTiejunZhao(2001,Feb).Automatictranslation
+templateacquisitionbasedonbilingualstructurealignment. ComputationalLinguisticsandChinese
+LanguageProcessing 6 (1),83–108.
+Ma, Yanjun, Patrik Lambert, and Andy Way (2009, Jun). Tuning syntactically enhanced word align-
+mentforstatisticalmachinetranslation.In 13thAnnualConferenceoftheEuropeanAssociationfor
+MachineTranslation(EAMT2009) ,Barcelona,Spain,pp.250–257.
+Macklovitch, Elliott (1994, Oct). Using bi-textual alignment for translation validation:the transcheck
+system.In FirstConferenceoftheAssociationforMachineTranslationintheAmericas(AMTA-94),
+Columbia,MD,pp.157–168.
+Macklovitch, Elliott and Marie-Louise Hannan (1996). Line ’em up: Advances in alignment technology
+andtheirimpactontranslationsupporttools.In SecondConferenceoftheAssociationforMachine
+TranslationintheAmericas(AMTA-96),Montreal,Canada,pp.145–156.
+Matsumoto, Yuji, Hiroyuki Ishimoto, and Takehito Utsuro (1993, Jun). Structural matching of parallel
+texts.In31stAnnualMeetingoftheAssociationforComputationalLinguistics(ACL-93) ,Columbus,
+OH,pp.23–30.
+Melamed,I.Dan(1997,Jul).Aword-to-wordmodeloftranslationalequivalence.In 35thAnnualMeeting
+oftheAssociationforComputationalLinguistics(ACL-97) ,Madrid,Spain,pp.104–111.
+Melamed, I. Dan (2000, Jun). Models of translational equivalence. Computational Linguistics 26 (2),
+221–249.
+Moore, Robert C. (2005a). Association-based bilingual word alignment. In Building and Using Parallel
+Texts:Data-DrivenMachineTranslationandBeyond ,AnnArbor,MI,pp.1–8.
+Moore,RobertC.(2005b,Oct).Adiscriminativeframeworkforbilingualwordalignment.In HumanLan-
+guageTechnologyConferenceandConferenceonEmpiricalMethodsinNaturalLanguageProcessing(HLT/EMNLP2005) ,Vancouver,Canada,pp.81–88.
+Nagao, Makoto (1984). A framework of a mechanical translation between Japanese and English by
+analogy principle. In Alick Elithorn and Ranan Banerji (Eds.), Artiﬁcial and Human Intelligence:
+Edited Review Papers Presented at the International NATO Symposium on Artiﬁcial and HumanIntelligence ,pp.173–180.Amsterdam,theNetherlands:North-Holland.
+Och, Franz, Daniel Gildea, Sanjeev Khudanpur, Anoop Sarkar, Kenji Yamada, Alex Fraser, Shankar
+Kumar,LibinShen,DavidSmith,KatherineEng,VirenJain,ZhenJin,andDragomirRadev(2004,May). A smorgasbord of features for statistical machine translation. In Human Language Tech-
+nology Conference of the North American Chapter of the Association for Computational Linguistics(HLT/NAACL-2004) ,Boston,MA.
+Och, Franz Josef and Hermann Ney (2003). A systematic comparison of various statistical alignment
+models.ComputationalLinguistics29 (1),19–52.
+Papineni, Kishore, Salim Roukos, Todd Ward, and Wei-Jing Zhu (2002, Jul). BLEU: A method for
+automatic evaluation of machine translations. In 40th Annual Meeting of the Association for
+ComputationalLinguistics(ACL-2002),Philadelphia,PA,pp.311–318.
+Sadler, Victor and Ronald Vendelmans (1990). Pilot implementation of a bilingual knowledge bank.
+In13th International Conference on Computational Linguistics (COLING-90) , Helsinki, Finland,
+Volume3,pp.449–451.
+Saers, Markus and Dekai Wu (2009). Improving phrase-based translation via word alignments from
+stochastic inversion transduction grammars. In Proceedings of SSST-3, Third Workshop on Syntax
+andStructureinStatisticalTranslation,atNAACL-HLT,2009 ,Boulder,CO,pp.28–36.
+Simard,Michel,GeorgeF.Foster,andPierreIsabelle(1992).Usingcognatestoalignsentencesinbilingual
+corpora. In Fourth International Conference on Theoretical and Methodological Issues in Machine
+Translation(TMI-92),Montreal,Canada,pp.67–81.
+Simard,MichelandPhilippeLanglais(2003,May).Statisticaltranslationalignmentwithcompositional-
+ity constraints. In HLT/NAACL-2003 Workshop on Building and Using Parallel Texts, Edmonton,
+Canada.
+
+Alignment 407
+Simard, Michel and Pierre Plamondon (1996, Oct). Bilingual sentence alignment: Balancing robustness
+and accuracy. In Second Conference of the Association for Machine Translation in the Americas
+(AMTA-96) ,Montreal,Canada,pp.135–144.
+Sproat,Richard,ChilinShih,WilliamA.Gale,andNancyChang(1994,Jun).Astochasticwordsegmenta-
+tionalgorithmforaMandarintext-to-speechsystem.In 32ndAnnualConferenceoftheAssociation
+forComputationalLinguistics(ACL-94) ,LasCruces,NM,pp.66–72.
+vanRijsbergen,CornelisJoost(1979). InformationRetrieval (2nded.).Butterworth-Heinemann,Newton,
+MA.
+Veronis, Jean (Ed.) (2000). Parallel Text Processing: Alignment and Use of Translation Corpora , Kluwer,
+Dordrecht,theNetherlands.
+Veronis, Jean and Philippe Langlais (2000, Aug). Evaluation of parallel text alignment systems: The
+ARCADEproject.InJeanVeronis(Ed.), ParallelTextProcessing:AlignmentandUseofTranslation
+Corpora.Dordrecht,theNetherlands:Kluwer.ISBN0-7923-6546-1.
+Vilar, David, Maja Popovic, and Hermann Ney (2006, Nov). AER: Do we need to “improve” our align-
+ments? In International Workshop on Spoken Language Translation (IWSLT 2006), Kyoto, Japan,
+pp.205–212.
+Viterbi,AndrewJ.(1967).Errorboundsforconvolutionalcodesandanasymptoticallyoptimaldecoding
+algorithm. IEEETransactionsonInformationTheory13,260–269.
+Warwick, Susan and Graham Russell (1990). Bilingual concordancing and bilingual lexicography. In
+EURALEX-90 ,Malaga,Spain.
+Wu, Dekai (1994, Jun). Aligning a parallel english-chinese corpus statistically with lexical criteria. In
+32nd Annual Meeting of the Association for Computational Linguistics (ACL-94) , Las Cruces, NM,
+pp.80–87.
+Wu,Dekai(1995a,Jun).Analgorithmforsimultaneouslybracketingparalleltextsbyaligningwords.In
+33rd Annual Meeting of the Association for Computational Linguistics (ACL-95) , Cambridge, MA,
+pp.244–251.
+Wu, Dekai (1995b, Jul). Grammarless extraction of phrasal translation examples from parallel texts. In
+Sixth International Conference on Theoretical and Methodological Issues in Machine Translation(TMI-95) ,Leuven,Belgium,pp.354–372.
+Wu,Dekai(1995c,Aug).StochasticInversionTransductionGrammars,withapplicationtosegmentation,
+bracketing, and alignment of parallel corpora. In 14th International Joint Conference on Artiﬁcial
+Intelligence(IJCAI-95),Montreal,Canada,pp.1328–1334.
+Wu,Dekai(1995d,Jun).Trainablecoarsebilingualgrammarsforparalleltextbracketing.In ThirdAnnual
+WorkshoponVeryLargeCorpora(WVLC-3) ,Cambridge,MA,pp.69–81.
+Wu, Dekai (1997, Sep). Stochastic Inversion Transduction Grammars and bilingual parsing of parallel
+corpora.ComputationalLinguistics23(3),377–404.
+Wu, Dekai (2006). Textual entailment recognition based on Inversion Transduction Grammars. In
+Joaquin Quiñonero Candela, Ido Dagan, Bernardo Magnini, and Florence d’Alché Buc (Eds.),Machine Learning Challenges, Evaluating Predictive Uncertainty, Visual Object Classiﬁcation andRecognizing Textual Entailment, First PASCAL Machine Learning Challenges Workshop, MLCW2005,Southampton,U.K.,April11–13,2005, RevisedSelectedPapers,Volume3944of LectureNotes
+inComputerScience,Southampton,U.K.,pp.299–308.Springer,Berlin.
+Wu, Dekai, Marine Carpuat, and Yihai Shen (2006, Dec). Inversion Transduction Grammar coverage
+ofArabic-Englishwordalignmentfortree-structuredstatisticalmachinetranslation.In IEEE/ACL
+2006WorkshoponSpokenLanguageTechnology(SLT2006) ,Aruba.
+Wu, Dekai and David Chiang (Eds.) (2007, Apr). Proceedings of SSST, NAACL-HLT 2007 / AMTA
+WorkshoponSyntaxandStructureinStatisticalTranslation .Rochester,NewYork:Associationfor
+ComputationalLinguistics.
+
+408 HandbookofNaturalLanguageProcessing
+Wu, Dekai and David Chiang (Eds.) (2009, Jun). Proceedings of SSST-3, Third Workshop on
+Syntax and Structure in Statistical Translation, at NAACL-HLT 2009 , Boulder, CO: Association
+forComputationalLinguistics.
+Wu,DekaiandPascaleFung(1994,Oct).ImprovingChinesetokenizationwithlinguisticﬁltersonstatis-
+ticallexicalacquisition. In Fourth Conferenceon Applied Natural Language Processing (ANLP-94) ,
+Stuttgart,Germany,pp.180–181.
+Wu,DekaiandPascaleFung(2005,Oct).InversionTransductionGrammarconstraintsforminingpar-
+allelsentencesfromquasi-comparablecorpora.In SecondInternationalJointConferenceonNatural
+LanguageProcessing(IJCNLP2005) ,Jeju,Korea,pp.257–268.
+Wu,DekaiandHongsingWong(1998,Aug).Machinetranslationwithastochasticgrammaticalchannel.
+In36th Annual Meeting of the Association for Computational Linguistics and 17th International
+ConferenceonComputationalLinguistics(COLING-ACL’98) ,Montreal,Canada.
+Wu, Zimin and Gwyneth Tseng (1993). Chinese text segmentation for text retrieval: Achievements and
+problems. JournalofTheAmericanSocietyforInformationScience44(9),532–542.
+Xu,DonghuaandChewLimTan(1996,Jun).AutomaticalignmentofEnglish-Chinesebilingualtextsof
+CNSnews.In InternationalConferenceonChineseComputing(ICCC-96) ,Singapore,pp.90–97.
+Younger, David H. (1967). Recognition and parsing of context-free languages in time n3.Information
+andControl10(2),189–208.
+Zens, Richard and Hermann Ney (2003, Aug). A comparative study on reordering constraints in statis-
+tical machine translation. In 41st Annual Meeting of the Association for Computational Linguistics
+(ACL-2003) ,Sapporo,Japan,pp.192–202.
+Zens,Richard,HermannNey,TaroWatanabe,andEiichiroSumita(2004,Aug).Reorderingconstraints
+forphrase-basedstatisticalmachinetranslation.In 20thInternationalConferenceonComputational
+Linguistics(COLING-04) ,Geneva,Switzerland.
+Zhang, Hao and Daniel Gildea (2004, Aug). Syntax-based alignment: Supervised or unsupervised? In
+20thInternationalConferenceonComputationalLinguistics(COLING-04) ,Geneva,Switzerland.
+Zhang, Hao and Daniel Gildea (2005, Jun). Stochastic lexicalized inversion transduction grammar for
+alignment. In 43rd Annual Meeting of the Association for Computational Linguistics (ACL-2005) ,
+AnnArbor,MI,pp.475–482.
+Zhang, Hao, Liang Huang, Daniel Gildea, and Kevin Knight (2006, Jun). Synchronous binarization for
+machine translation. In Human Language Technology Conference of the North American Chapter
+of the Association for Computational Linguistics (HLT/NAACL-2006) , New York, pp. 256–263.
+AssociationforComputationalLinguistics.
+Zhao, Bing and Stephan Vogel (2003, May). Word alignment based on bilingual bracketing. In
+HLT/NAACL-2003WorkshoponBuildingandUsingParallelTexts,Edmonton,Canada.
+

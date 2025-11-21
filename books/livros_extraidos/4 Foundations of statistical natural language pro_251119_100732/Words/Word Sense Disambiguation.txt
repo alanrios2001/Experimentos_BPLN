@@ -1,0 +1,1069 @@
+p/CX /CX7 Word Sense Disambiguation
+This chapter gives an overview of work on word sense disambigua-
+tion within Statistical NLP. It introduces a few of the most important
+word sense disambiguation algorithms, and describes their resource re-quirements and performance.
+What is the idea of word sense disambiguation? The problem to be
+solved is that many words have several meanings or senses .F o r s u c h
+senses
+words given out of context, there is thus ambiguity about how they are ambiguity
+to be interpreted. As a ﬁrst example of ambiguity, consider the word
+bank and two of the senses that can be found in Webster’s New Collegiate
+Dictionary (Woolf 1973):
+the rising ground bordering a lake, river, or sea . . .
+an establishment for the custody, loan exchange, or issue of money,for the extension of credit, and for facilitating the transmission offunds
+The task of disambiguation is to determine which of the senses of an
+disambiguation
+ambiguous word is invoked in a particular use of the word. This is done
+by looking at the context of the word’s use.
+This is how the problem has normally been construed in the word sense
+disambiguation literature. A word is assumed to have a ﬁnite number ofdiscrete senses, often given by a dictionary, thesaurus, or other reference
+source, and the task of the program is to make a forced choice between
+these senses for the meaning of each usage of an ambiguous word, basedon the context of use. However, it is important to realize at the outset thatthere are a number of reasons to be quite unhappy with such a statementof the task. The word bank is perhaps the most famous example of an
+ambiguous word, but it is really quite atypical. A more typical situation
+
+p/CX /CX230 7 Word Sense Disambiguation
+is that a word has various somewhat related senses, and it is unclear
+whether to and where to draw lines between them. For example, considerthe word title. Some senses that we found in a dictionary were:
+Name/heading of a book, statute, work of art or music, etc.
+Material at the start of a ﬁlm
+The right of legal ownership (of land)
+The document that is evidence of this right
+An appellation of respect attached to a person’s name
+A written work [by synecdoche , i.e., putting a part for the whole] synecdoche
+One approach is simply to deﬁne the senses of a word as the meanings
+given to it in a particular dictionary. However, this is unsatisfactory froma scientiﬁc viewpoint because dictionaries often diﬀer greatly in the num-ber and kind of senses they list, not only because comprehensive dictio-
+naries can be more complete, but fundamentally in the way word uses
+are gathered into senses. And often these groupings seem quite arbi-trary. For example, the above list of senses distinguishes as two sensesa right of legal title to property and a document that shows that right.However, this pattern of sense extension between a concept and some-thing that shows the concept is pervasive and could have been, but wasnot, distinguished for other uses. For example the same ambiguity exists
+when talking about the title of a painting. For instance, one might remark
+in a gallery:
+(7.1) This work doesn’t have a title.
+That sentence could mean either that the work was not given a title by
+the author, or simply that the little placard giving the title, which usuallyappears by paintings in a gallery, is missing. It is also somewhat unclearwhy books, statutes and works of art or music are grouped together while
+ﬁlms are separated out. The second deﬁnition could be seen as a special
+case of the ﬁrst deﬁnition. It is quite common in many dictionaries forsenses to be listed that are really special cases of another sense, if thissense is frequently and distinctively used in texts. These diﬃculties sug-gest that, for most words, the usages and hence the sense deﬁnitions arenot to be thought of as like ﬁve kinds of cheese, among which one must
+
+p/CX /CX231
+choose, but more like a casserole which has some pieces of clearly dis-
+tinct identiﬁable content, but a lot of stuﬀ of uncertain and mixed originin between.
+Notwithstanding these philosophical objections, the problem of disam-
+biguation is of clear importance in many applications of natural language
+processing. A system for automatic translation from English to German
+needs to translate bank asUfer for the ﬁrst sense given above (‘ground
+bordering a lake or river’), and as Bank for the second sense (‘ﬁnancial
+institution’). An information retrieval system answering a query about‘ﬁnancial banks’ should return only documents that use bank in the sec-
+ond sense. Whenever a system’s actions depend on the meaning of thetext being processed, disambiguation is beneﬁcial or even necessary.
+There is another kind of ambiguity, where a word can be used as diﬀer-
+ent parts of speech. For example, butter may be used as a noun, or as a
+verb, as in You should butter your toast . Determining the usage of a word
+i nt e r m so fp a r to fs p e e c hi sr e f e r r e dt oa s tagging , and is discussed in
+tagging
+chapter 10. How do these two notions relate? Using a word as a verb
+instead of as a noun is clearly a diﬀerent usage, with a diﬀerent meaninginvolved, and so this could be viewed as a word sense disambiguation
+problem. Conversely, diﬀerentiating word senses could be viewed as a
+tagging problem, but using semantic tags rather than part of speech tags.In practice, the two topics have been distinguished, partly because of dif-ferences between the nature of the problem, and partly because of themethods that have been used to approach them. In general, nearby struc-tural cues are most useful for determining part of speech (e.g., is thepreceding word a determiner?), but are almost useless for determining
+semantic sense within a part of speech. Conversely, quite distant content
+words are often very eﬀective for determining a semantic sense, but areof little use for determining part of speech. Consequently, most part ofspeech tagging models simply use local context, while word sense disam-biguation methods often try to use content words in a broader context.
+The nature of ambiguity and disambiguation changes quite a bit de-
+pending on what material is available for training a word sense disam-
+biguation system. After an initial section about methodology, this chap-
+ter has three main sections dealing with diﬀerent types of training ma-terial. Section 7.2 describes supervised disambiguation , disambiguation
+based on a labeled training set. Section 7.3 describes dictionary-based
+disambiguation , disambiguation that is based on lexical resources such
+as dictionaries and thesauri. Section 7.4 deals with unsupervised disam-
+
+p/CX /CX232 7 Word Sense Disambiguation
+biguation , the case in which only unlabeled text corpora are available for
+training. We conclude with an in-depth discussion of the notion of senseand pointers to further reading.
+7.1 Methodological Preliminaries
+Several important methodological issues come up in the context of wordsense disambiguation. They are of general relevance to
+NLP, but have
+received special attention in this context. These are: supervised vs. unsu-pervised learning; the use of artiﬁcial evaluation data, known in the word
+sense disambiguation context as pseudowords ; and the development of
+upper and lower bounds for the performance of algorithms, so that theirsuccess can be meaningfully interpreted.
+7.1.1 Supervised and unsupervised learning
+A lot of algorithms are classiﬁed as to whether they involve supervised orunsupervised learning (Duda and Hart 1973: 45). The distinction is that
+with supervised learning we know the actual status (here, sense label) for
+supervised learning
+each piece of data on which we train, whereas with unsupervised learn- unsupervised
+learning ingwe do not know the classiﬁcation of the data in the training sample.
+Unsupervised learning can thus often be viewed as a clustering task (see clustering
+chapter 14), while supervised learning can usually be seen as a classiﬁca- classiﬁcation
+tiontask (see chapter 16), or equivalently as a function-ﬁtting task where
+one extrapolates the shape of a function based on some data points.
+However, in the Statistical NLPdomain, things are often not this sim-
+ple. Because the production of labeled training data is expensive, peoplewill often want to be able to learn from unlabeled data, but will try to givetheir algorithms a head start by making use of various knowledge sources ,
+knowledge sources
+such as dictionaries, or more richly structured data, such as aligned bilin-
+gual texts. In other methods, the system is seeded with labeled trainingdata, but this data is augmented by further learning from unlabeled data.
+Rather than trying to force diﬀerent methods on to a procrustean bed, it
+usually makes most sense to simply give a precise answer to the question:What knowledge sources are needed for use of this method? As we will see,
+sometimes there are alternative combinations of knowledge sources thatcan give similar information (e.g., using either aligned bilingual texts, ormonolingual texts and a bilingual dictionary).
+
+p/CX /CX7.1 Methodological Preliminaries 233
+7.1.2 Pseudowords
+In order to test the performance of disambiguation algorithms on a nat-
+ural ambiguous word, a large number of occurrences has to be disam-
+biguated by hand – a time-intensive and laborious task. In cases like this
+in which test data are hard to come by, it is often convenient to gener-ate artiﬁcial evaluation data for the comparison and improvement of textprocessing algorithms. In the case of word sense disambiguation theseartiﬁcial data are called pseudowords .
+pseudowords
+Gale et al. (1992e) and Schütze (1992a) show how pseudowords, i.e.,
+artiﬁcial ambiguous words, can be created by conﬂating two or more nat-
+ural words. For example, to create the pseudoword banana-door ,o n e
+replaces all occurrences of banana anddoor in a corpus by the artiﬁ-
+cial word banana-door . Pseudowords make it easy to create large-scale
+training and test sets for disambiguation while obviating the need forhand-labeling: we regard the text with pseudowords as the ambiguoussource text, and the original as the text with the ambiguous words dis-ambiguated.
+7.1.3 Upper and lower bounds on performance
+While it is important to measure the performance of one’s algorithm, nu-merical evaluation by itself is meaningless without some discussion ofhow well the algorithm performs relative to the diﬃculty of the task. For
+example, whereas 90% accuracy is easy to achieve for part-of-speech tag-ging of English text, it is beyond the capacity of any existing machine
+translation system. The estimation of upper and lower bounds for the
+performance of an algorithm is a way to make sense of performance ﬁg-ures (Gale et al. 1992a). It is a good idea for many tasks in
+NLP, especially
+if there are no standardized evaluation sets for comparing systems.
+The upper bound used is usually human performance. In the case upper bound
+of word sense disambiguation, if human judges disagree on the correct
+sense assignment for a particular context, then we cannot expect an auto-
+matic procedure to do better. Determining upper bounds is particularly
+interesting if the disambiguation algorithm uses a limited representationof contexts, for example just looking at the three words on each sideof the ambiguous word. In such a situation, the reason for poor per-formance may just be that the contextual representations are not veryinformative so that even humans would not be able to disambiguate very
+
+p/CX /CX234 7 Word Sense Disambiguation
+well based on the same information. We can evaluate this by looking at
+human performance when based on the same limited contextual cues.1
+An upper bound for word sense disambiguation was established by
+Gale et al. (1992a). Gale et al. performed tests with the following task:Subjects were given pairs of occurrences and had to decide whether they
+were instances of the same sense. The task resulted in upper bounds
+between 97% and 99%. However, most of the words in Gale et al.’s testset have few and clearly distinct senses. In contrast, there are many am-biguous words (in particular, high-frequency ones) that are similar to ourexample title, i.e., their senses are interrelated and overlapping. Inter-
+judge agreement depends on the type of ambiguity: it is higher for wordswith clearly distinct senses (95% and higher) and lower for polysemous
+words with many related senses (perhaps as low as 65% to 70%).
+2The task
+is also easier when viewed as a yes/no decision task than as an arbitraryclustering task.
+This means that we have to look at the properties of an individual am-
+biguous word to determine whether a disambiguation algorithm does agood job for it. For a word like bank we should aim for performance
+in the ninety percent range, whereas less stringent criteria should be ap-
+plied to fuzzier cases like title,side,a n d way.
+Thelower bound orbaseline is the performance of the simplest possi-
+lower bound
+baselineble algorithm, usually the assignment of all contexts to the most frequent
+sense. A baseline should always be given because raw performance num-bers make it impossible to assess how hard disambiguation is for a par-ticular word. An accuracy of 90% is an excellent result for an ambiguousword with two equiprobable senses. The same accuracy for a word with
+two senses in a 9 to 1 frequency ratio is trivial to achieve – by always
+selecting the most frequent sense.
+Upper and lower bounds are most relevant when we are dealing with
+a classiﬁcation task and the evaluation measure is accuracy. Section 8.1discusses other evaluation measures, in particular, precision and recall.
+1. Although, for limited artiﬁcial contexts like this, it is of course possible that computers
+might be able to be more successful than human beings at extracting useful predictive
+information.
+2. See (Jorgensen 1990). To be able to correctly compare the extent of inter-judge agree-
+ment across tasks, we need to correct for the expected chance agreement (which dependson the number of senses being distinguished). This is done by the kappa statistic (Siegeland Castellan 1988; Carletta 1996).
+
+p/CX /CX7.2 Supervised Disambiguation 235
+Symbol Meaning
+w an ambiguous word
+s1;:::;sk;:::;sKsenses of the ambiguous word w
+c1;:::;ci;:::;cIcontexts ofwin a corpus
+v1;:::;vj;:::;vJwords used as contextual features for disambiguation
+Table 7.1 Notational conventions used in this chapter.
+7.2 Supervised Disambiguation
+In supervised disambiguation, a disambiguated corpus is available for
+training. There is a training set of exemplars where each occurrence ofthe ambiguous word wis annotated with a semantic label (usually its
+contextually appropriate sense s
+k). This setting makes supervised disam-
+biguation an instance of statistical classiﬁcation, the topic of chapter 16.
+The task is to build a classiﬁer which correctly classiﬁes new cases basedon their context of use c
+i. This notation, which we will use throughout
+the remainder of the chapter, is shown in table 7.1.
+We have selected two of the many supervised algorithms that have
+been applied to word sense disambiguation that exemplify two impor-tant theoretical approaches in statistical language processing: Bayesian
+classiﬁcation (the algorithm proposed by Gale et al. (1992b)) and Informa-
+tion Theory (the algorithm proposed by Brown et al. (1991b)). They alsodemonstrate that very diﬀerent sources of information can be employedsuccessfully for disambiguation. The ﬁrst approach treats the context ofoccurrence as a bag of words without structure, but it integrates infor-mation from many words in the context window. The second approachlooks at only one informative feature in the context, which may be sen-
+sitive to text structure. But this feature is carefully selected from a large
+number of potential ‘informants.’
+7.2.1 Bayesian classiﬁcation
+The idea of the Bayes classiﬁer which we will present for word senses isthat it looks at the words around an ambiguous word in a large contextwindow. Each content word contributes potentially useful informationabout which sense of the ambiguous word is likely to be used with it.The classiﬁer does no feature selection. Instead it combines the evidence
+
+p/CX /CX236 7 Word Sense Disambiguation
+from all features. The speciﬁc formalization we describe is due to Gale
+et al. (1992b). The supervised training of the classiﬁer assumes that wehave a corpus where each use of ambiguous words is labeled with itscorrect sense.
+ABayes classiﬁer applies the Bayes decision rule when choosing a class,
+Bayes classiﬁer
+Bayes decision rule the rule that minimizes the probability of error (Duda and Hart 1973: 10–
+43):
+(7.2) Bayes decision rule
+Decides0ifPs0jc>Pskjcforsks0
+The Bayes decision rule is optimal because it minimizes the probability
+of error. This is true because for each individual case it chooses the class(or sense) with the highest conditional probability and hence the smallesterror rate. The error rate for a sequence of decisions (for example, dis-
+ambiguating all instances of win a multi-page text) will therefore also be
+as small as possible.
+We usually do not know the value of Ps
+kjc, but we can compute it
+using Bayes’ rule as in section 2.1.10: Bayes’ rule
+PskjcPcjsk
+PcPsk
+Pskis the prior probability of sensesk, the probability that we have an prior probability
+instance ofskif we do not know anything about the context. Pskis
+updated with the factorPcjsk
+Pcwhich incorporates the evidence which we
+have about the context, and results in the posterior probability Pskjc. posterior
+probability If all we want to do is choose the correct class, we can simplify the
+classiﬁcation task by eliminating Pc (which is a constant for all senses
+and hence does not inﬂuence what the maximum is). We can also use
+logs of probabilities to make the computation simpler. Then, we want toassignwto the senses
+0where:
+s0arg max
+skPskjc (7.3)
+arg max
+skPcjsk
+PcPsk
+arg max
+skPcjskPsk
+arg max
+sk
+logPcjsklogPsk
+
+p/CX /CX7.2 Supervised Disambiguation 237
+Gale et al.’s classiﬁer is an instance of a particular kind of Bayes clas-
+siﬁer, the Naive Bayes classiﬁer. Naive Bayes is widely used in machine Naive Bayes
+learning due to its eﬃciency and its ability to combine evidence from a
+large number of features (Mitchell 1997: ch. 6). It is applicable if the stateof the world that we base our classiﬁcation on is described as a series
+of attributes. In our case, we describe the context of win terms of the
+wordsv
+jthat occur in the context.
+TheNaive Bayes assumption is that the attributes used for description Naive Bayes
+assumption are all conditionally independent:
+(7.4) Naive Bayes assumption
+PcjskPfvjjvjincgjskQ
+vjincPvjjsk
+In our case, the Naive Bayes assumption has two consequences. The
+ﬁrst is that all the structure and linear ordering of words within the con-text is ignored. This is often referred to as a b a go fw o r d s model.
+3The bag of words
+other is that the presence of one word in the bag is independent of an-
+other. This is clearly not true. For example, president is more likely to
+occur in a context that contains election than in a context that contains
+poet. But, as in many other cases, the simplifying assumption makes it
+possible to adopt an elegant model that can be quite eﬀective despiteits shortcomings. Obviously, the Naive Bayes assumption is inappropri-ate if there are strong conditional dependencies between attributes. Butthere is a surprisingly large number of cases in which it does well, partly
+because the decisions made can still be optimal even if the probability es-
+timates are inaccurate due to feature dependence (Domingos and Pazzani1997).
+With the Naive Bayes assumption, we get the following modiﬁed deci-
+sion rule for classiﬁcation:
+(7.5) Decision rule for Naive Bayes
+Decides
+0ifs0arg maxsklogPskP
+vjinclogPvjjsk
+PvjjskandPskare computed via Maximum-Likelihood estimation,
+perhaps with appropriate smoothing, from the labeled training corpus:
+PvjjskCvj;sk
+Csk
+3. A bag is like a set, but allows repeated elements (we use ‘ in ’ rather than ‘ 2’i ne q u a -
+tion (7.4) because we are treating ca sab a g ) .
+
+p/CX /CX238 7 Word Sense Disambiguation
+1comment : Training
+2forall sensesskofwdo
+3 forall wordsvjin the vocabulary do
+4PvjjskCvj;sk
+Cvj
+5 end
+6end
+7forall sensesskofwdo
+8PskCsk
+Cw
+9end
+10comment : Disambiguation
+11forall sensesskofwdo
+12 scoresklogPsk
+13 forall wordsvjin the context window cdo
+14 scoreskscoresklogPvjjsk
+15 end
+16end
+17chooses0arg maxskscoresk
+Figure 7.1 Bayesian disambiguation.
+Sense Clues for sense
+medication prices ,prescription ,patent ,increase ,consumer ,pharmaceutical
+illegal substance abuse ,paraphernalia ,illict,alcohol ,cocaine ,traﬃckers
+Table 7.2 Clues for two senses of drug used by a Bayesian classiﬁer. Adapted
+from (Gale et al. 1992b: 419).
+PskCsk
+Cw
+whereCvj;skis the number of occurrences of vjin a context of sense
+skin the training corpus, Cskis the number of occurrences of skin
+the training corpus, and Cw is the total number of occurrences of the
+ambiguous word w. Figure 7.1 summarizes the algorithm.
+Gale, Church and Yarowsky (1992b; 1992c) report that a disambigua-
+tion system based on this algorithm is correct for about 90% of occur-rences for six ambiguous nouns in the Hansard corpus: duty,drug ,land,
+language ,position ,a n d sentence .
+Table 7.2 gives some examples of words that are good clues for two
+
+p/CX /CX7.2 Supervised Disambiguation 239
+Ambiguous word Indicator Examples: value !sense
+prendre object mesure!to take
+décision!to make
+vouloir tense present !to want
+conditional!to like
+cent word to the left per!%
+number!c.[money]
+Table 7.3 Highly informative indicators for three ambiguous French words.
+senses of drug in the Hansard corpus. For example, prices is a good clue
+for the ‘medication’ sense. This means that Ppricesj‘medication’is large
+andPpricesj‘illicit substance’ is small and has the eﬀect that a context
+ofdrug containing prices will have a higher score for ‘medication’ and a
+lower score for ‘illegal substance’ (as computed on line 14 in ﬁgure 7.1).
+7.2.2 An information-theoretic approach
+The Bayes classiﬁer attempts to use information from all words in thecontext window to help in the disambiguation decision, at the cost of asomewhat unrealistic independence assumption. The information theo-retic algorithm which we turn to now takes the opposite route. It tries toﬁnd a single contextual feature that reliably indicates which sense of theambiguous word is being used. Some of Brown et al.’s (1991b) examples
+of indicators for French ambiguous words are listed in table 7.3. For the
+verb prendre , its object is a good indicator: prendre une mesure trans-
+lates as totake a measure ,prendre une décision astomake a decision .
+Similarly, the tense of the verb vouloir and the word immediately to the
+left of cent are good indicators for these two words as shown in table 7.3.
+In order to make good use of an informant, its values need to be cat-
+egorized as to which sense they indicate, e.g., mesure indicates to take ,
+décision indicates to make . Brown et al. use the Flip-Flop algorithm for
+Flip-Flop algorithm
+this purpose. Let t1;:::;tmbe the translations of the ambiguous word,
+andx1;:::;xnthe possible values of the indicator. Figure 7.2 shows the
+Flip-Flop algorithm for this case. The version of the algorithm describedhere only disambiguates between two senses. See Brown et al. (1991a) foran extension to more than two senses. Recall the deﬁnition of mutual
+
+p/CX /CX240 7 Word Sense Disambiguation
+1ﬁ n dr a n d o mp a r t i t i o n PfP1;P2gofft1;:::;tmg
+2whileimproving) do
+3 ﬁnd partition QfQ1;Q2goffx1;:::;xng
+4 that maximizes IP;Q
+5 ﬁnd partition PfP1;P2gofft1;:::;tmg
+7 that maximizes IP;Q
+8end
+Figure 7.2 The Flip-Flop algorithm applied to ﬁnding indicators for disam-
+biguation.
+information from section 2.2.3:
+IX;YX
+x2XX
+y2Ypx;y logpx;y
+pxpy
+It can be shown that each iteration of the Flip-Flop algorithm increases
+the mutual information IP;Qmonotonically, so a natural stopping cri-
+terion is thatIP;Qdoes not increase any more or only insigniﬁcantly.
+As an example, assume we want to translate prendre based on its
+object and that we have ft1;:::;tmgf take;make;rise;speakgand
+fx1;:::;xngf mesure;note;exemple;décision;paroleg(cf. (Brown et al.
+1991b: 267)). The initial partition Pof the senses might be P1ftake;
+risegandP2fmake;speakg. Which partition Qof the indicator values
+would give us maximum IP;Q? Obviously, the answer depends on
+the particular data we are working with. But let us assume that prendre
+is translated by take when occurring with the objects mesure ,note,a n d
+exemple (corresponding to the phrases take a measure ,take notes ,a n d
+take an example ), and translated by make ,speak ,a n d risewhen occurring
+with décision ,a n d parole (corresponding to the phrases make a decision ,
+make a speech andrise to speak ).
+Then the partition that will maximize IP;QisQ1fmesure;note;
+exemplegandQ2fdécision;parolegsince this division of the indicator
+values gives us the most information for distinguishing the translations
+inP1from the translations in P2. We only make an incorrect decision
+when prendre la parole is translated as rise to speak , but this cannot be
+avoided since riseandspeak are in two diﬀerent partition groups.
+The next two steps of the algorithm then repartition PasP1ftakeg
+andP2fmake;rise;speakgandQas before. This partition is always
+correct for take. We would have to consider more than two ‘senses’ if we
+
+p/CX /CX7.3 Dictionary-Based Disambiguation 241
+also wanted to distinguish between the other translations make ,riseand
+speak .
+A simple exhaustive search for the best partition of the French transla-
+tions and the best possible indicator values would take exponential time.The Flip-Flop algorithm is an eﬃcient linear-time algorithm for comput-
+ing the best partition of values for a particular indicator, based on the
+splitting theorem (Breiman et al. 1984). We run the algorithm for all pos-sible indicators and then choose the indicator with the highest mutualinformation. Brown et al. found that this was the accusative object forprendre , tense for vouloir and the preceding word for cent as shown in
+table 7.3.
+Once an indicator and a particular partition of its values has been de-
+termined, disambiguation is simple:
+1. For the occurrence of the ambiguous word, determine the value x
+iof
+the indicator.
+2. Ifxiis inQ1, assign the occurrence to sense 1, if xiis inQ2, assign the
+occurrence to sense 2.
+Brown et al. (1991b) report a 20% improvement in the performance of
+a machine translation system (from 37 to 45 sentences correct out of100) when the information-theoretic algorithm is incorporated into thesystem.
+We call the algorithm supervised because it requires a labeled training
+set. However in Brown et al.’s (1991b) work, each occurrence of, say,
+French cent is ‘labeled’ not with its sense but by its corresponding English
+translation. These class labels are not the senses. For example, some ofthe labels of the French word cent are (English) perand the numbers
+0,one, 2, and 8. The algorithm groups the labels into two classes, Q
+1
+fpergandQ2f0;one;2;8gwhich are then interpreted as the two senses
+ofcent, corresponding to the English translations % (percent sign) and
+cent (with the variants c.andsou). There is thus a many-to-one mapping
+from labels to senses.
+7.3 Dictionary-Based Disambiguation
+If we have no information about the sense categorization of speciﬁc in-
+stances of a word, we can fall back on a general characterization of thesenses. This section describes disambiguation methods that rely on the
+
+p/CX /CX242 7 Word Sense Disambiguation
+deﬁnition of senses in dictionaries and thesauri. Three diﬀerent types
+of information have been used. Lesk (1986) exploits the sense deﬁni-tions in the dictionary directly. Yarowsky (1992) shows how to applythe semantic categorization of words (derived from the categories in Ro-get’s thesaurus) to the semantic categorization and disambiguation of
+contexts. In Dagan and Itai’s method (1994), translations of the diﬀerent
+senses are extracted from a bilingual dictionary and their distribution ina foreign language corpus is analyzed for disambiguation. Finally, we willsee how a careful examination of the distributional properties of sensescan lead to signiﬁcant improvements in disambiguation. Commonly, am-biguous words are only used with one sense in any given discourse andwith any given collocate (the one sense per discourse andone sense per
+collocation hypotheses).
+7.3.1 Disambiguation based on sense deﬁnitions
+Lesk (1986) starts from the simple idea that a word’s dictionary deﬁni-
+tions are likely to be good indicators for the senses they deﬁne.4Suppose
+that two of the deﬁnitions of cone are as follows:
+1. a mass of ovule-bearing or pollen-bearing scales or bracts in trees of
+the pine family or in cycads that are arranged usually on a somewhatelongated axis,
+2. something that resembles a cone in shape: as . . . a crisp cone-shaped
+wafer for holding ice cream.
+If either treeoriceoccur in the same context as cone, then chances are
+that the occurrence belongs to the sense whose deﬁnition contains that
+word: sense 1 for tree, sense 2 for ice.
+LetD
+1;:::;DKbe the dictionary deﬁnitions of the senses s1;:::;sKof
+the ambiguous word w, represented as the bag of words occurring in the
+deﬁnition, and Evjthe dictionary deﬁnition of a word vjoccurring in the
+context of use cofw, represented as the bag of words occurring in the
+deﬁnition ofvj.( I fsj1;:::;sjLare the senses of vj, thenEvjS
+jiDji.W e
+simply ignore sense distinctions for the words vjthat occur in the context
+ofw.) Then Lesk’s algorithm can be described as shown in ﬁgure 7.3. For
+the overlap function, we can just count the number of common words in
+4. Lesk credits Margaret Millar and Lawrence Urdang with the original proposal of the
+algorithm.
+
+p/CX /CX7.3 Dictionary-Based Disambiguation 243
+1comment : Given: context c
+2forall sensesskofwdo
+3 scoreskoverlapDk;S
+vjincEvj
+4end
+5chooses0s.t.s0arg maxskscoresk
+Figure 7.3 Lesk’s dictionary-based disambiguation algorithm. Dkis the set of
+words occurring in the dictionary deﬁnition of sense sk.Evjis the set of words
+occurring in the dictionary deﬁnition of word vj(that is, the union of all the
+sense deﬁnitions of vj).
+Sense Deﬁnition
+s1tree a tree of the olive family
+s2burned stuﬀ the solid residue left when combustible material
+is burned
+Table 7.4 Two senses of ash.
+Scores Context
+s1s2
+0 1 This cigar burns slowly and creates a stiﬀ ash.
+10T h e ashis one of the last trees to come into leaf.
+Table 7.5 Disambiguation of ashwith Lesk’s algorithm. The score is the num-
+ber of (stemmed) words that are shared by the sense deﬁnition and the context.The ﬁrst sentence is disambiguated as ‘burned stuﬀ’ because one word is shared
+with the deﬁnition of sense s
+2,burn , and there are no common words for the
+other sense. In the second example, the word shared with the deﬁnition of s1
+(‘tree’) is tree.
+the deﬁnition Dkof senseskand the unionS
+vjincEvjof the deﬁnitions
+of the words vjin the context. Or we could use any of the similarity
+functions which we present in table 8.7.
+One of Lesk’s examples is the word ashwith the senses in table 7.4.
+The two contexts in table 7.5 are correctly disambiguated when scored
+on the number of words common with the diﬀerent sense deﬁnitions.
+By itself, information of this sort derived from a dictionary is insuﬃ-
+cient for high quality word sense disambiguation. Lesk reports accuraciesbetween 50% and 70% when the algorithm is applied to a sample of am-biguous words. He suggests various optimizations that could improve
+
+p/CX /CX244 7 Word Sense Disambiguation
+performance. For example, one could run several iterations of the algo-
+rithm on a text. Instead of using the union of all words Evjoccurring in
+the deﬁnition of vj, one could only use the words in the deﬁnitions of the
+contextually appropriate senses as determined in the previous iterationof the algorithm. One would hope that the iterated algorithm eventually
+settles on the correct sense of each word in the text. Pook and Catlett
+(1988) suggest another improvement: to expand each word in the contextwith a list of synonyms from a thesaurus. Such an algorithm combineselements of dictionary-based and thesaurus-based disambiguation.
+7.3.2 Thesaurus-based disambiguation
+Thesaurus-based disambiguation exploits the semantic categorizationprovided by a thesaurus like Roget’s (Roget 1946) or a dictionary withsubject categories like Longman’s (Procter 1978). The basic inference inthesaurus-based disambiguation is that the semantic categories of thewords in a context determine the semantic category of the context as awhole, and that this category in turn determines which word senses areused.
+The following simple thesaurus-based algorithm was proposed by
+Walker (1987: 254). The basic information used is that each word isassigned one or more subject codes in the dictionary. If the word is as-signed several subject codes, then we assume that they correspond to thediﬀerent senses of the word. Let ts
+kbe the subject code of sense skof
+ambiguous word woccurring in context c.T h e nwcan be disambiguated
+by counting the number of words for which the thesaurus lists tskas
+a possible topic. We then choose the sense with the highest count as
+shown in ﬁgure 7.4.
+Black (1988: 187) achieved only moderate success when applying
+Walker’s algorithm to a sample of ﬁve ambiguous words: accuraciesaround 50%. However, the test words were diﬃcult and highly ambigu-ous: interest ,point ,power ,state andterms .
+One problem with the algorithm is that a general categorization of
+words into topics is often inappropriate for a particular domain. For
+example, mouse may be listed as both a mammal and an electronic de-
+vice in a thesaurus, but in a computer manual it will rarely be evidencefor the thesaurus category ‘mammal.’ A general topic categorization mayalso have a problem of coverage. We will not ﬁnd Navratilova in a the-
+saurus from the 1960s (and we may not ﬁnd any proper nouns). Yet
+
+p/CX /CX7.3 Dictionary-Based Disambiguation 245
+1comment : Given: context c
+2forall sensesskofwdo
+3 scoreskP
+vjinctsk;vj
+4end
+5chooses0s.t.s0arg maxskscoresk
+Figure 7.4 Thesaurus-based disambiguation. tskis the subject code of sense
+skandtsk;vj1i ﬀtskis one of the subject codes of vjand 0 otherwise.
+The score is the number of words that are compatible with the subject code ofsenses
+k.
+the occurrence of Navratilova is an excellent indicator of the category
+‘sports.’
+The algorithm in ﬁgure 7.5 for the adaptation of a topic classiﬁcation
+to a corpus was proposed by Yarowsky (1992). The algorithm adds wordsto a categoryt
+iif they occur more often than chance in the contexts of ti
+in the corpus. For example, Navratilova will occur more often in sports
+contexts than in other contexts, so it will be added to the sports category.
+Yarowsky’s algorithm in ﬁgure 7.5 uses the Bayes classiﬁer introduced
+in section 7.2.1 for both adaptation and disambiguation. First we com-pute a score for each pair of a context c
+iin the corpus and a thesaurus
+categorytl. For example, context (7.6) would get a high score for the
+thesaurus category ‘sports,’ assuming that the thesaurus lists tennis as a
+‘sports’ word. In Yarowsky’s experiments, a context is simply a 100-word
+window centered around the ambiguous word.
+(7.6) It is amazing that Navratilova, who turned 33 earlier this year, continues
+to play great tennis.
+Making a Naive Bayes assumption, we can compute this score ci;tlas
+logPtljciwherePtljciis computed as follows.
+PtljciPcijtl
+PciPtl (7.7)
+Q
+vinciPvjtlQ
+vinciPvPtl
+We then use a threshold in line 7 to determine which thesaurus cat-
+egories are salient in a context. A fairly large value for this thresholdshould be chosen so that only contexts with good evidence for a categoryare assigned.
+
+p/CX /CX246 7 Word Sense Disambiguation
+1comment : Categorize contexts based on categorization of words
+2forall contextsciin the corpus do
+3 forall thesaurus categories tldo
+4 scoreci;tllogPcijtl
+PciPtl
+5 end
+6end
+7tciftljscoreci;tl>g
+8comment : Categorize words based on categorization of contexts
+9forall wordsvjin the vocabulary do
+10Vjfcjvjincg
+11end
+12forall topicstldo
+13Tlfcjtl2tcg
+14end
+15forall wordsvj;all topicstldo
+16PvjjtljVj\TljP
+jjVj\Tlj
+17end
+18forall topicstldo
+19Ptl(P
+jjVj\Tlj(P
+lP
+jjVj\Tlj
+20end
+21comment : Disambiguation
+22forall sensesskofwoccurring incdo
+23 scoresklogPtskP
+vjinclogPvjjtsk
+24end
+25chooses0s.t.s0arg maxskscoresk
+Figure 7.5 Adaptive thesaurus-based disambiguation. Yarowsky’s algorithms
+for adapting a semantic categorization of words and for thesaurus-based disam-biguation.Pv
+jjtlon line 16 is estimated as the proportion of contexts of topic
+tlthat contain word vj.
+Now we can adjust the semantic categorization in the thesaurus to our
+corpus (represented as the set of contexts fcig). On line 16, we estimate
+Pvjjtlas the proportion of contexts of vjthat are in category tl.I fvj
+is covered in the thesaurus, then this will adapt vj’s semantic categories
+to the corpus (for example, stylus may get a high score as a computer
+term even though the thesaurus only lists it in the category ‘writing’). Ifv
+jis not covered, then it will be added to the appropriate categories (the
+
+p/CX /CX7.3 Dictionary-Based Disambiguation 247
+Word Sense Roget category Accuracy
+bass musical senses music 99%
+ﬁsh animal, insect 100%
+star space object universe 96%
+celebrity entertainer 95%
+star shaped object insignia 82%
+interest curiosity reasoning 88%
+advantage injustice 34%
+ﬁnancial debt 90%
+share property 38%
+Table 7.6 Some results of thesaurus-based disambiguation. The table shows
+the senses of three ambiguous words, the Roget categories they correspond to,
+and the accuracy of the algorithm in ﬁgure 7.5. Adapted from (Yarowsky 1992).
+case of Navratilova ). The prior probability of tlis simply computed as its
+relative frequency, adjusted for the fact that some contexts will have nosemantic categories and others more than one (line 19).
+The valuesPv
+jjtlcomputed on line 16 are then used for disambigua-
+tion in analogy to the Bayesian algorithm we discussed earlier (see ﬁg-ure 7.1). Yarowsky (1992) recommends smoothing for some of the maxi-mum likelihood estimates (see chapter 6).
+Table 7.6 shows some results from (Yarowsky 1992). The method
+achieves high accuracy when thesaurus categories and senses align wellwith topics as in the case of bass and star. When a sense is spread
+out over several topics, the algorithm fails. Yarowsky calls these topic-
+topic-independent
+distinctions independent distinctions between senses. For example, the sense ‘advan-
+tage’ of interest (as in self-interest ) is not topic-speciﬁc. Self-interest can
+occur in music, entertainment, space exploration, ﬁnance, etc. Therefore,
+a topic-based classiﬁcation does not do well on this sense.
+7.3.3 Disambiguation based on translations in a second-language
+corpus
+The third dictionary-based algorithm makes use of word corresponden-
+ces in a bilingual dictionary (Dagan et al. 1991; Dagan and Itai 1994).We will refer to the language of application (the one for which we want
+
+p/CX /CX248 7 Word Sense Disambiguation
+Sense 1 Sense 2
+Deﬁnition legal share attention, concern
+Translation Beteiligung Interesse
+English collocation acquire an interest show interest
+Translation Beteiligung erwerben Interesse zeigen
+Table 7.7 How to disambiguate interest using a second-language corpus.
+to do disambiguation) as the ﬁrst language and the target language in
+the bilingual dictionary as the second language . For example, if we want
+to disambiguate English based on a German corpus, then English is the
+ﬁrst language, German is the second language, and we need an English-
+German dictionary (one with English headwords and German entries).
+The basic idea of Dagan and Itai’s algorithm is best explained with the
+example in table 7.7. English interest has two senses with two diﬀerent
+translations in German. Sense 1 translates as Beteiligung (legal share ,a s
+in “a 50% interest in the company”) and Sense 2 translates as Interesse
+(attention, concern , as in “her interest in mathematics”). (There are other
+senses of interest which we will ignore here.) In order to disambiguate an
+occurrence of interest in English, we identify the phrase it occurs in and
+search a German corpus for instances of the phrase. If the phrase occurswith only one of the translations of interest in German, then we assign
+the corresponding sense whenever interest is used in this phrase.
+As an example, suppose interest is used in the phrase showed interest .
+The German translation of show , ‘zeigen,’ will only occur with Interesse
+since “legal shares” are usually not shown. We can conclude that interest
+in the phrase to show interest belongs to the sense attention, concern. On
+the other hand, the only frequently occurring translation of the phraseacquired an interest iserwarb eine Beteiligung ,s i n c e interest in the sense
+‘attention, concern’ is not usually acquired. This tells us that a use ofinterest as the object of acquire corresponds to the second sense, “legal
+share.”
+A simple implementation of this idea is shown in ﬁgure 7.6. For the
+above example the relation Ris ‘is-object-of’ and the goal would be to dis-
+ambiguate interest inRinterest;show. To do this, we count the number
+of times that translations of the two senses of interest occur with trans-
+lations of show in the second language corpus. The count of RInteresse;
+zeigenwould be higher than the count of RBeteiligung;zeigen,s ow e
+
+p/CX /CX7.3 Dictionary-Based Disambiguation 249
+1comment : Given: a context cin whichwoccurs in relation Rw;v
+2forall sensesskofwdo
+3 scoreskjfc2Sj9w02Tsk;v02Tv :Rw0;v02cgj
+4end
+5chooses0arg maxskscoresk
+Figure 7.6 Disambiguation based on a second-language corpus. Sis the
+second-language corpus, Tskis the set of possible translations of sense sk,
+andTv is the set of possible translations of v. The score of a sense is the
+number of times that one of its translations occurs with translations of vin the
+second-language corpus.
+would choose the sense ‘attention, concern,’ corresponding to Interesse.
+The algorithm used by Dagan and Itai is more complex: it disam-
+biguates only if a decision can be made reliably. Consider the example ofHebrew ro‘sh which has two possible English translations, topandhead .
+Dagan and Itai found 10 examples of the relation s t a n da th e a d and 5
+examples of the relation stand at top in their English second-language
+corpus. This suggests that stand at head is more likely to translate the
+Hebrew phrase ’amad be-ro‘sh correctly. However, we can expect “stand
+at head” to be incorrect in a large proportion of the translations (approxi-
+mately
+5
+5100:33). In many cases, it is better to avoid a decision than to
+make an error with high probability. In a large system in which each com-ponent has a certain error rate, an accuracy of about 0.67 as in the aboveexample is unacceptable. If a sentence passes through ﬁve components,each with an error rate of 0.33, then overall system accuracy could be aslow as 14%:1−0:33
+50:14. Dagan and Itai show how the probability
+of error can be estimated. They then make decisions only when the level
+of conﬁdence is 90% or higher.
+7.3.4 One sense per discourse, one sense per collocation
+The dictionary-based algorithms we have looked at so far process eachoccurrence separately. But there are constraints between diﬀerent occur-
+rences that can be exploited for disambiguation. This section discusses
+work by Yarowsky (1995) which has focussed on two such constraints:
+One sense per discourse. The sense of a target word is highly consis-
+tent within any given document.
+
+p/CX /CX250 7 Word Sense Disambiguation
+Discourse Initial label Context
+d1 living the existence of plant and animal life
+living classiﬁed as either plant or animal
+? Although bacterial and plant cells are enclosed
+d2 living contains a varied plant and animal life
+living the most common plant life
+living slight within Arctic plant species
+factory are protected by plant parts remaining from
+Table 7.8 Examples of the one sense per discourse constraint. The table shows
+contexts from two diﬀerent documents, d1andd2. One context in d1lacks suﬃ-
+cient local information for disambiguation (“?”). Local information is misleadingfor the last context in d
+2. The one sense per discourse constraint can be used
+to counteract lacking or misleading information in such cases. It will correctlyassign the unclassiﬁed and the misclassiﬁed contexts to ‘living.’ Adapted from
+(Yarowsky 1995).
+One sense per collocation. Nearby words provide strong and con-
+sistent clues to the sense of a target word, conditional on relativedistance, order and syntactic relationship.
+As an example for the ﬁrst constraint consider the word plant .T h e
+constraint captures the intuition that if the ﬁrst occurrence of plant is a
+use of the sense ‘living being,’ then later occurrences are likely to referto living beings too. Table 7.8 shows two examples. This constraint isespecially usable when the material to be disambiguated is a collectionof small documents, or can be divided into short ‘discourses’ by the kind
+of method discussed in section 15.5. Then, this simple property of word
+senses can be used quite eﬀectively as we will see below.
+The second constraint makes explicit the basic assumption that most
+work on statistical disambiguation relies on: that word senses arestrongly correlated with certain contextual features like other words inthe same phrasal unit. Yarowsky’s (1995) approach is similar to Brownet al.’s (1991b) information-theoretic method, which we introduced in
+section 7.2.2, in that he selects the strongest collocational feature for a
+particular context and disambiguates based only on this feature. Collo-cational features are ranked according to the following ratio:
+Ps
+k1jf
+Psk2jf(7.8)
+
+p/CX /CX7.3 Dictionary-Based Disambiguation 251
+which basically is the ratio of the number of occurrences of sense sk1with
+collocationfdivided by the number of occurrences of sense sk2with col-
+locationf(again, smoothing is important if the collocation and/or senses
+occur infrequently, see Yarowsky (1994)).
+Relying on only the strongest feature has the advantage that no inte-
+gration of diﬀerent sources of evidence is necessary. Many statistical
+methods, such as the Naive Bayes method used in section 7.2.1 or thedictionary-based methods presented earlier in this section, assume inde-pendence when evidence is combined. Since independence rarely holds, itis sometimes better to avoid the need for combining evidence altogether,and to rely on just one reliable piece of evidence. The more complexalternative is to accurately model the dependencies between sources of
+evidence (see chapter 16).
+Figure 7.7 is a schematic description of an algorithm proposed by
+Yarowsky that combines both constraints. The algorithm iterates build-ing two interdependent sets for each sense s
+k.Fkcontains characteristic
+collocations.Ekis the set of contexts of the ambiguous word wthat are
+currently assigned to sk.
+On line 3,Fkis initialized from the dictionary deﬁnition of skor from
+another source (for example, a set of collocations entered manually by a
+lexicographer or a set of collocations from a small hand-labeled trainingset).E
+kis initially empty.
+The iteration begins by assigning all contexts with a characteristic col-
+location from FktoEk(line 11). For example, all contexts of interest
+in which interest is the object of the verb show would be assigned to
+E‘attention, concern’ if “is the object of show ” is one of the collocations in
+F‘attention, concern’ . The set of characteristic collocations is then recomputed
+by selecting those collocations that are most characteristic of the just up-datedE
+k(line 14).
+After this part of the algorithm has been completed, the constraint
+“one sense per discourse” is applied. All instances of the ambiguouswordware assigned to the majority sense in a document or discourse
+(line 20). Table 7.8 gave two examples of this process.
+Yarowsky demonstrates that this algorithm is highly eﬀective. Diﬀer-
+ent versions achieve between 90.6% and 96.5% accuracy. The error rate isreduced by 27% when the discourse constraint (lines 18–21) is incorpo-rated. This is a surprisingly good performance given that the algorithmdoes not need a labeled set of training examples.
+
+p/CX /CX252 7 Word Sense Disambiguation
+1comment : Initialization
+2forall sensesskofwdo
+3Fkthe set of collocations in sk’s dictionary deﬁnition
+4end
+5forall sensesskofwdo
+6Ek;
+7end
+8comment : One sense per collocation
+9while (at least oneEkchanged in the last iteration) do
+10 forall sensesskofwdo
+11Ekfcij9fm:fm2ci^fm2Fkg
+12 end
+13 forall sensesskofwdo
+14Fkffmj8nkPskjfm
+Psnjfm>g
+15 end
+16end
+17comment : One sense per discourse
+18forall documents dmdo
+19 determine the majority sense skofwindm
+20 assign all occurrences of windmtosk
+21end
+Figure 7.7 Disambiguation based on “one sense per collocation” and “one sense
+per discourse.”
+7.4 Unsupervised Disambiguation
+All that the methods discussed in the last section require for disambigua-
+tion are basic lexical resources, a small training set, or a few collocation
+seeds. Although this seems little to ask for, there are situations in whicheven such a small amount of information is not available. In particular,this is often the case when dealing with information from specializeddomains, for which there may be no available lexical resources.
+5For
+example, information retrieval systems must be able to deal with textcollections from any subject area. General dictionaries are less useful
+for domain-speciﬁc collections. A data base of chemical abstracts mostly
+5. However, there are specialized dictionaries in some ﬁelds, such as for medical and
+scientiﬁc terms.
+
+p/CX /CX7.4 Unsupervised Disambiguation 253
+contains documents that belong to the category “chemistry” in a generic
+semantic classiﬁcation. A generic thesaurus-based disambiguation algo-rithm would therefore be of little use. One cannot expect the user of aninformation retrieval system to deﬁne the senses of ambiguous words orto provide a training set for a new text collection. With the surge in on-
+line material in recent years, there is an increasing number of scenarios
+where outside sources of information are not available for disambigua-tion.
+Strictly speaking, completely unsupervised disambiguation is not pos-
+sible if we mean sense tagging : an algorithm that labels occurrences as
+sense tagging
+belonging to one sense or another. Sense tagging requires that some
+characterization of the senses be provided. However, sense discrimina-
+tion can be performed in a completely unsupervised fashion: one can
+cluster the contexts of an ambiguous word into a number of groups anddiscriminate between these groups without labeling them. Several suchsense discrimination algorithms have been proposed. We will describeone of them here, context-group discrimination , largely following Schütze
+context-group
+discrimination (1998).6Note also the similarity to Brown et al.’s approach described in
+section 7.2.2. Brown et al. (1991b) cluster translations of an ambiguous
+word, which can be thought of as a type of prelabeling of the occurrences
+of the ambiguous word w. Here, we will look at a completely unsuper-
+vised algorithm that clusters unlabeled occurrences.
+The probabilistic model is the same as that developed by Gale et al.
+(section 7.2.1). For an ambiguous word wwith sensess1;:::;sk;:::;sK,
+we estimate the conditional probability of each word vjoccurring in a
+context where wis being used in a particular sense sk, that is,Pvjjsk).
+In contrast to Gale et al.’s Bayes classiﬁer, parameter estimation in un-
+supervised disambiguation is not based on a labeled training set. Instead,we start with a random initialization of the parameters Pv
+jjsk.T h e
+Pvjjskare then reestimated by the EM algorithm (see section 14.2.2).
+After the random initialization, we compute for each context ciofwthe
+probabilityPcijskthat it was generated by sense sk. We can use this
+preliminary categorization of the contexts as our training data and then
+reestimate the parameters Pvjjskso as to maximize the likelihood of
+the data given the model. The algorithm is developed in ﬁgure 7.8.
+The EM algorithm is guaranteed to increase the log likelihood of the
+6. For consistency we reuse the probabilistic model introduced in section 7.2.1 and sec-
+tion 7.3.2, instead of Schütze’s.
+
+p/CX /CX254 7 Word Sense Disambiguation
+1.Initialize the parameters of the model randomly. The parameters
+arePvjjsk,1jJ;1kK,a n dPsk,1kK.
+Compute the log of the likelihood of the corpus Cgiven the model 
+as the product of the probabilities Pciof the individual contexts ci
+(wherePciPK
+k1PcijskPsk):
+lCjlogIY
+i1KX
+k1PcijskPskIX
+i1logKX
+k1PcijskPsk
+2. WhilelCjis improving repeat:
+(a)E-step. For 1kK;1iIestimatehik, the posterior probabil-
+ity thatskgeneratedci, as follows:
+hikPcijskPK
+k1Pcijsk
+To computePcijsk, we make the by now familiar Naive Bayes as-
+sumption:
+PcijskY
+vj2ciPvjjsk
+(b)M-step. Re-estimate the parameters PvjjskandPskby way of
+maximum likelihood estimation:
+PvjjskPI
+i1P
+fci:vj2cighik
+Zj
+whereP
+fci:vj2cigsums over all contexts in which vjoccurs andZjPK
+k1PI
+i1P
+fci:vj2cighikis a normalizing constant.
+Recompute the probabilities of the senses as follows:
+PskPI
+i1hikPK
+k1PI
+i1hikPI
+i1hik
+I
+Figure 7.8 An EM algorithm for learning a word sense clustering. Kis the num-
+ber of desired senses; c1;:::;ci;:::;cIare the contexts of the ambiguous word
+in the corpus; and v1;:::;vj;:::;vJare the words being used as disambiguating
+features.
+
+p/CX /CX7.4 Unsupervised Disambiguation 255
+model given the data in each step. Therefore, the stopping criterion for
+the algorithm is to stop when the likelihood (computed in step 1) is nolonger increasing signiﬁcantly.
+Once the parameters of the model have been estimated, we can disam-
+biguate contexts of wby computing the probability of each of the senses
+based on the words v
+joccurring in the context. Again, we make the Naive
+Bayes assumption and use the Bayes decision rule (7.5):
+Decides0ifs0arg max
+sk
+logPskX
+vj2clogPvjjsk
+The granularity of the sense classiﬁcation of an ambiguous word can be
+chosen by running the algorithm for a range of values for K, the number
+of senses. The more senses there are, the more structure the model has,
+and therefore it will be able to explain the data better. As a result the best
+possible log likelihood of the model given the data will be higher witheach new sense added. However, one can examine by how much the loglikelihood increases with each new sense. If it increases strongly becausethe new sense explains an important part of the data, then this suggeststhat the new number of senses is justiﬁed. If the log likelihood increasesonly moderately, then the new sense only picks up random variation in
+the data and it is probably not justiﬁed.
+7
+A simpler way to determine the number of senses is to make it de-
+pendent on how much training material is available. This approach isjustiﬁed for an information retrieval application by Schütze and Pedersen(1995).
+An advantage of unsupervised disambiguation is that it can be eas-
+ily adapted to produce distinctions between usage types that are more
+ﬁne-grained than would be found in a dictionary. Again, information re-
+trieval is an application for which this is useful. The distinction betweenphysical banks in the context of bank robberies and banks as abstractcorporations in the context of corporate mergers can be highly relevanteven if it is not reﬂected in dictionaries.
+If the unsupervised algorithm is run for a large number of senses, say
+K20, then it will split dictionary senses into ﬁne-grained contextual
+variants. For example, the sense ‘lawsuit’ of suitcould be split into ‘civil
+suit,’ ‘criminal suit,’ etc. Usually, the induced clusters do not line upwell with dictionary senses. Infrequent senses and senses that have few
+7. One could choose the optimal number of senses automatically by testing on validation
+data, as discussed in chapter 6.
+
+p/CX /CX256 7 Word Sense Disambiguation
+Word Sense Accuracy
+
+suit lawsuit 95 0
+the suit you wear 96 0
+motion physical movement 85 1
+proposal for action 88 13
+train line of railroad cars 79 19
+to teach 55 31
+Table 7.9 Some results of unsupervised disambiguation. The table shows
+the meanand standard deviation for ten experiments with diﬀerent initial
+conditions for the EM algorithm. Data are from (Schütze 1998: 110).
+collocations are hard to isolate in unsupervised disambiguation. Senses
+like the use of suitin the sense ‘to be appropriate for’ as in This suits me
+ﬁneare unlikely to be discovered. However, such hard to identify senses
+often carry less content than senses that are tied to a particular subjectarea. For an information retrieval system, it is probably more importantto make the distinction between usage types like ‘civil suit’ vs. ‘criminal
+suit’ than to isolate the verbal sense ‘to suit.’
+Some results of unsupervised disambiguation are shown in table 7.9.
+We need to take into account the variability that is due to diﬀerent ini-tializations here (Step 1 in ﬁgure 7.8). The table shows both the averageaccuracy and the standard deviation over ten trials. For senses with aclear correspondence to a particular topic, the algorithm works well andvariability is low. The word suitis an example. But the algorithm fails for
+words whose senses are topic-independent such as ‘to teach’ for train –
+this failure is not unlike other methods that work with topic informationonly. In addition to the low average performance, variability is also quitehigh for topic-independent senses. In general, performance is 5% to 10%lower than that of some of the dictionary-based algorithms as one wouldexpect given that no lexical resources for training or deﬁning senses areused.
+7.5 What Is a Word Sense?
+Now that we have looked at a wide range of diﬀerent approaches to wordsense disambiguation, let us revisit the question of what precisely a word
+
+p/CX /CX7.5 What Is a Word Sense? 257
+sense is. It would seem natural to deﬁne senses as the mental representa-
+tions of diﬀerent meanings of a word. But given how little is known aboutthe mental representation of meaning, it is hard to design experimentsthat determine how senses are represented by a subject. Some studiesask subjects to cluster contexts. The subject is given a pile of index
+cards, each with a sentence containing the ambiguous word, and instruc-
+tions to sort the pile into coherent subgroups. While these experimentshave provided many insights (for example, for research on the notion ofsemantic similarity, see Miller and Charles (1991)), it is not clear how wellthey model the use of words and senses in actual language comprehen-sion and production. Determining linguistic similarity is not a task thatpeople are confronted with in natural situations. Agreement between
+clusterings performed by diﬀerent subjects is low (Jorgensen 1990).
+Another problem with many psychological experiments on ambiguity is
+that they rely on introspection and whatever folk meaning a subject as-sumes for the word ‘sense.’ It is not clear that introspection is a validmethodology for getting at the true mental representations of sensessince it fails to elucidate many other phenomena. For example, peo-ple tend to rationalize non-rational economic decisions (Kahneman et al.
+1982).
+The most frequently used methodology is to adopt the sense deﬁni-
+tions in a dictionary and then to ask subjects to label instances in a cor-pus based on these deﬁnitions. There are diﬀerent opinions on how wellthis technique works. Some researchers have reported high agreementbetween judges (Gale et al. 1992a) as we discussed above. High averageagreement is likely if there are many ambiguous words with a skewed
+skewed distribution
+distribution, that is, one sense that is used in most of the occurrences.Sanderson and van Rijsbergen (1998) argue that such skewed distribu-tions are typical of ambiguous words.
+However, randomly selecting ambiguous words as was done in (Gale
+et al. 1992a) introduces a bias which means that their ﬁgures may notreﬂect actual inter-judge agreement. Many ambiguous words with thehighest disagreement rates are high-frequency words. So on a per-token
+basis inter-judge disagreement can be high even if it is lower on a per-
+type basis. In a recent experiment, Jean Véronis (p.c., 1998) found thatthere was not a single instance of the frequent French words correct ,
+historique ,économie ,a n d comprendre with complete agreement among
+judges. The main reasons Véronis found for inter-judge disagreementwere vague dictionary deﬁnitions and true ambiguity in the corpus.
+
+p/CX /CX258 7 Word Sense Disambiguation
+Can we write dictionaries that are less vague? Fillmore and Atkins
+(1994) discuss such issues from a lexicographic perspective. Some au-thors argue that it is an inherent property of word meaning that severalsenses of a word can be used simultaneously or co-activated (Kilgarriﬀ
+co-activation
+1993; Schütze 1997; Kilgarriﬀ 1997), which entails high rates of inter-
+judge disagreement. Of course, there are puns like (7.9) in which multiple
+senses are used in a way that seems so special that it would be acceptablefor an
+NLPsystem to fail:
+(7.9) In AI, much of the I is in the beholder.
+But Kilgarriﬀ (1993) argues that such simultaneous uses of senses are
+quite frequent in ordinary language. An example is (7.10) where arguably
+two senses of competition are invoked: ‘the act of competing’ and ‘the
+competitors.’
+(7.10) For better or for worse, this would bring competition to the licensed
+trade.
+Many cases of ‘coactivation’ are cases of systematic polysemy ,l e x i c o - systematic
+polysemy semantic rules that apply to a class of words and systematically change or
+extend their meaning. (See (Apresjan 1974), (Pustejovsky 1991), (Lakoﬀ1987), (Ostler and Atkins 1992), (Nunberg and Zaenen 1992), and (Copes-take and Briscoe 1995) for theoretical work on systematic polysemy and(Buitelaar 1998) for a recent computational study.) The word competi-
+tionis a case in point. A large number of English words have the same
+meaning alternation between ‘the act of X’ vs. ‘the people doing X’. For
+example, organization ,administration ,a n d formation also exhibit it.
+A diﬀerent type of systematic ambiguity that cannot be neglected in
+practice is that almost all words can also be used as proper nouns, someof them frequently. Examples are Brown ,Bush ,a n d Army .
+One response to low inter-judge agreement and the low performance
+of disambiguation algorithms for highly ambiguous words is to only con-sider coarse-grained distinctions, for example only those that manifest
+themselves across languages (Resnik and Yarowsky 1998). Systematic
+polysemy is likely to be similar in many languages, so we would not dis-tinguish the two related senses of competition (‘the act of competing’ and
+‘the competitors’) even if a monolingual dictionary lists them as diﬀer-ent. This strategy is similar to ones used in other areas of
+NLP,s u c ha s
+parsing, where one deﬁnes an easier problem, shallow parsing, and does
+
+p/CX /CX7.5 What Is a Word Sense? 259
+not attempt to solve the hardest problem, the resolution of attachment
+ambiguities.
+Clustering approaches to word sense disambiguation (such as context-
+group disambiguation) adopt the same strategy. By deﬁnition, automaticclustering will only ﬁnd groups of usages that can be successfully distin-
+guished. This amounts to a restriction to a subpart of the problem that
+can be solved. Such solutions with a limited scope can be quite useful.Many translation ambiguities are coarse, so that a system restricted tocoarse sense distinctions is suﬃcient. Context-group disambiguation hasbeen successfully applied to information retrieval (Schütze and Pedersen1995).
+Such application-oriented notions of sense have the advantage that it
+is easy to evaluate them as long as the application that disambiguation
+is embedded in can be evaluated (for example, translation accuracy formachine translation, the measures of recall and precision – introduced inchapter 8 – for information retrieval). Direct evaluation of disambigua-tion accuracy and comparison of diﬀerent algorithms is more diﬃcult,but will be easier in the future with the development of standard evalu-ation sets. See Mooney (1996) for a comparative evaluation of a number
+of machine learning algorithms and Towell and Voorhees (1998) for the
+evaluation of a disambiguator for three highly ambiguous words ( hard ,
+serve ,a n d line). A systematic evaluation of algorithms was undertaken
+as part of the Senseval project (unfortunately, after the writing of this
+Senseval
+chapter). See the website.
+Another factor that inﬂuences what notion of sense is assumed, al-
+beit implicitly, is the type of information that is used in disambiguation:
+co-occurrence (the bag-of-words model), relational information (subject,
+object, etc.), other grammatical information (such as part-of-speech), col-locations (one sense per collocation) and discourse (one sense per dis-course). For example, if only co-occurrence information is used, thenonly ‘topical’ sense distinctions are recognized, senses that are associ-ated with diﬀerent domains. The inadequacy of the bag-of-words modelfor many sense distinctions has been emphasized by Justeson and Katz
+(1995a). Leacock et al. (1998) look at the combination of topical and col-
+locational information and achieve optimal results when both are used.Choueka and Lusignan (1985) show that humans do surprisingly well atsense discrimination if only a few words of adjacent context are shown– giving more context contributes little to human disambiguation perfor-mance. However, that does not necessarily mean that wider context is
+
+p/CX /CX260 7 Word Sense Disambiguation
+useless for the computer. Gale et al. (1992b) show that there is addi-
+tional useful information in the context out to about 50 words on eitherside of the ambiguous word (using their algorithm), and that there is de-tectable information about sense distinctions out to a very large distance(thousands of words).
+Diﬀerent types of information may be appropriate to diﬀerent degrees
+for diﬀerent parts of speech. Verbs are best disambiguated by their ar-guments (subjects and objects), which implies the importance of localinformation. Many nouns have topically distinct word senses (like suit
+andbank ) so that a wider context is more likely to be helpful.
+Much research remains to be done on word sense disambiguation. In
+particular, it will become necessary to evaluate algorithms on a represen-
+tative sample of ambiguous words, an eﬀort few researchers have made
+so far. Only with more thorough evaluation will it be possible to fully un-derstand the strengths and weaknesses of the disambiguation algorithmsintroduced in this chapter.
+7.6 Further Reading
+An excellent recent discussion of both statistical and non-statistical workon word sense disambiguation is (Ide and Véronis 1998). See also (Guthrieet al. 1996). An interesting variation of word sense disambiguation is sen-
+sentence boundary
+identiﬁcation tence boundary identiﬁcation (section 4.2.4). The problem is that periods
+in text can be used either to mark an abbreviation or to mark the endof a sentence. Palmer and Hearst (1997) show how the problem can be
+cast as the task of disambiguating two ‘senses’ of the period: ending an
+abbreviation vs. ending a sentence or both.
+The common thread in this chapter has been the amount and type
+of lexical resources used by diﬀerent approaches. In these remarks, wewill ﬁrst mention a few other methods that ﬁt under the rubrics of su-pervised, dictionary-based, and unsupervised disambiguation, and thenwork that did not ﬁt well into our organization of the chapter.
+Two important supervised disambiguation methods are knearest
+neighbors (kNN), also called memory-based learning (see page 295) andloglinear models. A nearest neighbor disambiguator is introduced in(Dagan et al. 1994, 1997b). The authors stress the beneﬁts of kNN ap-proaches for sparse data. See also (Ng and Lee 1996) and (Zavrel andDaelemans 1997). Decomposable models, a type of loglinear model, can
+
+pa/CX /CX7.6 Further Reading 261
+be viewed as a generalization of Naive Bayes. Instead of treating all
+features as independent, features are grouped into mutually dependentsubsets. Independence is then assumed only between features in dif-ferent subsets, not for all pairs of features as is the case in the NaiveBayes classiﬁer. Bruce and Wiebe (1994) apply decomposable models to
+disambiguation with good results.
+Other disambiguation algorithms that rely on lexical resources are
+(Karov and Edelman 1998), (Guthrie et al. 1991), and (Dini et al. 1998).Karov and Edelman (1998) present a formalism that takes advantage ofevidence both from a corpus and a dictionary, with good disambigua-tion results. Guthrie et al. (1991) use the subject ﬁeld codes in (Procter1978) in a way similar to the thesaurus classes in (Yarowsky 1992). Dini
+et al. (1998) apply transformation-based learning (see section 10.4.1) to
+tag ambiguous words with thesaurus categories.
+Papers that use clustering include (Pereira et al. 1993; Zernik 1991b;
+Dolan 1994; Pedersen and Bruce 1997; Chen and Chang 1998). Pereiraet al. (1993) cluster contexts of words in a way similar to Schütze (1998),but based on a diﬀerent formalization of clustering. They do not di-rectly describe a disambiguation algorithm based on the clustering result,
+but since in this type of unsupervised method assignment to clusters is
+equivalent to disambiguation, this would be a straightforward extension.See section 14.1.4 for the clustering algorithm they use. Chen and Chang(1998) and Dolan (1994) are concerned with constructing representationsfor senses by combining several subsenses into one ‘supersense.’ Thistype of clustering of subsenses is useful for constructing senses that arecoarser than those a dictionary may provide and for relating sense deﬁ-
+nitions between two dictionaries.
+An important issue that comes up in many diﬀerent approaches to
+disambiguation is how to combine diﬀerent types of evidence (McRoy1992). See (Cottrell 1989; Hearst 1991; Alshawi and Carter 1994; Wilksand Stevenson 1998) for diﬀerent proposals.
+Although we only cover statistical approaches here, work on word
+sense disambiguation has a long tradition in Artiﬁcial Intelligence and
+Computational Linguistics. Two often-cited contributions are (Kelly and
+Stone 1975), a hand-constructed rule-based disambiguator, and (Hirst1987), who exploits selectional restrictions for disambiguation. An ex-cellent overview of non-statistical work on disambiguation can be foundin the above-mentioned (Ide and Véronis 1998).
+
+pa/CX /CX262 7 Word Sense Disambiguation
+7.7 Exercises
+Exercise 7.1 [«]
+The lower bound of disambiguation accuracy depends on how much information
+is available. Describe a situation in which the lower bound could be lower thanthe performance that results from classifying all occurrences of a word as in-stances of its most frequent sense. (Hint: What knowledge is needed to calculatethat lower bound?)
+Exercise 7.2 [««]
+Supervised word sense disambiguation algorithms are quite easy to devise and
+train. Either implement one of the models discussed above, or design your ownand implement it. How good is the performance? Training data are availablefrom the Linguistic Data Consortium (the
+DSO corpus) and from the WordNet
+project (semcor). See the website for links to both.
+Exercise 7.3 [««]
+Create an artiﬁcial training and test set using pseudowords. Evaluate one of the
+supervised algorithms on it.
+Exercise 7.4 [««]
+Download a version of Roget’s thesaurus from the web (see the website), and
+implement and evaluate a thesaurus-based algorithm.
+Exercise 7.5 [««]
+The two supervised methods diﬀer on two diﬀerent dimensions: the number
+of features used (one vs. many) and the mathematical methodology (informa-tion theory vs. Bayesian classiﬁcation). How would one design a Bayes classiﬁerthat uses only one feature and an information-theoretic method that uses manyfeatures?
+Exercise 7.6 [««]
+In light of the discussion on closely related and ‘co-activated’ senses, discuss to
+what extent pseudowords model ambiguity well.
+Exercise 7.7 [««]
+Lesk’s algorithm counts how many words are shared between sense deﬁnition
+and context. This is not optimal since reliance on “non-descript” or stop wordsliketryorespecially can result in misclassiﬁcations. Try to come up with reﬁne-
+ments of Lesk’s algorithm that would weight words according to their expectedvalue in discrimination.
+Exercise 7.8 [«]
+Two approaches use only one feature: information-theoretic disambiguation and
+Yarowsky’s (1995) algorithm. Discuss diﬀerences and other similarities betweenthe two approaches.
+
+p/CX /CX7.7 Exercises 263
+Exercise 7.9 [«]
+Discuss the validity of the “one sense per discourse” constraint for diﬀerent
+types of ambiguity (types of usages, homonyms etc.). Construct examples wherethe constraint is expected to do well and examples where it is expected to dopoorly.
+Exercise 7.10 [««]
+Evaluate the one sense per discourse constraint on a corpus. Find sections or
+articles with multiple uses of an ambiguous word, and work out how often they
+have diﬀerent senses.
+Exercise 7.11 [«]
+The section on unsupervised disambiguation describes criteria for determining
+the number of senses of an ambiguous word. Can you think of other criteria?Assume (a) that a dictionary is available (but the word is not listed in it); (b) thata thesaurus is available (but the word is not listed in it).
+Exercise 7.12 [«]
+For a pair of languages that you are familiar with, ﬁnd three cases of an ambigu-
+ous word in the ﬁrst language for which the senses translate into diﬀerent wordsand three cases of an ambiguous words for which at least two senses translateto the same word.
+Exercise 7.13 [«]
+Is it important to evaluate unsupervised disambiguation on a separate test set or
+does the unsupervised nature of the method make a distinction between trainingand test set unnecessary? (Hint: It can be important to have a separate test set.Why? See (Schütze 1998: 108).)
+Exercise 7.14 [«]
+Several of the senses of titlediscussed in the beginning of the chapter are related
+by systematic polysemy. Find other words with the same systematic polysemy.
+Exercise 7.15 [««]
+Pick one of the disambiguation algorithms and apply it to sentence boundary
+identiﬁcation.
+
+p/CX /CX“There is one, yt is called in the Malaca tongue Durion, and is so
+good that . . . it doth exceede in savour all others that euer theyhad seene, or tasted.”
+(Parke tr. Mendoza’s Hist. China 393, 1588)
+

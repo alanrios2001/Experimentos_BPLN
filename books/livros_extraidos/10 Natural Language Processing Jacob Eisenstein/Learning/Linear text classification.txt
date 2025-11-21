@@ -1,0 +1,1237 @@
+Chapter 2 745
+Linear text classiﬁcation 746
+We’ll start with the problem of text classiﬁcation : given a text document, assign it a dis- 747
+crete label y∈Y , whereYis the set of possible labels. This problem has many appli- 748
+cations, from spam ﬁltering to analysis of electronic health records. Text classiﬁcation is 749
+also a building block that is used throughout more complex natural language processing 750
+tasks. 751
+To perform this task, the ﬁrst question is how to represent each document. A common 752
+approach is to use a vector of word counts, e.g., x= [0,1,1,0,0,2,0,1,13,0...]⊤, where 753
+xjis the count of word j. The length of xisV≜|V|, whereVis the set of possible words 754
+in the vocabulary. 755
+The objectxis a vector, but colloquially we call it a bag of words , because it includes 756
+only information about the count of each word, and not the order in which the words 757
+appear. We have thrown out grammar, sentence boundaries, paragraphs — everything 758
+but the words. Yet the bag of words model is surprisingly effective for text classiﬁcation. 759
+If you see the word freeee in an email, is it a spam email? What if you see the word 760
+Bayesian ? For many labeling problems, individual words can be strong predictors. 761
+To predict a label from a bag-of-words, we can assign a score to each word in the 762
+vocabulary, measuring the compatibility with the label. In the spam ﬁltering case, we 763
+might assign a positive score to the word freeee for the label SPAM , and a negative score 764
+to the word Bayesian . These scores are called weights , and they are arranged in a column 765
+vectorθ. 766
+Suppose that you want a multiclass classiﬁer, where K≜|Y|>2. For example, we 767
+might want to classify news stories about sports, celebrities, music, and business. The goal 768
+is to predict a label ˆy, given the bag of words x, using the weights θ. For each label y∈Y, 769
+we compute a score Ψ(x,y), which is a scalar measure of the compatibility between the 770
+bag-of-words xand the label y. In a linear bag-of-words classiﬁer, this score is the vector 771
+29
+
+30 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+inner product between the weights θand the output of a feature function f(x,y), 772
+Ψ(x,y) =θ·f(x,y). [2.1]
+As the notation suggests, fis a function of two arguments, the word counts xand the 773
+labely, and it returns a vector output. For example, given arguments xandy, elementj 774
+of this feature vector might be, 775
+fj(x,y) ={
+xfreeee,ify=SPAM
+0, otherwise[2.2]
+This function returns the count of the word freeee if the label is S PAM , and it returns zero 776
+otherwise. The corresponding weight θjthen scores the compatibility of the word freeee 777
+with the label S PAM . A positive score means that this word makes the label more likely. 778
+To formalize this feature function, we deﬁne f(x,y)as a column vector,
+f(x,y= 1) = [x; 0; 0;...; 0
+(K−1)×V] [2.3]
+f(x,y= 2) = [0; 0; ...; 0
+V;x; 0; 0;...; 0
+(K−2)×V] [2.4]
+f(x,y=K) = [0; 0;...; 0
+(K−1)×V;x], [2.5]
+where [0; 0;...; 0
+(K−1)×V]is a column vector of (K−1)×Vzeros, and the semicolon indicates 779
+vertical concatenation. This arrangement is shown in Figure 2.1; the notation may seem 780
+awkward at ﬁrst, but it generalizes to an impressive range of learning settings. 781
+Given a vector of weights, θ∈RV×K, we can now compute the score Ψ(x,y). This
+inner product gives a scalar measure of the compatibility of the observation xwith label
+y.1For any document x, we predict the label ˆy,
+ˆy= argmax
+y∈YΨ(x,y) [2.6]
+Ψ(x,y) =θ·f(x,y). [2.7]
+This inner product notation gives a clean separation between the data (xandy) and the 782
+parameters (θ). This notation also generalizes nicely to structured prediction , in which 783
+1OnlyV×(K−1)features and weights are necessary. By stipulating that Ψ(x,y=K) = 0 regardless of
+x, it is possible to implement any classiﬁcation rule that can be achieved with V×Kfeatures and weights.
+This is the approach taken in binary classiﬁcation rules like y=Sign(β·x+a), whereβis a vector of weights,
+ais an offset, and the label set is Y={−1,1}. However, for multiclass classiﬁcation, it is more concise to
+writeθ·f(x,y)for ally∈Y.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+31
+It was the 
+best of times, 
+it was the 
+worst of 
+times...
+xit
+wasthebest
+worsttimes1
+2
+of2
+2
+2
+2
+10
+...
+00
+...0
+...0
+...0
+...0...0
+...0
+...0
+1x0
+0
+0
+f(x ,y=News)y=Fiction
+y=News
+y=Gossip
+y=SportsBag of words Feature vector Original text
+<OFFSET>aardvark
+zyxt
+Figure 2.1: The bag-of-words and feature vector representations, for a hypothetical text
+classiﬁcation task.
+the space of labels Yis very large, and we want to model shared substructures between 784
+labels. 785
+It is common to add an offset feature at the end of the vector of word counts x, which 786
+is always 1. We then have to also add an extra zero to each of the zero vectors, to make the 787
+vector lengths match. This gives the entire feature vector f(x,y)a length of (V+ 1)×K. 788
+The weight associated with this offset feature can be thought of as a bias for or against 789
+each label. For example, if we expect most documents to be spam, then the weight for 790
+the offset feature for y=SPAM should be larger than the weight for the offset feature for 791
+y=HAM. 792
+Returning to the weights θ, where do they come from? One possibility is to set them
+by hand. If we wanted to distinguish, say, English from Spanish, we can use English
+and Spanish dictionaries, and set the weight to one for each word that appears in the
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+32 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+associated dictionary. For example,2
+θ(E,bicycle )=1 θ(S,bicycle )=0
+θ(E,bicicleta )=0 θ(S,bicicleta )=1
+θ(E,con)=1 θ(S,con)=1
+θ(E,ordinateur )=0 θ(S,ordinateur )=0.
+Similarly, if we want to distinguish positive and negative sentiment, we could use posi- 793
+tive and negative sentiment lexicons (see§4.1.2), which are deﬁned by social psycholo- 794
+gists (Tausczik and Pennebaker, 2010). 795
+But it is usually not easy to set classiﬁcation weights by hand, due to the large number 796
+of words and the difﬁculty of selecting exact numerical weights. Instead, we will learn the 797
+weights from data. Email users manually label messages as SPAM ; newspapers label their 798
+own articles as BUSINESS orSTYLE . Using such instance labels , we can automatically 799
+acquire weights using supervised machine learning . This chapter will discuss several 800
+machine learning approaches for classiﬁcation. The ﬁrst is based on probability. For a 801
+review of probability, consult Appendix A. 802
+2.1 Na¨ ıve Bayes 803
+The joint probability of a bag of words xand its true label yis written p (x,y). Suppose 804
+we have a dataset of Nlabeled instances, {(x(i),y(i))}N
+i=1, which we assume are indepen- 805
+dent and identically distributed (IID) (see§A.3). Then the joint probability of the entire 806
+dataset, written p (x(1:N),y(1:N)), is equal to∏N
+i=1pX,Y(x(i),y(i)).3807
+What does this have to do with classiﬁcation? One approach to classiﬁcation is to set
+the weightsθso as to maximize the joint probability of a training set of labeled docu-
+ments. This is known as maximum likelihood estimation :
+ˆθ= argmax
+θp(x(1:N),y(1:N);θ) [2.8]
+= argmax
+θN∏
+i=1p(x(i),y(i);θ) [2.9]
+= argmax
+θN∑
+i=1logp(x(i),y(i);θ). [2.10]
+2In this notation, each tuple (language, word) indexes an element in θ, which remains a vector.
+3The notation pX,Y(x(i),y(i))indicates the joint probability that random variables XandYtake the
+speciﬁc values x(i)andy(i)respectively. The subscript will often be omitted when it is clear from context.
+For a review of random variables, see Appendix A.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.1. NA ¨IVE BAYES 33
+Algorithm 1 Generative process for the Na ¨ıve Bayes classiﬁer
+forDocument i∈{1,2,...,N}do:
+Draw the label y(i)∼Categorical (µ);
+Draw the word counts x(i)|y(i)∼Multinomial (φy(i)).
+The notation p (x(i),y(i);θ)indicates that θis aparameter of the probability function. The 808
+product of probabilities can be replaced by a sum of log-probabilities because the logfunc- 809
+tion is monotonically increasing over positive arguments, and so the same θwill maxi- 810
+mize both the probability and its logarithm. Working with logarithms is desirable because 811
+of numerical stability: on a large dataset, multiplying many probabilities can underﬂow 812
+to zero.4813
+The probability p (x(i),y(i);θ)is deﬁned through a generative model — an idealized 814
+random process that has generated the observed data.5Algorithm 1 describes the gener- 815
+ative model describes the Na¨ ıve Bayes classiﬁer, with parameters θ={µ,φ}. 816
+•The ﬁrst line of this generative model encodes the assumption that the instances are 817
+mutually independent: neither the label nor the text of document iaffects the label 818
+or text of document j.6Furthermore, the instances are identically distributed: the 819
+distributions over the label y(i)and the textx(i)(conditioned on y(i)) are the same 820
+for all instances i. 821
+•The second line of the generative model states that the random variable y(i)is drawn 822
+from a categorical distribution with parameter µ. Categorical distributions are like 823
+weighted dice: the vector µ= [µ1,µ2,...,µK]⊤gives the probabilities of each la- 824
+bel, so that the probability of drawing label yis equal to µy. For example, if Y= 825
+{POSITIVE,NEGATIVE,NEUTRAL}, we might have µ= [0.1,0.7,0.2]⊤. We require 826∑
+y∈Yµy= 1andµy≥0,∀y∈Y.7827
+•The third line describes how the bag-of-words counts x(i)are generated. By writing 828
+x(i)|y(i), this line indicates that the word counts are conditioned on the label, so 829
+4Throughout this text, you may assume all logarithms and exponents are base 2, unless otherwise indi-
+cated. Any reasonable base will yield an identical classiﬁer, and base 2 is most convenient for working out
+examples by hand.
+5Generative models will be used throughout this text. They explicitly deﬁne the assumptions underlying
+the form of a probability distribution over observed and latent variables. For a readable introduction to
+generative models in statistics, see Blei (2014).
+6Can you think of any cases in which this assumption is too strong?
+7Formally, we require µ∈∆K−1, where ∆K−1is theK−1probability simplex , the set of all vectors of
+Knonnegative numbers that sum to one. Because of the sum-to-one constraint, there are K−1degrees of
+freedom for a vector of size K.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+34 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+that the joint probability is factored using the chain rule, 830
+pX,Y(x(i),y(i)) =pX|Y(x(i)|y(i))×pY(y(i)). [2.11]
+The speciﬁc distribution pX|Yis the multinomial , which is a probability distribu-
+tion over vectors of non-negative counts. The probability mass function for this
+distribution is:
+pmult(x;φ) =B(x)V∏
+j=1φxj
+j [2.12]
+B(x) =(∑V
+j=1xj)
+!
+∏V
+j=1(xj!)[2.13]
+As in the categorical distribution, the parameter φjcan be interpreted as a proba- 831
+bility: speciﬁcally, the probability that any given token in the document is the word 832
+j. The multinomial distribution involves a product over words, with each term in 833
+the product equal to the probability φj, exponentiated by the count xj. Words that 834
+have zero count play no role in this product, because φ0
+j= 1. The termB(x)doesn’t 835
+depend onφ, and can usually be ignored. Can you see why we need this term at 836
+all?8837
+The notation p (x|y;φ)indicates the conditional probability of word counts xgiven 838
+labely, with parameter φ, which is equal to pmult(x;φy). By specifying the multino- 839
+mial distribution, we describe the multinomial na¨ ıve Bayes classiﬁer. Why “na ¨ıve”? 840
+Because the multinomial distribution treats each word token independently: the 841
+probability mass function factorizes across the counts.9842
+2.1.1 Types and tokens 843
+A slight modiﬁcation to the generative model of Na ¨ıve Bayes is shown in Algorithm 2. 844
+Instead of generating a vector of counts of types ,x, this model generates a sequence of 845
+tokens ,w= (w1,w2,...,wM). The distinction between types and tokens is critical: xj∈ 846
+{0,1,2,...,M}is the count of word type jin the vocabulary, e.g., the number of times 847
+the word cannibal appears;wm∈V is the identity of token min the document, e.g. wm= 848
+cannibal . 849
+8Technically, a multinomial distribution requires a second parameter, the total number of word counts
+inx. In the bag-of-words representation is equal to the number of words in the document. However, this
+parameter is irrelevant for classiﬁcation.
+9You can plug in any probability distribution to the generative story and it will still be Na ¨ıve Bayes, as
+long as you are making the “na ¨ıve” assumption that the features are conditionally independent, given the
+label. For example, a multivariate Gaussian with diagonal covariance is na ¨ıve in exactly the same sense.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.1. NA ¨IVE BAYES 35
+Algorithm 2 Alternative generative process for the Na ¨ıve Bayes classiﬁer
+forDocument i∈{1,2,...,N}do:
+Draw the label y(i)∼Categorical (µ);
+forTokenm∈{1,2,...,Mi}do:
+Draw the token w(i)
+m|y(i)∼Categorical (φy(i)).
+The probability of the sequence wis a product of categorical probabilities. Algo- 850
+rithm 2 makes a conditional independence assumption: each token w(i)
+mis independent 851
+of all other tokens w(i)
+n̸=m, conditioned on the label y(i). This is identical to the “na ¨ıve” 852
+independence assumption implied by the multinomial distribution, and as a result, the 853
+optimal parameters for this model are identical to those in multinomial Na ¨ıve Bayes. For 854
+any instance, the probability assigned by this model is proportional to the probability un- 855
+der multinomial Na ¨ıve Bayes. The constant of proportionality is the factor B(x), which 856
+appears in the multinomial distribution. Because B(x)≥1, the probability for a vector 857
+of countsxis at least as large as the probability for a list of words wthat induces the 858
+same counts: there can be many word sequences that correspond to a single vector of 859
+counts. For example, man bites dog and dog bites man correspond to an identical count vec- 860
+tor,{bites : 1,dog: 1,man : 1}, andB(x)is equal to the total number of possible word 861
+orderings for count vector x. 862
+Sometimes it is useful to think of instances as counts of types, x; other times, it is 863
+better to think of them as sequences of tokens, w. If the tokens are generated from a 864
+model that assumes conditional independence, then these two views lead to probability 865
+models that are identical, except for a scaling factor that does not depend on the label or 866
+the parameters. 867
+2.1.2 Prediction 868
+The Na ¨ıve Bayes prediction rule is to choose the label ywhich maximizes logp(x,y;µ,φ):
+ˆy= argmax
+ylogp(x,y;µ,φ) [2.14]
+= argmax
+ylogp(x|y;φ) + log p(y;µ) [2.15]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+36 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+Now we can plug in the probability distributions from the generative story.
+logp(x|y;φ) + log p(y;µ) = log
+B(x)V∏
+j=1φxj
+y,j
++ logµy [2.16]
+= logB(x) +V∑
+j=1xjlogφy,j+ logµy [2.17]
+= logB(x) +θ·f(x,y), [2.18]
+where
+θ= [θ(1);θ(2);...;θ(K)] [2.19]
+θ(y)= [logφy,1; logφy,2;...; logφy,V; logµy] [2.20]
+The feature function f(x,y)is a vector of Vword counts and an offset, padded by 869
+zeros for the labels not equal to y(see Equations 2.3-2.5, and Figure 2.1). This construction 870
+ensures that the inner product θ·f(x,y)only activates the features whose weights are 871
+inθ(y). These features and weights are all we need to compute the joint log-probability 872
+logp(x,y)for eachy. This is a key point: through this notation, we have converted the 873
+problem of computing the log-likelihood for a document-label pair (x,y)into the compu- 874
+tation of a vector inner product. 875
+2.1.3 Estimation 876
+The parameters of the categorical and multinomial distributions have a simple interpre- 877
+tation: they are vectors of expected frequencies for each possible event. Based on this 878
+interpretation, it is tempting to set the parameters empirically, 879
+φy,j=count (y,j)∑V
+j′=1count (y,j′)=∑
+i:y(i)=yx(i)
+j∑V
+j′=1∑
+i:y(i)=yx(i)
+j′, [2.21]
+where count (y,j)refers to the count of word jin documents with label y. 880
+Equation 2.21 deﬁnes the relative frequency estimate forφ. It can be justiﬁed as a 881
+maximum likelihood estimate : the estimate that maximizes the probability p (x(1:N),y(1:N);θ). 882
+Based on the generative model in Algorithm 1, the log-likelihood is, 883
+L(φ,µ) =N∑
+i=1logpmult(x(i);φy(i)) + log pcat(y(i);µ), [2.22]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.1. NA ¨IVE BAYES 37
+which is now written as a function Lof the parameters φandµ. Let’s continue to focus
+on the parameters φ. Since p (y)is constant with respect to φ, we can drop it:
+L(φ) =N∑
+i=1logpmult(x(i);φy(i)) =N∑
+i=1logB(x(i)) +V∑
+j=1x(i)
+jlogφy(i),j, [2.23]
+whereB(x(i))is constant with respect to φ. 884
+We would now like to optimize the log-likelihood L, by taking derivatives with respect 885
+toφ. But before we can do that, we have to deal with a set of constraints: 886
+V∑
+j=1φy,j= 1∀y [2.24]
+These constraints can be incorporated by adding a set of Lagrange multipliers (see Ap- 887
+pendix B for more details). Solving separately for each label y, we obtain the Lagrangian, 888
+ℓ(φy) =∑
+i:y(i)=yV∑
+j=1x(i)
+jlogφy,j−λ(V∑
+j=1φy,j−1). [2.25]
+It is now possible to differentiate the Lagrangian with respect to the parameter of
+interest,
+∂ℓ(φy)
+∂φy,j=∑
+i:y(i)=yx(i)
+j/φy,j−λ [2.26]
+The solution is obtained by setting each element in this vector of derivatives equal to zero,
+λφy,j=∑
+i:y(i)=yx(i)
+j [2.27]
+φy,j∝∑
+i:y(i)=yx(i)
+j=N∑
+i=1δ(
+y(i)=y)
+x(i)
+j=count (y,j), [2.28]
+whereδ(
+y(i)=y)
+is adelta function , also sometimes called an indicator function , which
+returns one if y(i)=y, and zero otherwise. Equation 2.28 shows three different notations
+for the same thing: a sum over the word counts for all documents isuch that the label
+y(i)=y. This gives a solution for each φyup to a constant of proportionality. Now recall
+the constraint∑V
+j=1φy,j= 1, which arises because φyrepresents a vector of probabilities
+for each word in the vocabulary. This constraint leads to an exact solution,
+φy,j=count (y,j)∑V
+j′=1count (y,j′). [2.29]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+38 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+This is equal to the relative frequency estimator from Equation 2.21. A similar derivation 889
+givesµy∝∑N
+i=1δ(
+y(i)=y)
+. 890
+2.1.4 Smoothing and MAP estimation 891
+With text data, there are likely to be pairs of labels and words that never appear in the 892
+training set, leaving φy,j= 0. For example, the word Bayesian may have never yet ap- 893
+peared in a spam email. But choosing a value of φSPAM,Bayesian = 0would allow this single 894
+feature to completely veto a label, since p (SPAM|x) = 0 ifxBayesian>0. 895
+This is undesirable, because it imposes high variance : depending on what data hap- 896
+pens to be in the training set, we could get vastly different classiﬁcation rules. One so- 897
+lution is to smooth the probabilities, by adding a “pseudocount” of αto each count, and 898
+then normalizing. 899
+φy,j=α+count (y,j)
+Vα+∑V
+j′=1count (y,j′)[2.30]
+This is called Laplace smoothing .10The pseudocount αis ahyperparameter , because it 900
+controls the form of the log-likelihood function, which in turn drives the estimation of φ. 901
+Smoothing reduces variance, but it takes us away from the maximum likelihood esti- 902
+mate: it imposes a bias . In this case, the bias points towards uniform probabilities. Ma- 903
+chine learning theory shows that errors on heldout data can be attributed to the sum of 904
+bias and variance (Mohri et al., 2012). Techniques for reducing variance typically increase 905
+the bias, leading to a bias-variance tradeoff . 906
+•Unbiased classiﬁers may overﬁt the training data, yielding poor performance on 907
+unseen data. 908
+•But if the smoothing is too large, the resulting classiﬁer can underﬁt instead. In the 909
+limit ofα→∞ , there is zero variance: you get the same classiﬁer, regardless of the 910
+data. However, the bias is likely to be large. 911
+2.1.5 Setting hyperparameters 912
+How should we choose the best value of hyperparameters like α? Maximum likelihood 913
+will not work: the maximum likelihood estimate of αon the training set will always be 914
+α= 0. In many cases, what we really want is accuracy : the number of correct predictions, 915
+divided by the total number of predictions. (Other measures of classiﬁcation performance 916
+are discussed in§4.4.) As we will see, it is hard to optimize for accuracy directly. But for 917
+scalar hyperparameters like αcan be tuned by a simple heuristic called grid search : try a 918
+10Laplace smoothing has a Bayesian justiﬁcation, in which the generative model is extended to include φ
+as a random variable. The resulting estimate is called maximum a posteriori , or MAP .
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.2. DISCRIMINATIVE LEARNING 39
+set of values (e.g., α∈{0.001,0.01,0.1,1,10}), compute the accuracy for each value, and 919
+choose the setting that maximizes the accuracy. 920
+The goal is to tune αso that the classiﬁer performs well on unseen data. For this reason, 921
+the data used for hyperparameter tuning should not overlap the training set, where very 922
+small values of αwill be preferred. Instead, we hold out a development set (also called 923
+atuning set ) for hyperparameter selection. This development set may consist of a small 924
+fraction of the labeled data, such as 10%. 925
+We also want to predict the performance of our classiﬁer on unseen data. To do this, 926
+we must hold out a separate subset of data, called the test set . It is critical that the test set 927
+not overlap with either the training or development sets, or else we will overestimate the 928
+performance that the classiﬁer will achieve on unlabeled data in the future. The test set 929
+should also not be used when making modeling decisions, such as the form of the feature 930
+function, the size of the vocabulary, and so on (these decisions are reviewed in chapter 4.) 931
+The ideal practice is to use the test set only once — otherwise, the test set is used to guide 932
+the classiﬁer design, and test set accuracy will diverge from accuracy on truly unseen 933
+data. Because annotated data is expensive, this ideal can be hard to follow in practice, 934
+and many test sets have been used for decades. But in some high-impact applications like 935
+machine translation and information extraction, new test sets are released every year. 936
+When only a small amount of labeled data is available, the test set accuracy can be 937
+unreliable. K-fold cross-validation is one way to cope with this scenario: the labeled 938
+data is divided into Kfolds, and each fold acts as the test set, while training on the other 939
+folds. The test set accuracies are then aggregated. In the extreme, each fold is a single data 940
+point; this is called leave-one-out cross-validation. To perform hyperparameter tuning in 941
+the context of cross-validation, another fold can be used for grid search. It is important 942
+not to repeatedly evaluate the cross-validated accuracy while making design decisions 943
+about the classiﬁer, or you will overstate the accuracy on truly unseen data. 944
+2.2 Discriminative learning 945
+Na¨ıve Bayes is easy to work with: the weights can be estimated in closed form, and the 946
+probabilistic interpretation makes it relatively easy to extend. However, the assumption 947
+that features are independent can seriously limit its accuracy. Thus far, we have deﬁned 948
+thefeature function f(x,y)so that it corresponds to bag-of-words features: one feature 949
+per word in the vocabulary. In natural language, bag-of-words features violate the as- 950
+sumption of conditional independence — for example, the probability that a document 951
+will contain the word na¨ ıve is surely higher given that it also contains the word Bayes — 952
+but this violation is relatively mild. 953
+However, good performance on text classiﬁcation often requires features that are richer 954
+than the bag-of-words: 955
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+40 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+•To better handle out-of-vocabulary terms, we want features that apply to multiple 956
+words, such as preﬁxes and sufﬁxes (e.g., anti- ,un-,-ing) and capitalization. 957
+•We also want n-gram features that apply to multi-word units: bigrams (e.g., not 958
+good ,not bad ),trigrams (e.g., not so bad ,lacking any decency ,never before imagined ), and 959
+beyond. 960
+These features ﬂagrantly violate the Na ¨ıve Bayes independence assumption. Consider
+what happens if we add a preﬁx feature. Under the Na ¨ıve Bayes assumption, we make
+the following approximation:11
+Pr(word =unﬁt,preﬁx =un-|y)≈Pr(preﬁx =un-|y)×Pr(word =unﬁt|y).
+To test the quality of the approximation, we can manipulate the left-hand side by applying
+the chain rule,
+Pr(word =unﬁt,preﬁx =un-|y) = Pr( preﬁx =un-|word =unﬁt,y) [2.31]
+×Pr(word =unﬁt|y) [2.32]
+ButPr(preﬁx =un-|word =unﬁt,y) = 1 , since un-is guaranteed to be the preﬁx for the
+word unﬁt . Therefore,
+Pr(word =unﬁt,preﬁx =un-|y) =1 ×Pr(word =unﬁt|y)[2.33]
+≫Pr(preﬁx =un-|y)×Pr(word =unﬁt|y),[2.34]
+because the probability of any given word starting with the preﬁx un-is much less than 961
+one. Na ¨ıve Bayes will systematically underestimate the true probabilities of conjunctions 962
+of positively correlated features. To use such features, we need learning algorithms that 963
+do not rely on an independence assumption. 964
+The origin of the Na ¨ıve Bayes independence assumption is the learning objective, 965
+p(x(1:N),y(1:N)), which requires modeling the probability of the observed text. In clas- 966
+siﬁcation problems, we are always given x, and are only interested in predicting the label 967
+y, so it seems unnecessary to model the probability of x.Discriminative learning algo- 968
+rithms focus on the problem of predicting y, and do not attempt to model the probability 969
+of the textx. 970
+2.2.1 Perceptron 971
+In Na ¨ıve Bayes, the weights can be interpreted as parameters of a probabilistic model. But 972
+this model requires an independence assumption that usually does not hold, and limits 973
+11The notation Pr(·)refers to the probability of an event, and p (·)refers to the probability density or mass
+for a random variable (see Appendix A).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.2. DISCRIMINATIVE LEARNING 41
+Algorithm 3 Perceptron learning algorithm
+1:procedure PERCEPTRON (x(1:N),y(1:N))
+2:t←0
+3:θ(0)←0
+4: repeat
+5:t←t+ 1
+6: Select an instance i
+7: ˆy←argmaxyθ(t−1)·f(x(i),y)
+8: ifˆy̸=y(i)then
+9:θ(t)←θ(t−1)+f(x(i),y(i))−f(x(i),ˆy)
+10: else
+11: θ(t)←θ(t−1)
+12: until tired
+13: returnθ(t)
+our choice of features. Why not forget about probability and learn the weights in an error- 974
+driven way? The perceptron algorithm, shown in Algorithm 3, is one way to do this. 975
+Here’s what the algorithm says: if you make a mistake, increase the weights for fea- 976
+tures that are active with the correct label y(i), and decrease the weights for features that 977
+are active with the guessed label ˆy. This is an online learning algorithm, since the clas- 978
+siﬁer weights change after every example. This is different from Na ¨ıve Bayes, which 979
+computes corpus statistics and then sets the weights in a single operation — Na ¨ıve Bayes 980
+is abatch learning algorithm. Algorithm 3 is vague about when this online learning pro- 981
+cedure terminates. We will return to this issue shortly. 982
+The perceptron algorithm may seem like a cheap heuristic: Na ¨ıve Bayes has a solid 983
+foundation in probability, but the perceptron is just adding and subtracting constants from 984
+the weights every time there is a mistake. Will this really work? In fact, there is some nice 985
+theory for the perceptron, based on the concept of linear separability : 986
+Deﬁnition 1 (Linear separability) .The datasetD={(x(i),y(i))}N
+i=1is linearly separable iff 987
+there exists some weight vector θand some marginρsuch that for every instance (x(i),y(i)), the 988
+inner product of θand the feature function for the true label, θ·f(x(i),y(i)), is at leastρgreater 989
+than inner product of θand the feature function for every other possible label, θ·f(x(i),y′). 990
+∃θ,ρ> 0 :∀(x(i),y(i))∈D,θ·f(x(i),y(i))≥ρ+ max
+y′̸=y(i)θ·f(x(i),y′). [2.35]
+Linear separability is important because of the following guarantee: if your data is 991
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+42 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+linearly separable, then the perceptron algorithm will ﬁnd a separator (Novikoff, 1962).12992
+So while the perceptron may seem heuristic, it is guaranteed to succeed, if the learning 993
+problem is easy enough. 994
+How useful is this proof? Minsky and Papert (1969) famously proved that the simple 995
+logical function of exclusive-or is not separable, and that a perceptron is therefore inca- 996
+pable of learning this function. But this is not just an issue for the perceptron: any linear 997
+classiﬁcation algorithm, including Na ¨ıve Bayes, will fail on this task. In natural language 998
+classiﬁcation problems usually involve high dimensional feature spaces, with thousands 999
+or millions of features. For these problems, it is very likely that the training data is indeed 1000
+separable. And even if the data is not separable, it is still possible to place an upper bound 1001
+on the number of errors that the perceptron algorithm will make (Freund and Schapire, 1002
+1999). 1003
+2.2.2 Averaged perceptron 1004
+The perceptron iterates over the data repeatedly — until “tired”, as described in Algo- 1005
+rithm 3. If the data is linearly separable, the perceptron will eventually ﬁnd a separator, 1006
+and we can stop once all training instances are classiﬁed correctly. But if the data is not 1007
+linearly separable, the perceptron can thrash between two or more weight settings, never 1008
+converging. In this case, how do we know that we can stop training, and how should 1009
+we choose the ﬁnal weights? An effective practical solution is to average the perceptron 1010
+weights across all iterations. 1011
+This procedure is shown in Algorithm 4. The learning algorithm is nearly identical, 1012
+but we also maintain a vector of the sum of the weights, m. At the end of the learning 1013
+procedure, we divide this sum by the total number of updates t, to compute the average 1014
+weights,θ. These average weights are then used for prediction. In the algorithm sketch, 1015
+the average is computed from a running sum, m←m+θ. However, this is inefﬁcient, 1016
+because it requires |θ|operations to update the running sum. When f(x,y)is sparse, 1017
+|θ|≫|f(x,y)|for any individual (x,y). This means that computing the running sum will 1018
+be much more expensive than computing of the update to θitself, which requires only 1019
+2×|f(x,y)|operations. One of the exercises is to sketch a more efﬁcient algorithm for 1020
+computing the averaged weights. 1021
+Even if the data is not separable, the averaged weights will eventually converge. One 1022
+possible stopping criterion is to check the difference between the average weight vectors 1023
+after each pass through the data: if the norm of the difference falls below some predeﬁned 1024
+threshold, we can stop training. Another stopping criterion is to hold out some data, 1025
+and to measure the predictive accuracy on this heldout data. When the accuracy on the 1026
+heldout data starts to decrease, the learning algorithm has begun to overﬁt the training 1027
+12It is also possible to prove an upper bound on the number of training iterations required to ﬁnd the
+separator. Proofs like this are part of the ﬁeld of statistical learning theory (Mohri et al., 2012).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.3. LOSS FUNCTIONS AND LARGE-MARGIN CLASSIFICATION 43
+Algorithm 4 Averaged perceptron learning algorithm
+1:procedure AVG-PERCEPTRON (x(1:N),y(1:N))
+2:t←0
+3:θ(0)←0
+4: repeat
+5:t←t+ 1
+6: Select an instance i
+7: ˆy←argmaxyθ(t−1)·f(x(i),y)
+8: ifˆy̸=y(i)then
+9:θ(t)←θ(t−1)+f(x(i),y(i))−f(x(i),ˆy)
+10: else
+11: θ(t)←θ(t−1)
+12:m←m+θ(t)
+13: until tired
+14:θ←1
+tm
+15: returnθ
+set. At this point, it is probably best to stop; this stopping criterion is known as early 1028
+stopping . 1029
+Generalization is the ability to make good predictions on instances that are not in 1030
+the training data. Averaging can be proven to improve generalization, by computing an 1031
+upper bound on the generalization error (Freund and Schapire, 1999; Collins, 2002). 1032
+2.3 Loss functions and large-margin classiﬁcation 1033
+Na¨ıve Bayes chooses the weights θby maximizing the joint log-likelihood logp(x(1:N),y(1:N)). 1034
+By convention, optimization problems are generally formulated as minimization of a loss 1035
+function . The input to a loss function is the vector of weights θ, and the output is a non- 1036
+negative scalar, measuring the performance of the classiﬁer on a training instance. The 1037
+lossℓ(θ;x(i),y(i))is then a measure of the performance of the weights θon the instance 1038
+(x(i),y(i)). The goal of learning is to minimize the sum of the losses across all instances in 1039
+the training set. 1040
+We can trivially reformulate maximum likelihood as a loss function, by deﬁning the
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+44 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+loss function to be the negative log-likelihood:
+logp(x(1:N),y(1:N);θ) =N∑
+i=1logp(x(i),y(i);θ) [2.36]
+ℓNB(θ;x(i),y(i)) =−logp(x(i),y(i);θ) [2.37]
+ˆθ= argmin
+θN∑
+i=1ℓNB(θ;x(i),y(i)) [2.38]
+= argmax
+θN∑
+i=1logp(x(i),y(i);θ). [2.39]
+The problem of minimizing ℓNBis thus identical to the problem of maximum-likelihood 1041
+estimation. 1042
+Loss functions provide a general framework for comparing machine learning objec- 1043
+tives. For example, an alternative loss function is the zero-one loss , 1044
+ℓ0-1(θ;x(i),y(i)) ={
+0, y(i)= argmaxyθ·f(x(i),y)
+1,otherwise[2.40]
+The zero-one loss is zero if the instance is correctly classiﬁed, and one otherwise. The 1045
+sum of zero-one losses is proportional to the error rate of the classiﬁer on the training 1046
+data. Since a low error rate is often the ultimate goal of classiﬁcation, this may seem 1047
+ideal. But the zero-one loss has several problems. One is that it is non-convex ,13which 1048
+means that there is no guarantee that gradient-based optimization will be effective. A 1049
+more serious problem is that the derivatives are useless: the partial derivative with respect 1050
+to any parameter is zero everywhere, except at the points where θ·f(x(i),y) =θ·f(x(i),ˆy) 1051
+for some ˆy. At those points, the loss is discontinuous, and the derivative is undeﬁned. 1052
+The perceptron optimizes the following loss function: 1053
+ℓPERCEPTRON (θ;x(i),y(i)) = max
+y∈Yθ·f(x(i),y)−θ·f(x(i),y(i)), [2.41]
+When ˆy=y(i), the loss is zero; otherwise, it increases linearly with the gap between the 1054
+score for the predicted label ˆyand the score for the true label y(i). Plotting this loss against 1055
+the input maxy∈Yθ·f(x(i),y)−θ·f(x(i),y(i))gives a hinge shape, motivating the name 1056
+hinge loss . 1057
+13A functionfisconvex iffαf(xi)+(1−α)f(xj)≥f(αxi+(1−α)xj), for allα∈[0,1]and for allxiandxj
+on the domain of the function. In words, any weighted average of the output of fapplied to any two points is
+larger than the output of fwhen applied to the weighted average of the same two points. Convexity implies
+that any local minimum is also a global minimum, and there are many effective techniques for optimizing
+convex functions (Boyd and Vandenberghe, 2004). See Appendix B for a brief review.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.3. LOSS FUNCTIONS AND LARGE-MARGIN CLASSIFICATION 45
+To see why this is the loss function optimized by the perceptron, take the derivative 1058
+with respect to θ, 1059
+∂
+∂θℓPERCEPTRON (θ;x(i),y(i)) =f(x(i),ˆy)−f(x(i),y(i)). [2.42]
+At each instance perceptron algorithm takes a step of magnitude one in the opposite direc- 1060
+tion of this gradient ,∇θℓPERCEPTRON =∂
+∂θℓPERCEPTRON (θ;x(i),y(i)). As we will see in §2.5, 1061
+this is an example of the optimization algorithm stochastic gradient descent , applied to 1062
+the objective in Equation 2.41. 1063
+Breaking ties with subgradient descent Careful readers will notice the tacit assumption 1064
+that there is a unique ˆythat maximizes θ·f(x(i),y). What if there are two or more labels 1065
+that maximize this function? Consider binary classiﬁcation: if the maximizer is y(i), then 1066
+the gradient is zero, and so is the perceptron update; if the maximizer is ˆy̸=y(i), then the 1067
+update is the difference f(x(i),y(i))−f(x(i),ˆy). The underlying issue is that the perceptron 1068
+loss is not smooth , because the ﬁrst derivative has a discontinuity at the hinge point, 1069
+where the score for the true label y(i)is equal to the score for some other label ˆy. At this 1070
+point, there is no unique gradient; rather, there is a set of subgradients . A vectorvis a 1071
+subgradient of the function gatu0iffg(u)−g(u0)≥v·(u−u0)for allu. Graphically, 1072
+this deﬁnes the set of hyperplanes that include g(u0)and do not intersect gat any other 1073
+point. As we approach the hinge point from the left, the gradient is f(x,ˆy)−f(x,y); as we 1074
+approach from the right, the gradient is 0. At the hinge point, the subgradients include all 1075
+vectors that are bounded by these two extremes. In subgradient descent, anysubgradient 1076
+can be used (Bertsekas, 2012). Since both 0andf(x,ˆy)−f(x,y)are subgradients at the 1077
+hinge point, either one can be used in the perceptron update. 1078
+Perceptron versus Na¨ ıve Bayes The perceptron loss function has some pros and cons 1079
+with respect to the negative log-likelihood loss implied by Na ¨ıve Bayes. 1080
+•BothℓNBandℓPERCEPTRON are convex, making them relatively easy to optimize. How- 1081
+ever,ℓNBcan be optimized in closed form, while ℓPERCEPTRON requires iterating over 1082
+the dataset multiple times. 1083
+•ℓNBcan suffer inﬁnite loss on a single example, since the logarithm of zero probabil- 1084
+ity is negative inﬁnity. Na ¨ıve Bayes will therefore overemphasize some examples, 1085
+and underemphasize others. 1086
+•ℓPERCEPTRON treats all correct answers equally. Even if θonly gives the correct answer 1087
+by a tiny margin, the loss is still zero. 1088
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+46 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+−2.0−1.5−1.0−0.50.00.51.01.52.0
+θ⊤f(x,y)−maxy′̸=yθ⊤f(x,y′)−0.50.00.51.01.52.02.53.0loss0/1 loss
+margin loss
+logistic loss
+Figure 2.2: Margin, zero-one, and logistic loss functions.
+2.3.1 Large margin classiﬁcation 1089
+This last comment suggests a potential problem with the perceptron. Suppose a test ex- 1090
+ample is very close to a training example, but not identical. If the classiﬁer only gets the 1091
+correct answer on the training example by a small margin, then it may get the test instance 1092
+wrong. To formalize this intuition, deﬁne the margin as, 1093
+γ(θ;x(i),y(i)) =θ·f(x(i),y(i))−max
+y̸=y(i)θ·f(x(i),y). [2.43]
+The margin represents the difference between the score for the correct label y(i), and
+the score for the highest-scoring label. The intuition behind large margin classiﬁcation is
+that it is not enough just to label the training data correctly — the correct label should be
+separated from other labels by a comfortable margin. This idea can be encoded into a loss
+function,
+ℓMARGIN (θ;x(i),y(i)) ={
+0, γ (θ;x(i),y(i))≥1,
+1−γ(θ;x(i),y(i)),otherwise[2.44]
+=(
+1−γ(θ;x(i),y(i)))
++, [2.45]
+where (x)+= max(0,x). The loss is zero if there is a margin of at least 1between the 1094
+score for the true label and the best-scoring alternative ˆy. This is almost identical to the 1095
+perceptron loss, but the hinge point is shifted to the right, as shown in Figure 2.2. The 1096
+margin loss is a convex upper bound on the zero-one loss. 1097
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.3. LOSS FUNCTIONS AND LARGE-MARGIN CLASSIFICATION 47
+2.3.2 Support vector machines 1098
+If a dataset is linearly separable, then there is some hyperplane θthat correctly classi-
+ﬁes all training instances with margin ρ(by Deﬁnition 1). This margin can be increased
+to any desired value by multiplying the weights by a constant. Now, for any datapoint
+(x(i),y(i)), the geometric distance to the separating hyperplane is given byγ(θ;x(i),y(i))
+||θ||2,
+where the denominator is the norm of the weights, ||θ||2=√∑
+jθ2
+j. The geometric dis-
+tance is sometimes called the geometric margin , in contrast to the functional margin
+γ(θ;x(i),y(i)). Both are shown in Figure 2.3. The geometric margin is a good measure
+of the robustness of the separator: if the functional margin is large, but the norm ||θ||2is
+also large, then a small change in x(i)could cause it to be misclassiﬁed. We therefore seek
+to maximize the minimum geometric margin, subject to the constraint that the functional
+margin is at least one:
+max
+θ. min
+i.γ(θ;x(i),y(i))
+||θ||2
+s.t.γ(θ;x(i),y(i))≥1,∀i. [2.46]
+This is a constrained optimization problem, where the second line describes constraints 1099
+on the space of possible solutions θ. In this case, the constraint is that the functional 1100
+margin always be at least one, and the objective is that the minimum geometric margin 1101
+be as large as possible. 1102
+Any scaling factor on θwill cancel in the numerator and denominator of the geometric
+margin. This means that if the data is linearly separable at ρ, we can increase this margin
+to1by rescaling θ. We therefore need only minimize the denominator ||θ||2, subject to
+the constraint on the functional margin. The minimizer of ||θ||2is also the minimizer of
+1
+2||θ||2
+2=1
+2∑V
+j=1θ2
+j, which is easier to work with. This gives the optimization problem,
+min
+θ.1
+2||θ||2
+2
+s.t.γ(θ;x(i),y(i))≥1,∀i. [2.47]
+This optimization problem is a quadratic program : the objective is a quadratic func- 1103
+tion of the parameters, and the constraints are all linear inequalities. The resulting clas- 1104
+siﬁer is better known as the support vector machine . The name derives from one of the 1105
+solutions, which is to incorporate the constraints through Lagrange multipliers αi≥0,i= 1106
+1,2,...,N . The instances for which αi>0are the support vectors ; other instances are 1107
+irrelevant to the classiﬁcation boundary. 1108
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+48 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+functional
+margingeometric
+margin
+Figure 2.3: Functional and geometric margins for a binary classiﬁcation problem. All
+separators that satisfy the margin constraint are shown. The separator with the largest
+geometric margin is shown in bold.
+2.3.3 Slack variables 1109
+If a dataset is not linearly separable, then there is no θthat satisﬁes the margin constraint.
+To add more ﬂexibility, we introduce a set of slack variables ξi≥0. Instead of requiring
+that the functional margin be greater than or equal to one, we require that it be greater
+than or equal to 1−ξi. Ideally there would not be any slack, so the slack variables are
+penalized in the objective function:
+min
+θ,ξ1
+2||θ||2
+2+CN∑
+i=1ξi
+s.t.γ(θ;x(i),y(i)) +ξi≥1,∀i
+ξi≥0,∀i. [2.48]
+The hyperparameter Ccontrols the tradeoff between violations of the margin con- 1110
+straint and the preference for a low norm of θ. AsC→∞ , slack is inﬁnitely expensive, 1111
+and there is only a solution if the data is separable. As C→0, slack becomes free, and 1112
+there is a trivial solution at θ=0. Thus,Cplays a similar role to the smoothing parame- 1113
+ter in Na ¨ıve Bayes (§2.1.4), trading off between a close ﬁt to the training data and better 1114
+generalization. Like the smoothing parameter of Na ¨ıve Bayes,Cmust be set by the user, 1115
+typically by maximizing performance on a heldout development set. 1116
+To solve the constrained optimization problem deﬁned in Equation 2.48, we can ﬁrst 1117
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.3. LOSS FUNCTIONS AND LARGE-MARGIN CLASSIFICATION 49
+solve for the slack variables, 1118
+ξi≥(1−γ(θ;x(i),y(i)))+. [2.49]
+The inequality is tight, because the slack variables are penalized in the objective, and there
+is no advantage to increasing them beyond the minimum value (Ratliff et al., 2007; Smith,
+2011). The problem can therefore be transformed into the unconstrained optimization,
+min
+θλ
+2||θ||2
+2+N∑
+i=1(1−γ(θ;x(i),y(i)))+, [2.50]
+where each ξihas been substituted by the right-hand side of Equation 2.49, and the factor 1119
+ofCon the slack variables has been replaced by an equivalent factor of λ=1
+Con the 1120
+norm of the weights. 1121
+Now deﬁne the cost of a classiﬁcation error as,141122
+c(y(i),ˆy) ={
+1, y(i)̸= ˆy
+0,otherwise.[2.51]
+Equation 2.50 can be rewritten using this cost function,
+min
+θλ
+2||θ||2
+2+N∑
+i=1(
+max
+y∈Y(
+θ·f(x(i),y) +c(y(i),y))
+−θ·f(x(i),y(i)))
++. [2.52]
+This objective maximizes over all y∈Y, in search of labels that are both strong , as mea- 1123
+sured byθ·f(x(i),y), and wrong , as measured by c(y(i),y). This maximization is known 1124
+ascost-augmented decoding , because it augments the maximization objective to favor 1125
+high-cost predictions. If the highest-scoring label is y=y(i), then the margin constraint is 1126
+satisﬁed, and the loss for this instance is zero. Cost-augmentation is only for learning: it 1127
+is not applied when making predictions on unseen data. 1128
+Differentiating Equation 2.52 with respect to the weights gives,
+∇θLSVM=λθ+N∑
+i=1f(x(i),ˆy)−f(x(i),y(i)) [2.53]
+ˆy= argmax
+y∈Yθ·f(x(i),y) +c(y(i),y), [2.54]
+whereLSVMrefers to minimization objective in Equation 2.52. This gradient is very similar 1129
+to the perceptron update. One difference is the additional term λθ, which regularizes the 1130
+14We can also deﬁne specialized cost functions that heavily penalize especially undesirable er-
+rors (Tsochantaridis et al., 2004). This idea is revisited in chapter 7.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+50 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+weights towards 0. The other difference is the cost c(y(i),y), which is added to θ·f(x,y) 1131
+when choosing ˆyduring training. This term derives from the margin constraint: large 1132
+margin classiﬁers learn not only from instances that are incorrectly classiﬁed, but also 1133
+from instances for which the correct classiﬁcation decision was not sufﬁciently conﬁdent. 1134
+2.4 Logistic regression 1135
+Thus far, we have seen two broad classes of learning algorithms. Na ¨ıve Bayes is a prob- 1136
+abilistic method, where learning is equivalent to estimating a joint probability distribu- 1137
+tion. The perceptron and support vector machine are discriminative, error-driven algo- 1138
+rithms: the learning objective is closely related to the number of errors on the training 1139
+data. Probabilistic and error-driven approaches each have advantages: probability makes 1140
+it possible to quantify uncertainty about the predicted labels, but the probability model of 1141
+Na¨ıve Bayes makes unrealistic independence assumptions that limit the features that can 1142
+be used. 1143
+Logistic regression combines advantages of discriminative and probabilistic classi-
+ﬁers. Unlike Na ¨ıve Bayes, which starts from the joint probability pX,Y, logistic regression
+deﬁnes the desired conditional probability pY|Xdirectly. Think of θ·f(x,y)as a scoring
+function for the compatibility of the base features xand the label y. To convert this score
+into a probability, we ﬁrst exponentiate, obtaining exp (θ·f(x,y)), which is guaranteed
+to be non-negative. Next, we normalize, dividing over all possible labels y′∈Y . The
+resulting conditional probability is deﬁned as,
+p(y|x;θ) =exp (θ·f(x,y))∑
+y′∈Yexp (θ·f(x,y′)). [2.55]
+Given a datasetD={(x(i),y(i))}N
+i=1, the weights θare estimated by maximum condi-
+tional likelihood ,
+logp(y(1:N)|x(1:N);θ) =N∑
+i=1logp(y(i)|x(i);θ) [2.56]
+=N∑
+i=1θ·f(x(i),y(i))−log∑
+y′∈Yexp(
+θ·f(x(i),y′))
+. [2.57]
+The ﬁnal line is obtained by plugging in Equation 2.55 and taking the logarithm.15Inside 1144
+15The log-sum-exp term is a common pattern in machine learning. It is numerically unstable, because it
+will underﬂow if the inner product is small, and overﬂow if the inner product is large. Scientiﬁc computing
+libraries usually contain special functions for computing logsumexp , but with some thought, you should be
+able to see how to create an implementation that is numerically stable.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.4. LOGISTIC REGRESSION 51
+the sum, we have the (additive inverse of the) logistic loss , 1145
+ℓLOGREG(θ;x(i),y(i)) =θ·f(x(i),y(i)) + log∑
+y′∈Yexp(θ·f(x(i),y′)) [2.58]
+The logistic loss is shown in Figure 2.2. A key difference from the zero-one and hinge 1146
+losses is that logistic loss is never zero. This means that the objective function can always 1147
+be improved by assigning higher conﬁdence to the correct label. 1148
+2.4.1 Regularization 1149
+As with the support vector machine, better generalization can be obtained by penalizing 1150
+the norm of θ. This is done by adding a term ofλ
+2||θ||2
+2to the minimization objective. 1151
+This is called L2regularization, because ||θ||2
+2is the squared L2norm of the vector θ. 1152
+Regularization forces the estimator to trade off performance on the training data against 1153
+the norm of the weights, and this can help to prevent overﬁtting. Consider what would 1154
+happen to the unregularized weight for a base feature jthat is active in only one instance 1155
+x(i): the conditional log-likelihood could always be improved by increasing the weight 1156
+for this feature, so that θ(j,y(i))→∞ andθ(j,˜y̸=y(i))→−∞ , where (j,y)is the index of 1157
+feature associated with x(i)
+jand labelyinf(x(i),y). 1158
+In§2.1.4, we saw that smoothing the probabilities of a Na ¨ıve Bayes classiﬁer can be
+justiﬁed in a hierarchical probabilistic model, in which the parameters of the classiﬁer
+are themselves random variables, drawn from a prior distribution. The same justiﬁcation
+applies toL2regularization. In this case, the prior is a zero-mean Gaussian on each term
+ofθ. The log-likelihood under a zero-mean Gaussian is,
+logN(θj; 0,σ2)∝−1
+2σ2θ2
+j, [2.59]
+so that the regularization weight λis equal to the inverse variance of the prior, λ=1
+σ2. 1159
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+52 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+2.4.2 Gradients 1160
+Logistic loss is minimized by optimization along the gradient. Here is the gradient with
+respect to the logistic loss on a single example,
+ℓLOGREG=−θ·f(x(i),y(i)) + log∑
+y′∈Yexp(
+θ·f(x(i),y′))
+[2.60]
+∂ℓ
+∂θ=−f(x(i),y(i)) +1∑
+y′′∈Yexp(
+θ·f(x(i),y′′))×∑
+y′∈Yexp(
+θ·f(x(i),y′))
+×f(x(i),y′)
+[2.61]
+=−f(x(i),y(i)) +∑
+y′∈Yexp(
+θ·f(x(i),y′))
+∑
+y′′∈Yexp(
+θ·f(x(i),y′′))×f(x(i),y′) [2.62]
+=−f(x(i),y(i)) +∑
+y′∈Yp(y′|x(i);θ)×f(x(i),y′) [2.63]
+=−f(x(i),y(i)) +EY|X[f(x(i),y)]. [2.64]
+The ﬁnal step employs the deﬁnition of a conditional expectation ( §A.5). The gradient of 1161
+the logistic loss is equal to the difference between the expected counts under the current 1162
+model,EY|X[f(x(i),y)], and the observed feature counts f(x(i),y(i)). When these two 1163
+vectors are equal for a single instance, there is nothing more to learn from it; when they 1164
+are equal in sum over the entire dataset, there is nothing more to learn from the dataset as 1165
+a whole. The gradient of the hinge loss is nearly identical, but it involves the features of 1166
+the predicted label under the current model, f(x(i),ˆy), rather than the expected features 1167
+EY|X[f(x(i),y)]under the conditional distribution p (y|x;θ). 1168
+The regularizer contributes λθto the overall gradient:
+LLOGREG=λ
+2||θ||2
+2−N∑
+i=1
+θ·f(x(i),y(i))−log∑
+y′∈Yexpθ·f(x(i),y′)
+ [2.65]
+∇θLLOGREG=λθ−N∑
+i=1(
+f(x(i),y(i))−Ey|x[f(x(i),y)])
+. [2.66]
+2.5 Optimization 1169
+Each of the classiﬁcation algorithms in this chapter can be viewed as an optimization 1170
+problem: 1171
+•In Na ¨ıve Bayes, the objective is the joint likelihood logp(x(1:N),y(1:N)). Maximum 1172
+likelihood estimation yields a closed-form solution for θ. 1173
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.5. OPTIMIZATION 53
+•In the support vector machine, the objective is the regularized margin loss, 1174
+LSVM=λ
+2||θ||2
+2+N∑
+i=1(max
+y∈Y(θ·f(x(i),y) +c(y(i),y))−θ·f(x(i),y(i)))+, [2.67]
+There is no closed-form solution, but the objective is convex. The perceptron algo- 1175
+rithm minimizes a similar objective. 1176
+•In logistic regression, the objective is the regularized negative log-likelihood, 1177
+LLOGREG=λ
+2||θ||2
+2−N∑
+i=1
+θ·f(x(i),y(i))−log∑
+y∈Yexp(
+θ·f(x(i),y))
+ [2.68]
+Again, there is no closed-form solution, but the objective is convex. 1178
+These learning algorithms are distinguished by what is being optimized, rather than 1179
+how the optimal weights are found. This decomposition is an essential feature of con- 1180
+temporary machine learning. The domain expert’s job is to design an objective function 1181
+— or more generally, a model of the problem. If the model has certain characteristics, 1182
+then generic optimization algorithms can be used to ﬁnd the solution. In particular, if an 1183
+objective function is differentiable, then gradient-based optimization can be employed; 1184
+if it is also convex, then gradient-based optimization is guaranteed to ﬁnd the globally 1185
+optimal solution. The support vector machine and logistic regression have both of these 1186
+properties, and so are amenable to generic convex optimization techniques (Boyd and 1187
+Vandenberghe, 2004). 1188
+2.5.1 Batch optimization 1189
+Inbatch optimization , each update to the weights is based on a computation involving
+the entire dataset. One such algorithm is gradient descent , which iteratively updates the
+weights,
+θ(t+1)←θ(t)−η(t)∇θL, [2.69]
+where∇θLis the gradient computed over the entire training set, and η(t)is the step size 1190
+at iteration t. If the objective Lis a convex function of θ, then this procedure is guaranteed 1191
+to terminate at the global optimum, for appropriate schedule of learning rates, η(t).161192
+16Speciﬁcally, the learning rate must have the following properties (Bottou et al., 2016):
+∞∑
+t=1η(t)=∞ [2.70]
+∞∑
+t=1(η(t))2<∞. [2.71]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+54 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+In practice, gradient descent can be slow to converge, as the gradient can become 1193
+inﬁnitesimally small. Faster convergence can be obtained by second-order Newton opti- 1194
+mization, which incorporates the inverse of the Hessian matrix , 1195
+Hi,j=∂2L
+∂θi∂θj[2.72]
+The size of the Hessian matrix is quadratic in the number of features. In the bag-of-words 1196
+representation, this is usually too big to store, let alone invert. Quasi-Network optimiza- 1197
+tion techniques maintain a low-rank approximation to the inverse of the Hessian matrix. 1198
+Such techniques usually converge more quickly than gradient descent, while remaining 1199
+computationally tractable even for large feature sets. A popular quasi-Newton algorithm 1200
+isL-BFGS (Liu and Nocedal, 1989), which is implemented in many scientiﬁc computing 1201
+environments, such as scipy andMatlab . 1202
+For any gradient-based technique, the user must set the learning rates η(t). While con- 1203
+vergence proofs usually employ a decreasing learning rate, in practice, it is common to ﬁx 1204
+η(t)to a small constant, like 10−3. The speciﬁc constant can be chosen by experimentation, 1205
+although there is research on determining the learning rate automatically (Schaul et al., 1206
+2013; Wu et al., 2018). 1207
+2.5.2 Online optimization 1208
+Batch optimization computes the objective on the entire training set before making an up- 1209
+date. This may be inefﬁcient, because at early stages of training, a small number of train- 1210
+ing examples could point the learner in the correct direction. Online learning algorithms 1211
+make updates to the weights while iterating through the training data. The theoretical 1212
+basis for this approach is a stochastic approximation to the true objective function, 1213
+N∑
+i=1ℓ(θ;x(i),y(i))≈N×ℓ(θ;x(j),y(j)), (x(j),y(j))∼{(x(i),y(i))}N
+i=1,[2.73]
+where the instance (x(j),y(j))is sampled at random from the full dataset. 1214
+Instochastic gradient descent , the approximate gradient is computed by randomly 1215
+sampling a single instance, and an update is made immediately. This is similar to the 1216
+perceptron algorithm, which also updates the weights one instance at a time. In mini- 1217
+batch stochastic gradient descent, the gradient is computed over a small set of instances. 1218
+A typical approach is to set the minibatch size so that the entire batch ﬁts in memory on a 1219
+graphics processing unit (GPU; Neubig et al., 2017). It is then possible to speed up learn- 1220
+ing by parallelizing the computation of the gradient over each instance in the minibatch. 1221
+These properties can be obtained by the learning rate schedule η(t)=η(0)t−αforα∈[1,2].
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.5. OPTIMIZATION 55
+Algorithm 5 Generalized gradient descent. The function B ATCHER partitions the train-
+ing set into Bbatches such that each instance appears in exactly one batch. In gradient
+descent,B= 1; in stochastic gradient descent, B=N; in minibatch stochastic gradient
+descent, 1<B <N .
+1:procedure GRADIENT -DESCENT (x(1:N),y(1:N),L,η(1...∞),BATCHER,Tmax)
+2:θ←0
+3:t←0
+4: repeat
+5: (b(1),b(2),...,b(B))←BATCHER (N)
+6: forn∈{1,2,...,B}do
+7: t←t+ 1
+8:θ(t)←θ(t−1)−η(t)∇θL(θ(t−1);x(b(n)
+1,b(n)
+2,...),y(b(n)
+1,b(n)
+2,...))
+9: ifConverged (θ(1,2,...,t))then
+10: returnθ(t)
+11: untilt≥Tmax
+12: returnθ(t)
+Algorithm 5 offers a generalized view of gradient descent. In standard gradient de- 1222
+scent, the batcher returns a single batch with all the instances. In stochastic gradient de- 1223
+scent, it returns Nbatches with one instance each. In mini-batch settings, the batcher 1224
+returnsBminibatches, 1<B <N . 1225
+There are many other techniques for online learning, and the ﬁeld is currently quite
+active (Bottou et al., 2016). Some algorithms use an adaptive step size, which can be dif-
+ferent for every feature (Duchi et al., 2011). Features that occur frequently are likely to be
+updated frequently, so it is best to use a small step size; rare features will be updated in-
+frequently, so it is better to take larger steps. The AdaGrad (adaptive gradient) algorithm
+achieves this behavior by storing the sum of the squares of the gradients for each feature,
+and rescaling the learning rate by its inverse:
+gt=∇θL(θ(t);x(i),y(i)) [2.74]
+θ(t+1)
+j←θ(t)
+j−η(t)
+√∑t
+t′=1g2
+t,jgt,j, [2.75]
+wherejiterates over features in f(x,y). 1226
+In most cases, the number of active features for any instance is much smaller than the 1227
+number of weights. If so, the computation cost of online optimization will be dominated 1228
+by the update from the regularization term, λθ. The solution is to be “lazy”, updating 1229
+eachθjonly as it is used. To implement lazy updating, store an additional parameter τj, 1230
+which is the iteration at which θjwas last updated. If θjis needed at time t, thet−τ 1231
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+56 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+regularization updates can be performed all at once. This strategy is described in detail 1232
+by Kummerfeld et al. (2015). 1233
+2.6 *Additional topics in classiﬁcation 1234
+Throughout this text, advanced topics will be marked with an asterisk. 1235
+2.6.1 Feature selection by regularization 1236
+In logistic regression and large-margin classiﬁcation, generalization can be improved by 1237
+regularizing the weights towards 0, using the L2norm. But rather than encouraging 1238
+weights to be small, it might be better for the model to be sparse : it should assign weights 1239
+of exactly zero to most features, and only assign non-zero weights to features that are 1240
+clearly necessary. This idea can be formalized by the L0norm,L0=||θ||0=∑
+jδ(θj̸= 0) , 1241
+which applies a constant penalty for each non-zero weight. This norm can be thought 1242
+of as a form of feature selection : optimizing the L0-regularized conditional likelihood is 1243
+equivalent to trading off the log-likelihood against the number of active features. Reduc- 1244
+ing the number of active features is desirable because the resulting model will be fast, 1245
+low-memory, and should generalize well, since irrelevant features will be pruned away. 1246
+Unfortunately, the L0norm is non-convex and non-differentiable. Optimization under L0 1247
+regularization is NP-hard , meaning that it can be solved efﬁciently only if P=NP (Ge et al., 1248
+2011). 1249
+A useful alternative is the L1norm, which is equal to the sum of the absolute values 1250
+of the weights,||θ||1=∑
+j|θj|. TheL1norm is convex, and can be used as an approxima- 1251
+tion toL0(Tibshirani, 1996). Conveniently, the L1norm also performs feature selection, 1252
+by driving many of the coefﬁcients to zero; it is therefore known as a sparsity inducing 1253
+regularizer . TheL1norm does not have a gradient at θj= 0, so we must instead optimize 1254
+theL1-regularized objective using subgradient methods. The associated stochastic sub- 1255
+gradient descent algorithms are only somewhat more complex than conventional SGD; 1256
+Sra et al. (2012) survey approaches for estimation under L1and other regularizers. 1257
+Gao et al. (2007) compare L1andL2regularization on a suite of NLP problems, ﬁnding 1258
+thatL1regularization generally gives similar accuracy to L2regularization, but that L1 1259
+regularization produces models that are between ten and ﬁfty times smaller, because more 1260
+than 90% of the feature weights are set to zero. 1261
+2.6.2 Other views of logistic regression 1262
+In binary classiﬁcation, we can dispense with the feature function, and choose ybased on
+the inner product of θ·x. The conditional probability pY|Xis obtained by passing this
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.6. *ADDITIONAL TOPICS IN CLASSIFICATION 57
+inner product through a logistic function ,
+σ(a)≜exp(a)
+1 + exp(a)= (1 + exp(−a))−1[2.76]
+p(y|x;θ) =σ(θ·x). [2.77]
+This is the origin of the name logistic regression . Logistic regression can be viewed as 1263
+part of a larger family of generalized linear models (GLMs), in which various other “link 1264
+functions” convert between the inner product θ·xand the parameter of a conditional 1265
+probability distribution. 1266
+In the early NLP literature, logistic regression is frequently called maximum entropy 1267
+classiﬁcation (Berger et al., 1996). This name refers to an alternative formulation, in 1268
+which the goal is to ﬁnd the maximum entropy probability function that satisﬁes moment- 1269
+matching constraints. These constraints specify that the empirical counts of each feature 1270
+should match the expected counts under the induced probability distribution pY|X;θ, 1271
+N∑
+i=1fj(x(i),y(i)) =N∑
+i=1∑
+y∈Yp(y|x(i);θ)fj(x(i),y),∀j [2.78]
+The moment-matching constraint is satisﬁed exactly when the derivative of the condi- 1272
+tional log-likelihood function (Equation 2.64) is equal to zero. However, the constraint 1273
+can be met by many values of θ, so which should we choose? 1274
+The entropy of the conditional probability distribution pY|Xis, 1275
+H(pY|X) =−∑
+x∈XpX(x)∑
+y∈YpY|X(y|x) log pY|X(y|x), [2.79]
+whereXis the set of all possible feature vectors, and pX(x)is the probability of observing 1276
+the base features x. The distribution pXis unknown, but it can be estimated by summing 1277
+over all the instances in the training set, 1278
+˜H(pY|X) =−1
+NN∑
+i=1∑
+y∈YpY|X(y|x(i)) log pY|X(y|x(i)). [2.80]
+If the entropy is large, the likelihood function is smooth across possible values of y; 1279
+if it is small, the likelihood function is sharply peaked at some preferred value; in the 1280
+limiting case, the entropy is zero if p (y|x) = 1 for somey. The maximum-entropy cri- 1281
+terion chooses to make the weakest commitments possible, while satisfying the moment- 1282
+matching constraints from Equation 2.78. The solution to this constrained optimization 1283
+problem is identical to the maximum conditional likelihood (logistic-loss) formulation 1284
+that was presented in §2.4. 1285
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+58 CHAPTER 2. LINEAR TEXT CLASSIFICATION
+2.7 Summary of learning algorithms 1286
+It is natural to ask which learning algorithm is best, but the answer depends on what 1287
+characteristics are important to the problem you are trying to solve. 1288
+Na¨ ıve Bayes Pros: easy to implement; estimation is fast, requiring only a single pass over 1289
+the data; assigns probabilities to predicted labels; controls overﬁtting with smooth- 1290
+ing parameter. Cons : often has poor accuracy, especially with correlated features. 1291
+Perceptron Pros: easy to implement; online; error-driven learning means that accuracy 1292
+is typically high, especially after averaging. Cons : not probabilistic; hard to know 1293
+when to stop learning; lack of margin can lead to overﬁtting. 1294
+Support vector machine Pros: optimizes an error-based metric, usually resulting in high 1295
+accuracy; overﬁtting is controlled by a regularization parameter. Cons : not proba- 1296
+bilistic. 1297
+Logistic regression Pros: error-driven and probabilistic; overﬁtting is controlled by a reg- 1298
+ularization parameter. Cons : batch learning requires black-box optimization; logistic 1299
+loss can “overtrain” on correctly labeled examples. 1300
+One of the main distinctions is whether the learning algorithm offers a probability 1301
+over labels. This is useful in modular architectures, where the output of one classiﬁer 1302
+is the input for some other system. In cases where probability is not necessary, the sup- 1303
+port vector machine is usually the right choice, since it is no more difﬁcult to implement 1304
+than the perceptron, and is often more accurate. When probability is necessary, logistic 1305
+regression is usually more accurate than Na ¨ıve Bayes. 1306
+Additional resources 1307
+For more on classiﬁcation, you can consult a textbook on machine learning (e.g., Mur- 1308
+phy, 2012), although the notation will differ slightly from what is typical in natural lan- 1309
+guage processing. Probabilistic methods are surveyed by Hastie et al. (2009), and Mohri 1310
+et al. (2012) emphasize theoretical considerations. Online learning is a rapidly moving 1311
+subﬁeld of machine learning, and Bottou et al. (2016) describes progress through 2016. 1312
+Kummerfeld et al. (2015) empirically review several optimization algorithms for large- 1313
+margin learning. The python toolkit scikit-learn includes implementations of all of 1314
+the algorithms described in this chapter (Pedregosa et al., 2011). 1315
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+2.7. SUMMARY OF LEARNING ALGORITHMS 59
+Exercises 1316
+1. Letxbe a bag-of-words vector such that∑V
+j=1xj= 1. Verify that the multinomial 1317
+probability pmult(x;φ), as deﬁned in Equation 2.12, is identical to the probability of 1318
+the same document under a categorical distribution, pcat(w;φ). 1319
+2. Derive the maximum-likelihood estimate for the parameter µin Na ¨ıve Bayes. 1320
+3. As noted in the discussion of averaged perceptron in §2.2.2, the computation of the 1321
+running sum m←m+θis unnecessarily expensive, requiring K×Voperations. 1322
+Give an alternative way to compute the averaged weights θ, with complexity that is 1323
+independent of Vand linear in the sum of feature sizes∑N
+i=1|f(x(i),y(i))|. 1324
+4. Consider a dataset that is comprised of two identical instances x(1)=x(2)with 1325
+distinct labels y(1)̸=y(2). Assume all features are binary xj∈{0,1}for allj. 1326
+Now suppose that the averaged perceptron always chooses i= 1 whentis even, 1327
+andi= 2whentis odd, and that it will terminate under the following condition: 1328
+ϵ≥max
+j⏐⏐⏐⏐⏐1
+t∑
+tθ(t)
+j−1
+t−1∑
+tθ(t−1)
+j⏐⏐⏐⏐⏐. [2.81]
+In words, the algorithm stops when the largest change in the averaged weights is 1329
+less than or equal to ϵ. Compute the number of iterations before the averaged per- 1330
+ceptron terminates. 1331
+5. Suppose you have two labeled datasets D1andD2, with the same features and la- 1332
+bels. 1333
+•Letθ(1)be the unregularized logistic regression (LR) coefﬁcients from training 1334
+on datasetD1. 1335
+•Letθ(2)be the unregularized LR coefﬁcients (same model) from training on 1336
+datasetD2. 1337
+•Letθ∗be the unregularized LR coefﬁcients from training on the combined 1338
+datasetD1∪D2. 1339
+Under these conditions, prove that for any feature j,
+θ∗
+j≥min(θ(1)
+j,θ(2)
+j)
+θ∗
+j≤max(θ(1)
+j,θ(2)
+j).
+1340
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+
+

@@ -1,0 +1,1120 @@
+CHAPTER
+8Transformers
+“The true art of memory is the art of attention ”
+Samuel Johnson, Idler #74 , September 1759
+In this chapter we introduce the transformer , the standard architecture for build-
+ing large language models. As we discussed in the prior chapter, transformer-based
+large language models have completely changed the ﬁeld of speech and language
+processing. Indeed, every subsequent chapter in this textbook will make use of them.
+As with the previous chapter, we’ll focus for this chapter on the use of transformers
+to model left-to-right (sometimes called causal or autoregressive) language model-
+ing, in which we are given a sequence of input tokens and predict output tokens one
+by one by conditioning on the prior context.
+The transformer is a neural network with a speciﬁc structure that includes a
+mechanism called self-attention ormulti-head attention .1Attention can be thought
+of as a way to build contextual representations of a token’s meaning by attending to
+and integrating information from surrounding tokens, helping the model learn how
+tokens relate to each other over large spans.
+StackedTransformerBlocksSolongandthanksforlongandthanksforNext tokenall……
+…
+U
+Input tokensx1x2LanguageModelingHead
+x3x4x5InputEncoding
+E1+
+E2+
+E3+
+E4+
+E5+……………
+U
+U
+U
+U…logitslogitslogitslogitslogits
+Figure 8.1 The architecture of a (left-to-right) transformer, showing how each input token
+get encoded, passed through a set of stacked transformer blocks, and then a language model
+head that predicts the next token.
+Fig. 8.1 sketches the transformer architecture. A transformer has three major
+components. At the center are columns of transformer blocks . Each block is a
+multilayer network (a multi-head attention layer, feedforward networks and layer
+1Although multi-head attention developed historically from the RNN attention mechanism (Chap-
+ter 13), we’ll deﬁne attention from scratch here.
+
+172 CHAPTER 8 • T RANSFORMERS
+normalization steps) that maps an input vector xiin column i(corresponding to input
+token i) to an output vector hi. The set of nblocks maps an entire context window
+of input vectors (x1,...,xn)to a window of output vectors (h1,...,hn)of the same
+length. A column might contain from 12 to 96 or more stacked blocks.
+The column of blocks is preceded by the input encoding component, which pro-
+cesses an input token (like the word thanks ) into a contextual vector representation,
+using an embedding matrix Eand a mechanism for encoding token position. Each
+column is followed by a language modeling head , which takes the embedding out-
+put by the ﬁnal transformer block, passes it through an unembedding matrix Uand
+a softmax over the vocabulary to generate a single token for that column.
+Transformer-based language models are complex, and so the details will un-
+fold over the next few chapters. Chapter 7 already discussed how language models
+arepretrained , and how tokens are generated via sampling . In the next sections
+we’ll introduce multi-head attention, the rest of the transformer block, and the input
+encoding and language modeling head components of the transformer. Chapter 10
+introduces masked language modeling and the BERT family of bidirectional trans-
+former encoder models. Chapter 9 shows how to instruction-tune language models
+to perform NLP tasks, and how to align the model with human preferences. Chap-
+ter 12 will introduce machine translation with the encoder-decoder architecture.
+We’ll see further use of the encoder-decoder architecture in Chapter 15.
+8.1 Attention
+Recall from Chapter 5 that for word2vec and other static embeddings, the repre-
+sentation of a word’s meaning is always the same vector irrespective of the context:
+the wordchicken , for example, is always represented by the same ﬁxed vector. So
+a static vector for the word itmight somehow encode that this is a pronoun used
+for animals and inanimate entities. But in context ithas a much richer meaning.
+Consideritin one of these two sentences:
+(8.1) The chicken didn’t cross the road because itwas too tired.
+(8.2) The chicken didn’t cross the road because itwas too wide.
+In (8.1)itis the chicken (i.e., the reader knows that the chicken was tired), while
+in (8.2)itis the road (and the reader knows that the road was wide).2That is, if
+we are to compute the meaning of this sentence, we’ll need the meaning of itto be
+associated with the chicken in the ﬁrst sentence and associated with the road in
+the second one, sensitive to the context.
+Furthermore, consider reading left to right like a causal language model, pro-
+cessing the sentence up to the word it:
+(8.3) The chicken didn’t cross the road because it
+At this point we don’t yet know which thing itis going to end up referring to! So a
+representation of itat this point might have aspects of both chicken androad as
+the reader is trying to guess what happens next.
+This fact that words have rich linguistic relationships with other words that may
+be far away pervades language. Consider two more examples:
+(8.4) The keys to the cabinet areon the table.
+2We say that in the ﬁrst example itcorefers with the chicken, and in the second itcorefers with the
+road; we’ll return to this in Chapter 23.
+
+8.1 • A TTENTION 173
+(8.5) I walked along the pond , and noticed one of the trees along the bank .
+In (8.4), the phrase The keys is the subject of the sentence, and in English and many
+languages, must agree in grammatical number with the verb are; in this case both are
+plural. In English we can’t use a singular verb like iswith a plural subject like keys
+(we’ll discuss agreement more in Chapter 18). In (8.5), we know that bank refers
+to the side of a pond or river and not a ﬁnancial institution because of the context,
+including words like pond . (We’ll discuss word senses more in Chapter 10.)
+The point of all these examples is that these contextual words that help us com-
+pute the meaning of words in context can be quite far away in the sentence or para-
+graph. Transformers can build contextual representations of word meaning, contex-
+tual embeddings , by integrating the meaning of these helpful contextual words. In acontextual
+embeddings
+transformer, layer by layer, we build up richer and richer contextualized representa-
+tions of the meanings of input tokens. At each layer, we compute the representation
+of a token iby combining information about ifrom the previous layer with infor-
+mation about the neighboring tokens to produce a contextualized representation for
+each word at each position.
+Attention is the mechanism in the transformer that weighs and combines the
+representations from appropriate other tokens in the context from layer kto build
+the representation for tokens in layer k+1.
+Thechickendidn’tcrosstheroadbecauseitwastootiredThechickendidn’tcrosstheroadbecauseitwastootiredLayer k+1Layer kself-attention distributioncolumns corresponding to input tokens
+Figure 8.2 The self-attention weight distribution αthat is part of the computation of the
+representation for the word itat layer k+1. In computing the representation for it, we attend
+differently to the various words at layer k, with darker shades indicating higher self-attention
+values. Note that the transformer is attending highly to the columns corresponding to the
+tokens chicken androad , a sensible result, since at the point where itoccurs, it could plausibly
+corefer with the chicken or the road, and hence we’d like the representation for itto draw on
+the representation for these earlier words. Figure adapted from Uszkoreit (2017).
+Fig. 8.2 shows a schematic example simpliﬁed from a transformer (Uszkoreit,
+2017). The ﬁgure describes the situation when the current token is itand we need
+to compute a contextual representation for this token at layer k+1 of the transformer,
+drawing on the representations (from layer k) of every prior token. The ﬁgure uses
+color to represent the attention distribution over the contextual words: the tokens
+chicken androad both have a high attention weight, meaning that as we are com-
+puting the representation for it, we will draw most heavily on the representation for
+chicken androad . This will be useful in building the ﬁnal representation for it,
+sinceitwill end up coreferring with either chicken orroad .
+Let’s now turn to how this attention distribution is represented and computed.
+
+174 CHAPTER 8 • T RANSFORMERS
+8.1.1 Attention more formally
+As we’ve said, the attention computation is a way to compute a vector representation
+for a token at a particular layer of a transformer, by selectively attending to and
+integrating information from prior tokens at the previous layer. Attention takes an
+input representation xicorresponding to the input token at position i, and a context
+window of prior inputs x1..xi−1, and produces an output ai.
+In causal, left-to-right language models, the context is any of the prior words.
+That is, when processing xi, the model has access to xias well as the representations
+of all the prior tokens in the context window (context windows consist of thousands
+of tokens) but no tokens after i. (By contrast, in Chapter 10 we’ll generalize attention
+so it can also look ahead to future words.)
+Fig. 8.3 illustrates this ﬂow of information in an entire causal self-attention layer,
+in which this same attention computation happens in parallel at each token position
+i. Thus a self-attention layer maps input sequences (x1,...,xn)to output sequences
+of the same length (a1,...,an).
+attentionattentionSelf-AttentionLayerattentionattentionattentiona1a2a3a4a5x3x4x5x1x2
+Figure 8.3 Information ﬂow in causal self-attention. When processing each input xi, the
+model attends to all the inputs up to, and including xi.
+Simpliﬁed version of attention At its heart, attention is really just a weighted
+sum of context vectors, with a lot of complications added to how the weights are
+computed and what gets summed. For pedagogical purposes let’s ﬁrst describe a
+simpliﬁed intuition of attention, in which the attention output aiat token position i
+is simply the weighted sum of all the representations xj, for all j≤i; we’ll use αi j
+to mean how much xjshould contribute to ai:
+Simpliﬁed version: ai=∑
+j≤iαi jxj (8.6)
+Each αi jis a scalar used for weighing the value of input xjwhen summing up
+the inputs to compute ai. How shall we compute this αweighting? In attention we
+weight each prior embedding proportionally to how similar it is to the current token
+i. So the output of attention is a sum of the embeddings of prior tokens weighted
+by their similarity with the current token embedding. We compute similarity scores
+viadot product , which maps two vectors into a scalar value ranging from −∞to
+∞. The larger the score, the more similar the vectors that are being compared. We’ll
+normalize these scores with a softmax to create the vector of weights αi j,j≤i.
+Simpliﬁed Version: score(xi,xj) = xi·xj (8.7)
+αi j=softmax (score(xi,xj))∀j≤i(8.8)
+Thus in Fig. 8.3 we compute a3by computing three scores: x3·x1,x3·x2andx3·x3,
+normalizing them by a softmax, and using the resulting probabilities as weights
+indicating each of their proportional relevance to the current position i. Of course,
+
+8.1 • A TTENTION 175
+the softmax weight will likely be highest for xi, since xiis very similar to itself,
+resulting in a high dot product. But other context words may also be similar to i, and
+the softmax will also assign some weight to those words. Then we use these weights
+as the αvalues in Eq. 8.6 to compute the weighted sum that is our a3.
+The simpliﬁed attention in equations 8.6 – 8.8 demonstrates the attention-based
+approach to computing ai: compare the xito prior vectors, normalize those scores
+into a probability distribution used to weight the sum of the prior vector. But now
+we’re ready to remove the simpliﬁcations.
+A single attention head using query, key, and value matrices Now that we’ve
+seen a simple intuition of attention, let’s introduce the actual attention head , the attention head
+version of attention that’s used in transformers. (The word head is often used in head
+transformers to refer to speciﬁc structured layers). The attention head allows us to
+distinctly represent three different roles that each input embedding plays during the
+course of the attention process:
+• As the current element being compared to the preceding inputs. We’ll refer to
+this role as a query . query
+• In its role as a preceding input that is being compared to the current element
+to determine a similarity weight. We’ll refer to this role as a key. key
+• And ﬁnally, as a value of a preceding element that gets weighted and summed value
+up to compute the output for the current element.
+To capture these three different roles, transformers introduce weight matrices
+WQ,WK, and WV. These weights will project each input vector xiinto a represen-
+tation of its role as a query, key, or value:
+qi=xiWQ;ki=xiWK;vi=xiWV(8.9)
+Given these projections, when we are computing the similarity of the current ele-
+ment xiwith some prior element xj, we’ll use the dot product between the current
+element’s query vector qiand the preceding element’s keyvector kj. Furthermore,
+the result of a dot product can be an arbitrarily large (positive or negative) value, and
+exponentiating large values can lead to numerical issues and loss of gradients during
+training. To avoid this, we scale the dot product by a factor related to the size of the
+embeddings, via dividing by the square root of the dimensionality of the query and
+key vectors ( dk). We thus replace the simpliﬁed Eq. 8.7 with Eq. 8.11. The ensuing
+softmax calculation resulting in αi jremains the same, but the output calculation for
+head iis now based on a weighted sum over the value vectors v(Eq. 8.13).
+Here’s a ﬁnal set of equations for computing self-attention for a single self-
+attention output vector aifrom a single input vector xi. This version of attention
+computes aiby summing the values of the prior elements, each weighted by the
+similarity of its keyto the query from the current element:
+qi=xiWQ;kj=xjWK;vj=xjWV(8.10)
+score(xi,xj) =qi·kj√dk(8.11)
+αi j=softmax (score(xi,xj))∀j≤i (8.12)
+head i=∑
+j≤iαi jvj (8.13)
+ai=head iWO(8.14)
+
+176 CHAPTER 8 • T RANSFORMERS
+6. Sum the weighted value vectors4. Turn into 𝛼i,j weights via softmaxa3
+1. Generate key, query, value vectors2. Compare x3’s query withthe keys for x1, x2, and x38. Output of self-attention××
+x1kqvWKWQWV5. Weigh each value vector÷√dk3. Divide scalar score by √dk÷√dk÷√dk𝛼3,1𝛼3,2𝛼3,3
+x2kqvWKWQWVx3kqvWKWQWVWO
+[1 × d][1 × d][dv × d][1 × dv][1 × dv][1 × dv][1 × dv]
+[1 × dv][1 × dv][1 x dv]7. Reshape to [1 x d] 
+[1 × d][1 × d]
+Figure 8.4 Calculating the value of a3, the third element of a sequence using causal (left-
+to-right) self-attention.
+We illustrate this in Fig. 8.4 for the case of calculating the value of the third output
+a3in a sequence.
+Note that we’ve also introduced one more matrix, WO, which is right-multiplied
+by the attention head. This is necessary to reshape the output of the head. The input
+to attention xiand the output from attention aiboth have the same dimensionality
+[1×d]. We often call dthemodel dimensionality , and indeed as we’ll discuss in
+Section 8.2 the output hiof each transformer block, as well as the intermediate vec-
+tors inside the transformer block also have the same dimensionality [1×d]. Having
+everything be the same dimensionality makes the transformer very modular.
+So let’s talk shapes. How do we get from [1×d]at the input to [1×d]at the
+output? Let’s look at all the internal shapes. We’ll have a dimension dkfor the
+query and key vectors. The query vector and the key vector are both dimensionality
+[1×dk], so we can take their dot product qi·kjto produce a scalar. We’ll have a
+separate dimension dvfor the value vectors. The transform matrix WQhas shape
+[d×dk],WKis[d×dk], and WVis[d×dv]. So the output of head iin equation
+Eq. 8.13 is of shape [1×dv]. To get the desired output shape [1×d]we’ll need to
+reshape the head output, and so WOis of shape [dv×d]. In the original transformer
+work (Vaswani et al., 2017), dwas 512, dkanddvwere both 64.
+Multi-head Attention Equations 8.11-8.13 describe a single attention head . But
+actually, transformers use multiple attention heads. The intuition is that each head
+might be attending to the context for different purposes: heads might be special-
+ized to represent different linguistic relationships between context elements and the
+current token, or to look for particular kinds of patterns in the context.
+So in multi-head attention we have Aseparate attention heads that reside inmulti-head
+attention
+parallel layers at the same depth in a model, each with its own set of parameters that
+allows the head to model different aspects of the relationships among inputs. Thus
+
+8.2 • T RANSFORMER BLOCKS 177
+each head iin a self-attention layer has its own set of query, key, and value matrices:
+WQi,WKi, and WVi. These are used to project the inputs into separate query, key,
+and value embeddings for each head.
+When using multiple heads the model dimension dis still used for the input
+and output, the query and key embeddings have dimensionality dk, and the value
+embeddings are of dimensionality dv(again, in the original transformer paper dk=
+dv=64,A=8, and d=512). Thus for each head i, we have weight layers WQiof
+shape [d×dk],WKiof shape [d×dk], and WViof shape [d×dv].
+Below are the equations for attention augmented with multiple heads; Fig. 8.5
+shows an intuition.
+qc
+i=xiWQc;kc
+j=xjWKc;vc
+j=xjWVc;∀c1≤c≤A (8.15)
+scorec(xi,xj) =qc
+i·kc
+j√dk(8.16)
+αc
+i j=softmax (scorec(xi,xj))∀j≤i(8.17)
+headc
+i=∑
+j≤iαc
+i jvc
+j (8.18)
+ai= (head1⊕head2...⊕headA)WO(8.19)
+MultiHeadAttention (xi,[x1,···,xi−1]) = ai (8.20)
+Note in Eq. 8.20 that MultiHeadAttention is a function of the current input xi, as
+well as all the other inputs. For the causal or left-to-right attention that we use in
+this chapter, the other inputs are only to the left, but we’ll also see a version of
+attention in Chapter 10 where attention is a function of the tokens to the right as
+well. We’ll return to this idea about causal inputs in Eq. 8.34 when we introduce the
+idea of masking the right context.
+The output of each of the Aheads is of shape [1×dv], and so the output of the
+multi-head layer with Aheads consists of Avectors of shape [1×dv]. These are
+concatenated to produce a single output with dimensionality [1×Adv]. Then we use
+yet another linear projection WO∈RAdv×dto reshape it, resulting in the multi-head
+attention vector aiwith the correct output shape [1×d]at each input i.
+8.2 Transformer Blocks
+The self-attention calculation lies at the core of what’s called a transformer block,
+which, in addition to the self-attention layer, includes three other kinds of layers: (1)
+a feedforward layer, (2) residual connections, and (3) normalizing layers (colloqui-
+ally called “layer norm”).
+Fig. 8.6 illustrates a transformer block, sketching a common way of thinking
+about the block that is called the residual stream (Elhage et al., 2021). In the resid- residual stream
+ual stream viewpoint, we consider the processing of an individual token ithrough
+the transformer block as a single stream of d-dimensional representations for token
+position i. This residual stream starts with the original input vector, and the various
+components read their input from the residual stream and add their output back into
+the stream.
+The input at the bottom of the stream is an embedding for a token, which has
+dimensionality d. This initial embedding gets passed up (by residual connections ),
+and is progressively added to by the other components of the transformer: the at-
+
+178 CHAPTER 8 • T RANSFORMERS
+aixi-1xixi-2xi-3WK1Head 1WV1WQ1……WK2Head 2WV2WQ2WK8Head 8WV8WQ8aiWO  [Adv x d][1 x dv ][1 x d]
+[1 x d][1 x Adv ]Project down to dConcatenate OutputsEach headattends diﬀerentlyto context…[1 x dv ]
+Figure 8.5 The multi-head attention computation for input xi, producing output ai. A multi-head attention
+layer has Aheads, each with its own query, key, and value weight matrices. The outputs from each of the heads
+are concatenated and then projected down to d, thus producing an output of the same size as the input.
+Layer Norm
+xi+hi-1
+Layer NormMultiHeadAttentionFeedforward
+xi-1xi+1hihi+1
++……ResidualStream
+Figure 8.6 The architecture of a transformer block showing the residual stream . This
+ﬁgure shows the prenorm version of the architecture, in which the layer norms happen before
+the attention and feedforward layers rather than after.
+tention layer that we have seen, and the feedforward layer that we will introduce.
+Before the attention and feedforward layer is a computation called the layer norm .
+Thus the initial vector is passed through a layer norm and attention layer, and
+the result is added back into the stream, in this case to the original input vector
+xi. And then this summed vector is again passed through another layer norm and a
+feedforward layer, and the output of those is added back into the residual, and we’ll
+usehito refer to the resulting output of the transformer block for token i. (In earlier
+descriptions the residual stream was often described using a different metaphor as
+residual connections that add the input of a component to its output, but the residual
+stream is a more perspicuous way of visualizing the transformer.)
+
+8.2 • T RANSFORMER BLOCKS 179
+We’ve already seen the attention layer, so let’s now introduce the feedforward
+and layer norm computations in the context of processing a single input xiat token
+position i.
+Feedforward layer The feedforward layer is a fully-connected 2-layer network,
+i.e., one hidden layer, two weight matrices, as introduced in Chapter 6. The weights
+are the same for each token position i, but are different from layer to layer. It is com-
+mon to make the dimensionality dffof the hidden layer of the feedforward network
+be larger than the model dimensionality d. (For example in the original transformer
+model, d=512 and dff=2048.)
+FFN(xi) =ReLU (xiW1+b1)W2+b2 (8.21)
+Layer Norm At two stages in the transformer block we normalize the vector (Ba
+et al., 2016). This process, called layer norm (short for layer normalization), is one layer norm
+of many forms of normalization that can be used to improve training performance
+in deep neural networks by keeping the values of a hidden layer in a range that
+facilitates gradient-based training.
+Layer norm is a variation of the z-score from statistics, applied to a single vec-
+tor in a hidden layer. That is, the term layer norm is a bit confusing; layer norm
+isnotapplied to an entire transformer layer, but just to the embedding vector of a
+single token. Thus the input to layer norm is a single vector of dimensionality d
+and the output is that vector normalized, again of dimensionality d. The ﬁrst step in
+layer normalization is to calculate the mean, µ, and standard deviation, σ, over the
+elements of the vector to be normalized. Given an embedding vector xof dimen-
+sionality d, these values are calculated as follows.
+µ=1
+dd∑
+i=1xi (8.22)
+σ=√1
+dd∑
+i=1(xi−µ)2(8.23)
+Given these values, the vector components are normalized by subtracting the mean
+from each and dividing by the standard deviation. The result of this computation is
+a new vector with zero mean and a standard deviation of one.
+ˆ x=(x−µ)
+σ(8.24)
+Finally, in the standard implementation of layer normalization, two learnable param-
+eters, γandβ, representing gain and offset values, are introduced.
+LayerNorm (x) =γ(x−µ)
+σ+β (8.25)
+Putting it all together The function computed by a transformer block can be ex-
+pressed by breaking it down with one equation for each component computation,
+using t(of shape [1×d]) to stand for transformer and superscripts to demarcate
+
+180 CHAPTER 8 • T RANSFORMERS
+each computation inside the block:
+t1
+i=LayerNorm (xi) (8.26)
+t2
+i=MultiHeadAttention (t1
+i,[
+t1
+1,···,t1
+N]
+) (8.27)
+t3
+i=t2
+i+xi (8.28)
+t4
+i=LayerNorm (t3
+i) (8.29)
+t5
+i=FFN(t4
+i) (8.30)
+hi=t5
+i+t3
+i (8.31)
+Notice that the only component that takes as input information from other tokens
+(other residual streams) is multi-head attention, which (as we see from Eq. 8.27)
+looks at all the neighboring tokens in the context. The output from attention, how-
+ever, is then added into this token’s embedding stream. In fact, Elhage et al. (2021)
+show that we can view attention heads as literally moving information from the
+residual stream of a neighboring token into the current stream. The high-dimensional
+embedding space at each position thus contains information about the current to-
+ken and about neighboring tokens, albeit in different subspaces of the vector space.
+Fig. 8.7 shows a visualization of this movement.
+Token Aresidual streamToken Bresidual stream
+Figure 8.7 An attention head can move information from token A’s residual stream into
+token B’s residual stream.
+Crucially, the input and output dimensions of transformer blocks are matched so
+they can be stacked. Each token vector xiat the input to the block has dimensionality
+d, and the output hialso has dimensionality d. Transformers for large language
+models stack many of these blocks, from 12 layers (used for the T5 or GPT-3-small
+language models) to 96 layers (used for GPT-3 large), to even more for more recent
+models. We’ll come back to this issue of stacking in a bit.
+Equation 8.26 and following are just the equation for a single transformer block,
+but the residual stream metaphor goes through all the transformer layers, from the
+ﬁrst transformer blocks to the 12th, in a 12-layer transformer. At the earlier trans-
+former blocks, the residual stream is representing the current token. At the highest
+transformer blocks, the residual stream is usually representing the following token,
+since at the very end it’s being trained to predict the next token.
+Once we stack many blocks, there is one more requirement: at the very end of
+the last (highest) transformer block, there is a single extra layer norm that is run on
+the last hiof each token stream (just below the language model head layer that we
+will deﬁne soon).3
+3Note that we are using the most common current transformer architecture, which is called the prenorm
+
+8.3 • P ARALLELIZING COMPUTATION USING A SINGLE MATRIX X 181
+8.3 Parallelizing computation using a single matrix X
+This description of multi-head attention and the rest of the transformer block has
+been from the perspective of computing a single output at a single time step iin
+a single residual stream. But as we pointed out earlier, the attention computation
+performed for each token to compute aiis independent of the computation for each
+other token, and that’s also true for all the computation in the transformer block
+computing hifrom the input xi. That means we can easily parallelize the entire
+computation, taking advantage of efﬁcient matrix multiplication routines.
+We do this by packing the input embeddings for the Ntokens of the input se-
+quence into a single matrix Xof size [N×d]. Each row of Xis the embedding of
+one token of the input. Transformers for large language models commonly have an
+input length Nfrom 1K to 32K; much longer contexts of 128K or even up to millions
+of tokens can also be achieved with architectural changes like special long-context
+mechanisms that we don’t discuss here. So for vanilla transformers, we can think of
+Xhaving between 1K and 32K rows, each of the dimensionality of the embedding
+d(the model dimension).
+Parallelizing attention Let’s ﬁrst see this for a single attention head and then turn
+to multiple heads, and then add in the rest of the components in the transformer
+block. For one head we multiply Xby the query, key, and value matrices WQof
+shape [d×dk],WKof shape [d×dk], andWVof shape [d×dv], to produce matrices
+Qof shape [N×dk],Kof shape [N×dk], and Vof shape [N×dv], containing all the
+key, query, and value vectors:
+Q=XWQ;K=XWK;V=XWV(8.32)
+Given these matrices we can compute all the requisite query-key comparisons simul-
+taneously by multiplying QandK⊺in a single matrix multiplication. The product is
+of shape N×N, visualized in Fig. 8.8.
+q1•k1q2•k1q2•k2q4•k1q4•k2q4•k3q4•k4q3•k1q3•k2q3•k3NNq1•k2q1•k3q1•k4q2•k3q2•k4q3•k4
+Figure 8.8 The N×NQK⊺matrix showing how it computes all qi·kjcomparisons in a
+single matrix multiple.
+Once we have this QK⊺matrix, we can very efﬁciently scale these scores, take
+the softmax, and then multiply the result by Vresulting in a matrix of shape N×d:
+a vector embedding representation for each token in the input. We’ve reduced the
+entire self-attention step for an entire sequence of Ntokens for one head to the
+architecture. The original deﬁnition of the transformer in Vaswani et al. (2017) used an alternative archi-
+tecture called the postnorm transformer in which the layer norm happens after the attention and FFN
+layers; it turns out moving the layer norm beforehand works better, but does require this one extra layer
+at the end.
+
+182 CHAPTER 8 • T RANSFORMERS
+following computation:
+head =softmax(
+mask(QK⊺
+√dk))
+V (8.33)
+A=head WO(8.34)
+Masking out the future You may have noticed that we introduced a mask function
+in Eq. 8.34 above. This is because the self-attention computation as we’ve described
+it has a problem: the calculation of QK⊺results in a score for each query value to
+every key value, including those that follow the query . This is inappropriate in the
+setting of language modeling: guessing the next word is pretty simple if you already
+know it! To ﬁx this, the elements in the upper-triangular portion of the matrix are set
+to−∞, which the softmax will turn to zero, thus eliminating any knowledge of words
+that follow in the sequence. This is done in practice by adding a mask matrix Min
+which Mi j=−∞∀j>i(i.e. for the upper-triangular portion) and Mi j=0 otherwise.
+Fig. 8.9 shows the resulting masked QK⊺matrix. (we’ll see in Chapter 10 how to
+make use of words in the future for tasks that need it).
+q1•k1q2•k1q2•k2q4•k1q4•k2q4•k3q4•k4q3•k1q3•k2q3•k3NN−∞−∞−∞−∞−∞−∞
+Figure 8.9 TheN×NQK⊺matrix showing the qi·kjvalues, with the upper-triangle por-
+tion of the comparisons matrix zeroed out (set to −∞, which the softmax will turn to zero).
+Fig. 8.10 shows a schematic of all the computations for a single attention head
+parallelized in matrix form.
+Fig. 8.8 and Fig. 8.9 also make it clear that attention is quadratic in the length
+of the input, since at each layer we need to compute dot products between each pair
+of tokens in the input. This makes it expensive to compute attention over very long
+documents (like entire novels). Nonetheless modern large language models manage
+to use quite long contexts of thousands or tens of thousands of tokens.
+Parallelizing multi-head attention In multi-head attention, as with self-attention,
+the input and output have the model dimension d, the key and query embeddings
+have dimensionality dk, and the value embeddings are of dimensionality dv(again,
+in the original transformer paper dk=dv=64,A=8, and d=512). Thus for
+each head c, we have weight layers WQcof shape [d×dk],WKcof shape [d×dk],
+andWVcof shape [d×dv], and these get multiplied by the inputs packed into Xto
+produce Qof shape [N×dk],Kof shape [N×dk], and Vof shape [N×dv]. The
+output of each of the Aheads is of shape [N×dv], and so the output of the multi-
+head layer with Aheads consists of Amatrices of shape [N×dv]. To make use
+of these matrices in further processing, they are concatenated to produce a single
+output with dimensionality [N×Adv]. Finally, we use a ﬁnal linear projection WO
+of shape [Adv×d], that reshapes it to the original output dimension for each token.
+Multiplying the concatenated [N×Adv]matrix output by WOof shape [Adv×d]
+
+8.3 • P ARALLELIZING COMPUTATION USING A SINGLE MATRIX X 183
+q1q2q3q4k1k2k3k4QKTQKTv1v2v3v4Vq2•k2q4•k2q4•k3q4•k4q3•k2q3•k3−∞−∞−∞−∞−∞−∞q1•k1q2•k1q2•k2q4•k1q4•k2q4•k3q4•k4q3•k1q3•k2q3•k3q1•k2q2•k3q1•k3q3•k4q2•k4q1•k4x=QKT maskedmask=q1•k1q2•k1q4•k1q3•k1q1•k1q1•k1=xa1a2a3a4AQuery Token 1Query Token 2Query Token 3Query Token 4QInput Token 1Input Token 2Input Token 3Input Token 4XxWQ=Value Token 1Value Token 2Value Token 3Value Token 4VxWV=Input Token 1Input Token 2Input Token 3Input Token 4XKey Token 1Key Token 2Key Token 3Key Token 4KxWK=Input Token 1Input Token 2Input Token 3Input Token 4X
+N x dkdk x NN x NN x NN x dvN x dvd x dkd x dkd x dvN x dN x dkN x dN x dkN x dN x dv
+Figure 8.10 Schematic of the attention computation for a single attention head in parallel. The ﬁrst row shows
+the computation of the Q,K, and Vmatrices. The second row shows the computation of QKT, the masking
+(the softmax computation and the normalizing by dimensionality are not shown) and then the weighted sum of
+the value vectors to get the ﬁnal attention vectors.
+yields the self-attention output Aof shape [ N×d].
+Qi=XWQi;Ki=XWKi;Vi=XWVi(8.35)
+head i=SelfAttention (Qi,Ki,Vi) = softmax(
+mask(QiKi⊺
+√dk))
+Vi(8.36)
+MultiHeadAttention (X) = ( head 1⊕head 2...⊕head A)WO(8.37)
+Putting it all together with the parallel input matrix XThe function computed
+in parallel by an entire layer of Ntransformer blocks—each block over one of the N
+input tokens—can be expressed as:
+O=X+MultiHeadAttention (LayerNorm (X)) (8.38)
+H=O+FFN(LayerNorm (O)) (8.39)
+Note that in Eq. 8.38 we are using Xto mean the input to the layer, wherever it
+comes from. For the ﬁrst layer, as we will see in the next section, that input is the
+initial word + positional embedding vectors that we have been describing by X. But
+for subsequent layers k, the input is the output from the previous layer Hk−1. We
+can also break down the computation performed in a transformer layer, showing one
+equation for each component computation. We’ll use T(of shape [N×d]) to stand
+for transformer and superscripts to demarcate each computation inside the block,
+and again use Xto mean the input to the block from the previous layer or the initial
+
+184 CHAPTER 8 • T RANSFORMERS
+embedding:
+T1=LayerNorm (X) (8.40)
+T2=MultiHeadAttention (T1) (8.41)
+T3=T2+X (8.42)
+T4=LayerNorm (T3) (8.43)
+T5=FFN(T4) (8.44)
+H=T5+T3(8.45)
+Here when we use a notation like FFN (T3)we mean that the same FFN is applied
+in parallel to each of the Nembedding vectors in the window. Similarly, each of the
+Ntokens is normed in parallel in the LayerNorm. Crucially, the input and output
+dimensions of transformer blocks are matched so they can be stacked. Since each
+token xiat the input to the block is represented by an embedding of dimensionality
+[1×d], that means the input Xand output Hare both of shape [N×d].
+8.4 The input: embeddings for token and position
+Let’s talk about where the input Xcomes from. Given a sequence of Ntokens ( Nis
+the context length in tokens), the matrix Xof shape [N×d]has an embedding for embedding
+each word in the context. The transformer does this by separately computing two
+embeddings: an input token embedding, and an input positional embedding.
+A token embedding, introduced in Chapter 6, is a vector of dimension dthat will
+be our initial representation for the input token. (As we pass vectors up through the
+transformer layers in the residual stream, this embedding representation will change
+and grow, incorporating context and playing a different role depending on the kind
+of language model we are building.) The set of initial embeddings are stored in the
+embedding matrix E, which has a row for each of the |V|tokens in the vocabulary.
+(Reminder that Vhere means the vocabulary of tokens, this Vis not related to the
+value vector.) Thus each word is a row vector of ddimensions, and Ehas shape
+[|V|×d].
+Given an input token string like Thanks for all the we ﬁrst convert the tokens
+into vocabulary indices (these were created when we ﬁrst tokenized the input using
+BPE or SentencePiece). So the representation of thanks for all the might be w=
+[5,4000,10532,2224]. Next we use indexing to select the corresponding rows from
+E, (row 5, row 4000, row 10532, row 2224).
+Another way to think about selecting token embeddings from the embedding
+matrix is to represent tokens as one-hot vectors of shape [1×|V|], i.e., with one
+dimension for each word in the vocabulary. Recall that in a one-hot vector all the one-hot vector
+elements are 0 except one, the element whose dimension is the word’s index in the
+vocabulary, which has value 1. So if the word “thanks” has index 5 in the vocabulary,
+x5=1, and xi=0∀i̸=5, as shown here:
+[0 0 0 0 1 0 0 ... 0 0 0 0]
+1 2 3 4 5 6 7 ... ... |V|
+Multiplying by a one-hot vector that has only one non-zero element xi=1 simply
+selects out the relevant row vector for word i, resulting in the embedding for word i,
+as depicted in Fig. 8.11.
+
+8.4 • T HE INPUT :EMBEDDINGS FOR TOKEN AND POSITION 185
+E|V|d1|V|d=✕550 0 0 0 1 0 0 … 0 0 0 0 1
+Figure 8.11 Selecting the embedding vector for word V5by multiplying the embedding
+matrix Ewith a one-hot vector with a 1 in index 5.
+We can extend this idea to represent the entire token sequence as a matrix of one-
+hot vectors, one for each of the Npositions in the transformer’s context window, as
+shown in Fig. 8.12.
+E|V|ddN=✕|V|N0 0 0 0 0 0 0 … 0 0 1 0 0 0 0 0 1 0 0 … 0 0 0 0 1 0 0 0 0 0 0 … 0 0 0 0 0 0 0 0 1 0 0 … 0 0 0 0 …
+Figure 8.12 Selecting the embedding matrix for the input sequence of token ids Wby mul-
+tiplying a one-hot matrix corresponding to Wby the embedding matrix E.
+These token embeddings are not position-dependent. To represent the position
+of each token in the sequence, we combine these token embeddings with positional
+embeddings speciﬁc to each position in an input sequence.positional
+embeddings
+Where do we get these positional embeddings? The simplest method, called
+absolute position , is to start with randomly initialized embeddings correspondingabsolute
+position
+to each possible input position up to some maximum length. For example, just as
+we have an embedding for the word ﬁsh, we’ll have an embedding for the position 3.
+As with word embeddings, these positional embeddings are learned along with other
+parameters during training. We can store them in a matrix Eposof shape [N×d].
+To produce an input embedding that captures positional information, we just
+add the word embedding for each input to its corresponding positional embedding.
+The individual token and position embeddings are both of size [1×d], so their sum is
+also[1×d], This new embedding serves as the input for further processing. Fig. 8.13
+shows the idea.
+X = CompositeEmbeddings(word + position)Transformer BlockJanet1will2back3Janetwillbackthebillthe4bill5
++++++PositionEmbeddingsWordEmbeddings
+Figure 8.13 A simple way to model position: add an embedding of the absolute position to
+the token embedding to produce a new embedding of the same dimensionality.
+
+186 CHAPTER 8 • T RANSFORMERS
+The ﬁnal representation of the input, the matrix X, is an [N×d]matrix in which
+each row iis the representation of the ith token in the input, computed by adding
+E[id(i)]—the embedding of the id of the token that occurred at position i—, to P[i],
+the positional embedding of position i.
+A potential problem with the simple position embedding approach is that there
+will be plenty of training examples for the initial positions in our inputs and corre-
+spondingly fewer at the outer length limits. These latter embeddings may be poorly
+trained and may not generalize well during testing. An alternative is to choose a
+static function that maps integer inputs to real-valued vectors in a way that better
+handles sequences of arbitrary length. A combination of sine and cosine functions
+with differing frequencies was used in the original transformer work. Sinusoidal po-
+sition embeddings may also help in capturing the inherent relationships among the
+positions, like the fact that position 4 in an input is more closely related to position
+5 than it is to position 17.
+A more complex style of positional embedding methods extend this idea of cap-
+turing relationships even further to directly represent relative position instead ofrelative
+position
+absolute position, often implemented in the attention mechanism at each layer rather
+than being added once at the initial input.
+8.5 The Language Modeling Head
+The last component of the transformer we must introduce is the language modeling
+head . Here we are using the word head to mean the additional neural circuitry welanguage
+modeling head
+head add on top of the basic transformer architecture when we apply pretrained trans-
+former models to various tasks. The language modeling head is the circuitry we
+need to do language modeling.
+Recall that language models, from the simple n-gram models of Chapter 3 through
+the feedforward and RNN language models of Chapter 6 and Chapter 13, are word
+predictors. Given a context of words, they assign a probability to each possible next
+word. For example, if the preceding context is “Thanks for all the” and we want to
+know how likely the next word is “ﬁsh” we would compute:
+P(ﬁsh|Thanks for all the )
+Language models give us the ability to assign such a conditional probability to every
+possible next word, giving us a distribution over the entire vocabulary. The n-gram
+language models of Chapter 3 compute the probability of a word given counts of
+its occurrence with the n−1 prior words. The context is thus of size n−1. For
+transformer language models, the context is the size of the transformer’s context
+window, which can be quite large, like 32K tokens for large models (and much larger
+contexts of millions of words are possible with special long-context architectures).
+The job of the language modeling head is to take the output of the ﬁnal trans-
+former layer from the last token Nand use it to predict the upcoming word at posi-
+tionN+1. Fig. 8.14 shows how to accomplish this task, taking the output of the last
+token at the last layer (the d-dimensional output embedding of shape [1×d]) and
+producing a probability distribution over words (from which we will choose one to
+generate).
+The ﬁrst module in Fig. 8.14 is a linear layer, whose job is to project from the
+output hL
+N, which represents the output token embedding at position Nfrom the ﬁnal
+
+8.5 • T HELANGUAGE MODELING HEAD 187
+Layer LTransformerBlockSoftmax over vocabulary VUnembedding layer…1 x |V|Logits Word probabilities1 x |V|hL1w1w2wNhL2hLNd x |V|1 x d   Unembedding layerU = ETy1y2y|V|…u1u2u|V|…Language Model Headtakes hLN and outputs adistribution over vocabulary V
+Figure 8.14 The language modeling head: the circuit at the top of a transformer that maps from the output
+embedding for token Nfrom the last transformer layer ( hL
+N) to a probability distribution over words in the
+vocabulary V.
+block L, (hence of shape [1×d]) to the logit vector, or score vector, that will have a logit
+single score for each of the |V|possible words in the vocabulary V. The logit vector
+uis thus of dimensionality [1×|V|].
+This linear layer can be learned, but more commonly we tie this matrix to (the
+transpose of) the embedding matrix E. Recall that in weight tying , we use the weight tying
+same weights for two different matrices in the model. Thus at the input stage of the
+transformer the embedding matrix (of shape [|V|×d]) is used to map from a one-hot
+vector over the vocabulary (of shape [1×|V|]) to an embedding (of shape [1×d]).
+And then in the language model head, ET, the transpose of the embedding matrix (of
+shape [d×|V|]) is used to map back from an embedding (shape [1×d]) to a vector
+over the vocabulary (shape [1 ×|V|]). In the learning process, Ewill be optimized to
+be good at doing both of these mappings. We therefore sometimes call the transpose
+ETtheunembedding layer because it is performing this reverse mapping. unembedding
+A softmax layer turns the logits uinto the probabilities yover the vocabulary.
+u=hL
+NET(8.46)
+y=softmax (u) (8.47)
+We can use these probabilities to do things like help assign a probability to a
+given text. But the most important usage is to generate text, which we do by sam-
+pling a word from these probabilities y. We might sample the highest probability
+word (‘greedy’ decoding), or use another of the sampling methods from Section 7.4
+or Section 8.6.
+In either case, whatever entry ykwe choose from the probability vector y, we
+generate the word that has that index k.
+Fig. 8.15 shows the total stacked architecture for one token i. Note that the input
+to each transformer layer xℓ
+iis the same as the output from the preceding layer hℓ−1
+i.
+A terminological note before we conclude: You will sometimes see a trans-
+former used for this kind of unidirectional causal language model called a decoder-
+only model . This is because this model constitutes roughly half of the encoder-decoder-only
+model
+decoder model for transformers that we’ll see how to apply to machine translation
+in Chapter 12. (Confusingly, the original introduction of the transformer had an
+encoder-decoder architecture, and it was only later that the standard paradigm for
+
+188 CHAPTER 8 • T RANSFORMERS
+wiSample token togenerate at position i+1
+feedforwardlayer normattentionlayer norm
+U
+Input tokenLanguageModelingHead
+InputEncoding
+Ei+…logits
+feedforwardlayer normattentionlayer normLayer 1Layer 2h1i  =  x2ix1ih2i  =  x3ifeedforwardlayer normattentionlayer normhLi  hL-1i  =  xLiy1y2y|V|…Token probabilitiesu1u2u|V|…softmaxwi+1
+Layer L
+Figure 8.15 A transformer language model (decoder-only), stacking transformer blocks
+and mapping from an input token wito to a predicted next token wi+1.
+causal language model was deﬁned by using only the decoder part of this original
+architecture).
+8.6 More on Sampling
+The sampling methods we introduce below each have parameters that enable trad-
+ing off two important factors in generation: quality anddiversity . Methods that
+emphasize the most probable words tend to produce generations that are rated by
+people as more accurate, more coherent, and more factual, but also more boring
+and more repetitive. Methods that give a bit more weight to the middle-probability
+words tend to be more creative and more diverse, but less factual and more likely to
+be incoherent or otherwise low-quality.
+8.6.1 Top- ksampling
+Top-k sampling is a simple generalization of greedy decoding. Instead of choosing top-k sampling
+the single most probable word to generate, we ﬁrst truncate the distribution to the
+
+8.7 • T RAINING 189
+topkmost likely words, renormalize to produce a legitimate probability distribution,
+and then randomly sample from within these kwords according to their renormalized
+probabilities. More formally:
+1. Choose in advance a number of words k
+2. For each word in the vocabulary V, use the language model to compute the
+likelihood of this word given the context p(wt|w<t)
+3. Sort the words by their likelihood, and throw away any word that is not one of
+the top kmost probable words.
+4. Renormalize the scores of the kwords to be a legitimate probability distribu-
+tion.
+5. Randomly sample a word from within these remaining kmost-probable words
+according to its probability.
+When k=1, top- ksampling is identical to greedy decoding. Setting kto a larger
+number than 1 leads us to sometimes select a word which is not necessarily the most
+probable, but is still probable enough, and whose choice results in generating more
+diverse but still high-enough-quality text.
+8.6.2 Nucleus or top- psampling
+One problem with top- ksampling is that kis ﬁxed, but the shape of the probability
+distribution over words differs in different contexts. If we set k=10, sometimes
+the top 10 words will be very likely and include most of the probability mass, but
+other times the probability distribution will be ﬂatter and the top 10 words will only
+include a small part of the probability mass.
+An alternative, called top-p sampling ornucleus sampling (Holtzman et al., top-p sampling
+2020), is to keep not the top kwords, but the top ppercent of the probability mass.
+The goal is the same; to truncate the distribution to remove the very unlikely words.
+But by measuring probability rather than the number of words, the hope is that the
+measure will be more robust in very different contexts, dynamically increasing and
+decreasing the pool of word candidates.
+Given a distribution P(wt|w<t), we sort the distribution from most probable, and
+then the top- pvocabulary V(p)is the smallest set of words such that
+∑
+w∈V(p)P(w|w<t)≥p. (8.48)
+8.7 Training
+We described the training process for language models in the prior chapter. Re-
+call that large language models are trained with cross-entropy loss, also called the
+negative log likelihood loss. At time tthe cross-entropy loss is the negative log prob-
+ability the model assigns to the next word in the training sequence, −logp(wt+1).
+Fig. 8.16 illustrates the general training approach. At each step, given all the
+preceding words, the ﬁnal transformer layer produces an output distribution over the
+entire vocabulary. During training, the probability assigned to the correct word by
+the model is used to calculate the cross-entropy loss for each item in the sequence.
+The loss for a training sequence is the average cross-entropy loss over the entire
+sequence. The weights in the network are adjusted to minimize the average CE loss
+over the training sequence via gradient descent.
+
+190 CHAPTER 8 • T RANSFORMERS
+longandthanksforNext tokenallLoss…=
+<latexit sha1_base64="AovqpaL476UmJ1EU1xZPgDZ70tQ=">AAAB9nicbVDLSsNAFL2pr1pfURcu3AwWwY0lEakui25cVrAPaEqYTCbt0EkmzEzEEvIrbkTcKPgZ/oJ/Y9Jm09YDA4dzznDvPV7MmdKW9WtU1tY3Nreq27Wd3b39A/PwqKtEIgntEMGF7HtYUc4i2tFMc9qPJcWhx2nPm9wXfu+ZSsVE9KSnMR2GeBSxgBGsc8k1Ty4dLkZo6qZOiPVYhimO/CyruWbdalgzoFVil6QOJdqu+eP4giQhjTThWKmBbcV6mGKpGeE0qzmJojEmEzyi6WztDJ3nko8CIfMXaTRTF3I4VGoaenmy2E0te4X4nzdIdHA7TFkUJ5pGZD4oSDjSAhUdIJ9JSjSf5gQTyfINERljiYnOmypOt5cPXSXdq4bdbDQfr+utu7KEKpzCGVyADTfQggdoQwcIZPAGn/BlvBivxrvxMY9WjPLPMSzA+P4DPEiSHA==</latexit> logyand
+StackedTransformerBlocksSolongandthanksfor……
+…
+U
+Input tokensx1x2LanguageModelingHeadx3x4x5InputEncoding
+E1+
+E2+
+E3+
+E4+
+E5+……………
+U
+U
+U
+U…logitslogitslogitslogitslogits…
+<latexit sha1_base64="q3ZgXDyG7qtkT7t8hT47RdlwYG4=">AAAB+XicbVDLSsNAFJ3UV62vWHe6GVsEN5bERXUlBUVcVrAPaEqYTCft0MlMmJkIIQT8AT/CTRE3Cv6Ev+DfmLTdtPXAwOGcM9x7jxcyqrRl/RqFtfWNza3idmlnd2//wDwst5WIJCYtLJiQXQ8pwignLU01I91QEhR4jHS88W3ud56JVFTwJx2HpB+gIac+xUhnkmseXzhMDGHsJk6A9EgGiR4hPlZpWnLNqlWzpoCrxJ6TauP0tXw3qdw0XfPHGQgcBYRrzJBSPdsKdT9BUlPMSFpyIkVChMdoSJLp5ik8y6QB9IXMHtdwqi7kUKBUHHhZMl9PLXu5+J/Xi7R/3U8oDyNNOJ4N8iMGtYB5DXBAJcGaxRlBWNJsQ4hHSCKss7Ly0+3lQ1dJ+7Jm12v1x6yDezBDEZyACjgHNrgCDfAAmqAFMHgBE/AJvozEeDPejY9ZtGDM/xyBBRjff79pldo=</latexit> logythanks
+Figure 8.16 Training a transformer as a language model.
+With transformers, each training item can be processed in parallel since the out-
+put for each element in the sequence is computed separately.
+Large models are generally trained by ﬁlling the full context window (for exam-
+ple 4096 tokens for GPT4 or 8192 for Llama 3) with text. If documents are shorter
+than this, multiple documents are packed into the window with a special end-of-text
+token between them. The batch size for gradient descent is usually quite large (the
+largest GPT-3 model uses a batch size of 3.2 million tokens).
+8.8 Dealing with Scale
+Large language models are large. For example the Llama 3.1 405B Instruct model
+from Meta has 405 billion parameters ( L=126 layers, a model dimensionality of
+d=16,384, A=128 attention heads) and was trained on 15.6 terabytes of text tokens
+(Llama Team, 2024), using a vocabulary of 128K tokens. So there is a lot of research
+on understanding how LLMs scale, and especially how to implement them given
+limited resources. In the next few sections we discuss how to think about scale (the
+concept of scaling laws ), and important techniques for getting language models to
+work efﬁciently, such as the KV cache and parameter-efﬁcient ﬁne tuning.
+8.8.1 Scaling laws
+The performance of large language models has shown to be mainly determined by
+3 factors: model size (the number of parameters not counting embeddings), dataset
+size (the amount of training data), and the amount of compute used for training. That
+is, we can improve a model by adding parameters (adding more layers or having
+wider contexts or both), by training on more data, or by training for more iterations.
+The relationships between these factors and performance are known as scaling
+laws . Roughly speaking, the performance of a large language model (the loss) scales scaling laws
+
+8.8 • D EALING WITH SCALE 191
+as a power-law with each of these three properties of model training.
+For example, Kaplan et al. (2020) found the following three relationships for
+lossLas a function of the number of non-embedding parameters N, the dataset size
+D, and the compute budget C, for models training with limited parameters, dataset,
+or compute budget, if in each case the other two properties are held constant:
+L(N) =(Nc
+N)αN
+(8.49)
+L(D) =(Dc
+D)αD
+(8.50)
+L(C) =(Cc
+C)αC
+(8.51)
+The number of (non-embedding) parameters Ncan be roughly computed as fol-
+lows (ignoring biases, and with das the input and output dimensionality of the
+model, dattnas the self-attention layer size, and dffthe size of the feedforward layer):
+N≈2d nlayer(2dattn+dff)
+≈12nlayerd2(8.52)
+(assuming dattn=dff/4=d)
+Thus GPT-3, with n=96 layers and dimensionality d=12288, has 12×96×
+122882≈175 billion parameters.
+The values of Nc,Dc,Cc,αN,αD, and αCdepend on the exact transformer
+architecture, tokenization, and vocabulary size, so rather than all the precise values,
+scaling laws focus on the relationship with loss.4
+Scaling laws can be useful in deciding how to train a model to a particular per-
+formance, for example by looking at early in the training curve, or performance with
+smaller amounts of data, to predict what the loss would be if we were to add more
+data or increase model size. Other aspects of scaling laws can also tell us how much
+data we need to add when scaling up a model.
+8.8.2 KV Cache
+We saw in Fig. 8.10 and in Eq. 8.34 (repeated below) how the attention vector can
+be very efﬁciently computed in parallel for training, via two matrix multiplications:
+A=softmax(QK⊺
+√dk)
+V (8.53)
+Unfortunately we can’t do quite the same efﬁcient computation in inference as
+in training. That’s because at inference time, we iteratively generate the next tokens
+one at a time. For a new token that we have just generated, call it xi, we need to
+compute its query, key, and values by multiplying by WQ,WK, and WVrespec-
+tively. But it would be a waste of computation time to recompute the key and value
+vectors for all the prior tokens x<i; at prior steps we already computed these key
+and value vectors! So instead of recomputing these, whenever we compute the key
+and value vectors we store them in memory in the KV cache , and then we can just KV cache
+grab them from the cache when we need them. Fig. 8.17 modiﬁes Fig. 8.10 to show
+
+192 CHAPTER 8 • T RANSFORMERS
+q4k1k2k4QKTQKTv1v2v3v4V
+q4•k1q4•k2q4•k3q4•k4x==xa4A
+1 x dkdk x N1 x NN x dv1 x dv
+k3
+Figure 8.17 Parts of the attention computation (extracted from Fig. 8.10) showing, in black,
+the vectors that can be stored in the cache rather than recomputed when computing the atten-
+tion score for the 4th token.
+the computation that takes place for a single new token, showing which values we
+can take from the cache rather than recompute.
+8.8.3 Parameter Efﬁcient Fine Tuning
+As we mentioned above, it’s very common to take a language model and give it more
+information about a new domain by ﬁnetuning it (continuing to train it to predict
+upcoming words) on some additional data.
+Fine-tuning can be very difﬁcult with very large language models, because there
+are enormous numbers of parameters to train; each pass of batch gradient descent
+has to backpropagate through many many huge layers. This makes ﬁnetuning huge
+language models extremely expensive in processing power, in memory, and in time.
+For this reason, there are alternative methods that allow a model to be ﬁnetuned
+without changing all the parameters. Such methods are called parameter-efﬁcient
+ﬁne tuning or sometimes PEFT , because we efﬁciently select a subset of parametersparameter-
+efﬁcient ﬁne
+tuning
+PEFT to update when ﬁnetuning. For example we freeze some of the parameters (don’t
+change them), and only update some particular subset of parameters.
+Here we describe one such model, called LoRA , forLow-RankAdaptation. The LoRA
+intuition of LoRA is that transformers have many dense layers which perform matrix
+multiplication (for example the WQ,WK,WV,WOlayers in the attention computa-
+tion). Instead of updating these layers during ﬁnetuning, with LoRA we freeze these
+layers and instead update a low-rank approximation that has fewer parameters.
+Consider a matrix Wof dimensionality [N×d]that needs to be updated during
+ﬁnetuning via gradient descent. Normally this matrix would get updates ∆Wof
+dimensionality [N×d], for updating the N×dparameters after gradient descent. In
+LoRA, we freeze Wand update instead a low-rank decomposition of W. We create
+two matrices AandB, where Ahas size [N×r]andBhas size [r×d], and we choose
+rto be quite small, r<<min(d,N). During ﬁnetuning we update AandBinstead
+ofW. That is, we replace W+∆WwithW+AB. Fig. 8.18 shows the intuition.
+For replacing the forward pass h=xW, the new forward pass is instead:
+h=xW+xAB (8.54)
+LoRA has a number of advantages. It dramatically reduces hardware requirements,
+since gradients don’t have to be calculated for most parameters. The weight updates
+can be simply added in to the pretrained weights, since ABis the same size as W).
+4For the initial experiment in Kaplan et al. (2020) the precise values were αN= 0.076, Nc= 8.8×1013
+(parameters), αD= 0.095, Dc= 5.4×1013(tokens), αC= 0.050, Cc= 3.1×108(petaﬂop-days).
+
+8.9 • I NTERPRETING THE TRANSFORMER 193
+hPretrained WeightsWNdrdABrxd11d
+N×
+Figure 8.18 The intuition of LoRA. We freeze Wto its pretrained values, and instead ﬁne-
+tune by training a pair of matrices AandB, updating those instead of W, and just sum Wand
+the updated AB.
+That means it doesn’t add any time during inference. And it also means it’s possible
+to build LoRA modules for different domains and just swap them in and out by
+adding them in or subtracting them from W.
+In its original version LoRA was applied just to the matrices in the attention
+computation (the WQ,WK,WV, and WOlayers). Many variants of LoRA exist.
+8.9 Interpreting the Transformer
+How does a transformer-based language model manage to do so well at language
+tasks? The subﬁeld of interpretability , sometimes called mechanistic interpretabil- interpretability
+ity, focuses on ways to understand mechanistically what is going on inside the
+transformer. In the next two subsections we discuss two well-studied aspects of
+transformer interpretability.
+8.9.1 In-Context Learning and Induction Heads
+As a way of getting a model to do what we want, we can think of prompting as being
+fundamentally different than pretraining. Learning via pretraining means updating
+the model’s parameters by using gradient descent according to some loss function.
+But prompting with demonstrations can teach a model to do a new task. The model
+is learning something about the task from those demonstrations as it processes the
+prompt.
+Even without demonstrations, we can think of the process of prompting as a kind
+of learning. For example, the further a model gets in a prompt, the better it tends
+to get at predicting the upcoming tokens. The information in the context is helping
+give the model more predictive power.
+The term in-context learning was ﬁrst proposed by Brown et al. (2020) in theirin-context
+learning
+introduction of the GPT3 system, to refer to either of these kinds of learning that lan-
+
+194 CHAPTER 8 • T RANSFORMERS
+guage models do from their prompts. In-context learning means language models
+learning to do new tasks, better predict tokens, or generally reduce their loss dur-
+ing the forward-pass at inference-time, without any gradient-based updates to the
+model’s parameters.
+How does in-context learning work? While we don’t know for sure, there are
+some intriguing ideas. One hypothesis is based on the idea of induction heads induction heads
+(Elhage et al., 2021; Olsson et al., 2022). Induction heads are the name for a circuit ,
+which is a kind of abstract component of a network. The induction head circuit
+is part of the attention computation in transformers, discovered by looking at mini
+language models with only 1-2 attention heads.
+The function of the induction head is to predict repeated sequences. For example
+if it sees the pattern AB...A in an input sequence, it predicts that Bwill follow,
+instantiating the pattern completion ruleAB...A→B. It does this by having a preﬁx
+matching component of the attention computation that, when looking at the current
+token A, searches back over the context to ﬁnd a prior instance of A. If it ﬁnds one,
+the induction head has a copying mechanism that “copies” the token B that followed
+the earlier A, by increasing the probability the B will occur next. Fig. 8.19 shows an
+example.
+Figure 1: In the sequence “...vintage cars ... vintage”, an induction head identiﬁes the initial occurrence of “vintage”,
+attends to the subsequent word “cars” for preﬁx matching, and predicts “cars” as the next word through the copying
+mechanism.
+determines each head’s independent output for the
+current token.
+Leveraging this decomposition, Elhage et al.
+(2021 ) discovered a distinct behaviour in certain
+attention heads, which they named induction heads .
+This behaviour emerges when these heads process
+sequences of the form "[A] [B] ... [A] →". In
+these heads, the QK circuit directs attention to-
+wards [B], which appears directly after the previous
+occurrence of the current token [A]. This behaviour
+is termed preﬁx matching . The OV circuit subse-
+quently increases the output logit of the [B] token,
+termed copying . An overview of this mechanism is
+shown in Figure 1.
+4 Methods
+4.1 Models
+We utilise two recently developed open-source
+models, namely Llama-3-8B2and InternLM2-20B
+(Cai et al. ,2024 ), both of which are based on the
+original Llama ( Touvron et al. ,2023a ) architec-
+ture. These models feature grouped-query atten-
+tion mechanisms ( Ainslie et al. ,2023 ) to enhance
+efﬁciency. Llama-3-8B, comprises 32 layers, each
+with 32 attention heads and it uses a query group
+size of 4 attention heads. It has shown superior
+performance compared to its predecessors, even
+the larger Llama-2 models.
+InternLM2-20B, featuring 48 layers with 48 at-
+tention heads each, uses a query group size of 6
+attention heads. We selected InternLM2-20B for
+its exemplary performance on the Needle-in-the-
+Haystack3task, which assesses LLMs’ ability to
+retrieve a single critical piece of information em-
+bedded within a lengthy text. This mirrors the
+functionality of induction heads, which scan the
+context for prior occurrences of a token to extract
+relevant subsequent information.
+2https://ai.meta.com/blog/meta-llama-3/
+3https://github.com/gkamradt/LLMTest_
+NeedleInAHaystack4.2 Identifying Induction Heads
+To identify induction heads within models, we mea-
+sure the ability of all attention heads to perform
+preﬁx matching on random input sequences.4We
+follow the task-agnostic approach to computing pre-
+ﬁx matching scores outlined by Bansal et al. (2023 ).
+We argue that focusing solely on preﬁx matching
+scores is sufﬁcient for our analysis, as high pre-
+ﬁx matching cores speciﬁcally indicate induction
+heads, while less relevant heads tend to show high
+copying capabilities ( Bansal et al. ,2023 ). We gen-
+erate a sequence of 50 random tokens, excluding
+the 4% most common and least common tokens.
+This sequence is repeated four times to form the
+input to the model. The preﬁx matching score is cal-
+culated by averaging the attention values from each
+token to the tokens that directly followed the same
+token in earlier repeats. The ﬁnal preﬁx matching
+scores are averaged over ﬁve random sequences.
+The preﬁx matching scores for Llama-3-8B are
+shown in Figure 2. For IntermLM2-20B, we refer
+to Figure 8in Appendix A.1. Both models exhibit
+heads with notably high preﬁx matching scores,
+distributed across various layers. In the Llama-3-
+8B model, ~3% of the heads have a preﬁx matching
+score of 0.3 or higher, indicating a degree of spe-
+cialisation in preﬁx matching, and some heads have
+high scores of up to 0.98.
+4.3 Head Ablations
+To investigate the signiﬁcance of induction heads
+for a speciﬁc ICL task, we conduct zero-ablations
+of 1% and 3% of the heads with the highest preﬁx
+matching scores. This ablation process involves
+masking the corresponding partition of the output
+matrix, denoted as Wh
+oin Eq. 1, by setting it to
+zero. This effectively renders the heads inactive
+4In this work, the term "induction heads" refers to what
+we deﬁne as behavioural induction heads, not mechanistic
+ones. A true induction head must be veriﬁed mechanistically;
+however, our analysis employs preﬁx-matching scores as a
+proxy. We will continue to use the term "induction heads" for
+simplicity throughout the rest of the paper.
+4
+Figure 8.19 An induction head looking at vintage uses the preﬁx matching mechanism to
+ﬁnd a prior instance of vintage , and the copying mechanism to predict that cars will occur
+again. Figure from Crosbie and Shutova (2022).
+Olsson et al. (2022) propose that a generalized fuzzy version of this pattern com-
+pletion rule, implementing a rule like A*B*...A→B, where A*≈A and B*≈B (by
+≈we mean they they are semantically similar in some way), might be responsible
+for in-context learning. Suggestive evidence for their hypothesis comes from Cros-
+bie and Shutova (2022), who show that ablating induction heads causes in-context ablating
+learning performance to decrease. Ablation is originally a medical term meaning
+the removal of something. We use it in NLP interpretability studies as a tool for
+testing causal effects; if we knock out a hypothesized cause, we would expect the
+effect to disappear. Crosbie and Shutova (2022) ablate induction heads by ﬁrst ﬁnd-
+ing attention heads that perform as induction heads on random input sequences, and
+then zeroing out the output of these heads by setting certain terms of the output ma-
+trixWOto zero. Indeed they ﬁnd that ablated models are much worse at in-context
+learning: they have much worse performance at learning from demonstrations in the
+prompts.
+8.9.2 Logit Lens
+Another useful interpretability tool, the logit lens (Nostalgebraist, 2020), offers a logit lens
+way to visualize what the internal layers of the transformer might be representing.
+The idea is that we take any vector from any layer of the transformer and, pre-
+tending that it is the preﬁnal embedding, simply multiply it by the unembedding
+layer to get logits, and compute a softmax to see the distribution over words that
+that vector might be representing. This can be a useful window into the internal
+representations of the model. Since the network wasn’t trained to make the internal
+
+8.10 • S UMMARY 195
+representations function in this way, the logit lens doesn’t always work perfectly, but
+this can still be a useful trick to help us visualize the internal layers of a transformer.
+8.10 Summary
+This chapter has introduced the transformer and its components for the language
+modeling task introduced in the previous chapter. Here’s a summary of the main
+points that we covered:
+• Transformers are non-recurrent networks based on multi-head attention , a
+kind of self-attention . A multi-head attention computation takes an input
+vector xiand maps it to an output aiby adding in vectors from prior tokens,
+weighted by how relevant they are for the processing of the current word.
+• Atransformer block consists of a residual stream in which the input from
+the prior layer is passed up to the next layer, with the output of different com-
+ponents added to it. These components include a multi-head attention layer
+followed by a feedforward layer , each preceded by layer normalizations .
+Transformer blocks are stacked to make deeper and more powerful networks.
+• The input to a transformer is computed by adding an embedding (computed
+with an embedding matrix ) to a positional encoding that represents the se-
+quential position of the token in the window.
+• Language models can be built out of stacks of transformer blocks, with a
+language model head at the top, which applies an unembedding matrix to
+the output Hof the top layer to generate the logits , which are then passed
+through a softmax to generate word probabilities.
+• Transformer-based language models have a wide context window (200K to-
+kens or even more for very large models with special mechanisms) allowing
+them to draw on enormous amounts of context to predict upcoming words.
+• There are various computational tricks for making large language models
+more efﬁcient, such as the KV cache andparameter-efﬁcient ﬁnetuning .
+Historical Notes
+The transformer (Vaswani et al., 2017) was developed drawing on two lines of prior
+research: self-attention andmemory networks .
+Encoder-decoder attention, the idea of using a soft weighting over the encodings
+of input words to inform a generative decoder (see Chapter 12) was developed by
+Graves (2013) in the context of handwriting generation, and Bahdanau et al. (2015)
+for MT. This idea was extended to self-attention by dropping the need for separate
+encoding and decoding sequences and instead seeing attention as a way of weighting
+the tokens in collecting information passed from lower layers to higher layers (Ling
+et al., 2015; Cheng et al., 2016; Liu et al., 2016).
+Other aspects of the transformer, including the terminology of key, query, and
+value, came from memory networks , a mechanism for adding an external read-
+write memory to networks, by using an embedding of a query to match keys rep-
+
+196 CHAPTER 8 • T RANSFORMERS
+resenting content in an associative memory (Sukhbaatar et al., 2015; Weston et al.,
+2015; Graves et al., 2014).
+MORE HISTORY TBD IN NEXT DRAFT.
+

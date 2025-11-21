@@ -1,0 +1,877 @@
+26
+Sentiment Analysis and
+Subjectivity
+Bing Liu
+UniversityofIllinoisatChicago26.1 TheProblemofSentimentAnalysis................................62926.2 SentimentandSubjectivityClassiﬁcation .........................637
+Document-LevelSentimentClassiﬁcation •Sentence-LevelSubjectivity
+andSentimentClassiﬁcation •OpinionLexiconGeneration
+26.3 Feature-BasedSentimentAnalysis .................................644
+FeatureExtraction •OpinionOrientationIdentiﬁcation •BasicRules
+ofOpinions
+26.4 SentimentAnalysisofComparativeSentences ...................650
+ProblemDeﬁnition •ComparativeSentenceIdentiﬁcation •Objectand
+FeatureExtraction •PreferredObjectIdentiﬁcation
+26.5 OpinionSearchandRetrieval.......................................65426.6 OpinionSpamandUtilityofOpinions............................656
+OpinionSpam •UtilityofReviews
+26.7 Conclusions...........................................................660Acknowledgments ..........................................................661References....................................................................661
+Textual information in the world can be broadly categorized into two main types: factsandopinions.
+Factsareobjectiveexpressionsaboutentities,events,andtheirproperties.Opinionsareusuallysubjectiveexpressions that describe people’s sentiments, appraisals, or feelings toward entities, events, and theirproperties. The concept of opinion is very broad. In this chapter, we only focus on opinion expressionsthatconveypeople’spositiveornegativesentiments.Muchoftheexistingresearchontextualinformationprocessinghasbeenfocusedontheminingandretrievaloffactualinformation,e.g.,informationretrieval(IR), Web search, text classiﬁcation, text clustering, and many other text mining and natural languageprocessingtasks.Littleworkhadbeendoneontheprocessingofopinionsuntilonlyrecently.Yet,opinionsaresoimportantthatwheneverweneedtomakeadecisionwewanttohearothers’opinions.Thisisnotonlytrueforindividualsbutalsotruefororganizations.
+Oneofthemainreasonsforthelackofstudyonopinionsisthefactthattherewaslittleopinionatedtext
+available before the World Wide Web. Before the Web, when an individual needed to make a decision,he or she typically asked for opinions from friends and families. When an organization wanted to ﬁndthe opinions or sentiments of the general public about its products and services, it conducted opinionpolls, surveys, and focus groups. However, with the Web, especially with the explosive growth of theuser-generatedcontentontheWebinthepastfewyears,theworldhasbeentransformed.
+The Web has dramatically changed the way that people express their views and opinions. They can
+now post reviews of products at merchant sites and express their views on almost anything in Internetforums,discussiongroups,andblogs,whicharecollectivelycalledthe user-generatedcontent .Thisonline
+627
+
+628 HandbookofNaturalLanguageProcessing
+word-of-mouth behavior represents new and measurable sources of information with many practicalapplications.Nowifonewantstobuyaproduct,heorsheisnolongerlimitedtoaskinghisorherfriendsand families because there are many product reviews on the Web that give opinions of existing users ofthe product. For a company, it may no longer be necessary to conduct surveys, organize focus groups,or employ external consultants in order to ﬁnd consumer opinions about its products and those of itscompetitorsbecausetheuser-generatedcontentontheWebcanalreadygivethemsuchinformation.
+However, ﬁnding opinion sources and monitoring them on the Web can still be a formidable task
+because there are a large number of diverse sources, and each source may also have a huge volume ofopinionated text (text with opinions or sentiments). In many cases, opinions are hidden in long forum
+posts and blogs. It is diﬃcult for a human reader to ﬁnd relevant sources, extract related sentences withopinions, read them, summarize them, and organize them into usable forms. Thus, automated opiniondiscovery and summarization systems are needed. Sentiment analysis,a l s ok n o w na s opinion mining,
+grows out of this need. It is a challenging natural language processing or text-mining problem. Due toits tremendous value for practical applications, there has been an explosive growth of both research inacademiaandapplicationsintheindustry. Therearenowatleast20–30companiesthatoﬀersentimentanalysis services in the United States alone. This chapter introduces this research ﬁeld. It focuses on thefollowingtopics:
+1.Theproblemofsentimentanalysis:Asforanyscientiﬁcproblem,beforesolvingitweneedtodeﬁneor to formalize the problem. The formulation will introduce the basic deﬁnitions, core conceptsand issues, subproblems, and target objectives. It also serves as a common framework to unifydiﬀerentresearchdirections.Fromanapplicationpointofview,ittellspractitionerswhatthemaintasksare,theirinputsandoutputs,andhowtheresultingoutputsmaybeusedinpractice.
+2.Sentiment and subjectivity classiﬁcation : This is the area that has been researched the most in
+academia.Ittreatssentimentanalysisasatextclassiﬁcationproblem.Twosubtopicsthathavebeenextensivelystudiedare:(1)classifyinganopinionateddocumentasexpressingapositiveornegativeopinion,and(2)classifyingasentenceoraclauseofthesentenceassubjectiveorobjective,andforasubjectivesentenceorclauseclassifyingitasexpressingapositive,negative,orneutralopinion.Theﬁrsttopic,commonlyknownas sentimentclassiﬁcation ordocument-levelsentimentclassiﬁcation ,
+aims to ﬁnd the general sentiment of the author in an opinionated text. For example, given aproductreview, itdetermineswhetherthereviewerispositiveornegativeabouttheproduct. Thesecondtopicgoestoindividualsentencestodeterminewhetherasentenceexpressesanopinionornot (often called subjectivity classiﬁcation ), and if so, whether the opinion is positive or negative
+(calledsentence-levelsentimentclassiﬁcation ).
+3.Feature-based sentiment analysis : This model ﬁrst discovers the targets on which opinions have
+beenexpressedinasentence, andthendetermineswhethertheopinionsarepositive, negative, orneutral. The targets are objects, and their components, attributes and features. An object can bea product, service, individual, organization, event, topic, etc. For instance, in a product reviewsentence,itidentiﬁesproductfeaturesthathavebeencommentedonbytherevieweranddetermineswhether the comments are positive or negative. For example, in the sentence, “ The battery life of
+this camera is too short ,” the comment is on “battery life” of the camera object and the opinion is
+negative.Manyreal-lifeapplicationsrequirethislevelofdetailedanalysisbecauseinordertomakeproduct improvements one needs to know what components and/or features of the product arelikedanddislikedbyconsumers.Suchinformationisnotdiscoveredbysentimentandsubjectivityclassiﬁcation.
+4.Sentiment analysis of comparative sentences :Theevaluationofanobjectcanbedoneintwomain
+ways, direct appraisal and comparison. Direct appraisal, called direct opinion, gives positive or
+negative opinions about the object without mentioning any other similar objects. Comparisonmeans to compare the object with some other similar objects (e.g., competing products). Forexample,“ Thepicturequalityofthiscameraispoor,”expressesadirectopinion,while“Thepicture
+
+SentimentAnalysisandSubjectivity 629
+quality of Camera-x is better than that of Camera-y.” expresses a comparison. Clearly, it is usefultoidentifysuchsentences,extractcomparativeopinionsexpressedinthem,anddeterminewhichobjects are preferred by the sentence authors (in the above example, Camera-x is preferred withrespecttothepicturequality).
+5.Opinionsearchandretrieval :SincethegeneralWebsearchhasbeensosuccessfulinmanyaspects,
+it is not hard to imagine that opinion search will be very useful as well. For example, given akeyword query “gay marriage,” one wants to ﬁnd positive and negative opinions on the issuefrom an opinion search engine. For such a query, two tasks need to be performed: (1) retrievingdocumentsorsentencesthatarerelevanttothequery,and(2)identifyingandrankingopinionateddocuments or sentences from those retrieved. Opinion search is thus a combination of IR andsentimentanalysis.
+6.Opinionspamandutilityofopinions:AsopinionsontheWebareimportantformanyapplications,itisnosurprisethatpeoplehavestartedtogamethesystem.Opinionspamreferstofakeorbogusopinions that try to deliberately mislead readers or automated systems by giving undeservingpositiveopinionstosometargetobjectsinordertopromotetheobjectsand/orbygivingmaliciousnegative opinions to some other objects in order to damage their reputations. Detecting suchspamisveryimportantforapplications.Theutilityofopinionsreferstotheusefulnessorqualityofopinions.Automaticallyassigningutilityvaluestoopinionsisusefulasopinionscanthenberankedbasedontheirutilityvalues.Withtheranking,thereadercanfocusonthosequalityopinions.Weshouldnote,however,thatspamandutilityarediﬀerentconcepts,aswewillseelater.
+PangandLee(2008)wroteacomprehensivesurveyofthesentimentanalysisandopinionminingresearch.This chapter is not meant to be another such survey, but instead to introduce the ﬁeld for teaching andlearning. It focuses on the core topics of the research that are also essential for practical applications. Itintroduces the topics in suﬃcient detail so that the reader can have a good understanding of the mainideaswithoutreferringtotheoriginalpapers. Anotherkeycharacteristicofthischapteristhatittakesastructured approach to exploring the problem. In non-NLP literature, natural language documents areregarded as unstructured data, while the data in relational databases are referred to as structured data.The structured approach means to turn unstructured text to structured data, which enables traditionaldata management tools to be applied to slice, dice, and visualize the results in many ways. This isextremelyimportantforapplicationsbecauseitallowstheusertogaininsightsthroughbothqualitativeandquantitativeanalyses.
+26.1 The Problem of Sentiment Analysis
+Sentimentanalysisoropinionminingisthecomputationalstudyofopinions,sentiments,andemotionsexpressed in text. We use the following review segment on iPhone to introduce the problem (a numberisassociatedwitheachsentenceforeasyreference):
+(1)I bought an iPhone a few days ago.( 2 ) It was such a nice phone .( 3 )The touch screen was really
+cool.( 4 )The voice quality was clear too .( 5 )Although the battery life was not long, that is ok for me.
+(6)However,mymotherwasmadwithmeasIdidnottellherbeforeIboughtit.(7) Shealsothought
+thephonewastooexpensive,andwantedmetoreturnittotheshop ....
+Thequestionis:whatdowewanttomineorextractfromthisreview?Theﬁrstthingthatwemaynoticeisthatthereareseveralopinionsinthisreview.Sentences(2),(3),and(4)expresspositiveopinions,whilesentences(5), (6)and(7)expressnegativeopinions oremotions. Then, wealsonoticethattheopinionsall have some targets or objects on which the opinions are expressed. The opinion in sentence (2) is onthe iPhone as a whole, and the opinions in sentences (3), (4), and (5) are on the “touch screen,” “voice
+
+630 HandbookofNaturalLanguageProcessing
+quality,” and “battery life” of the iPhone respectively. The opinion in sentence (7) is on the price of theiPhone, but the opinion/emotion in sentence (6) is on “me,” not iPhone. This is an important point.Inanapplication,theusermaybeinterestedinopinionsoncertaintargetsorobjects,butnotonall(e.g.,unlikely on “me”). Finally, we may also notice the sources or holders of opinions. The source or holderoftheopinionsinsentences(2),(3),(4),and(5)istheauthorofthereview(“I”),butinsentences(6)and(7)is“mymother.”Withthisexampleinmind,wenowformallydeﬁnethesentimentanalysisoropinionminingproblem.Westartwiththeopiniontarget.
+In general, opinions can be expressed on anything, e.g., a product, a service, an individual, an
+organization, an event, or a topic. We use the term objectto denote the target entity that has been
+commented on. An object can have a set of components (orparts)a n das e to f attributes (orproperties ).
+Eachcomponentmayhaveitsownsubcomponentsanditssetofattributes,andsoon.Thus,anobjectcanbehierarchicallydecomposedbasedonthe part-ofrelation.Formally,wehavethefollowing(Liu2006):
+Deﬁnition(object) Anobjectoisanentitythatcanbeaproduct,person,event,organization,ortopic.It
+isassociatedwithapair,o :(T,A),whereT isahierarchyofcomponents(orparts),subcomponents,and
+soon,andAisasetofattributesofo.Eachcomponenthasitsownsetofsubcomponentsandattributes.
+Example26.1
+A particular brand of cellular phone is an object. It has a set of components, e.g., battery,a n dscreen,
+and alsoa setofattributes, e.g., voicequality, size,a n dweight. The battery componentalso hasitssetof
+attributes,e.g., batterylife andbatterysize .
+Based on this deﬁnition, an object can be represented as a tree, hierarchy, or taxonomy. The root of
+thetreeistheobjectitself.Eachnon-rootnodeisacomponentorsubcomponentoftheobject.Eachlinkisapart-ofrelation.Eachnodeisalsoassociatedwithasetofattributesorproperties.Anopinioncanbe
+expressedonanynodeandanyattributeofthenode.
+Example26.2
+Following Example 26.1, one can express an opinion on the cellular phone itself (the root node), e.g.,“Idonotlikethisphone,”orononeofitsattributes,e.g.,“ Thevoicequalityofthisphoneislousy .”Likewise,one
+canalsoexpressanopiniononanyoneofthephone’scomponentsoranyattributeofthecomponent.
+In practice, it is often useful to simplify this deﬁnition due to two reasons: First, natural language
+processing is a diﬃcult task. To eﬀectively study the text at an arbitrary level of detail as described inthedeﬁnitionisextremelychallenging. Second, foranordinaryuser, itisprobablytoocomplextouseahierarchicalrepresentationofanobjectandopinionsontheobject. Thus, weﬂattenthetreetoomitthehierarchy and use the term featuresto represent both components and attributes. In this simpliﬁcation,
+theobjectitselfcanalsobeseenasafeature(butaspecialfeature), whichistherootoftheoriginaltree.Anopinionatedcommentontheobjectitselfiscalleda generalopinion ontheobject(e.g.,“ IlikeiPhone ”).
+An opinionated comment on any speciﬁc feature is called a speciﬁc opinion on a feature of the object,
+e.g.,“ThetouchscreenofiPhoneisreallycool,”where“touchscreen”isafeatureofiPhone.
+Usingfeaturesforanobjectisquitecommonintheproductdomainaspeopleoftenusetheterm product
+features.However,whentheobjectsareeventsandtopics,theterm featuremaynotsoundnatural.Indeed
+in some other domains, researchers also use the term topic(Kim and Hovy 2004) or aspect(Kobayashi
+etal.2007;SnyderandBarzilay2007)tomean feature.Inthischapter,wechoosetousetheterm feature
+alongwiththeterm object. Weshouldnotethatbothtermsareneededbecauseinmostapplicationsthe
+primaryconcernoftheuserisasetofobjectsofinterest(e.g.,asetofcompetingproducts).Thenweneedtoknoweachfeaturetalkedaboutinanopiniondocumentbelongingtowhichobject.Oneissuewiththetermfeatureisthatitcanconfusewiththetermfeatureusedinmachinelearning,whereafeaturemeans
+
+SentimentAnalysisandSubjectivity 631
+a data attribute. To avoid the confusion, we will use the term object feature to mean feature of an object
+wheneversuchconfusionmayarise.
+Letanopinionateddocument bed,whichcanbeaproductreview,aforumpost,orablogthatevaluates
+asetofobjects.Inthemostgeneralcase, dconsistsofasequenceofsentences d=⟨s1,s2,...,sm⟩.
+Deﬁnition(opinionpassageonafeature) Anopinionpassageonafeaturef ofanobjectoevaluatedin
+disagroupofconsecutivesentencesindthatexpressesapositiveornegativeopiniononf.
+Itispossiblethatasequenceofsentences(atleastone)inanopinionateddocumenttogetherexpresses
+an opinion on an object or a feature of the object. It is also possible that a single sentence expressesopinions on more than one feature, e.g., “ The voice quality of this phone is good, but the battery life
+isshort.”
+Muchofthecurrentresearchfocusesonsentences,thatis,eachpassageconsistingofasinglesentence.
+Inthesubsequentdiscussion,wealsotreateachsentenceasthebasicinformationunit.Deﬁnition(explicitandimplicitfeature) Ifafeaturef oranyofitssynonymsappearsinasentences ,f
+is called an explicit feature in s. If neither f nor any of its synonyms appear in s but f is implied, then f iscalledanimplicitfeatureins.
+Example26.3
+“BatteryLife”intheFollowingSentenceisanExplicitFeature
+“Thebatterylifeofthisphoneistooshort.”Sizeis an implicit feature in the following sentence as it does not appear in the sentence but it is
+implied:
+“Thisphoneistoolarge.”
+Here, “large,” which is not a synonym of size, is called a featureindicator. Many feature indicators are
+adjectives or adverbs. Some adjectives and adverbs are general and can be used to modify anything,e.g.,good,bad,a n dgreat, butmanyactuallyindicatethetypesoffeaturesthattheyarelikelytomodify,
+e.g.,beautiful(appearance),and reliably(reliability).Thus,suchfeatureindicatorsmaybedirectlymapped
+totheirunderlyingfeatures.WewilldiscussthisagaininSection26.3.1.2.
+Deﬁnition (opinion holder) The holder of an opinion is the person or organization that expresses the
+opinion.
+Opinion holders are also called opinion sources (Wiebe et al. 2005). In the case of product reviews
+and blogs, opinion holders are usually the authors of the posts. Opinion holders are more important innewsarticlesbecausetheyoftenexplicitlystatethepersonororganizationthatholdsaparticularopinion(Bethard et al. 2004; Choi et al. 2005; Kim and Hovy 2004). For example, the opinion holder in thesentence“Johnexpressedhisdisagreementonthetreaty ”is“John.”
+Deﬁnition (opinion) An opinion on a feature f is a positive or negative view, attitude, emotion, or
+appraisalonf fromanopinionholder.Deﬁnition (opinion orientation) The orientation of an opinion on a feature f indicates whether the
+opinionispositive,negative,orneutral.
+Opinionorientationisalsoknownas sentimentorientation ,polarityofopinion ,orsemanticorientation.
+Wenowputeverythingtogethertodeﬁneamodelofanobject, amodelofanopinionatedtext, andthemining objective, which are collectively called the feature-based sentiment analysis model (Hu and Liu
+2004;Liu2006;Liuetal.2005).Model of an object : An object ois represented with a ﬁnite set of features, F={f
+1,f2,...,fn},w h i c h
+includestheobjectitselfasaspecialfeature.Eachfeature fi∈Fcanbeexpressedwithanyoneofaﬁnite
+setofwordsorphrases Wi={wi1,wi2,...,wim},whichare synonyms ofthefeature,orindicatedbyany
+oneofaﬁnitesetofindicators Ii={ii1,ii2,...,iiq}ofthefeature.
+
+632 HandbookofNaturalLanguageProcessing
+Model of an opinionated document : A general opinionated document dcontains opinions on a set of
+objects {o1,o2,...,or}from a set of opinion holders {h1,h2,...,hp}. The opinions on each object oj
+areexpressedonasubset Fjoffeaturesof oj.Anopinioncanbeanyoneofthefollowingtwotypes:
+1.Direct opinion : A direct opinion is a quintuple (oj,fjk,ooijkl,hi,tl),w h e r eojis an object, fjkis a
+feature of the object oj,ooijklis the orientation or polarity of the opinion on feature fjkof object
+oj,hiis the opinion holder and tlis the time when the opinion is expressed by hi.T h eo p i n i o n
+orientation ooijklcanbepositive,negative,orneutral(ormeasuredbasedonamoregranularscale
+toexpressdiﬀerentstrengthsofopinions(Wilsonetal. 2004)). Forfeature fjkthatopinionholder
+hicommentson,heorshechoosesawordorphrasefromthecorrespondingsynonymset Wjk,or
+awordorphrasefromthecorrespondingfeatureindicatorset Ijktodescribethefeature,andthen
+expressesapositive,negative,orneutralopiniononthefeature.
+2.Comparative opinion: A comparative opinion expresses a relation of similarities or diﬀerencesbetweentwoormoreobjects,and/orobjectpreferencesoftheopinionholderbasedonsomeofthesharedfeaturesoftheobjects.Acomparativeopinionisusuallyexpressedusingthe comparative or
+superlative formofanadjectiveoranadverb, althoughnotalways. Moredetaileddiscussionswill
+begiveninSection26.4.Thediscussionbelowfocusesonlyondirectopinions.
+This opinionated text model covers the essential but not all the interesting information or all possiblecases. For example, it does not cover the situation described in the following sentence: “The view-ﬁnderand the lens of this camera are too close ,” which expresses a negative opinion on the distance of the two
+components. We will follow this simpliﬁed model in the rest of this chapter as it is often suﬃcient forpracticalapplications.
+On direct opinions, there are in fact two main subtypes. In the ﬁrst subtype, opinions are directly
+expressed on an object or some features of an object, e.g., “ The voice quality of this phone is great .” In
+the second subtype, opinions on an object are expressed based on its eﬀect on some other objects. Thissubtype often occurs in the medical domain when patients express opinions on drugs or describe theirsideeﬀects.Forexample,thesentence“ Aftertakingthisdrug,myleftkneefeltgreat ”describesadesirable
+eﬀectofthedrugontheknee,andthusimpliesapositiveopiniononthedrug.Wecallbothtypesdirectopinionsinthischapterforthesakeofsimplicityandtodistinguishthemfromcomparativeopinions.
+Beforegoingfurther,letusalsohavesomemorediscussionsaboutthestrengthofanopinion (oo
+ijkl).
+Opinions come in diﬀerent strengths (Wilson et al. 2004). Some are very strong, e.g., “This phone is apieceofjunk”andsomeareweak,e.g.,“ Ithinkthisphoneisﬁne .”Hence,thestrengthofopinionscanbe
+interpreted as scaled. For example, a positive opinion may express a feeling of contented, happy,joyous,
+orecstatic,f r o mt h el o wi n t e n s i t yv a l u eo fcontented to the maximally high intensity value of ecstatic
+(MartinandWhite2005).Inapracticalapplication,wecanchoosethenumberofstrengthvaluesorlevelsdependingontheapplicationneed.Forexample,forpositiveopinions,wemayonlyneedtwolevels,i.e.,grouping contented andhappyintoonelevel,and joyousandecstaticintotheotherlevel.Thisdiscussion
+infacttouchestheconceptofemotions.Deﬁnition(emotion) Emotionsareoursubjectivefeelingsandthoughts.
+Emotionshavebeenstudiedinmanyﬁelds,e.g.,psychology,philosophy,sociology,biology,etc.However,there is still not a set of agreed basic emotions of people among researchers. Based on (Parrott 2001),people have six types of primary emotions, i.e., love,joy,surprise,anger,sadnessandfear, which can be
+subdividedintomanysecondaryandtertiaryemotions.Eachemotioncanalsohavediﬀerentintensities.The strengths of opinions are closely related to the intensities of certain emotions, e.g., joy and anger.However,theconceptsofemotionsandopinionsarenotequivalentalthoughtheyhavealargeintersection.
+When discussing subjective feelings of emotions or opinions, it is useful to distinguish two diﬀerent
+notions:people’smentalstates(orfeelings)andlanguageexpressionsusedtodescribethementalstates.Althoughthereareonlysixtypesofemotions,therearealargenumberoflanguageexpressionsthatcanbeusedtoexpressthem.Similarly,therearealsoalarge(seemlyunlimited)numberofopinionexpressions
+
+SentimentAnalysisandSubjectivity 633
+that describe positive or negative sentiments. Sentiment analysis or opinion mining essentially tries toinferpeople’ssentimentsbasedontheirlanguageexpressions.
+Wenowdescribetheobjectiveofsentimentanalysisoropinionmining, whichnotonlyaimstoinfer
+positive or negative opinions/sentiments from text, but also to discover the other pieces of associatedinformationwhichareimportantforpracticalapplicationsoftheopinions.Objectiveofminingdirectopinions :Givenanopinionateddocument d,
+1. Discoverallopinionquintuples (o
+j,fjk,ooijkl,hi,tl)ind
+2. Identifyallsynonyms (Wjk)andfeatureindicators Ijkofeachfeature fjkind
+Someremarksaboutthisfeature-basedsentimentanalysisoropinionminingmodelareasfollows:
+1. Itshouldbestressedthattheﬁvepiecesofinformationinthequintupleneedtocorrespondtoone
+another. That is, the opinion ooijklmust be given by opinion holder hion feature fjkof object oj
+attimetl.Thisrequirementgivessomecluewhysentimentanalysisissuchachallengingproblem
+because even identifying each piece of information itself is already very diﬃcult, let alone ﬁndingallﬁveandmatchthem.Tomakemattersworse,asentencemaynotexplicitlymentionsomepiecesofinformation,buttheyareimpliedduetopronouns,languageconventions,andthecontext.Letus see an example blog (the number before each sentence is added as the sentence id to facilitatethediscussionbelow):
+Example26.4
+“(1)This past Saturday, I bought a Nokia phone and my girlfriend bought a Motorola phone .( 2 )We
+called each other when we got home .( 3 )The voice on my phone was not so clear, worse than my
+previousphone .(4)Thecamerawasgood.(5) Mygirlfriendwasquitehappywithherphone .(6)Iwanted
+aphonewithgoodvoicequality .(7)Somypurchasewasarealdisappointment.(8) Ireturnedthephone
+yesterday.”
+The objects to be discovered in this blog are “Motorola phone” and “Nokia phone,” which are byno means easy to identify in practice. To ﬁgure out what is “my phone” and what is “her phone”in sentences (3) and (5) is even more challenging. Sentence (4) does not mention any phone anddoesnothaveapronoun.Thenthequestioniswhichphone“thecamera”belongsto.Sentence(6)seeminglyexpressesapositiveopinionaboutaphoneanditsvoicequality,butofcoursethatisnotthecase.Insentences(7)and(8),itishardtoknowwhat“mypurchase”isandwhat“thephone”is.Theopinionholderofalltheopinionsistheauthoroftheblogexceptsentence(5)whoseopinionholderis“mygirlfriend.”
+2. In practice not all ﬁve pieces of information in the quintuple needs to be discovered for every
+application because some of them may be known or not needed. For example, in the contextof product reviews, the object (product) evaluated in each review, the time when the review issubmitted,andtheopinionholderareallknownasareviewsitetypicallyrecordsanddisplayssuchinformation. Of course, one still needs to extract such information from the Web page, which isusuallyastructureddataextractionproblem(seeChapter9of(Liu2006)).
+Example 26.4 above revealed another issue, namely, subjectivity, which is related to opinions. That is,
+in a typical document (even an opinionated document), some sentences express opinions and some donot. For example, sentences (1), (2), (6), and (8) do not express any opinions. The issue of subjectivityhasbeenextensivelystudiedintheliterature(HatzivassiloglouandMcKeown2006;HatzivassiloglouandWiebe 2000; Riloﬀ et al. 2006; Riloﬀ and Wiebe 2003; Turney 2002; Wiebe 2000; Wiebe and Mihalcea2006;WiebeandWilson2002;Wiebeetal.2004;Wilsonetal.2004;2005).Deﬁnition (sentence subjectivity) An objective sentence presents some factual information about the
+world,whileasubjectivesentenceexpressessomepersonalfeelingsorbeliefs.
+
+634 HandbookofNaturalLanguageProcessing
+For example, in Example 26.4, sentences (1), (2), and (8) are objective sentences, while all other
+sentencesaresubjectivesentences.Subjectiveexpressionscomeinmanyforms,e.g.,opinions,allegations,desires, beliefs, suspicions, andspeculations(Riloﬀetal. 2006; Wiebe2000). Thus, asubjectivesentencemay not contain an opinion. For example, sentence (6) in Example 26.4 is subjective but it does notexpressapositiveornegativeopiniononanyspeciﬁcphone.Similarly,weshouldalsonotethatnoteveryobjectivesentencecontainsnoopinionasthesecondsentenceinExample26.5belowshows.Deﬁnition(explicitandimplicitopinion) Anexplicitopiniononfeaturef isapositiveornegativeopinion
+explicitlyexpressedonf inasubjectivesentence.Animplicitopiniononfeaturef isanopiniononf impliedinanobjectivesentence.
+Example26.5
+Thefollowingsentenceexpressesanexplicitpositiveopinion:
+“Thevoicequalityofthisphoneisamazing.”
+Thefollowingsentenceexpressesanimplicitnegativeopinion:
+“Theearphonebrokeintwodays.”
+Althoughthissentencestatesanobjectivefact,itimplicitlyindicatesanegativeopinionontheearphone.In fact, sentence (8) in Example 26.4 can also be said to imply a negative opinion. In general, objectivesentencesthatimplypositiveornegativeopinionsoftenstatethereasonsfortheopinions.
+Deﬁnition(opinionatedsentence) Anopinionatedsentenceisasentencethatexpressesexplicitorimplicit
+positiveornegativeopinions.Itcanbeasubjectiveorobjectivesentence.
+Aswecansee,theconceptsofsubjectivesentencesandopinionatedsentencesarenotthesame,although
+opinionated sentences are most often a subset of subjective sentences. The approaches for identifyingthemaresimilar.Thusforthesimplicityofpresentation,thischapterusesthetwotermsinterchangeably.Thetaskofdeterminingwhetherasentenceissubjectiveorobjectiveiscalled subjectivityclassiﬁcation .
+Clearly, the idea of opinionated can also be applied to documents. So far we have taken opinionated
+documents for granted in the above deﬁnitions. In practice, they may also need to be identiﬁed. Forexample, many forum posts are questions and answers with no opinions. It is reasonable to say thatwhether a document is opinionated depends entirely on whether some of its sentences are opinionated.Thus,wemaydeﬁneadocumenttobeopinionatedifanyofitssentencesisopinionated.Thisdeﬁnition,however, may not be suitable in all cases. For example, an objective news report may quote someone’sopinion.Itdoesnotmakegoodsensetosaythatthereportissubjectiveoropinionated.Itisperhapsmoreappropriatetosaythatthereportcontainssomeopinions.Amorefairdeﬁnitionmaybeonethatisbasedontheauthor’sintention, thatis, whetherheorsheintendstoexpressopinionsonsomethingusingthetext. Productreviewsﬁtthisdeﬁnition, thatis, theyareopinionated. Whetherasentenceisopinionatedornotismoreclear-cut.Inatypicaldocument,somesentencesareopinionatedandsomearenot.
+Withtheabstractmodelandminingobjectivesdeﬁned,letusnowseehowtheminingresultsmaybe
+presentedtotheuserinapplications.Althoughthisstepisnotsomuchofacademicresearch,itiscrucialforapplications.Italsogivesussomegleamsofhowanindustrialuserwantstoseetheresults,whichinturnmotivatesourresearch.Whatwediscussbelowhasalreadybeenusedintheindustry.
+Tostart,weshouldnotethatformostopinion-basedapplications,itisimportanttostudyacollection
+of opinions rather than only one because one opinion only represents the subjective view of a singleperson, which is usually not signiﬁcant for action. This clearly indicates that some form of summary ofthe mining results is needed because it does not make sense to list all quintuples (opinions) to the user.Below,weuseproductreviewsasanexampletopresentsomeideas.
+Recall we mentioned at the beginning of the chapter that we wanted to turn unstructured natural
+language texts to structured data. The quintuple output does exactly that. All the discovered quintuplescan be easily stored in database tables. A whole suite of database and visualization tools can then be
+
+SentimentAnalysisandSubjectivity 635
+Cellularphone 1:
+PHONE:
+Positive:125 <individualreviewsentences>Negative:7 <individualreviewsentences>
+Feature:voicequality
+Positive:120 <individualreviewsentences>Negative:8 <individualreviewsentences>
+Feature:size
+Positive:80 <individualreviewsentences>Negative:12 <individualreviewsentences>
+...
+FIGURE26.1 Anexampleofafeature-basedsummaryofopinions.
+applied to view the results in all kinds of ways to gain insights of consumer opinions, which are usuallycalledstructuredsummaries andarevisualizedasbarchartsand/orpiecharts.
+Structured opinion summary : A simple way to use the results is to produce a feature-based summary of
+opinionsonanobjectormultiplecompetingobjects(HuandLiu2004;Liuetal.2005).
+Example26.6
+Assume we summarize the reviews of a particular cellular phone, cellular phone 1. The summary looks
+like that in Figure 26.1, which was proposed by Hu and Liu (2004). In the ﬁgure, “PHONE” representsthephoneitself(therootnodeoftheobjecthierarchy).Positiveopinionsonthephonewereexpressedby 125 reviews and 7 reviews expressed negative opinions on the phone. “Voice quality” and “size” aretwo product features. Positive opinions on the voice quality were expressed by 120 reviews, and only8 reviews expressed negative opinions. The <individual review sentences> link points to the speciﬁc
+sentences and/or the whole reviews that give positive or negative comments about the feature. Withsuch a summary, the user can easily see how existing customers feel about the cellular phone. If he orshe is interested in a particular feature, he or she can drill down by following the <individual review
+sentences >linktoseewhyexistingcustomerslikeitand/orwhattheyarenotsatisﬁedwith.
+Suchasummarycanalsobevisualizedeasilyusingabarchart(Liuetal.2005).Figure26.2ashowsthe
+summaryofopinionsinasetofreviewsofacellularphone.Intheﬁgure,eachbarabovetheX-axisinthemiddleshowsthenumberofpositiveopinionsonafeature(givenatthetop),andthebarbelowtheX-axisshows the number of negative opinions on the same feature. Obviously, other similar visualizations arealsopossible.Forexample,wemayonlyshowthepercentofpositiveopinions(thepercentofnegativeopinions is just one minus the percent of positive opinions) for each feature. To see the actual reviewsentencesbehindeachbar,thebarcanbeprogrammedinsuchawaythatclickingonthebarwillshowallthereviewsentencesinapop-upwindow.
+Comparingopinionsummariesofafewcompetingproductsisevenmoreinteresting(Liuetal.2005).
+Figure26.2bshowsavisualcomparisonofconsumeropinionsontwocompetingphones.Wecanclearlysee how consumers view different features of each product. Cellular phone 1 is deﬁnitely superior tocellular phone 2. Most customers have negative opinions about the voice quality, the battery, and thecamera of cellular phone 2. However, on the same three features, customers are mostly positive aboutcellularphone1.Regardingthesizeandtheweight,customershavesimilaropinionsaboutbothphones.For the phone itself (“PHONE”), most people are positive about cellular phone 1, but negative aboutcellularphone2.Hence,thevisualizationenablesuserstoseehowthephonescomparewitheachotheralongdifferentfeaturedimensions.
+Clearly, manyothertypesofvisualizationsarepossible, seePangandLee(2008)forasurveyofother
+techniques. Incidentally, opinionsummaryofproductreviewsinMicrosoftBingsearchusesabarchartsimilartotheoneinFigure26.2a.Atthetimewhenthischapterwaswritten,itdidnotprovidethefacilityforside-by-sideopinioncomparisonofdiﬀerentproductsasinFigure26.2b.
+
+636 HandbookofNaturalLanguageProcessing
+NegativeCellular phone 1
+(a) Picture Size Weight Camera Positive Phone Battery
+Visualization of feature-based summary of opinions on a cellular phone
+Picture Size Weight Camera Positive
+Negative Cellular phone 1
+Visual opinion comparison of two cellular phonesPhone
+Cellular phone 2Battery
+(b)
+FIGURE26.2 Visualizationoffeature-basedsummariesofopinions.
+Infact,manytypesofsummarieswithoutopinionsarealsouseful.Wegivesomeexamplesbelow.
+Feature buzz summary : This summary shows the relative frequency of feature mentions. It can tell a
+company what their customers really care about. For example, in an online banking study, the most
+mentionedfeaturemaybethetransactionsecurity.
+Objectbuzzsummary :Thissummaryshowsthefrequencyofmentionsofdiﬀerentcompetingproducts.
+Thisisusefulbecauseittellsthepopularityofdiﬀerentproductsorbrandsinthemarketplace.
+Since the time of the opinion is recorded in each quintuple, we can easily monitor changes of every
+aspectusingtrendtracking.
+Trendtracking :Ifthetimedimensionisaddedtotheabovesummaries,wegettheirtrendreports.These
+reports can be extremely helpful in practice because the user always wants to know how things change
+overtime(Tong2001).
+Allthesesummariescanbeproducedandvisualizedeasilyastheyarejusttheresultsofsomedatabase
+querieswithnoadditionalmining.Thisshowsthepowerofthestructuredoutputofopinionquintuples.
+Finally, we note that researchers have also studied the summarization of opinions in the traditional
+fashion, e.g., producing a short textual summary based on multiple reviews or even a single review
+(Beinekeetal.2004;Careninietal.2006;Kuetal.2006;Sekietal.2006;StoyanovandCardie2006).Such
+asummarygivesthereaderaquickoverviewofwhatpeoplethinkaboutaproductorservice.However,
+oneweaknessofsuchatext-basedsummaryisthatitisoftennotquantitativebutonlyqualitative,which
+is not suitable for analytical purposes, although it may be suitable for human reading. For example, a
+traditionaltextsummarymaysay“ Mostpeopledonotlikethisproduct .”However,aquantitativesummary
+maysaythat60%ofthepeopledonotlikethisproductand40%ofthemlikeit.Inmostopinionanalysis
+applications,thequantitativeaspectiscrucialjustlikeinthetraditionalsurveyresearch(infact,reviews
+canbeseenasopen-endedsurveys).Inthesurveyresearch,structuredsummariesdisplayedasbarcharts
+
+SentimentAnalysisandSubjectivity 637
+and/or pie charts are the most common approaches because they give the user a concise, quantitative,andvisualview.
+Notethatinsteadofgeneratingatextsummarydirectlyfrominputreviews,itisalsopossibletogenerate
+atextsummarybasedontheminingresultsasdisplayedinFigures26.1and26.2.Forexample,itiseasyto generate some natural language summary sentences based on what is shown on the bar chart usingpredeﬁnedtemplates.Forinstance,theﬁrsttwobarsinFigure26.2bcanbesummarizedas“ Mostpeople
+arepositiveaboutcellularphone1andnegativeaboutcellularphone2 .”
+26.2 Sentiment and Subjectivity Classiﬁcation
+We now discuss some key research topics of sentiment analysis. Sentiment classiﬁcation is perhaps the
+mostwidelystudiedtopic(AueandGamon2005;Blitzeretal.2007;Brecketal.2007;Chesleyetal.2006;Choi et al. 2006; Das and Chen 2007; Dave et al. 2003; Devitt and Ahmad 2007; Gamon 2004; Gamonetal.2005;Godboleetal.2007;HatzivassiloglouandMcKeown2006;HatzivassiloglouandWiebe2000;Kanayama and Nasukawa 2006; Kennedy and Inkpen 2006; McDonald et al. 2007; Mihalcea et al. 2007;Nasukawa and Yi 2003; Ng et al. 2006; Ni et al. 2007; Pang and Lee 2002, 2004, 2005; Riloﬀ et al. 2006;Riloﬀ and Wiebe 2003; Stepinski and Mittal 2007; Thomas et al. 2006; Turney 2002; Wan 2008; Wiebe2000; Wiebe et al. 1999, 2004, 2005; Wiebe and Mihalcea 2006; Wiebe and Wilson 2002; Wilson et al.2004,2005;Yangetal.2006;Yietal.2003;Zhangetal.2006).Itclassiﬁesanopinionateddocument(e.g.,aproductreview)asexpressingapositiveoranegativeopinion.Thetaskisalsocommonlyknownasthedocument-levelsentimentclassiﬁcation becauseitconsidersthewholedocumentasthebasicinformation
+unit. The existing research assumes that the document is known to be opinionated. Naturally the samesentiment classiﬁcation can also be applied to individual sentences. However, here each sentence is notassumed to be opinionated in the literature. The task of classifying a sentence as opinionated or notopinionated is called subjectivity classiﬁcation . The resulting opinionated sentences are also classiﬁed as
+expressingpositiveornegativeopinions,whichiscalledthe sentence-levelsentimentclassiﬁcation .
+26.2.1 Document-Level Sentiment Classiﬁcation
+Givenasetofopinionateddocuments D,itdetermineswhethereachdocument d∈Dexpressesapositive
+ornegativeopinion(orsentiment)onanobject.Formally:Task: Given an opinionated document dthat comments on an object o, determine the orientation ooof
+theopinionexpressedon o,thatis,discovertheopinionorientation ooonfeature finthequintuple(o,f,
+so,h,t),wheref=oandh,t,oareassumedtobeknownorirrelevant.
+Theexistingresearchonsentimentclassiﬁcationmakesthefollowingassumption:Assumption: The opinionated document d(e.g., a product review) expresses opinions on a single object
+oandtheopinionsarefromasingleopinionholder h.
+Thisassumptionholdsforcustomerreviewsofproductsandservices.However,itmaynotholdfora
+forum and blog post because in such a post the author may express opinions on multiple products andcomparethemusingcomparativeandsuperlativesentences.
+Mostexistingtechniquesfordocument-levelsentimentclassiﬁcationarebasedonsupervisedlearning,
+althoughtherearealsosomeunsupervisedmethods.Wegiveanintroductiontothembelow.26.2.1.1 Classiﬁcation Based on Supervised LearningSentiment classiﬁcation can obviously be formulated as a supervised learning problem with two classlabels(positiveandnegative).Trainingandtestingdatausedintheexistingresearcharemostlyproductreviews, which is not surprising due to the above assumption. Since each review at a typical review site
+
+638 HandbookofNaturalLanguageProcessing
+already has a reviewer-assigned rating (e.g., 1–5 stars), training and testing data are readily available.Typically,areviewwith4–5starsisconsideredapositivereview(thumbs-up),andareviewwith1–2starsisconsideredanegativereview(thumbs-down).
+Sentiment classiﬁcation is similar to but also diﬀerent from classic topic-based text classiﬁcation,
+which classiﬁes documents into predeﬁned topic classes, e.g., politics, sciences, sports, etc. In topic-basedclassiﬁcation,topicrelatedwordsareimportant.However,insentimentclassiﬁcation,topic-relatedwordsareunimportant. Instead, sentimentoropinionwordsthatindicatepositiveornegativeopinionsareimportant,e.g., great,excellent,amazing,horrible,bad,worst,etc.
+Existing supervised learning methods can be readily applied to sentiment classiﬁcation, e.g., naïve
+Bayesian,andsupportvectormachines(SVM),etc.Pangetal.(2002)tookthisapproachtoclassifymoviereviews into two classes, positive and negative. It was shown that using unigrams (a bag of individualwords) as features in classiﬁcation performed well with either naïve Bayesian or SVM. Neutral reviewswere not used in this work, which made the problem easier. Note that features here are data attributesusedinmachinelearning,notobjectfeaturesrefereedtointheprevioussection.
+Subsequent research used many more kinds of features and techniques in learning. As most learning
+applications,themaintaskofsentimentclassiﬁcationistoengineerasuitablesetoffeatures.Someoftheexample features used in research and possibly in practice are listed below. For a more comprehensivesurveyoffeaturesused,pleaserefertoPangandLee(2008).Terms and their frequency : These features are individual words or word n-grams and their frequency
+counts. In some cases, word positions may also be considered. The TF–IDF weighting scheme fromIR may be applied too. Note that these features are also commonly used in traditional topic-based textclassiﬁcation.Theyhavebeenshownquiteeﬀectiveinsentimentclassiﬁcationaswell.Part of speech tags : It was found in many early researches that adjectives are important indicators of
+subjectivitiesandopinions.Thus,adjectiveshavebeentreatedasspecialfeatures.Opinion words and phrases :Opinion words are words that are commonly used to express positive or
+negative sentiments. For example, beautiful, wonderful ,good,a n d amazingare positive opinion words,
+andbad,poor,andterriblearenegativeopinionwords.Althoughmanyopinionwordsareadjectivesand
+adverbs, nouns (e.g., rubbish,junk,a n d crap), and verbs (e.g., hateandlike) can also indicate opinions.
+Apart from individual words, there are also opinion phrases and idioms, e.g., cost someone an arm and
+al e g. Opinion words and phrases are instrumental to sentiment analysis for obvious reasons. We will
+discussthemfurtherlaterinthissection.Syntacticdependency :Wordsdependency-basedfeaturesgeneratedfromparsingordependencytreesare
+alsotriedbyseveralresearchers.Negation: Clearly negation words are important because their appearances often change the opinionorientation. For example, the sentence “I don’t like this camera ” is negative. However, negation words
+mustbehandledwithcarebecausenotalloccurrencesofsuchwordsmeannegation.Forexample,“not”in“notonly ...butalso”doesnotchangetheorientationdirection.Wewilldiscusstheseissuesagainin
+Section26.3.2.
+Apart from the classiﬁcation or prediction of positive or negative sentiments, research has also been
+done on predicting the rating scores (e.g., 1–5 stars) of reviews (Pang and Lee 2005). In this case, theproblem is formulated as a regression problem since the rating scores are ordinal. Another interestingresearchdirectionthathasbeeninvestigatedisthetransferlearningordomainadaptationasithasbeenshown that sentiment classiﬁcation is highly sensitive to the domain from which the training data areextracted. A classiﬁer trained using opinionated texts from one domain often performs poorly whenit is applied or tested on opinionated texts from another domain. The reason is that words and evenlanguage constructs used in diﬀerent domains for expressing opinions can be substantially diﬀerent. Tomakemattersworse,thesamewordinonedomainmaymeanpositive,butinanotherdomainmaymeannegative. For example, as observed in Turney (2002), the adjective unpredictable may have a negative
+
+SentimentAnalysisandSubjectivity 639
+TABLE26.1 PatternsofPOSTagsforExtractingTwo-WordPhrases
+FirstWord SecondWord ThirdWord(NotExtracted)
+1. JJ NNorNNS Anything
+2. RB,RBR,orRBS JJ NotNNnorNNS
+3. JJ JJ NotNNnorNNS
+4. NNorNNS JJ NotNNnorNNS
+5. RB,RBR,orRBS VB,VBD,VBN,orVBG Anything
+orientation in a car review (e.g., “unpredictable steering”), but it could have a positive orientation in amoviereview(e.g.,“unpredictableplot”).Thus,domainadaptationisneeded.Existingresearchhasusedlabeleddatafromonedomainandunlabeleddatafromthetargetdomainandgeneralopinionwordsasfeaturesforadaptation(AueandGamon2005;Blitzeretal.2007;Yangetal.2006).26.2.1.2 Classiﬁcation Based on Unsupervised LearningIt is not hard to imagine that opinion words and phrases are the dominating indicators for sentimentclassiﬁcation.Thus,usingunsupervisedlearningbasedonsuchwordsandphraseswouldbequitenatural.ThemethodinTurney(2002)issuchatechnique.Itperformsclassiﬁcationbasedonsomeﬁxedsyntacticphrasesthatarelikelytobeusedtoexpressopinions.Thealgorithmconsistsofthreesteps:
+Step 1: It extracts phrases containing adjectives or adverbs. The reason for doing this is that
+researchhasshownthatadjectivesandadverbsaregoodindicatorsofsubjectivityandopinions.However,althoughanisolatedadjectivemayindicatesubjectivity,theremaybeaninsuﬃcientcontexttodetermineitsopinionorientation.Therefore,thealgorithmextractstwoconsecutivewords,whereonememberofthepairisanadjective/adverbandtheotherisacontextword.TwoconsecutivewordsareextractediftheirPOStagsconformtoanyofthepatternsinTable26.1.For example, the pattern in line 2 means that two consecutive words are extracted if the ﬁrstwordisanadverbandthesecondwordisanadjective,butthethirdword(whichisnotextracted)cannotbeanoun.
+Example26.7
+Inthesentence,“Thiscameraproducesbeautifulpictures ,”“beautifulpictures”willbeextracted
+asitsatisﬁestheﬁrstpattern.
+Step2:Itestimatestheorientationoftheextractedphrasesusingthe pointwisemutualinformation
+(PMI)measuregiveninEquation26.1:
+PMI(term1,term2)=log2(Pr(term 1∧term2)
+Pr(term 1)Pr(term2))
+. (26.1)
+Here, Pr(term 1∧term2)is the co-occurrence probability of term 1and term 2,a n d
+Pr(term 1)Pr(term2)gives the probability that the two terms co-occur if they are statistically
+independent.TheratiobetweenPr(term 1∧term2)andPr(term 1)Pr(term2)isthusameasure
+of the degree of statistical dependence between them. The log of this ratio is the amount ofinformationthatweacquireaboutthepresenceofoneofthewordswhenweobservetheother.Theopinionorientation(oo)ofaphraseiscomputedbasedonitsassociationwiththepositivereferenceword“excellent”anditsassociationwiththenegativereferenceword“poor”:
+oo(phrase) =PMI(phrase,“excellent”) −PMI(phrase,“poor” ). (26.2)
+Theprobabilitiesarecalculatedbyissuingqueriestoasearchengineandcollectingthenumberofhits.Foreachsearchquery,asearchengineusuallygivesthenumberofrelevantdocumentsto
+
+640 HandbookofNaturalLanguageProcessing
+thequery,whichisthenumberofhits.Thus,bysearchingthetwotermstogetherandseparately,we can estimate the probabilities in Equation 26.1. Turney (2002) used the AltaVista searchenginebecauseithasaNEARoperator,whichconstrainsthesearchtodocumentsthatcontainthe words within ten words of one another, in either order. Let hits(query ) be the number of
+hitsreturned.Equation26.2canberewrittenas
+so(phrase )=log
+2(hits(phraseNEAR“excellent” )hits(“poor” )
+hits(phraseNEAR“poor”)hits (“excellent”))
+. (26.3)
+Step 3: Given a review, the algorithm computes the average ooof all phrases in the review, and
+classiﬁesthereviewasrecommendediftheaverage ooispositive,notrecommendedotherwise.
+Apart from this method many other unsupervised methods exist. See Dave et al. (2003) for anotherexample.
+26.2.2 Sentence-Level Subjectivity and Sentiment Classiﬁcation
+Wenowmovetothesentence-leveltoperformthesimilartask(HatzivassiloglouandWiebe2000;Riloﬀet al. 2006; Riloﬀ and Wiebe 2003; Wiebe et al. 1999; Wilson et al. 2004, 2005; Yu and Hatzivassiloglou2003).Task:Givenasentence s,twosubtasksareperformed:
+1.Subjectivityclassiﬁcation :Determinewhether sisasubjectivesentenceoranobjectivesentence,
+2.Sentence-level sentiment classiﬁcation :I fsis subjective, determine whether it expresses a positive
+ornegativeopinion.
+Notice that the quintuple (o, f, oo, h, t ) is not used in deﬁning the task here because the sentence-level
+classiﬁcationisoftenanintermediatestep.Inmostapplications,oneneedstoknowwhatobjectorfeaturesof the object the opinions are on. However, the two subtasks of the sentence-level classiﬁcation are stillvery important because (1) it ﬁlters out those sentences that contain no opinion, and (2) after we knowwhatobjectsandfeaturesoftheobjectsaretalkedaboutinasentence,thisstephelpstodeterminewhethertheopinionsontheobjectsandtheirfeaturesarepositiveornegative.
+Mostexistingresearchesstudybothproblems,althoughsomeofthemonlyfocusonone.Bothproblems
+are classiﬁcation problems. Thus, traditional supervised learning methods are again applicable. Forexample,oneoftheearlyworksreportedbyWiebeetal.(1999)performedsubjectivityclassiﬁcationusingthe naïve Bayesian classiﬁer. Subsequent research also used other learning algorithms (HatzivassiloglouandWiebe2000;RiloﬀandWiebe2003;Wilsonetal.2004;YuandHatzivassiloglou2003).
+One of the bottlenecks in applying supervised learning is the manual eﬀort involved in annotating a
+largenumberoftrainingexamples.Tosavethemanuallabelingeﬀort,abootstrappingapproachtolabeltraining data automatically is reported in Riloﬀ and Wiebe (2003); Riloﬀ et al. (2003). The algorithmworksbyﬁrstusingtwohigh-precisionclassiﬁers(HP-SubjandHP-Obj)toautomaticallyidentifysomesubjectiveandobjectivesentences.Thehigh-precisionclassiﬁersuselistsoflexicalitems(singlewordsorn-grams)thataregoodsubjectivityclues.HP-Subjclassiﬁesasentenceassubjectiveifitcontainstwoormorestrongsubjectiveclues. HP-Objclassiﬁesasentenceasobjectiveiftherearenostronglysubjectiveclues.Theseclassiﬁerswillgiveveryhighprecisionbutlowrecall.Theextractedsentencesarethenaddedto the training data to learn patterns. The patterns (which form the subjectivity classiﬁers in the nextiteration)arethenusedtoautomaticallyidentifymoresubjectiveandobjectivesentences,whicharethenaddedtothetrainingset,andthenextiterationofthealgorithmbegins.
+For pattern learning, a set of syntactic templates are provided to restrict the kinds of patterns to be
+learned.Someexamplesyntactictemplatesandexamplepatternsareshownbelow.
+
+SentimentAnalysisandSubjectivity 641
+SyntacticTemplate ExamplePattern
+<subj>passive-verb <subj>wassatisﬁed
+<subj>active-verb <subj>complained
+active-verb <dobj> endorsed <dobj>
+nounaux <dobj> factis <dobj>
+passive-verbprep <np>wasworriedabout <np>
+Beforediscussingalgorithmsthatalsoperformthesentimentclassiﬁcationofsubjectivesentences,letuspointoutanassumptionmadeinmuchoftheresearchonthetopic.Assumptionofsentence-levelsentimentclassiﬁcation :Thesentenceexpressesasingleopinionfromasingle
+opinionholder.
+Thisassumptionisonlyappropriateforsimplesentenceswithasingleopinion,e.g.,“Thepicturequality
+ofthiscameraisamazing .”However,forcompoundsentences,asinglesentencemayexpressmorethan
+oneopinion.Forexample,thesentence,“ Thepicturequalityofthiscameraisamazingandsoisthebattery
+life,buttheviewﬁnderistoosmallforsuchagreatcamera ,”expressesbothpositiveandnegativeopinions
+(onemaysaythatithasamixedopinion).For“picturequality”and“batterylife,”thesentenceispositive,butfor“viewﬁnder,”itisnegative.Itisalsopositiveforthecameraasawhole.
+Yu and Hatzivassiloglou (2003) reported a study that tries to classify subjective sentences and also
+determine their opinion orientations. For subjective or opinionated sentence identiﬁcation, it appliedsupervised learning. Three learning methods were evaluated: sentence similarity, naïve Bayesian clas-siﬁcation, and multiple naïve Bayesian classiﬁcation. For the sentiment classiﬁcation of each identiﬁedsubjectivesentence, itusedasimilarmethodtothemethodinTurney(2002), butwithmanymoreseedwords(ratherthanonlytwousedinTurney(2002),andthescorefunctionwaslog-likelihoodratio.ThesameproblemisstudiedinHatzivassiloglouandWiebe(2000)consideringgradableadjectives.InGamonetal.(2005),asemi-supervisedlearningmethodisapplied,andinKimandHovy(2004),thedecisionismadebysimplysummingupopinionwordsinasentence.KimandHovy(2006,2007);Kimetal.(2006)buildmodelstoidentifysomespeciﬁctypesofopinionsinreviews.
+Aswementionedearlier,sentence-levelclassiﬁcationisnotsuitableforcompoundsentences.Wilson
+et al. (2004) pointed out that not only a single sentence may contain multiple opinions, but also bothsubjective and factual clauses. It is useful to pinpoint such clauses. It is also important to identify thestrengthofopinions.Astudyofautomaticsentimentclassiﬁcationwaspresentedtoclassifyclausesofeverysentence by the strengthof the opinions being expressed in individual clauses, down to four levels deep
+(neutral,low,medium,and high).Thestrengthof neutralindicatestheabsenceofopinionorsubjectivity.
+Strength classiﬁcation thus subsumes the task of classifying language as subjective versus objective. InWilson etal. (2005), theproblem isstudied further using supervised learningby considering contextualsentimentinﬂuencerssuchasnegation(e.g., notandnever)andcontrary(e.g., butandhowever).Alistof
+inﬂuencerscanbefoundinPolanyiandZaenen(2004).
+Finally, as mentioned in Section 26.1, we should bear in mind that subjective sentences are only a
+subset of opinionated sentences, and many objective sentences can also imply opinions. Thus, to mineopinionsfromtextoneneedstominethemfrombothtypesofsentences.
+26.2.3 Opinion Lexicon Generation
+In preceding sections, we mentioned thatopinion words are employed in many sentiment classiﬁcationtasks. We now discuss how such words are generated. In the research literature, opinion words are alsoknown as polar words, opinion-bearing words,a n d sentiment words. Positive opinion words are used to
+express desired states while negative opinion words are used to express undesired states. Examples ofpositiveopinionwordsare beautiful, wonderful ,good,and amazing.Examplesofnegativeopinionwords
+arebad,poor,a n dterrible. Apart from individual words, there are also opinion phrases and idioms,
+
+642 HandbookofNaturalLanguageProcessing
+e.g.,costsomeoneanarmandaleg .Collectively,theyarecalledthe opinionlexicon .Theyareinstrumental
+forsentimentanalysisforobviousreasons.
+Opinion words can, in fact, be divided into two types, the base type and thecomparative type.
+All the examples above are of the base type. Opinion words of the comparative type are used to expresscomparativeandsuperlativeopinions.Examplesofsuchwordsare better,worse,best,worst,etc,whichare
+comparativeandsuperlativeformsoftheirbaseadjectivesoradverbs,e.g., goodandbad.Unlikeopinion
+words of the base type, the words of the comparative type do not express a direction opinion/sentimenton an object, but a comparative opinion/sentiment on more than one object, e.g., “ Car-x is better than
+Car-y.”Thissentencetellssomethingquiteinteresting.Itdoesnotexpressanopinionthatanyofthetwocarsisgoodorbad.ItjustsaysthatcomparedtoCar-y,Car-xisbetter,andcomparedtoCar-x,Car-yisworse.Thus,althoughwestillcanassignacomparativewordaspositiveornegativebasedonwhetheritrepresents a desirable or undesirable state, we cannot use it in the same way as an opinion word of thebasetype.Wewilldiscussthisissuefurtherwhenwestudysentimentanalysisofcomparativesentences.Thissectionfocusesonopinionwordsofthebasetype.
+Tocompileorcollecttheopinionwordlist,threemainapproacheshavebeeninvestigated:themanual
+approach,thedictionary-basedapproach,andthecorpus-basedapproach.Themanualapproachisverytime consuming (Das and Chen 2007; Morinaga et al. 2002; Tong 2001; Yi et al. 2003) and thus it isnot usually used alone, but combined with automated approaches as the ﬁnal check because automatedmethodsmakemistakes.Below,wediscussthetwoautomatedapproaches.Dictionary-basedapproach :Oneofthesimpletechniquesinthisapproachisbasedonbootstrappingusing
+asmallsetofseedopinionwordsandanonlinedictionary,e.g.,WordNet(Fellbaum1998).Thestrategyis to ﬁrst collect a small set of opinion words manually with known orientations, and then to grow thissetbysearchingintheWordNetfortheirsynonymsandantonyms.Thenewlyfoundwordsareaddedtothe seed list. The next iteration starts. The iterative process stops when no more new words are found.ThisapproachisusedinHuandLiu(2004);KimandHovy(2004).Aftertheprocesscompletes,manualinspection can be carried out to remove and/or correct errors. Researchers have also used additionalinformation (e.g., glosses) in WordNet and additional techniques (e.g., machine learning) to generatebetterlists(AndreevskaiaandBergler2006;EsuliandSebastiani2005,2006,2007;Kampsetal.2004).Sofar, several opinion word lists have been generated (Ding et al. 2008; Esuli and Sebastiani 2006; Hu andLiu2004;Stone1966;Wiebeetal.1999).
+The dictionary-based approach and the opinion words collected from it have a major shortcoming.
+Theapproachisunabletoﬁndopinionwordswithdomainspeciﬁcorientations,whichisquitecommon.Forexample, foraspeakerphone, ifitisquiet, itisusuallynegative. However, foracar, ifitisquiet, itispositive.Thecorpus-basedapproachcanhelptodealwiththisproblem.Corpus-based approach and sentiment consistency : The methods in the corpus-based approach rely on
+syntactic or co-occurrence patterns and also a seed list of opinion words to ﬁnd other opinion words ina large corpus. One of the key ideas is the one proposed by Hatzivassiloglou and McKeown (2006). Thetechniquestartswithalistofseedopinionadjectivewords,andusesthemandasetoflinguisticconstraintsorconventionsonconnectivestoidentifyadditionaladjectiveopinionwordsandtheirorientations.Oneof the constraints is about the conjunction AND, which says that conjoined adjectives usually have thesameorientation.Forexample,inthesentence,“Thiscarisbeautiful andspacious,”if“beautiful”isknown
+tobepositive,itcanbeinferredthat“spacious”isalsopositive.Thisissobecausepeopleusuallyexpressthesameopiniononbothsidesofaconjunction.Thefollowingsentenceisratherunnatural,“ Thiscaris
+beautiful and diﬃcult to drive .” If it is changed to “This car is beautiful but diﬃcult to drive ,” it becomes
+acceptable. Rules or constraints are also designed for other connectives, OR, BUT, EITHER–OR, andNEITHER–NOR.Wecallthisidea sentimentconsistency.Ofcourse,inpracticeitisnotalwaysconsistent.
+Learningtousethelog-linearmodelisappliedtoalargecorpustodetermineiftwoconjoinedadjectivesareofthesameordiﬀerentorientations.Same-anddiﬀerent-orientationlinksbetweenadjectivesformsagraph.Finally,clusteringisperformedonthegraphtoproducetwosetsofwords:positiveandnegative.
+
+SentimentAnalysisandSubjectivity 643
+Kanayama and Nasukawa (2006) expanded this approach by introducing the idea of intra-sentential(within a sentence) and inter-sentential (between neighboring sentences) sentiment consistency (calledcoherency in (Kanayama and Nasukawa 2006)). The intra-sentential consistency is similar to that in
+Hatzivassiloglou and McKeown (2006). Inter-sentential consistency applies the idea to neighboringsentences. That is, the same opinion orientation (positive or negative) is usually expressed in a fewconsecutivesentences.Opinionchangesareindicatedbyadversativeexpressionssuchas butandhowever.
+Some criteria to determine whether to add a word to the positive or negative lexicon are also proposed.ThisstudywasbasedonJapanesetext.OtherrelatedworksincludeKajiandKitsuregawa(2007);WiebeandWilson(2002).
+Qiuetal. (2009), proposedanothermethodtoextractdomainspeciﬁcsentimentwordsfromreviews
+using also some seed opinion words. The main idea is to exploit certain syntactic relations of opinionwords and object features for extraction. They showed that opinion words are almost always associatedwith object features in some ways. Thus, opinion words can be recognized by identiﬁed features, andfeatures can be identiﬁed by known opinion words (no seed feature is needed). The extracted opinionwords and features are utilized to identify new opinion words and new features, which are used againto extract more opinion words and features. This propagation or bootstrapping process ends when nomoreopinionwordsorfeaturescanbefound.Astheprocessinvolvespropagationthroughbothopinionwordsandfeatures,themethodiscalled doublepropagation.Theextractionrulesaredesignedbasedon
+diﬀerentrelationsbetweenopinionwordsandfeatures,andalsoopinionwordsandfeaturesthemselves.Dependencygrammar(Tesnière1959)wasadoptedtodescribetheserelations.
+Usingthecorpus-basedapproachalonetoidentifyallopinionwords,however,isnotaseﬀectiveasthe
+dictionary-basedapproachbecauseitishardtoprepareahugecorpustocoverallEnglishwords.However,as we mentioned above, this approach has a major advantage that the dictionary-based approach doesnothave. Itcanhelptoﬁnddomain-speciﬁcopinionwordsandtheirorientationsifacorpusfromonlythespeciﬁcdomainisusedinthediscoveryprocess.
+InDingetal.(2008),DingandLiuexplorestheideaofintra-sententialandinter-sententialsentiment
+consistency further. Instead of ﬁnding domain dependent opinion words, they showed that the sameword might have diﬀerent orientations in diﬀerent contexts even in the same domain. For example, inthedigitalcameradomain,theword longexpressesdiﬀerentopinionsinthetwosentences:“Thebattery
+life is long” (positive)and “The time taken to focus is long” (negative). Thus, ﬁnding domain dependent
+opinionwordsisstillinsuﬃcient.Theythenproposedtoconsiderbothopinionwordsandobjectfeaturestogether, and use the pair ( object_feature, opinion_word )a st h eopinion context . Their method thus
+determinesopinionwordsandtheirorientationstogetherwiththeobjectfeaturesthattheymodify.Theabove rules about connectives were still applied. The work in Ganapathibhotla and Liu (2008) adoptsthe same context deﬁnition but used it for the sentiment analysis of comparative sentences. In fact, themethodinTakamuraetal.(2007);Turney(2002)canalsobeconsideredasamethodforﬁndingcontextspeciﬁc opinions. However, it does not use the sentiment consistency idea. Its opinion context is basedon syntactic POS patterns rather than object features and opinion words that modify them. Breck et al.(2007), went further to study the problem of extracting any opinion expressions, which can have anynumber of words. The conditional random ﬁelds (CRF) method (Laﬀerty et al. 2001) was used as thesequencelearningtechniqueforextraction.
+Finally, we should note that populating an opinion lexicon (domain dependent or not) is diﬀerent
+fromdeterminingwhetherawordorphraseisactuallyexpressinganopinionandwhatitsorientationisinaparticularsentence.Justbecauseawordorphraseislistedinanopinionlexicondoesnotmeanthatit actually is expressing an opinion in a sentence. For example, in the sentence, “I am looking for a goodhealthinsuranceformyfamily ,”“good”heredoesnotexpresseitherapositiveornegativeopiniononany
+particular insurance. And the same is true for polarity/opinion orientation. We should also realize thatopinionwordsandphrasesarenottheonlyexpressionsthatbearopinions.TherearemanyothersaswewillseeinSection26.3.3whenwediscussrulesofopinions.
+
+644 HandbookofNaturalLanguageProcessing
+26.3 Feature-Based Sentiment Analysis
+Although classifying opinionated texts at the document level or at the sentence level is useful in manycases,theydonotprovidethenecessarydetailneededforsomeotherapplications.Apositiveopinionateddocument on a particular object does not mean that the author has positive opinions on all aspects orfeaturesoftheobject.Likewise,anegativeopinionateddocumentdoesnotmeanthattheauthordislikeseverything. In a typical opinionated text, the author writes both positive and negative aspects of theobject, although the general sentiment on the object may be positive or negative. Document-level andsentence-level classiﬁcations do not provide such information. To obtain such details, we need to go tothe object feature level, which means we need the full model of Section 26.1. Recall, at the feature level,the mining task is to discover every quintuple (o
+j,fjk,ooijkl,hi,tl)and identify all the synonyms (Wjk)
+andfeatureindicators Ijkoffeature fjk.Inthissection,wemainlyfocusontwokeyminingtasks:
+1. Identify object features that have been commented on. For instance, in the sentence, “ The picture
+qualityofthiscameraisamazing ,”theobjectfeatureis“picturequality.”
+2. Determine whether the opinions on the features are positive, negative, or neutral. In the above
+sentence,theopiniononthefeature“picturequality”ispositive.
+Opinion holder ,object,and time extraction: In some applications, it is useful to identify and extract
+opinionholders,i.e.,personsororganizationsthatexpressedcertainopinions.Aswementionedearlier,opinion holders are more useful for news articles or other types of formal documents, in which thepersons or organizations who expressed opinions are stated explicitly in the text. Such holders need tobeidentiﬁedbythesystem(Bethardetal.2004;Choietal.2005;KimandHovy2004).Inthecaseoftheuser-generated content on the Web, the opinion holders are often the authors of the discussion posts,bloggers,orreviewers,whoseloginidsareknownalthoughtheirtrueidentitiesintherealworldmaybeunknown.
+However, object name extraction is needed for discussion posts, blogs, and also reviews. Note that
+although a review focuses on evaluating a particular object, it may compare it with other competingobjects.TimeextractionisalsoneededintheWebcontext.SinceeachWebsiteusuallydisplaysthetimewheneverypostissubmitted.So,theextractioniseasy.However,innewsandothertypesofdocumentstimeextractionisalsoanissue.AllthesethreeextractiontasksarecollectivelyknownastheNamedEntityRecognition (NER) in the information extraction community. They have been studied extensively. Seea comprehensive survey of information-extraction tasks and algorithms in Sarawagi (2008). Chapter 21alsodealswithinformationextraction.Coreferenceresolution : Inproductreviews, thereviewedobjectsareusuallyknown. However, thisisnot
+thecaseforopinionsexpressedinblogsanddiscussionposts. Forexample, inthepost, “ Ih a v eaCa n o n
+S50 camera purchased from Amazon. It takes great photos ,” two interesting questions can be asked: (1)
+whatobjectdoesthepostpraiseand(2)what“it”meansinthesecondsentence?Clearly,wehumansknowthatthepostpraises“CanonS50camera,”whichistheproblemofobjectextractiondiscussedabove,andwealsoknowthat“it”heremeans“CanonS50camera,”whichistheproblemofcoreferenceresolution.CoreferenceresolutionhasbeenstudiedextensivelyinNLP.However,itisstillamajorchallenge.Wewillnotdiscussithere.AstudyinthesentimentanalysiscontextisreportedinStoyanovandCardie(2006).
+Inthenexttwosubsections,wefocusonthetwotaskslistedabove.
+26.3.1 Feature Extraction
+Current research on object feature extraction is mainly carried out in online product reviews. We thusalso focus on such reviews here. There are two common review formats on the Web. Diﬀerent formatsmayneeddiﬀerenttechniquestoperformthefeatureextractiontask(Liu2006;Liuetal.2005).
+
+SentimentAnalysisandSubjectivity 645
+MySLRisontheshelfbycamerafun4
+.Aug09‘04
+Pros:Greatphotos,easytouse,verysmall
+Cons:Batteryusage;includedmemoryisstingy.
+IhadneverusedadigitalcamerapriortopurchasingthisCanonA70.IhavealwaysusedaSLR... Readthefullreview
+FIGURE26.3 AnexamplereviewofFormat1.
+GREATCamera.,Jun3,2004Reviewer: jprice174 fromAtlanta,Ga.
+IdidalotofresearchlastyearbeforeIboughtthiscamera...Itkindahurttoleavebehindmybelovednikon35mmSLR,butIwasgoingtoItaly,andIneededsomethingsmaller,anddigital.Thepicturescomingoutofthiscameraareamazing.The‘auto’featuretakesgreatpicturesmostofthetime.Andwithdigital,you’renotwastingﬁlmifthepicturedoesn’tcomeout....
+FIGURE26.4 AnexamplereviewofFormat2.
+Format 1—Pros, cons, and the detailed review : The reviewer is asked to describe pros and cons
+separately and also write a detailed/full review. An example of such a review is given inFigure26.3.
+Format 2—Free format : The reviewer can write freely, i.e., no separation of pros and cons. An
+exampleofsuchareviewisgiveninFigure26.4.
+26.3.1.1 Feature Extraction from Pros and Cons of Format 1WedescribeasupervisedpatternlearningapproachtoextractingproductfeaturesfromprosandconsinreviewsofFormat1(notthedetailedreview,whichisthesameasthatinFormat2).Thekeyobservationisthatprosandconsareusuallyverybrief,consistingofshortphrasesorsentencesegments.Eachsentencesegmentcontainsonlyonefeature,andsentencesegmentsareseparatedbycommas,periods,semicolons,hyphens, &,and,but,etc.
+Example26.8
+ProsinFigure26.3canbeseparatedintothreesegments:
+Greatphotos ⟨photo ⟩
+Easytouse ⟨use⟩
+Verysmall ⟨small ⟩⇒⟨size⟩.
+ConsinFigure26.3canbeseparatedintotwosegments:
+Batteryusage ⟨battery ⟩
+Includedmemoryisstingy ⟨memory ⟩
+We can see that each segment describes a product feature, which is given within ⟨⟩. Notice that ⟨small⟩
+is a feature indicator for feature ⟨size⟩. Clearly, many methods can be used to extract features, e.g., CRF
+(Laﬀertyetal.2001).Here,wedescribeasequentialrule-basedmethod(Liuetal.2005).
+Therules arecalled label sequential rules (LSR),whicharegeneratedfrom sequentialpatternsin data
+mining. An LSR is of the following form, X→Y,w h e r eYis a sequence and Xis a sequence produced
+fromYbyreplacingsomeofitsitemswithwildcards.Awildcard,denotedbya“∗,”canmatchanyitem.
+
+646 HandbookofNaturalLanguageProcessing
+Thelearningprocessisasfollows:Eachsegmentisﬁrstconvertedtoasequence.Eachsequenceelement
+is a word, which is represented by both the word itself and its POS tag in a set. In the training data, allobjectfeaturesaremanuallylabeledandreplacedbythelabel$feature.Anobjectfeaturecanbeexpressedwith a noun, adjective, verb, or adverb. Thus, they represent both explicit features and implicit featureindicators.ThelabelsandtheirPOStagsusedinminingLSRsare{$feature,NN},{$feature,JJ},{$feature,VB},and{$feature,RB};where$featuredenotesafeaturetobeextracted,andNNstandsfornoun,JJforadjective, VB for verb, and RB for adverb. Note that to simplify the presentation, we use NN and VB torepresentallformsofnounsandverbsrespectively.
+Forexample,thesentencesegment,“Includedmemoryisstingy ,”isturnedintothesequence
+⟨{included, VB}{memory, NN}{ is, VB}{stingy, JJ}⟩.
+Afterlabeling,itbecomes(“memory”isanobjectfeature):
+⟨{included, VB}{$feature, NN}{ is, VB}{stingy, JJ }⟩,
+AlltheresultingsequencesarethenusedtomineLSRs.Anexampleruleis
+⟨{easy, JJ}{to }{
+∗,VB}⟩ → ⟨{easy, JJ}{to }{$feature, VB}⟩ conﬁdence =90%
+wherethe conﬁdence istheconditionalprobability,Pr(Y |X),whichmeasurestheaccuracyoftherule.
+Featureextractionisperformedbymatchingthepatternswitheachsentencesegmentinanewreview
+toextractobjectfeatures.Thatis,thewordinthesentencesegmentthatmatches$featureinapatternisextracted.Inthepatternmatch,onlytheright-handsideofeachruleisused.Inrulegeneration,boththeright-andtheleft-handsidesareneededtocomputetheconditionalprobabilityorconﬁdence.DetailsofsequentialpatternminingandLSRminingcanbefoundinLiu(2006).26.3.1.2 Feature Extraction from Reviews of Format 2Pros and Cons of Format 1 mainly consist of short phrases and incomplete sentences. The reviews ofFormat2usuallyusecompletesentences.Toextractfeaturesfromsuchreviews,theabovealgorithmcanalsobeapplied.However,experimentsshowthatitisnoteﬀectivebecausecompletesentencesaremorecomplexandcontainalargeamountofnoise.Below,wedescribesomeunsupervisedmethodsforﬁndingexplicit features that are nouns and noun phrases. The ﬁrst method is due to Hu and Liu (2004). Themethodrequiresalargenumberofreviews,andconsistsoftwosteps:
+1. Finding frequent nouns and noun phrases. Nouns and noun phrases (or groups) are identiﬁed
+by using a POS tagger. Their occurrence frequencies are counted, and only the frequent ones arekept. Afrequencythresholdcanbedecidedexperimentally. Thereasonforusingthisapproachisthat when people comment on product features, the vocabulary that they use usually converges,and most product features are nouns. Thus, those nouns that are frequently talked about areusually genuine and important features. Irrelevant contents in reviews are often diverse and thusinfrequent,i.e.,theyarequitediﬀerentindiﬀerentreviews.Hence,thosenounsthatareinfrequentarelikelytobenon-featuresorlessimportantfeatures.
+2. Finding infrequent features by making use of opinion words. The idea is as follows: The same
+opinionwordcanbeusedtodescribediﬀerentobjectfeatures.Opinionwordsthatmodifyfrequentfeatures can also modify infrequent features, and thus can be used to extract infrequent features.Forexample,“picture”isfoundtobeafrequentfeature,andwehavethesentence,
+“Thepicturesareabsolutelyamazing.”
+If we know that “amazing” is a positive opinion word, then “software” can also be extracted as afeaturefromthefollowingsentence,
+“Thesoftwareisamazing.”
+becausethetwosentencesfollowthesamepatternand“software”inthesentenceisalsoanoun.
+
+SentimentAnalysisandSubjectivity 647
+The precision of step 1 of the above algorithm was improved by Popescu and Etzioni (2005). Theiralgorithm tries to remove those noun phrases that may not be product features. It evaluates each nounphrase by computing a PMI score between the phrase and some meronymy discriminators associated
+with the product class, e.g., a scanner class. The meronymy discriminators for the scanner class are,“of scanner,” “scanner has,” “scanner comes with,” etc., which are used to ﬁnd components or parts ofscanners by searching on the Web. The PMI measure is a simpliﬁed version of the measure in (Turney2002)(alsoseeSection26.2.1.2)
+PMI(f,d)=hits(f∧d)
+hits(f)hits(d ), (26.4)
+where
+fisacandidatefeatureidentiﬁedinstep1
+disadiscriminator
+Web search is used to ﬁnd the number of hits of individuals and also their co-occurrences. The
+idea of this approach is clear. If the PMI value of a candidate feature is too low, it may not be acomponentoftheproductbecause fandddonotco-occurfrequently.Thealgorithmalsodistinguishes
+components/partsfromattributes/propertiesusingWordNet’s is-ahierarchy(whichenumeratesdiﬀerent
+kindsofproperties)andmorphologicalcues(e.g.,“-iness,”“-ity”suﬃxes).
+The double propagation method in Qiu et al. (2009), which has been described in Section 26.2.3, can
+also be used to extract features. It in fact exploits and extends the idea in step 2 above (without usingstep1),andstartswithonlyasetofseedopinionwords(noseedfeaturesarerequired).Thatis,itutilizesthe association or the dependency relations of opinion words and features, i.e., opinion words alwaysmodify features. The associations are described using the dependency grammar (Tesnière 1959), whichresultsinasetofsyntacticrulesfortheextractionofbothopinionwordsandobjectfeaturesinaniterativefashion.
+Other related works on feature extraction mainly use the ideas of topic modeling and clustering to
+capturetopics/featuresinreviews(Liuetal.2007;LuandZhai2008;Meietal.2007;Suetal.2008;TitovandMcDonald2008;Yietal.2003).Forexample,Meietal.(2007)proposedaprobabilisticmodelcalledtopic-sentiment mixture to capture the mixture of features and sentiments simultaneously. One topic
+model and two sentiment models were deﬁned based on language models to capture the probabilisticdistribution of words in diﬀerent topics/features with their associated opinion orientations. Su et al.(2008)alsoproposedaclustering-basedmethodwithmutualreinforcementtoidentifyimplicitfeatures.In(Ghanietal.2006),asemi-supervisedlearningmethodwaspresentedforfeatureextractionaswell.
+Aftertheextractionofobjectfeatures,twoadditionalproblemsneedtobesolved.
+Group synonyms : It is common that people use diﬀerent words or phrases to describe the same feature.
+For example, photoandpicturerefer to the same feature in digital camera reviews. Identifying and
+groupingsynonymsisessentialforapplications.AlthoughWordNet(Fellbaum1998)andotherthesaurusdictionarieshelptosomeextent,theyarefarfromsuﬃcientduetothefactthatmanysynonymsaredomaindependent. For example, pictureandmovieare synonyms in movie reviews, but they are not synonyms
+in digital camera reviews as pictureis more related to photowhilemovierefers tovideo.C a r e n i n ie ta l .
+(2005)proposedamethodbasedonseveralsimilaritymetricssimilartothoseininformationintegration(Liu2006).Itrequiresataxonomyoffeaturestobegivenforaparticulardomain.Thealgorithmmergeseach discovered feature to a feature node in the taxonomy. The similarity metrics are deﬁned based onstringsimilarity,synonyms,andotherdistancesmeasuredusingWordNet.ExperimentsbasedondigitalcameraandDVDreviewsshowpromisingresults.Mapping to implicit features: Feature extraction may discover many feature indicators. Adjectives andadverbs areperhaps themost common typesof feature indicators. It isknown thatmany adjectivesand
+
+648 HandbookofNaturalLanguageProcessing
+adverbsmodifyordescribesomespeciﬁcattributesorpropertiesofobjects.Thisstepmapssuchfeatureindicatorstofeatures.Forexample,theadjective heavyusuallydescribesthe weightofanobject,andthus
+shouldbemappedtothe weightfeature.Beautiful isusuallyusedtodescribethe appearance ofanobject,
+and thus should be mapped to the appearance feature. However, this needs to be done with care as the
+usageofmanyadjectivescanbequiteversatile.Theirexactmeaningmaybedomain/contextdependent.Forexample,“heavy”inthesentence“ Thetraﬃcisheavy ”doesnotdescribethe weightofthetraﬃc.One
+waytomapindicatorwordsto(implicit)featuresistomanuallycompilealistofsuchmappingsduringtraining data annotation, which can then be used in the same domain in the future. However, it is notclearwhetherthisisaneﬀectiveapproachaslittleresearchhasbeendone.
+26.3.2 Opinion Orientation Identiﬁcation
+Wenowdiscusshowtoidentifytheorientationofopinionsexpressedonanobjectfeatureinasentence.Clearly,thesentence-levelandclause-levelsentimentclassiﬁcationmethodsdiscussedinSection26.2areapplicablehere.Thatis,theycanbeappliedtoeachsentenceorclausethatcontainsobjectfeatures,andthe features in it will take its opinion orientation. Here, we only describe a lexicon-based approach to
+solvingtheproblem(Dingetal.2008;HuandLiu2004).SeeamorecomplexmethodbasedonrelaxationlabelinginPopescuandEtzioni(2005).
+The lexicon-based approach basically uses opinion words andphrasesin a sentence to determine the
+orientation of the opinion. Apart from the opinion lexicon, negations and but-clauses in a sentence are
+alsocrucialandneedtobehandled.Theapproachworksasfollows(HuandLiu2004;Dingetal.2008):
+1.Identifying opinion words and phrases : Given a sentence that contains an object feature, this step
+identiﬁes all opinion words and phrases. Each positive word is assigned the opinion score of +1,
+each negative word is assigned the opinion score of −1, and each context dependent word is
+assigned the opinion score of 0. For example, we have the sentence, “The picture quality of thiscamera is not great, but the battery life is long .” After this step, the sentence is turned into “The
+picture quality of this camera is not great[+1],b u tt h e battery life islong[0]” because “great” is a
+positiveopinionwordand“long”iscontextdependent.Theobjectfeaturesareitalicized.
+2.Handling negations : Negation words and phrases are used to revise the opinion scores obtained
+in step 1, based on some negation handling rules. After this step, the above sentence is turnedinto“The picturequality ofthiscameraisnot great[−1],butthe batterylife islong[0]”duetothe
+negation word “not.” We note that not every “not” means negation, e.g., “not only ...but also.”
+Suchnon-negationphrasescontainingnegationwords needtobeconsideredseparately.
+3.But-clauses :InEnglish, butmeanscontrary.Asentencecontaining butishandledbyapplyingthe
+following rule: the opinion orientation before butand after butare opposite to each other. After
+thisstep,theabovesentenceisturnedinto“The picturequality ofthiscameraisnot great[−1],but
+thebattery life islong[+1]” due to “but.” Apart from but, phrases such as “with the exception of ,”
+“except that,” and “except for ” behave similarly to butand
+are handled in the same way. As in the
+case of negation, not every butmeans contrary, e.g., “ not only ...but also.” Such non-but phrases
+containing“but” alsoneedtobeconsideredseparately.
+4.Aggregating opinions: This step applies an opinion aggregation function to the resulting opinionscorestodeterminetheﬁnalorientationoftheopiniononeachobjectfeatureinthesentence.Letthe sentence be s, which contains a set of object features {f
+1,...,fm}and a set of opinion words
+or phrases {op1,...,opn}with their opinion scores obtained from steps 1, 2, and 3. The opinion
+orientationoneachfeature fiinsisdeterminedbythefollowingopinionaggregationfunction:
+score(fi,s)=∑
+opj∈sopj·oo
+d(opj,fi), (26.5)
+
+SentimentAnalysisandSubjectivity 649
+where
+opjisanopinionwordin s
+d(opj,fi)isthedistancebetweenfeature fiandopinionword opjins
+opj·ooistheorientationoropinionscoreof opj
+Themultiplicativeinverseintheformulaisusedtogivelowweightstoopinionwordsthatarefaraway
+fromfeature fi.Iftheﬁnalscoreispositive,thentheopiniononfeature fiinsispositive.Iftheﬁnalscore
+isnegative,thentheopiniononthefeatureisnegative.Itisneutralotherwise.
+Thissimplealgorithmisusefulbutnotsuﬃcientinmanycases.Onemajorshortcomingisthatopinion
+wordsandphrasesdonotcoveralltypesofexpressionsthatconveyorimplyopinions.Thereareinfactmanyothers.Below,wepresentbasicrulesofopinions.
+26.3.3 Basic Rules of Opinions
+A rule of opinion is an implication with an expression on the left and an implied opinion on the right.The expression is a conceptual one as it represents a concept, which can be expressed in many ways inanactualsentence.Theapplicationofopinionwords/phrasesabovecanberepresentedassuchrules.LetNegbeanegativeopinionword/phraseandPosbeapositiveopinionword/phrase.Therulesforapplyingopinionwords/phrasesinasentenceareasfollow:
+1. Neg →Negative
+2. Pos →Positive
+These rules say that Neg implies a negative opinion (denoted by Negative) and Pos implies a positive
+opinion(denotedby Positive)inasentence.Theeﬀectofnegationscanberepresentedaswell:
+3. NegationNeg →Positive
+4. NegationPos →Negative
+The rules state that negated opinion words/phrases take their opposite orientations in a sentence. Notethattheaboveuseof“but ”isnotconsideredanopinionrulebutalanguageconventionthatpeopleoften
+usetoindicateapossibleopinionchange.Wenowdescribesomeadditionalrulesofopinions.Deviation from the norm or some desired value range: In some domains, an object feature may have anexpected or desired value range or norm. If it is above and/or below the normal range, it is negative,e.g.,“Thisdrugcauseslow (orhigh)bloodpressure .”Wethenhavethefollowingrules.
+5. Desiredvaluerange →Positive
+6. Beloworabovethedesiredvaluerange →Negative
+Decreased and increased quantities of opinionated items: This set of rules is similar to the negation rulesabove. Decreasing or increasing the quantities associated with some opinionated items may change theorientations of the opinions. For example, “ This drug reduced my pain signiﬁcantly.” Here, “pain” is
+a negative opinion word, and the reduction of “pain” indicates a desirable eﬀect of the drug. Hence,the decreased pain implies a positive opinion on the drug. The concept of “decreasing” also extends to“removal”or“disappearance”,e.g.,“ Mypainhasdisappearedaftertakingthedrug .”
+7. DecreasedNeg →Positive
+8. DecreasedPos →Negative
+9. IncreasedNeg →Negative
+10. IncreasedPos →Positive
+Thelasttworulesmaynotbeneededasthereisnochangeofopinionorientations.
+
+650 HandbookofNaturalLanguageProcessing
+Producing and consuming resources and wastes : If an object produces resources, it is positive. If it
+consumesresources,especiallyalargequantityofthem,itisnegative.Forexample,“money”isaresource.The sentence, “Company-x charges a lot of money ” gives a negative opinion on “Company-x”. Likewise,
+if an object produces wastes, it is negative. If it consumes wastes, it is positive. These give us thefollowingrules:
+11. Consumeresource →Negative
+12. Produceresource →Positive
+13. Consumewaste →Positive
+14. Producewaste →Negative
+Thesebasicrulescanalsobecombinedtoproducecompoundrules, e.g.,“Consumedecreasedwaste →
+Negative”whichisacombinationofrules7and13. Tobuildapracticalsystem, alltheserulesandtheircombinationsneedtobeconsidered.
+Asnotedabove,theseareconceptualrules.Theycanbeexpressedinmanywaysusingdiﬀerentwords
+andphrasesinanactualtext, andindiﬀerentdomainstheymayalsomanifestdiﬀerently. Bynomeans,we claim these are the only basic rules that govern expressions of positive and negative opinions. Withfurtherresearch,additionalnewrulesmaybediscoveredandthecurrentrulesmaybereﬁnedorrevised.We also do not claim that any manifestation of such rules imply opinions in a sentence. Like opinionwordsandphrases,justbecausearuleissatisﬁedinasentencedoesnotmeanthatitactuallyisexpressinganopinion,whichmakessentimentanalysisaverychallengingtask.
+26.4 Sentiment Analysis of Comparative Sentences
+Directly expressing positive or negative opinions on an object and its features is only one form ofevaluation.Comparingtheobjectwithsomeothersimilarobjectsisanother.Comparisonsarerelatedtobut are also quite diﬀerent from direct opinions. They not only have diﬀerent semantic meanings, butalso diﬀerent syntactic forms. For example, a typical direct opinion sentence is “ The picture quality of
+thiscameraisgreat .”Atypicalcomparisonsentenceis“ Thepicturequalityofcamera-xisbetterthanthat
+of camera-y.” This section ﬁrst deﬁnes the problem, and then presents some existing methods for theiranalysis(GanapathibhotlaandLiu2008;JindalandLiu2006a,b).
+26.4.1 Problem Deﬁnition
+Ingeneral, acomparativesentenceexpressesarelationbasedonsimilaritiesordiﬀerencesofmorethanoneobject.Thecomparisonisusuallyconveyedusingthe comparative orsuperlative formofanadjective
+or adverb. A comparative is used to state that one object has more of a certain quantity than anotherobject.Asuperlativeisusedtostatethatoneobjecthasthemostorleastofacertainquantity.Ingeneral,a comparison can be between two or more objects, groups of objects, and one object and the rest of theobjects.Itcanalsobebetweenanobjectanditspreviousorfutureversions.Two types of comparatives: In English, comparatives are usually formed by adding the suﬃx “- er”a n d
+superlatives are formed by adding the suﬃx “– est”t ot h e i rbase adjectives andadverbs. For example, in
+“The battery life of Camera-x is longer than that of Camera-y ,” “longer” is the comparative form of the
+adjective“long .” In“Thebatterylifeofthiscameraisthelongest ,” “longest”isthesuperlativeformofthe
+adjective“long.”Wecallthistypeofcomparativesandsuperlatives Type1comparatives andsuperlatives.
+Forsimplicity,wewilluseType1comparativestomeanbothfromnowon.
+Adjectives and adverbs with two syllables or more and not ending in ydo not form comparatives or
+superlatives by adding “–er ”o r“ –est.” Instead, more,most,less,a n dleastare used before such words,
+
+SentimentAnalysisandSubjectivity 651
+e.g.,more beautiful. We call this type of comparatives and superlatives Type 2 comparatives andType 2
+superlatives.BothType1andType2arecalled regularcomparatives andsuperlatives.
+InEnglish,therearealsosome irregularcomparatives andsuperlatives,whichdonotfollowtheabove
+rules, i.e., more,most,less,least,better,best,worse,worst,further/farther ,a n dfurthest/farthest.T h e y
+behavesimilarlytoType1comparativesandsuperlativesandthusaregroupedunderType1.
+Apart from these standard comparatives and superlatives, many other words can also be used to
+expresscomparisons,e.g., preferandsuperior.Forexample,thesentence,“Camera-x’squalityissuperior
+to Camera-y,” says that “Camera-x” is preferred. Jindal and Liu (2006) identiﬁed a list of such words.SincethesewordsbehavesimilarlytoType1comparatives,theyarealsogroupedunderType1.
+Furtheranalysisalsoshowsthatcomparativescanbegroupedintotwocategoriesaccordingtowhether
+theyexpressincreasedordecreasedvalues,whichareusefulinsentimentanalysis.
+Increasingcomparatives :Suchacomparativeexpressesanincreasedvalueofaquantity,e.g., more
+andlonger.
+Decreasing comparatives: Such a comparative expresses a decreased value of a quantity, e.g., less
+andfewer.
+Typesofcomparativerelations :Comparativerelationscanbegroupedintofourmaintypes.Theﬁrstthree
+typesarecalled gradablecomparisons andthelastoneiscalledthe non-gradablecomparison .
+1.Non-equalgradablecomparisons :Relationsofthetype greaterorlessthanthatexpressanordering
+of some objects with regard to some of their features, e.g., “The Intel chip is faster than that ofAMD.”Thistypealsoincludesuserpreferences,e.g.,“ IpreferInteltoAMD.”
+2.Equativecomparisons :Relationsofthetype equaltothatstatetwoobjectsareequalwithrespectto
+someoftheirfeatures,e.g.,“ ThepicturequalityofCamera-xisasgoodasthatofCamera-y .”
+3.Superlative comparisons : Relations of the type greater or less than all others that rank one object
+overallothers,e.g.,“TheIntelchipisthefastest.”
+4.Non-gradable comparisons : Relations that compare features of two or more objects, but do not
+gradethem.Therearethreemainsubtypes:
+•ObjectAis
+ similartoordiﬀerentfromobject Bwithregardtosomefeatures,e.g.,“Coketastes
+diﬀerentlyfromPepsi”
+•ObjectAhas feature f1, and object Bhas feature f2(f1andf2are usually substitutable),
+e.g.,“DesktopPCsuseexternalspeakersbutlaptopsuseinternalspeakers .”
+•ObjectAhasfeature f,butobject Bdoesnothave,e.g.,“Phone-xhasanearphone,butPhone-y
+doesnothave.”
+Miningobjective :Givenanopinionateddocument d,comparisonmining consistsoftwotasks:
+1. Identifycomparativesentencesin d,andclassifytheidentiﬁedcomparativesentencesintodiﬀerent
+typesorclasses.
+2. Extractcomparativeopinionsfromtheidentiﬁedsentences.A comparativeopinion inacomparative
+sentenceisexpressedwith
+(O1,O2,F,PO,h,t)
+where
+O1andO2are the object sets being compared based on their shared features F(objects in O1appear
+beforeobjectsin O2inthesentence)
+POisthepreferredobjectsetoftheopinionholder h
+tisthetimewhenthecomparativeopinionisexpressed
+Asfordirectopinions,noteverypieceofinformationisneededinanapplication.Inmanycases, handt
+maynotberequiredbyapplications.
+
+652 HandbookofNaturalLanguageProcessing
+Example26.9
+Considerthecomparativesentence“ Canon’sopticsisbetterthanthoseofSonyandNikon .”writtenbyJohn
+onMay1,2009.Theextractedcomparativeopinionis
+({Canon},{Sony,Nikon},{optics}, preferred:{Canon},John,May-1-2009).
+Theobjectset O1is{Canon},theobjectset O2is{Sony,Nikon},theirsharedfeatureset Fbeingcompared
+is {optics}, the preferred object set is {Canon}, the opinion holder his John and the time twhen this
+comparativeopinionwaswrittenisMay-1-2009.
+Below,westudytheproblemofidentifyingcomparativesentencesandminingcomparativeopinions.
+26.4.2 Comparative Sentence Identiﬁcation
+Although most comparative sentences contain comparative adjectives and comparative adverbs, e.g.,better,a n d longer, many sentences that contain such words are not comparatives, e.g., “ I cannot agree
+withyoumore .”Similarly,manysentencesthatdonotcontainsuchindicatorsarecomparativesentences
+(usuallynon-gradable),e.g.,“ Cellphone-xhasBluetooth,butCellphone-ydoesnothave .”
+Aninterestingphenomenonaboutcomparativesentencesisthatsuchasentenceusuallyhasakeyword
+orakeyphraseindicatingcomparison.ItisshowninJindalandLiu(2006)thatusingasetof83keywordsand key phrases, 98% of the comparative sentences (recall =98%) can be identiﬁed with a precision of
+32%usingtheauthors’dataset.Thekeywordsandkeyphrasesare
+1. Comparative adjectives (JJR) and comparative adverbs (RBR), e.g., more,less,better,a n dw o r d s
+endingwith- er.
+2. Superlativeadjectives(JJS)andsuperlativeadverbs(RBS),e.g., most,least,best,andwordsending
+with-est.
+3. Otherindicativewordssuchas same,similar,diﬀer,aswellas, favor,beat,win,exceed, outperform,
+prefer,ahead,than, superior,inferior,numberone,upagainst,etc.
+Since keywords alone are able to achieve a high recall, the set of keywords can be used to ﬁlter outthosesentencesthatareunlikelytobecomparativesentences.Wecanthenimprovetheprecisionoftheremainingsetofsentences.
+It is also observed that comparative sentences have strong patterns involving comparative keywords,
+which is not surprising. These patterns can be used as features in machine learning. To discover thesepatterns,classsequentialrule(CSR)miningisusedinJindalandLiu(2006).CSRminingisasequentialpatternminingmethodfromdatamining. EachtrainingexampleusedforminingCSRsisapair (s
+i,yi),
+wheresiisasequenceand yiisaclass,e.g., yi∈{comparative, non-comparative}.Thesequenceisgenerated
+from a sentence. Instead of using each full sentence, only words near a comparative keyword are usedto generate each sequence. Each sequence is also labeled with a class indicating whether the sentence isa comparative sentence or not. Using the training data, CSRs can be generated. Details of the miningalgorithmcanbefoundinJindalandLiu(2006);Liu(2006).
+Forclassiﬁcationmodelbuilding,theleft-handsidesequencepatternsoftheruleswithhighconditional
+probabilities are used as data features in Jindal and Liu (2006). If the sentence matches a pattern, thecorrespondingfeaturevalueforthepatternis1,andotherwiseitis0.Bayesianclassiﬁcationisemployedformodelbuilding.Classify comparative sentences into three types : This step classiﬁes comparative sentences obtained from
+thelaststepintooneofthethreetypes, non-equalgradable, equative,andsuperlative (non-gradablemay
+alsobeadded).Forthistask,keywordsalonearealreadysuﬃcient.Thatis,thesetofkeywordsisusedasdatafeaturesformachinelearning.ItisshowninJindalandLiu(2006)thatSVMgivesthebestresults.
+
+SentimentAnalysisandSubjectivity 653
+26.4.3 Object and Feature Extraction
+To extract objects and object features being compared, many information extraction methods can beapplied, e.g., CRF, Hidden Markov Models (HMM), and others. For a survey of information extractiontechniques,seeSarawagi(2008).JindalandLiu(2006)usedLSRandCRFtoperformtheextraction.Thealgorithmmakesthefollowingassumptions:
+1. Thereisonlyonecomparativerelationinasentence.Inpractice,thisisviolatedonlyinaverysmall
+numberofcases.
+2. Objectsortheirfeaturesarenouns(includesnouns,pluralnouns,andpropernouns)andpronouns.
+Thesecovermostcases.However,afeaturecansometimesbeanounusedinitsverbformorsomeactiondescribedasaverb(e.g.,“ Intelcostsmore ”;“costs”isaverbandanobjectfeature).Theseare
+adverbialcomparisonsandarenotconsideredinJindalandLiu(2006).
+BosandNissim(2006)alsoproposedamethodtoextractsomeusefulitemsfromsuperlativesentences.
+26.4.4 Preferred Object Identiﬁcation
+Similar to the sentiment analysis of normal sentences, the sentiment analysis of comparative sentencesalsoneedstodeterminewhetheracomparativesentenceisopinionatedornot. However, unlikenormalsentences,itdoesnotmakegoodsensetoapplysentimentclassiﬁcationtocomparativesentencesbecausean opinionated comparative sentence does not express a direct positive or negative opinion. Instead, itcompares multiple objects by ranking the objects based on their shared features to give a comparative
+opinion. In other words, it presents a preference order of the objects based on the comparison of someoftheirsharedfeatures.Sincemostcomparativesentencescompareonlytwosetsofobjects,theanalysisof an opinionated comparative sentence means to identify the preferred object set. Since little researchhasbeendoneonclassifyingwhetheracomparativesentenceisopinionatedornot,belowweonlybrieﬂydescribeamethod(GanapathibhotlaandLiu2008)foridentifyingthepreferredobjects.
+The approach bears some resemblance to the lexicon-based approach to identifying opinion orienta-
+tions on object features. Thus, it needs opinion words used for comparisons. Similar to normal opinionwords,thesewordscanalsobedividedintotwocategories.
+1.Comparativeopinionwords:ForType1comparatives,thiscategoryincludeswordssuchas better,
+worse, etc., which have explicit and domain independent opinions. In sentences involving such
+words,itisnormallyeasytodeterminewhichobjectsetisthepreferredoneofthesentenceauthor.
+In the case of Type 2 comparatives, formed by adding more,less,most,a n dleastbefore
+adjectives/adverbs, the preferred object set is determined by both words. The following rules areuseful:
+<IncreasingComparative> Negative →NegativeComparativeOpinion
+<IncreasingComparative> Positive →PositiveComparativeOpinion
+<DecreasingComparative> Negative →PositiveComparativeOpinion
+<DecreasingComparative> Positive →NegativeComparativeOpinion
+The ﬁrst rule says that the combination of an increasing comparative (e.g., more) and a negative
+opinionword(e.g., awful)impliesanegativeType2comparative.Theotherrulesaresimilar.Note
+that the positive (or negative) opinion word is of the base type, while the positive (or negative)comparativeopinionisofthecomparativetype.
+2.Context-dependent comparative opinion words: In the case of Type 1 comparatives, such wordsincludehigher,lower, etc. For example, “ Car-x has higher mileage per gallon than Car-y ” carries
+a positive sentiment on “Car-x” and a negative sentiment on “Car-y” comparatively, i.e., “Car-x”ispreferred. However, withoutdomainknowledgeitishardtoknowwhether“higher”ispositive
+
+654 HandbookofNaturalLanguageProcessing
+or negative. The combination of “higher” and “mileage” with the domain knowledge tells us that“highermileage”isdesirable.
+In the case of Type 2 comparatives, the situation is similar. However, in this case, the
+comparative word (more, most,less,o rleast), the adjective/adverb and the object feature are
+allimportantindeterminingtheopinionorpreference.Ifweknowwhetherthecomparativewordisincreasingordecreasing(whichiseasysincethereareonlyfourofthem), thentheopinioncanbedeterminedbyapplyingthefourrulesin(1)above.
+AsdiscussedinSection26.2.3,thepair(object_feature, opinion_word )formsanopinioncontext.
+To determine whether a pair is positive or negative, the algorithm in Ganapathibhotla and Liu(2008)resorts toexternalinformation, i.e., a largecorpus of prosand consfrom product reviews.Itbasicallydetermineswhethertheobject_featureandtheopinion_wordaremoreassociatedwitheach other in pros or in cons. If they are more associated in pros, it is positive. Otherwise, it isnegative. Using pros and cons is natural because they are short phrases and thus have little noise,andtheiropinionorientationsarealsoknown.
+To obtain comparative opinion words, due to the observation below we can simply convert opinionadjectives/adverbs to their comparative forms, which can be done automatically based on the EnglishcomparativeformationrulesdescribedaboveandtheWordNet.Observation :Ifanadjectiveoradverbispositive(ornegative),thenitscomparativeorsuperlativeformis
+alsopositive(ornegative),e.g., good,better,andbest .
+After the conversion, these words are manually categorized into increasing and decreasing
+comparatives.
+Once all the information is available, determining which object set is preferred is relatively simple.
+Without negation, if the comparative is positive (or negative), then the objects before (or after) thanis
+preferred. Otherwise, the objects after (or before) thanare preferred. Additional details can be found in
+GanapathibhotlaandLiu(2008).Fiszmanetal.(2007)studiedtheproblemofidentifyingwhichobjecthasmoreofcertainfeaturesincomparativesentencesinbiomedicaltexts,butitdoesnotanalyzeopinions.
+26.5 Opinion Search and Retrieval
+As Web search has proven to be very important, it is not hard to imagine that opinion search will alsobe of great use. One can crawl the user-generated content on the Web and enable people to search foropinionsonanysubjectmatter.Twotypicalkindsofopinionsearchqueriesmaybeissued:
+1. Find public opinions on aparticular object or afeature of theobject, e.g., ﬁnd customer opinions
+on a digital camera or the picture quality of the camera, and ﬁnd public opinions on a politicaltopic.Recallthatanobjectcanbeaproduct,anorganization,anevent,oratopic.
+2. Findopinionsofapersonororganization(i.e., opinionholder)onaparticularobjectorafeature
+of the object, e.g., ﬁnd Barack Obama’s opinion on abortion. This type of search is particularlyrelevant to news articles, where individuals or organizations who express opinions are explicitlystated.
+For the ﬁrst type of queries, the user may simply give the name of the object or the name of the featureand the name of the object. For the second type of queries, the user may give the name of the opinionholderandthenameoftheobject.
+Similar to traditional Web search, opinion search also has two major tasks: (1) retrieving relevant
+documents/sentences to the user query, and (2) ranking the retrieved documents/sentences. However,therearealsomajordiﬀerences.Onretrieval,opinionsearchneedstoperformtwosubtasks:
+
+SentimentAnalysisandSubjectivity 655
+1. Find documents or sentences that are relevant to the query topic. This is the only task performed
+inthetraditionalWebsearchorIR.
+2. Determine whether the documents or sentences express opinions and whether the opinions are
+positiveornegative.Thisisthetaskofsentimentanalysis.Traditionalsearchdoesnotperformthissubtask.Itisthissubtaskthatmakestheopinionsearchmorecomplexthantraditionalsearch.
+Asforranking,traditionalWebsearchenginesrankWebpagesbasedonauthorityandrelevancescores(Liu 2006). The basic premise is that the top ranked pages (ideally the ﬁrst page) contain suﬃcientinformation to satisfy the user’s information need. This paradigm is adequate for factual informationsearch because one fact equals to any number of the same fact . That is, if the ﬁrst page contains the
+required information, there is no need to see the rest of the relevant pages. For opinion search, thisparadigm is ﬁnefor the second type of queries because the opinion holder usually hasonly one opinionon a particular object or topic, and the opinion is contained in a single document or page. However,for the ﬁrst type of opinion queries, this paradigm needs to be modiﬁed because ranking in opinionsearch has two objectives. First, it needs to rank those opinionated documents or sentences with highutilities or information contents at the top (see Section 26.6.2). Second, it also needs to reﬂect thenaturaldistributionofpositiveandnegativeopinions.Thissecondobjectiveisimportantbecauseinmostpractical applications, the actual proportions of positive and negative opinions are the most importantpieces of information as in traditional opinion surveys. Only reading the top-ranked results as in thetraditional search is problematic because one opinion does not equal to multiple opinions .T h et o pr e s u l t
+only represents the opinion of a single person or organization. Thus, ranking in opinion search needstocapturethenaturaldistributionofthepositiveandnegativesentimentsofthewholepopulation. Onesimplesolutionistoproducetworankings,oneforpositiveopinionsandonefornegativeopinions.Thenumbersofpositiveandnegativeopinionsindicatethedistribution.
+Providing a feature-based summary for each opinion search will be even better. However, it is an
+extremelychallengingproblemaswehaveseenthatfeatureextraction,featuregrouping,andassociatingobjectstoitsfeaturesareallverydiﬃcultproblems.Likeopinionsearch,comparisonsearchwillbeusefultoo. For example, when one wants to register for a free e-mail account, one most probably wants toknow which e-mail system is the best for him/her, e.g., hotmail, gmail, or Yahoo! mail. Would not it
+be nice if one can ﬁnd comparisons of features of these e-mail systems from existing users by issuing asearch query “hotmail vs. gmail vs. yahoo mail”? So far, little research has been done in this directionalthough the work in (Ganapathibhotla and Liu 2008; Jindal and Liu 2006a,b) can be of use in thiscontext.
+To give a favor of what an opinion search system looks like, we present an example system (Zhang
+and Yu 2007), which is the winner of the blog track in the 2007 TREC evaluation (http://trec.nist.gov/).Thetaskofthistrackisexactlyopinionsearch(orretrieval). Thissystemhastwocomponents. Theﬁrstcomponentisforretrievingrelevantdocumentsforeachquery.Thesecondcomponentisforclassifyingtheretrieveddocumentsasopinionatedornot-opinionated(subjectivityclassiﬁcation).Theopinionateddocumentsarefurtherclassiﬁedintopositive,negative,ormixed(containingbothpositiveandnegativeopinions).Retrievalcomponent :ThiscomponentperformsthetraditionalIRtask.UnlikeanormalIRsystem,which
+isbasedonkeywordmatch,thiscomponentconsidersbothkeywordsandconcepts.Conceptsarenamedentities (e.g., names of people or organizations) or various types of phrases from dictionaries and othersources (e.g., Wikipedia entries). The strategy for processing a user query is as follows (Zhang et al.2008; Zhang and Yu 2007): It ﬁrst recognizes and disambiguates the concepts within the user query. Itthen broadens the search query with its synonyms. After that, it recognizes concepts in the retrieveddocuments, and also performs pseudo-feedback to automatically extract relevant words from the top-ranked documents to expand the query. Finally, it computes a similarity (or relevance score) of eachdocumentwiththeexpandedqueryusingbothconceptsandkeywords.
+
+656 HandbookofNaturalLanguageProcessing
+Opinion classiﬁcation component : This component performs two tasks: (1) classifying each document
+into one of the two categories, opinionated and not-opinionated, and (2) classifying each opinionateddocumentasexpressingapositive,negative,ormixedopinion.Forbothtasks,thesystemusessupervisedlearning. For the ﬁrst task, it obtains a large amount of opinionated (subjective) training data fromreview sites such as rateitall.com and epinion.com. The data are also collected from diﬀerent domainsinvolving consumer goods and services as well as government policies and political viewpoints. Thenot-opinionatedtrainingdataareobtainedfromsitesthatgiveobjectiveinformationsuchasWikipedia.Fromthesetrainingdata,aSVMclassiﬁerisconstructed.
+Thisclassiﬁeristhenappliedtoeachretrieveddocumentasfollows:Thedocumentisﬁrstpartitioned
+into sentences. The SVM classiﬁer then classiﬁes a sentence as opinionated or not opinionated. If asentence is classiﬁed to be opinionated, its strength as determined by SVM is also noted. A documentis regarded opinionated if there is at least one sentence that is classiﬁed as opinionated. To ensurethat the opinion of the sentence is directed to the query topic, the system requires that enough queryconcepts/wordsarefoundinitsvicinity.Thetotalityoftheopinionatedsentencesandtheirstrengthsinadocumenttogetherwiththedocument’ssimilaritywiththequeryisusedtorankthedocumentrelativetootherdocuments.
+Todeterminewhetheranopinionateddocumentexpressesapositive,negative,ormixedopinion,the
+secondclassiﬁerisconstructed.Thetrainingdataarereviewsfromreviewsitescontainingreviewratings(e.g., rateitall.com). A low rating indicates a negative opinion while a high rating indicates a positiveopinion.Usingpositiveandnegativereviewsastrainingdata,asentimentclassiﬁerisbuilttoclassifyeachdocumentasexpressingpositive,negative,ormixedopinions.
+Therearemanyotherapproachesforopinionretrieval.Thereadersareencouragedtoreadthepapers
+attheTRECsite(http://trec.nist.gov/pubs/trec16/t16_proceedings.html),andtheoverviewpaperof2007TREC blog track (MacDonald et al. 2007). Other related work includes Eguchi and Lavrenko (2006(;Gamon(2004);NasukawaandYi(2003).
+26.6 Opinion Spam and Utility of Opinions
+E-mail spam and Web spam are quite familiar to most people. E-mail spam refers to unsolicited com-merciale-mailssellingproductsandservices,whileWebspamreferstotheuseof“illegitimatemeans”toboost the search rank positions of target Web pages. The reason for spam is mainly due to economics.For example, in the Web context, the economic and/or publicity value of the rank position of a pagereturnedbyasearchengineisofgreatimportance.IfsomeonesearchesforaproductthatyourWebsitesells, but the product page of your site is ranked very low (e.g., beyond the top 20) by a search engine,then the chance that the person will go to your page is extremely low, let alone to buy the product fromyour site. This is certainly bad for the business. There are now many companies that are in the businessofhelpingothersimprovetheirpagerankingbyexploitingthecharacteristicsandweaknessesofcurrentsearch ranking algorithms. These companies are called Search Engine Optimization (SEO) companies.
+SomeSEOactivitiesareethicalandsome, whichgeneratespam, arenot. FormoreinformationonWebspam,pleasereferto(Liu2006).
+In the context of opinions, we have a similar spam problem (Jindal and Liu 2007, 2008). Due to the
+explosivegrowthoftheuser-generatedcontent,ithasbecomeacommonpracticeforpeopletoﬁndandto read opinions on the Web for many purposes. For example, a person plans to buy a camera. Mostprobably, he or she will go to a merchant or review site (e.g., amazon.com) to read the reviews of somecameras. If he or she ﬁnds that most reviews are positive about a camera, he or she is very likely to buythecamera.However,ifmostreviewsarenegative,heorshewillalmostcertainlychooseanothercamera.Positiveopinionscanresultinsigniﬁcantﬁnancialgainsand/orfamesfororganizationsandindividuals.This, unfortunately, also gives good incentives for opinion spam, which refers to human activities (e.g.,
+writing spam reviews) that try to deliberately mislead readers or automated opinion mining systems
+
+SentimentAnalysisandSubjectivity 657
+by giving undeserving positive opinions to some target objects in order to promote the objects and/orby giving unjust or false negative opinions to some other objects to damage their reputations. Suchopinionsarealsocalled fakeopinions orbogusopinions.Theyhavebecomeanintensediscussiontopicin
+blogsandforums,andalsoinpress(e.g.,http://travel.nytimes.com/2006/02/07/business/07guides.html),whichshowthatthereviewspamhasbecomeaproblem.WecanpredictthatasopinionsontheWebareincreasingly used in practice by consumers and organizations, the problem of detecting spam opinionswillbecomemoreandmorecritical.
+Arelatedproblemthathasalsobeenstudiedinthepastfewyearsisthedeterminationoftheusefulness,
+helpfulness, or utility of a review (Ghose and Ipeirotis 2007; Kim et al. 2006; Liu et al. 2007; Zhang andVaradarajan 2006). The idea is to determine how helpful a review is to a user. This is a useful task asit is desirable to rank reviews based on utilities or qualities when showing the reviews to the user, withthe most useful reviews at the top. In fact, many review aggregation sites have been practicing this foryears.Theyobtainthehelpfulnessorutilityscoreofeachreviewbyaskingreaderstoprovidehelpfulnessfeedbacks to each review. For example, in amazon.com, the reader can indicate whether he or she ﬁndsa review helpful by responding to the question “ Was the review helpful to you? ” just below each review.
+Thefeedbackresultsfromallthoserespondedarethenaggregatedanddisplayedrightbeforeeachreview,e.g., “15 of 16 people found the following review helpful .” Although most review sites already provide the
+service, automatically determining the quality or the usefulness of a review is still useful because manyreviewshavefewornofeedbacks.Thisisespeciallytruefornewreviewsandreviewsofproductsthatarenotverypopular.
+This section uses customer reviews of products as an example to study opinion spam and utility of
+opinions. However, most of the analyses are also applicable to opinions expressed in other forms of theuser-generatedcontent,e.g.,forumpostsandblogs.
+26.6.1 Opinion Spam
+TherearegenerallythreetypesofspamreviewsasdeﬁnedbyJindalandLiu(2007,2008).
+•Type1(untruthfulopinions) :Thesearereviewsthatdeliberatelymisleadreadersoropinionmining
+systems by giving undeserving positive opinions to some target objects in order to promote theobjects and/or by giving unjust or malicious negative opinions to some other objects in order todamage their reputation. Untruthful reviews are also commonly known as fake reviews or bogusreviewsaswementionedearlier.
+•Type2(opinionsonbrandsonly) :Thesearereviewsthatdonotcommentonthespeciﬁcproducts
+that they are supposed to review, but only comment on the brands, the manufacturers, or thesellers of the products. Although they may be useful, they are considered as spam because theyare not targeted at the speciﬁc products and are often biased. For example, in a review for a HPprinter,therevieweronlywrote“ IhateHP.Ineverbuyanyoftheirproducts.”
+•Type 3 (non-opinions) : These are not reviews or opinionated although they appear as reviews.
+There are two main subtypes: (1) advertisements, and (2) other irrelevant texts containing noopinions(e.g.,questions,answers,andrandomtexts).
+In general, spam detection can be formulated as a classiﬁcation problem with two classes, spamand
+non-spam .Duetothespeciﬁcnatureofthediﬀerenttypesofspam,theyneedtobedealtwithdiﬀerently.
+For spam reviews of type 2 and type 3, they can be detected based on traditional classiﬁcation learningusing manually labeled spam and non-spam reviews because these two types of spam reviews are easilyrecognizable manually. The main task is to ﬁnd a set of eﬀective data features for model building. Noteagainthatherethefeaturesrefertofeaturesinmachinelearningnotobjectfeaturesusedinfeature-based
+
+658 HandbookofNaturalLanguageProcessing
+TABLE26.2 SpamReviewsvs.ProductQuality
+PositiveSpamReview NegativeSpamReview
+Goodqualityproduct 1 2
+Badqualityproduct 3 4
+Averagequalityproduct 5 6
+sentimentanalysis.In(JindalandLiu2007;JindalandLiu2008),threesetsoffeatureswereidentiﬁedforlearning:Review centric features: These are features about the content of each review. Example features are theactualtextofthereview,thenumberoftimesthatbrandnamesarementioned,thepercentageofopinionwords,thereviewlength,andthenumberofhelpfulfeedbacks.Reviewer centric features: These are features about a reviewer. Example features are the average ratinggivenbythereviewer;thestandarddeviationinrating;theratioofthenumberofreviewsthatthereviewerwrote, which were the ﬁrst reviews of the products to the total number of reviews that he or she wrote;andtheratioofthenumberofcasesinwhichheorshewastheonlyreviewer.Productcentricfeatures:Thesearefeaturesabouteachproduct.Examplefeaturesarepriceoftheproduct,sales rank of the product (amazon.com assigns sales rank to “now selling products” according to theirsalesvolumes),averagerating,andstandarddeviationinratingsofthereviewsontheproduct.
+Logisticregressionwasusedinlearning.Experimentalresultsbasedonalargenumberofamazon.com
+reviewsshowedthattype2andtypes3spamreviewsarefairlyeasytodetect.
+However,thiscannotbesaidabouttype1spam,untruthfulopinions,orfakereviews.Infact,itisvery
+diﬃcult to detect such reviews because manually labeling training data is very hard, if not impossible.Theproblemisthatidentifyingspamreviewsbysimplyreadingthereviewsisextremelydiﬃcultbecauseaspammercancarefullycraftaspamreviewthatisjustlikeanyinnocentreview.
+Inordertodetectsuchspam,letusanalyzefakereviewsingreaterdetail.Asindicatedabove,thereare
+twomainobjectivesforspam:
+•Writeundeservingpositivereviewsforsometargetobjectsinordertopromotethem.Wecallsuchspamreviews hypespam .
+•Write unfair or malicious negative reviews for some target objects to damage their reputations.Wecallsuchspamreviews defamingspam .
+Incertaincases,thespammermaywanttoachievebothobjectives,whileinothers,heorsheonlyaimstoachieveoneofthembecauseeitherheorshedoesnothaveanobjecttopromoteorthereisnocompetition.
+We now discuss what kinds of reviews are harmful and are likely to be spammed. Table 26.2 gives a
+simpleviewoftype1spam.Spamreviewsinregions1,3,and5aretypicallywrittenbymanufacturersoftheproductorpersonswithdirecteconomicorotherinterestsintheproduct.Theirgoalistopromotetheproduct.Althoughopinionsexpressedinregion1maybetrue,reviewersdonotannouncetheirconﬂictof interests. Note that good, bad, and average products can be deﬁned based on average review ratingsgiventotheproduct.Spamreviewsinregions2,4,and6arelikelytobewrittenbycompetitors.Althoughopinionsinreviewsofregion4maybetrue,reviewersdonotannouncetheirconﬂictofinterestsandhavemaliciousintentions. Clearly, spamreviewsinregions1and4arenotsodamaging, whilespamreviewsin regions 2, 3, 5, and 6 are very harmful. Thus, spam detection techniques should focus on identifyingreviewsintheseregions.Oneimportantobservationfromthistableisthatharmfulfakereviewsareoftenoutlier reviews. In other words, deviating from the norm is the necessary condition for harmful spamreviews,butnotsuﬃcientbecausemanyoutlierreviewsmaybetruthful.
+Sincemanuallylabelingtrainingdataisextremelydiﬃcult,otherwayshavetobeexploredinorderto
+ﬁnd training examples for detecting possible type 1 spam. In Jindal and Liu (2008), it exploits duplicatereviews.
+
+SentimentAnalysisandSubjectivity 659
+Intheirstudyof5.8millionreviews,2.14millionreviewersand6.7millionproductsfromamazon.com,they found a large number of duplicate and near-duplicate reviews, which indicates that review spam iswidespread.Theseduplicates(whichincludenear-duplicates)canbedividedintofourgroups:
+1. Duplicatesfromthesameuseridonthesameproduct.2. Duplicatesfromdiﬀerentuseridsonthesameproduct.3. Duplicatesfromthesameuseridondiﬀerentproducts.4. Duplicatesfromdiﬀerentuseridsondiﬀerentproducts.
+Theﬁrsttypeofduplicatescanbetheresultsofreviewersmistakenlyclickingthesubmitbuttonmultipletimes(whichofcoursecanbedetectedbasedonthesubmissiondatesandtimes),orthesamereviewerscoming back to write updated reviews after using the product for some time. However, the last threekindsofduplicatesarealmostcertainlytype1spamreviews.Furthersanitycheckwasperformedontheseduplicatereviewsbecauseamazon.comcross-postsreviewstodiﬀerentformatsofthesameproduct,e.g.,hardcover and paperback of the same book. Manually checking a large number of duplicate reviewsshowed that only a small percentage of them falls into this category. One reason for the low percentagecould be because the reviews being studied were all from manufactured products, which perhaps havefewerformatsofthesameproduct(unlikebooks).
+In the work reported in Jindal and Liu (2008), these three types of duplicates and near duplicates are
+treated as type 1 spam reviews, and the rest of the reviews are treated as non-spam reviews. Logisticregression is used to build a classiﬁcation model. The experiments show some tentative but interestingresults.
+•Negative outlier reviews (whose ratings have signiﬁcant negative deviations from the averagerating) tend to be heavily spammed. The reason for such spam is quite intuitive. Positive outlierreviewsarenotbadlyspammed.
+•Those reviews that are the only reviews of some products are likely to be spammed. This can beexplainedbythetendencyofpromotinganunpopularproductbywritingaspamreview.
+•Top-ranked reviewers are more likely to be spammers. Amazon.com gives a rank to each mem-ber/reviewer based on the frequency that he or she gets helpful feedback on his or her reviews.Additional analysis shows that top-ranked reviewers generally write a large number of reviews.People who wrote a large number of reviews are natural suspects. Some top reviewers wrotethousandsoreventensofthousandsofreviews,whichisunlikelyforanordinaryconsumer.
+•Spam reviews can get good helpful feedbacks and non-spam reviews can get bad feedbacks. Thisisimportantasitshowsthatiftheusefulnessorqualityofareviewisdeﬁnedbasedonthehelpfulfeedbacksthatthereviewgets,peoplecanbereadilyfooledbyspamreviews.Notethatthenumberofhelpfulfeedbackscanbespammedtoo.
+•Products of lower sale ranks are more likely to be spammed. This is good news because spamactivitiesseemtobelimitedtolowsellingproducts,whichisactuallyquiteintuitiveasitisdiﬃculttodamagethereputationofapopularproductbywritingaspamreview.
+Finally, it should be noted again that these results are only tentative because (1) it is not conﬁrmed thatthethreetypesofduplicatesareabsolutelyspamreviews,and(2)manyspamreviewsarenotduplicatedandtheyarenotconsideredasspaminmodelbuildingbutaretreatedasnon-spamduetothediﬃcultyofmanuallabeling.Foradditionalanalysisandmorespamdetectionstrategies,pleaserefertoJindalandLiu (2008). This research is still at its infancy. Much work needs to be done. As we mentioned at thebeginningofthesection,withmoreandmorepeopleandorganizationsrelyingonopinionsontheWeb,devising good techniques to detect opinion spam is urgently needed. We do not want to wait until thedaywhentheopinionsontheWebaresoheavilyspammedthattheybecomecompletelyuseless.
+
+660 HandbookofNaturalLanguageProcessing
+26.6.2 Utility of Reviews
+Determiningtheutilityofreviewsisusuallyformulatedasaregressionproblem.Thelearnedmodelthenassigns a utility value to each review, which can be used in review ranking. In this area of research, theground truth data used for both training and testing are usually the user-helpfulness feedbacks given toeachreview,whichaswediscussedaboveareprovidedforeachreviewatmanyreviewaggregationsites.So,unlikefakereviewdetection,thetrainingandtestingdatahereisnotanissue.
+Researchershaveusedmanytypesofdatafeaturesformodelbuilding(GhoseandIpeirotis2007;Kim
+et al. 2006; Zhang and Varadarajan 2006). Example features include review length, review ratings (thenumber of stars), counts of some speciﬁc POS tags, opinion words, tf-idf weighting scores, wh-words,product attribute mentions, product brands, comparison with product speciﬁcations, and comparisonwith editorial reviews, and many more. Subjectivity classiﬁcation is also applied in Ghose and Ipeirotis(2007). Liu et al. (2007) formulated the problem slightly diﬀerently, as a binary classiﬁcation problem.Insteadofusingtheoriginalhelpfulnessfeedbacksastheclassiﬁcationtargetordependentvariable,theyperformedmanualannotationbasedonwhetherareviewcommentsonmanyproductattributes/featuresornot.
+Finally, we note again that review utility regression/classiﬁcation and review spam detections are
+diﬀerent concepts. Not-helpful or low quality reviews are not necessarily fake reviews or spam, andhelpfulreviews maynotbe non-spam. Auseroften determines whetherareviewishelpful or notbasedon whether the review expresses opinions on many attributes/features of the product. A spammer cansatisfythis requirement by carefully crafting a review that is just like a normal helpful review. Using thenumber of helpful feedbacks to deﬁne review quality is also problematic because user feedbacks can bespammed too. Feedback spam is a subproblem of click fraud in search advertising, where a person orrobotclicksonsomeonlineadvertisementstogivetheimpressionofrealcustomerclicks. Here, arobotor a human spammer can also click on helpful feedback button to increase the helpfulness of a review.Another important point is that a low quality review is still a valid review and should not be discarded,butaspamreviewisuntruthfuland/ormaliciousandshouldberemovedoncedetected.
+26.7 Conclusions
+This chapter gave an introduction to sentiment analysis and subjectivity (or opinion mining). Due tomanychallengingresearchproblemsandawidevarietyofpracticalapplications,ithasbeenaveryactiveresearchareainrecentyears.Infact,ithasspreadfromcomputersciencetomanagementscience(Archaket al. 2006; Chen and Xie 2008; Dellarocas et al. 2007; Ghose et al. 2007; Hu et al. 2006; Liu et al. 2007;Parketal. 2007). Thischapterﬁrstpresentedanabstractmodelofsentimentanalysis, whichformulatestheproblemandprovidesacommonframeworktounifydiﬀerentresearchdirections.Itthendiscussedthe most widely studied topic of sentiment and subjectivity classiﬁcation, which determines whether adocumentorsentenceisopinionated,andifsowhetheritcarriesapositiveornegativeopinion.Wethendescribed feature-based sentiment analysis that exploits the full power of the abstract model. After that,wediscussedtheproblemofanalyzingcomparativeandsuperlativesentences. Suchsentencesrepresenta diﬀerent type of evaluation from direct opinions that have been the focus of the current research. Thetopic of opinion search or retrieval was introduced as well, as a parallel to the general Web search. Lastbut not least, we discussed opinion spam, which is increasingly becoming an important issue as moreand more people are relying on opinions on the Web for decision making. This gives more and moreincentiveforspam.Thereisstillnoeﬀectivetechniquetocombatopinionspam.
+Finally, we conclude the chapter by saying that all the sentiment analysis tasks are very challenging.
+Ourunderstandingandknowledgeoftheproblemanditssolutionarestillverylimited.Themainreasonis that it is a natural language processing task, and natural language processing has no easy problems.Another reason may be due to our popular ways of doing research. We probably relied too much
+
+SentimentAnalysisandSubjectivity 661
+on machine learning algorithms. Some of the most eﬀective machine learning algorithms, e.g., supportvectormachinesandCRF,producenohumanunderstandableresultssuchthatalthoughtheymayachieveimproved accuracy, we know little about how and why apart from some superﬁcial knowledge gainedin the manual feature engineering process. However, that being said, we have indeed made signiﬁcantprogressesoverthepastfewyears.Thisisevidentfromthelargenumberofstart-upcompaniesthatoﬀersentiment analysis or opinion mining services. There is a real and huge need in the industry for suchservicesbecauseeverycompanywantstoknowhowconsumersperceivetheirproductsandservicesandthose of their competitors. The same can also be said about consumers because whenever one wants tobuysomething,onewantstoknowtheopinionsofexistingusers.Thesepracticalneedsandthetechnicalchallengeswillkeeptheﬁeldvibrantandlivelyforyearstocome.
+Acknowledgments
+I am very grateful to Theresa Wilson for her insightful and detailed comments and suggestions, whichhave helped me improve the chapter signiﬁcantly. I thank my former and current students for workingwith me on this fascinating topic: Xiaowen Ding, Murthy Ganapathibhotla, Minqing Hu, Nitin Jindal,Guang Qiu (visiting student from Zhejiang University), and Lei Zhang. I would also like to express mygratitudetoBirgitKönig(McKinsey&Company)formanyvaluablediscussionsthathavehelpedshapemyunderstandingofthepracticalsideofsentimentanalysisanditsrelatedissues.
+References
+A. Andreevskaia and S. Bergler, Mining WordNet for a fuzzy sentiment: Sentiment tag extraction
+from WordNet glosses, Proceedings of the European Chapter of the Association for Computational
+Linguistics (EACL),Trento,Italy,2006.
+N. Archak, A. Ghose, and P. Ipeirotis, Show me the money! Deriving the pricing power of product
+features by mining consumer reviews, Proceedings of the ACM SIGKDD Conference on Knowledge
+DiscoveryandDataMining (KDD),SanJose,CA,2007.
+A. Aue and M. Gamon, Customizing sentiment classiﬁers to new domains: A case study, Proceedings of
+RecentAdvancesinNaturalLanguageProcessing (RANLP),Borovets,Bulgaria,2005.
+P.Beineke,T.Hastie,C.Manning,andS.Vaithyanathan,Exploringsentimentsummarization, Proceed-
+ings of the AAAI Spring Symposium on Exploring Attitude and Aﬀect in Text , Stanford, CA, AAAI
+TechnicalReportSS-04-07,2004.
+S. Bethard, H. Yu, A. Thornton, V. Hatzivassiloglou, and D. Jurafsky, Automatic extraction of opinion
+propositions and their holders, Proceedings of the AAAI Spring Symposium on Exploring Attitude
+andAﬀectinText,Stanford,CA,2004.
+J. Blitzer, M. Dredze, and F. Pereira, Biographies, Bollywood, boom-boxes and blenders: Domain
+adaptationforsentimentclassiﬁcation, ProceedingsoftheAssociationforComputationalLinguistics
+(ACL),Prague,CzechRepublic,2007.
+J. Bos and M. Nissim, An empirical approach to the interpretation of superlatives, Proceedings of the
+Conference on Empirical Methods in Natural Language Processing (EMNLP), Sydney, Australia,
+2006.
+E. Breck, Y. Choi, and C. Cardie, Identifying expressions of opinion in context, Proceedings of the
+InternationalJointConferenceonArtiﬁcialIntelligence (IJCAI),Hyderabad,India,2007.
+G. Carenini, R. Ng, and A. Pauls, Multi-document summarization of evaluative text, Proceedings of the
+EuropeanChapteroftheAssociationforComputationalLinguistics (EACL),Trento, Italy,pp.305–
+312,2006.
+

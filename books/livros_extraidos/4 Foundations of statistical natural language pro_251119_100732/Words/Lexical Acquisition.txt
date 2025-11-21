@@ -1,0 +1,1566 @@
+p/CX /CX8 Lexical Acquisition
+The topic of chapter 5 was the acquisition of collocations , phrases and
+other combinations of words that have a specialized meaning or someother special behavior important in
+NLP. In this chapter, we will cast our
+net more widely and look at the acquisition of more complex syntacticand semantic properties of words. The general goal of lexical acquisition
+lexical acquisition
+is to develop algorithms and statistical techniques for ﬁlling the holesin existing machine-readable dictionaries by looking at the occurrence
+patterns of words in large text corpora. There are many lexical acquisi-
+tion problems besides collocations: selectional preferences (for example,the verb eatusually takes food items as direct objects), subcategorization
+frames (for example, the recipient of contribute is expressed as a preposi-
+tional phrase with to), and semantic categorization (what is the semantic
+category of a new word that is not covered in our dictionary?). While wediscuss simply the ability of computers to learn lexical information from
+online texts, rather than in any way attempting to model human language
+acquisition, to the extent that such methods are successful, they tend toundermine the classical Chomskyan arguments for an innate languagefaculty based on the perceived poverty of the stimulus.
+Most properties of words that are of interest in
+NLPare not fully cov-
+ered in machine-readable dictionaries. This is because of the productivityof natural language. We constantly invent new words and new uses of old
+words. Even if we could compile a dictionary that completely covered the
+language of today, it would inevitably become incomplete in a matter ofmonths. This is the reason why lexical acquisition is so important inStatistical
+NLP.
+A brief discussion of what we mean by lexical and the lexicon is in lexical
+lexiconorder. Trask (1993: 159) deﬁnes the lexicon as:
+
+p/CX /CX266 8 Lexical Acquisition
+That part of the grammar of a language which includes the lexical lexical entries
+entries for all the words and/or morphemes in the language and
+which may also include various other information, depending onthe particular theory of grammar.
+The ﬁrst part of the deﬁnition (“the lexical entries for all the words”)
+suggests that we can think of the lexicon as a kind of expanded diction-ary that is formatted so that a computer can read it (that is, machine-
+readable). The trouble is that traditional dictionaries are written for the
+needs of human users, not for the needs of computers. In particular,quantitative information is completely missing from traditional dictio-naries since it is not very helpful for the human reader. So one importanttask of lexical acquisition for Statistical
+NLP is to augment traditional
+dictionaries with quantitative information.
+The second part of the deﬁnition (“various other information, depend-
+ing on the particular theory of grammar”) draws attention to the fact
+that there is no sharp boundary between what is lexical information andwhat is non-lexical information. A general syntactic rule like S !NP VP
+is deﬁnitely non-lexical, but what about ambiguity in the attachment ofprepositional phrases? In a sense, it is a syntactic problem, but it can beresolved by looking at the lexical properties of the verb and the noun thatcompete for the prepositional phrase as the following example shows:
+(8.1) a. The children ate the cake with their hands.
+b. The children ate the cake with blue icing.
+We can learn from a corpus that eating is something you can do with your
+hands and that cakes are objects that have icing as a part. After acquiring
+these lexical dependencies between ateandhands andcake andicing ,w e
+can correctly resolve the attachment ambiguities in example (8.1) suchthatwith their hands attaches to ateandwith blue icing attaches to cake.
+In a sense, almost all of Statistical
+NLPinvolves estimating parameters
+tied to word properties, so a lot of statistical NLPwork has an element
+of lexical acquisition to it. In fact, there are linguistic theories claim-
+ing that all linguistic knowledge is knowledge about words (Dependency
+Grammar (Mel0ˇcuk 1988), Categorial Grammar (Wood 1993), Tree Adjoin-
+ing Grammar (Schabes et al. 1988; Joshi 1993), ‘Radical Lexicalism’ (Kart-tunen 1986)) and all there is to know about a language is the lexicon, thuscompletely dispensing with grammar as an independent entity. In gen-eral, those properties that are most easily conceptualized on the level
+
+p/CX /CX8.1 Evaluation Measures 267
+of the individual word are covered under the rubric ‘lexical acquisition.’
+We have devoted separate chapters to the acquisition of collocations andword sense disambiguation simply because these are self-contained andwarrant separate treatment as central problems in Statistical
+NLP.B u t
+they are as much examples of lexical acquisition as the problems covered
+in this chapter.
+The four main areas covered in this chapter are verb subcategorization
+(the syntactic means by which verbs express their arguments), attach-ment ambiguity (as in example (8.1)), selectional preferences (the seman-tic characterization of a verb’s arguments such as the fact that thingsthat get eaten are usually food items), and semantic similarity betweenwords. However, we ﬁrst begin by introducing some evaluation measures
+which are commonly used to evaluate lexical acquisition methods and
+various other Statistical
+NLPsystems, and conclude with a more in-depth
+discussion of the signiﬁcance of lexical acquisition in Statistical NLPand
+some further readings.
+8.1 Evaluation Measures
+An important recent development in NLPhas been the use of much more
+rigorous standards for the evaluation of NLP systems. It is generally
+agreed that the ultimate demonstration of success is showing improvedperformance at an application task, be that spelling correction, summa-rizing job advertisements, or whatever. Nevertheless, while developing
+systems, it is often convenient to assess components of the system on
+some artiﬁcial performance score (such as perplexity), improvements inwhich one can expect to be reﬂected in better performance for the wholesystem on an application task.
+Evaluation in Information Retrieval (IR) makes frequent use of the no-
+tions of precision and recall, and their use has crossed over into workon evaluating Statistical
+NLPmodels, such as a number of the systems
+discussed in this chapter. For many problems, we have a set of targets
+(for example, targeted relevant documents, or sentences in which a wordhas a certain sense) contained within a larger collection. Our system thendecides on a selected set (documents that it thinks are relevant, or sen-tences that it thinks contain a certain sense of a word, etc.). This situationis shown in ﬁgure 8.1. The selected and target groupings can be thought
+
+p/CX /CX268 8 Lexical Acquisition
+tpfp fn
+selected targettn
+Figure 8.1 A diagram motivating the measures of precision and recall. The
+areas counted by the ﬁgures for true and false positives and true and falsenegatives are shown in terms of the target set and the selected set. Precisionistp=jselectedj, the proportion of target (or correct) items in the selected (or
+retrieved) set. Recall is tp=jtargetj, the proportion of target items that were
+selected. In turn, jselectedjtpfp, andjtargetjtpfn).
+of as indicator random variables, and the joint distribution of the two
+variables can be expressed as a 2 2 contingency matrix:
+(8.2) Actual
+System target:target
+selectedtp fp
+:selectedfn tn
+The numbers in each box show the frequency or count of the number of
+items in each region of the space. The cases accounted for by tp(true true positives
+positives )a n dtn(true negatives ) are the cases our system got right. The true negatives
+wrongly selected cases in fpare called false positives ,false acceptances false positives
+orType II errors . The cases in fnthat failed to be selected are called false Type II errors
+false negativesnegatives ,false rejections orType I errors .
+Type I errorsPrecision is deﬁned as a measure of the proportion of selected itemsprecision
+that the system got right:
+precisiontp
+tpfp(8.3)
+Recall is deﬁned as the proportion of the target items that the system recall
+
+p/CX /CX8.1 Evaluation Measures 269
+selected:
+recalltp
+tpfn(8.4)
+In applications like IR, one can generally trade oﬀ precision and re-
+call (one can select every document in the collection and get 100% recallbut very low precision, etc.). This tradeoﬀ can be plotted in a precision-recall curve, as we illustrate in section 15.1.2. Sometimes such a tradeoﬀdoesn’t make as much sense in
+NLPapplications, but in any situation
+where there are some items that one is more sure of than others (such as
+in subcategorization frame learning in section 8.2), the same opportuni-ties for trading oﬀ precision vs. recall exist.
+For this reason it can be convenient to combine precision and recall into
+a single measure of overall performance. One way to do this is the Fmea-
+Fmeasure
+sure, a variant of the Emeasure introduced by van Rijsbergen (1979: 174), Emeasure
+whereF1−E.T h eFmeasure is deﬁned as follows:
+F1
+1
+P1−1
+R(8.5)
+wherePis precision,Ris recall andis a factor which determines the
+weighting of precision and recall. A value of 0:5 is often chosen for
+equal weighting of PandR. With thisvalue, theFmeasure simpliﬁes
+to 2PR=RP.
+A good question to ask is: “Wait a minute, in the table in (8.2), tptn
+is the number of things I got right, and fpfnis the number of things
+I got wrong. Why don’t we just report the percentage of things right or
+the percentage of things wrong?” One can do that, and these measuresare known as accuracy anderror . But it turns out that these often aren’t
+accuracy
+errorgood measures to use because in most of the kinds of problems we look
+attn, the number of non-target, non-selected things, is huge, and dwarfs
+all the other numbers. In such contexts, use of precision and recall hasthree advantages:
+Accuracy ﬁgures are not very sensitive to the small, but interestingnumberstp,fp,a n dfn, whereas precision and recall are. One can get
+extremely high accuracy results by simply selecting nothing.
+Other things being equal, the Fmeasure prefers results with more true
+positives, whereas accuracy is sensitive only to the number of errors.This bias normally reﬂects our intuitions: We are interested in ﬁndingthings, even at the cost of also returning some junk.
+
+p/CX /CX270 8 Lexical Acquisition
+tp fp fn tn Prec Rec F Acc
+(a) 25 0 125 99,850 1.000 0.167 0.286 0.9988
+50 100 100 99,750 0.333 0.333 0.333 0.9980
+75 150 75 99,700 0.333 0.500 0.400 0.9978
+125 225 25 99,625 0.357 0.833 0.500 0.9975150 275 0 99,575 0.353 1.000 0.522 0.9973
+(b) 50 0 100 99,850 1.000 0.333 0.500 0.9990
+75 25 75 99,825 0.750 0.500 0.600 0.9990
+100 50 50 99,800 0.667 0.667 0.667 0.9990150 100 0 99,750 0.600 1.000 0.750 0.9990
+Table 8.1 TheFmeasure and accuracy are diﬀerent objective functions. The
+table shows precision, recall, Fmeasure (with 0:5) and accuracy scores for
+certain selections of some number of items from out of a collection of 100,000items of which 150 are genuine targets. The upper series (a) shows increasingFmeasure values, but decreasing accuracy. The lower series (b) shows identical
+accuracy scores, but again increasing Fmeasure values. The bias of the Fmea-
+sure is towards maximizing the true positives, while accuracy is sensitive onlyto the number of classiﬁcation errors.
+Using precision and recall, one can give a diﬀerent cost to missing
+target items versus selecting junk.
+Table 8.1 provides some examples which illustrate how accuracy and the
+Fmeasure (with 0:5) evaluate results diﬀerently.
+A less frequently used measure is fallout , the proportion of non- fallout
+targeted items that were mistakenly selected.
+falloutfp
+fptn(8.6)
+Fallout is sometimes used as a measure of how hard it is to build a sys-
+tem that produces few false positives. If the number of non-targeteditems is very large, then low precision due to large fpmay be unavoid-
+able because with a large background population of non-targeted items,
+it is unavoidable that some will be miscategorized.
+In some ﬁelds of engineering recall-fallout trade-oﬀs are more com-
+mon than precision-recall trade-oﬀs. One uses a so-called ROC curve (for
+ROC curve
+receiver operating characteristic ) to show how diﬀerent levels of fallout
+(false positives as a proportion of all non-targeted events) inﬂuence recall
+
+p/CX /CX8.2 Verb Subcategorization 271
+Frame Functions Verb Example
+NP NP subject, object greet She greeted me .
+NP S subject, clause hope She hopes he will attend .
+NP INF subject, inﬁnitive hope She hopes to attend .
+NP NP S subject, object, clause tell She told me he will attend .
+NP NP INF subject, object, inﬁnitive tell She told him to attend .
+NP NP NP subject, (direct) object, indirect object give She gave him the book .
+Table 8.2 Some subcategorization frames with example verbs and sentences.
+(adapted from (Brent 1993: 247)).
+or sensitivity (true positives as a proportion of all targeted events). Think
+of a burglar alarm that has a knob for regulating its sensitivity. The ROC
+curve will tell you, for a certain rate of false positives, what the expectedrate of true positives is. For example, for a false positives rate of being
+woken up once in a hundred nights with no burglars, one might achieve
+an expected rate of true positives of 95% (meaning 5% of burglaries willnot be detected).
+Evaluation measures used in probabilistic parsing are discussed in sec-
+tion 12.1.8, and evaluation in IR is further discussed in section 15.1.2.
+8.2 Verb Subcategorization
+Verbs subcategorize for diﬀerent syntactic categories as we discussed in subcategorize for
+section 3.2.2. That is, they express their semantic arguments with diﬀer-
+ent syntactic means. A particular set of syntactic categories that a verbcan appear with is called a subcategorization frame . Examples of subcat-
+subcategorization
+frame egorization frames are given in table 8.2. English verbs always subcatego-
+rize for a subject, so we sometimes omit subjects from subcategorizationframes.
+The phenomenon is called subcategorization because we can think of
+the verbs with a particular set of semantic arguments as one category.
+Each such category has several subcategories that express these seman-
+tic arguments using diﬀerent syntactic means. For example, the class
+of verbs with semantic arguments theme andrecipient has a subcategory
+that expresses these arguments with an object and a prepositional phrase(for example, donate inHe donated a large sum of money to the church ),
+
+p/CX /CX272 8 Lexical Acquisition
+and another subcategory that in addition permits a double-object con-
+struction (for example, giveinHe gave the church a large sum of money ).
+Knowing the possible subcategorization frames for verbs is important
+for parsing. The contrast in (8.7) shows why.
+(8.7) a. She told the man where Peter grew up.
+b. She found the place where Peter grew up.
+If we know that tellhas the subcategorization frame NP NP S (subject,
+object, clause), and that ﬁnd lacks that frame, but has the subcatego-
+rization frame NP NP (subject, object), we can correctly attach the where -
+clause to toldin the ﬁrst sentence (as shown in (8.8a)) and to place in the
+second sentence (as shown in (8.8b)).
+(8.8) a. She told [the man] [where Peter grew up].
+b. She found [the place [where Peter grew up]].
+Unfortunately, most dictionaries do not contain information on subcat-
+egorization frames. Even if we have access to one of the few dictionariesthat do (e.g., Hornby 1974), the information on most verbs is incomplete.
+According to one account, up to 50% of parse failures can be due to miss-
+ing subcategorization frames.
+1The most comprehensive source of sub-
+categorization information for English is probably (Levin 1993). But eventhis excellent compilation does not cover all subcategorization framesand it does not have quantitative information such as the relative fre-quency of diﬀerent subcategorization frames for a verb. And the need tocope with the productivity of language would make some form of acqui-
+sition from corpora necessary even if there were better sources available.
+A simple and eﬀective algorithm for learning some subcategorization
+frames was proposed by Brent (1993), implemented in a system calledLerner . Suppose we want to decide based on corpus evidence whether
+verbvtakes framef. Lerner makes this decision in two steps.
+Cues. Deﬁne a regular pattern of words and syntactic categories which
+indicates the presence of the frame with high certainty. Certainty is
+formalized as probability of error. For a particular cue cjwe deﬁne
+a probability of error jthat indicates how likely we are to make a
+mistake if we assign frame fto verbvbased on cuecj.
+1. John Carroll, “Automatic acquisition of subcategorization frames and selectional pref-
+erences from corpora,” talk given at the workshop “Practical Acquisition of Large-ScaleLexical Information” at
+CSLI, Stanford, on April 23, 1998.
+
+p/CX /CX8.2 Verb Subcategorization 273
+Hypothesis testing. The basic idea here is that we initially assume
+that the frame is notappropriate for the verb. This is our null hy-
+pothesisH0. We reject this hypothesis if the cue cjindicate with high
+probability that our H0is wrong.
+Cues. Here is the regular pattern that Brent (1993: 247) uses as the cue
+for the subcategorization frame “NP NP” (transitive verbs):
+(8.9) Cue for frame “NP NP”:
+(OBJjSUBJ_OBJjCAP) (PUNC jCC)
+where OBJ stands for personal pronouns that are necessarily accusative
+(or objective) like meandhim, SUBJ_OBJ stands for personal pronouns
+that can be both subjects and objects like youandit, CAP is any cap-
+italized word, PUNC is a punctuation mark, and CC is a subordinatingconjunction like if,before oras.
+This pattern is chosen because it is only likely to occur when a verb
+indeed takes the frame “NP NP.” Suppose we have a sentence like (8.10)
+which matches the instantiation “CAP PUNC” of pattern (8.9).
+(8.10) [. . . ] greet-V Peter-CAP ,-PUNC [. . . ]
+One can imagine a sentence like (8.11) where this pattern occurs and the
+verb does not allow the frame. (The matching pattern in (8.11) is came -V
+Thursday -CAP ,-PUNC.) But this case is very unlikely since a verb followed
+by a capitalized word that in turn is followed by a punctuation mark will
+almost always be one that takes objects and does not require any other
+syntactic arguments (except of course for the subject). So the probabilityof error is very low when we posit the frame ‘NP NP’ for a verb that occurswith cue (8.9).
+(8.11) I came Thursday, before the storm started.
+Note that there is a tradeoﬀ between how reliable a cue is and how of-
+ten it occurs. The pattern “OBJ CC” is probably even less likely to be a
+misleading cue than “CAP PUNC.” But if we narrowed (8.9) down to onereliable instantiation, we might have to sift through hundreds of occur-rences of a verb to ﬁnd the ﬁrst occurrence with a cue, which would makethe test applicable only to the most frequent verbs. This is a problemwhich we will return to later.
+
+p/CX /CX274 8 Lexical Acquisition
+Hypothesis testing. Once the cues for the frames of interest have been
+deﬁned, we can analyze a corpus, and, for any verb-frame combination,count the number of times that a cue for the frame occurs with the verb.Suppose that verb v
+ioccurs a total of ntimes in the corpus and that there
+aremnoccurrences with a cue for frame fj. Then we can reject the null
+hypothesisH0thatvidoes not permit fjwith the following probability
+of error:
+pEPvifj0jCvi;cjmnX
+rm 
+n
+r!
+jr1−jn−r(8.12)
+wherevifj0 is shorthand for ‘Verb vidoes not permit frame fj,’
+Cvi;cjis the number of times that vioccurs with cue cj,a n djis the
+error rate for cue fj, that is, the probability that we ﬁnd cue cjfor a
+particular occurrence of the verb although the frame is not actually used.
+Recall the basic idea of hypothesis testing (chapter 5, page 162): pEis
+the probability of the observed data if the null hypothesis H0is correct.
+IfpEis small, then we reject H0because the fact that an unlikely event
+occurred indicates assuming H0was wrong. Our probability of error in
+this reasoning is pE.
+In equation (8.12), we assume a binomial distribution (section 2.1.9).
+Each occurrence of the verb is an independent coin ﬂip for which the cuedoesn’t work with probability 
+j(that is, the cue occurs, but the frame
+doesn’t), and for which it works correctly with probability 1 −j(either the
+cue occurs and correctly indicates the frame or the cue doesn’t occur andthus doesn’t mislead us).
+2It follows that an incorrect rejection of H0has
+probabilitypEif we observe mor more cues for the frame. We will reject
+the null hypothesis if pE< for an appropriate level of signiﬁcance ,
+for example,0:02. ForpE, we will assume that verb vidoes not
+permit frame fj.
+An experimental evaluation shows that Lerner does well as far as pre-
+cision is concerned. For most subcategorization frames, close to 100%of the verbs assigned to a particular frame are correctly assigned (Brent1993: 255). However, Lerner does less well at recall. For the six framescovered by Brent (1993), recall ranges from 47% to 100%, but these num-bers would probably be appreciably lower if a random sample of verbtypes had been selected instead of a random sample of verb tokens,
+2. Lerner has a third component that we have omitted here: a way of determining jfor
+each frame. The interested reader should consult (Brent 1993).
+
+p/CX /CX8.2 Verb Subcategorization 275
+a sampling method that results in a small proportion of low-frequency
+verbs.3Since low-frequency verbs are least likely to be comprehensively
+covered in existing dictionaries, they are arguably more important to getright than high-frequency verbs.
+Manning (1993) addresses the problem of low recall by using a tagger
+and running the cue detection (that is, the regular expression matching
+for patterns like (8.9)) on the output of the tagger. It may seem worryingthat we now have two error-prone systems, the tagger and the cue detec-tor, which are combined, resulting in an even more error-prone system.However, in a framework of hypothesis testing, this is not necessarilyproblematic. The basic insight is that it doesn’t really matter how reliablea cue is as an indicator for a subcategorization frame. Even an unreliable
+indicator can help us determine the subcategorization frame of a verb
+reliably if it occurs often enough and we do the appropriate hypothesistesting. For example, if cue c
+jwith error rate j0:25 occurs 11 out
+of 80 times, then we can still reject the null hypothesis that vidoes not
+permitcjwithpE0:011<0:02 despite the low reliability of cj.
+Allowing low-reliability cues and additional cues based on tagger out-
+put increases the number of available cues signiﬁcantly. As a result, a
+much larger proportion of verb occurrences have cues for a given frame.
+But more importantly, there are many subcategorization frames that haveno high-reliability cues, for example, subcategorization for a prepositionsuch as oninhe relies onrelatives orwith inshe compared the results with
+earlier ﬁndings . Since most prepositions occurring after verbs are not
+subcategorized for, there is simply no reliable cue for verbs subcatego-rizing for a preposition. Manning’s method can learn a larger number of
+subcategorization frames, even those that have only low-reliability cues.
+Table 8.3 shows a sample of Manning’s results. We can see that preci-
+sion is high: there are only three errors. Two of the errors are preposi-tional phrases (PPs): to bridge between andto retire in . It is often diﬃcult
+to decide whether prepositional phrases are arguments (which are sub-categorized for) or adjuncts (which aren’t). One could argue that retire
+subcategorizes for the PP in Malibu in a sentence like John retires in Mal-
+ibusince the verb and the PP-complement enter into a closer relationship
+than mere adverbial modiﬁcation. (For example, one can infer that Johnended up living in Malibu for a long time.) But the
+OALD does not list
+3. Each occurrence of a verb in the Brown corpus had an equal chance of appearing in the
+sample which biases the sample against low-frequency verbs.
+
+p/CX /CX276 8 Lexical Acquisition
+Verb Correct Incorrect OALD
+bridge 11 1
+burden 22
+depict 23
+emanate 11
+leak 15
+occupy 13
+remark 11 4
+retire 21 5
+shed 12
+troop 03
+Table 8.3 Some subcategorization frames learned by Manning’s system. For
+each verb, the table shows the number of correct and incorrect subcategoriza-tion frames that were learned and the number of frames listed in the OxfordAdvanced Learner’s Dictionary (Hornby 1974). Adapted from (Manning 1993).
+“NPin-PP” as a subcategorization frame, and this was what was used as
+the gold standard for evaluation.
+The third error in the table is the incorrect assignment of the intransi-
+tive frame to remark . This is probably due to sentences like (8.13) which
+look like remark is used without any arguments (except the subject).
+(8.13) “And here we are 10 years later with the same problems,” Mr. Smith re-
+marked.
+Recall in table 8.3 is relatively low. Recall here is the proportion of sub-
+categorization frames listed in the OALD that were correctly identiﬁed.
+High precision and low recall are a consequence of the hypothesis testingframework adopted here. We only ﬁnd subcategorization frames that arewell attested. Conversely, this means that we do not ﬁnd subcategoriza-tion frames that are rare. An example is the transitive use of leak as in
+he leaked the news , which was not found due to an insuﬃcient number
+of occurrences in the corpus.
+Table 8.3 is only a sample. Precision for the complete set of 40 verbs
+was 90%, recall was 43%. One way to improve these results would beto incorporate prior knowledge about a verb’s subcategorization frame.While it is appealing to be able to learn just from raw data, without anyhelp from a lexicographer’s work, results will be much better if we take
+
+pa/CX /CX8.2 Verb Subcategorization 277
+prior knowledge into account. The same pattern can be strong evidence
+for a new, unlisted subcategorization frame for one verb but evidencefor a diﬀerent frame with another verb. This is particularly true if wecontinue in the direction of more structured input to the subcategoriza-tion detector and use a parser instead of just a tagger. The simplest way
+of specifying prior knowledge would be to stipulate a higher prior for
+subcategorization frames listed in the dictionary.
+As an example of how prior knowledge would improve accuracy, sup-
+pose we analyze a particular syntactic pattern (say, V NP S) and ﬁnd twopossible subcategorization frames f
+1(subject, object) and f2(subject,
+object, clause) with a slightly higher probability for f1. This is our exam-
+ple (8.8). A parser could choose f1(subject, object) for a verb for which
+both frames have the same prior and f2(subject, object, clause) for a verb
+for which we have entered a bias against f1using some prior knowledge.
+For example, if we know that email is a verb of communication like tell,
+we may want to disfavor frames without clauses, and the parser wouldcorrectly choose frame f
+2(subject, object, clause) for I emailed my boss
+where I had put the ﬁle with the slide presentation . Such a system based
+on an incomplete subcategorization dictionary would make better use of
+a corpus than the systems described here and thus achieve better results.
+Exercise 8.1 [«]
+A potential problem with the inclusion of low-reliability cues is that they ‘wa-
+ter down’ the eﬀectiveness of high-reliability cues if we combine all cues in oneregular expression pattern, resulting in lower recall. How can we modify thehypothesis test to address this problem? Hint: Consider a multinomial distribu-tion.
+Exercise 8.2 [«]
+Suppose a subcategorization frame for a verb is very rare. Discuss the diﬃculty
+of detecting such a frame with Brent and Manning’s methods.
+Exercise 8.3 [«]
+Could one sharpen the hypothesis test for a low-frequency subcategorization
+framef
+jby taking as the event space the set of occurrences of the verb that
+could potentially be instances of the subcategorization frame? Consider a verbthat is mostly used transitively (with a direct object NP), but that has some oc-currences that subcategorize only for a PP. The methods discussed above wouldcount transitive uses as evidence against the possibility of any intransitive use.With an appropriately reduced event space, this would no longer be true. Discussadvantages and disadvantages of such an approach.
+
+p/CX /CX278 8 Lexical Acquisition
+Exercise 8.4 [«]
+A diﬃcult problem in an approach using a ﬁxed signiﬁcance level ( 0:02 in
+Brent’s work) and a categorical classiﬁcation scheme (the verb takes a particularframe, yes/no) is to determine the threshold such that as many subcategoriza-tion classiﬁcations as possible are correct (high precision), but not too manyframes are missed (high recall). Discuss how this problem might be alleviated ina probabilistic framework in which we determine Pf
+jjviinstead of making a
+binary decision.
+Exercise 8.5 [«]
+In an approach to subcategorization acquisition based on parsing and priors,
+how would you combine probabilistic parses and priors into a posterior estimateof the probability of subcategorization frames? Assume that the priors are givenin the formPf
+jjvi, and that parsing a corpus gives you a number of estimates
+of the formPskjfj(the probability of sentence kgiven that verb viin the
+sentence occurs with frame fj).
+8.3 Attachment Ambiguity
+A pervasive problem in parsing natural language is resolving attachment
+ambiguities. When we try to determine the syntactic structure of a sen-tence, a problem that we consider in general in chapter 12, there areoften phrases that can be attached to two or more diﬀerent nodes inthe tree, and we have to decide which one is correct. PP attachment is
+the attachment ambiguity problem that has received the most attention
+in the Statistical
+NLPliterature. We saw an example of it in chapter 3
+example (3.65), here repeated as (8.14):
+(8.14) The children ate the cake with a spoon.
+Depending on where we attach the prepositional phrase with a spoon ,
+the sentence can either mean that the children were using a spoon to eatthe cake (the PP is attached to ate), or that of the many cakes that they
+could have eaten the children ate the one that had a spoon attached (thePP is attached to cake). This latter reading is anomalous with this PP,
+but would be natural for the PP with frosting . See ﬁgure 3.2 in chapter 3
+for the two diﬀerent syntactic trees that correspond to the two attach-
+ments. This type of syntactic ambiguity occurs in every sentence in whicha prepositional phrase follows an object noun phrase. The reason whythe sentence in (1.12) had so many parses was because there were a lotof PPs (and participial relative clauses) which can attach at various placessyntactically. In this section, we introduce a method for determining the
+
+p/CX /CX8.3 Attachment Ambiguity 279
+attachment of prepositional phrases based on lexical information that is
+due to Hindle and Rooth (1993).
+How are such ambiguities to be resolved? While one could imagine con-
+textualizing a discourse where with a spoon was used as a diﬀerentiator
+of cakes, it was natural in the above example to see it as a tool for eating,
+and thus to choose the verb attachment. This seems to be true for many
+naturally occurring sentences:
+(8.15) a. Moscow sent more than 100,000 soldiers into Afghanistan . . .
+b. Sydney Water breached an agreement with NSW Health . . .
+In these examples, only one attachment results in a reasonable interpre-
+tation. In (8.15a), the PP into Afghanistan must attach to the verb phrase
+headed by send, while in (8.15b), the PP with NSW Health must attach
+to the NP headed by agreement . In cases like these, lexical preferences
+can be used to disambiguate. Indeed, it turns out that, in most cases,simple lexical statistics can determine which attachment is the correctone. These simple statistics are basically co-occurrence counts betweenthe verb and the preposition on the one hand, and between the noun andthe preposition on the other. In a corpus, we would ﬁnd lots of cases
+where intois used with send, but only a few where intois used with sol-
+dier. So we can be reasonably certain that the PP headed by intoin (8.15a)
+attaches to send,n o tt o soldiers .
+A simple model based on this information is to compute the following
+likelihood ratio (cf. section 5.3.4 on likelihood ratios).
+v;n;plogPpjv
+Ppjn(8.16)
+wherePpjvis the probability of seeing a PP with pafter the verb v
+andPpjnis the probability of seeing a PP with pafter the noun n.
+We can then attach to the verb for v;n;p > 0 and to the noun for
+v;n;p< 0.
+The trouble with this model is that it ignores the fact that other things
+being equal, there is a preference for attaching phrases “low” in the parse
+tree. For PP attachment, the lower node is the NP node. For example, the
+tree in ﬁgure 3.2 (b) attaches the PP with the spoon to the lower NP node,
+the tree in ﬁgure 3.2 (a) attaches it to the higher VP node. One can explainlow attachments with a preference for local operations. When we processthe PP, the NP is still fresh in our mind and so it is easier to attach the PPto it.
+
+p/CX /CX280 8 Lexical Acquisition
+w Cw Cw; with
+end 5156 607
+venture 1442 155
+Table 8.4 An example where the simple model for resolving PP attachment
+ambiguity fails.
+The following example from the New York Times shows why it is im-
+portant to take the preference for attaching low into account:
+(8.17) Chrysler conﬁrmed that it would end its troubled venture with Maserati.
+The preposition with occurs frequently after both end (e.g., the show
+ended with a song )a n d venture (e.g., the venture with Maserati ). The
+data from the New York Times corpus in table 8.4,4when plugged into
+equation (8.16), predict attachment to the verb:
+Ppjv607
+51560:118>0:107155
+1442Ppjn
+But that is the wrong decision here. The model is wrong because equa-
+tion (8.16) ignores a bias for low attachment in cases where a prepositionis equally compatible with the verb and the noun. We will now develop aprobabilistic model for PP attachment that formalizes this bias.
+8.3.1 Hindle and Rooth (1993)
+In setting up the probabilistic model that is due to Hindle and Rooth(1993), we ﬁrst deﬁne the event space. We are interested in sentencesthat are potentially ambiguous with respect to PP attachment. So we
+deﬁne the event space to consist of all clauses that have a transitive verb
+(a verb with an object noun phrase), an NP following the verb (the objectnoun phrase) and a PP following the NP.
+5Our goal is to resolve the PP
+attachment ambiguity in these cases.
+In order to reduce the complexity of the model, we limit our attention
+to one preposition at a time (that is, we are not modeling possible inter-actions between PPs headed by diﬀerent prepositions, see exercise 8.8),
+4. We used the subset of texts from chapter 5.
+5. Our terminology here is a little bit sloppy since the PP is actually part of the NP when
+it attaches to the noun, so, strictly speaking, it does not follow the NP. So what we meanhere when we say “NP” is the base NP chunk without complements and adjuncts.
+
+p/CX /CX8.3 Attachment Ambiguity 281
+and, if there are two PPs with the same preposition in sequence, then we
+will only model the behavior of the ﬁrst (see exercise 8.9).
+To simplify the probabilistic model, we will not directly ask the ques-
+tion about whether a certain preposition is attached to a certain verb ornoun. Rather, we will estimate how likely it is in general for a preposition
+to attach to a verb or noun. We will look at the following two questions,
+formalized by the sets of indicator random variables VA
+pand NAp:
+VAp: Is there a PP headed by pand following the verb vwhich attaches
+tov(VAp1) or not (VA p0)?
+NAp: Is there a PP headed by pand following the noun nwhich attaches
+ton(NAp1) or not (NA p0)?
+Note that we are referring to any occurrence of the preposition phere
+rather than to a particular instance. So it is possible for both NA pand
+VApto be 1 for some value of p. For instance, this is true for ponin
+the sentence:
+(8.18) He put the book [ onWorld War II] [ onthe table].
+For a clause containing the sequence “ v...n. . . PP,” we wish to calcu-
+late the probability of the PP headed with preposition pattaching to the
+verbvand the noun n, conditioned on vandn:
+PVAp;NApjv;nPVApjv;nP NApjv;n (8.19)
+PVApjvP NApjn (8.20)
+In (8.19), we assume conditional independence of the two attachments
+– that is, whether a PP occurs modifying nis independent of whether
+one occurs modifying v. In (8.20), we assume that whether the verb is
+modiﬁed by a PP does not depend on the noun and whether the noun ismodiﬁed by a PP does not depend on the verb.
+That we are treating attachment of a preposition to a verb and to a noun
+(i.e., VA
+pand NAp) as independent events seems counterintuitive at ﬁrst
+since the problem as stated above posits a binary choice between noun
+and verb attachment. So, rather than being independent, attachment tothe verb seems to imply non-attachment to the noun and vice versa. Butwe already saw in (8.18) that the deﬁnitions of VA
+pand NApimply that
+both can be true. The advantage of the independence assumption is thatit is easier to derive empirical estimates for the two variables separately
+
+p/CX /CX282 8 Lexical Acquisition
+rather than estimating their joint distribution. We will see below how we
+can estimate the relevant quantities from an unlabeled corpus.
+Now suppose that we wish to determine the attachment of a PP that is
+immediately following an object noun. We can compute an estimate interms of model (8.20) by computing the probability of NA
+p1.
+PAttachpnjv;nPVAp0_VAp1jvPNAp1jn
+1:0PNAp1jn
+PNAp1jn
+So we do not need to consider whether VA p0o rV Ap1, since while
+there could be other PPs in the sentence modifying the verb, they areimmaterial to deciding the status of the PP immediately after the nounhead.
+In order to see that the case VA
+p1a n dN Ap1 does not make
+Attachpvtrue, let’s look at what these two premises entail. First,
+there must be two prepositional phrases headed by a preposition of type
+p. This is because we assume that any given PP can only attach to one
+phrase, either the verb or the noun. Second, the ﬁrst of these two PPsmust attach to the noun, the second to the verb. If it were the other wayround, then we would get crossing brackets. It follows that VA
+p1a n d
+NAp1 implies that the ﬁrst PP headed by pis attached to the noun, not
+to the verb. So Attach pvholds in this case.
+In contrast, because there cannot be crossing lines in a phrase structure
+tree, in order for the ﬁrst PP headed by the preposition pto attach to the
+verb, both VA p1a n dN Ap0 must hold. Substituting the appropriate
+values in model (8.20) we get:
+PAttachpvjv;nPVAp1;NAp0jv;n
+PVAp1jvP NAp0jn
+We can again assess PAttachpvandPAttachpnv i aal i k e l i -
+hood ratio.
+v;n;plog2PAttachpvjv;n
+PAttachpnjv;n(8.21)
+log2PVAp1jvP NAp0jv
+PNAp1jn
+We choose verb attachment for large positive values of and noun attach-
+ment for large negative values. We can also make decisions for values of
+
+p/CX /CX8.3 Attachment Ambiguity 283
+closer to zero (verb attachment for positive and noun attachment for
+negative), but there is a higher probability of error.
+How do we estimate the probabilities PVAp1jvandPNAp1jn
+that we need for equation (8.22)? The simplest method is to rely onmaximum likelihood estimates of the familiar form:
+PVA
+p1jvCv;p
+Cv
+PNAp1jnCn;p
+Cn
+whereCv andCn are the number of occurrences of vandnin the
+corpus, andCv;p andCn;p are the number of times that pattaches
+tovandpattaches ton. The remaining diﬃculty is to determine the
+attachment counts from an unlabeled corpus. In some sentences theattachment is obvious.
+(8.22) a. The road to London is long and winding.
+b. She sent him into the nursery to gather up his toys.
+The prepositional phrase in italics in (8.22a) must attach to the noun
+since there is no preceding verb, and the italicized PP in (8.22b) must
+attach to the verb since attachment to a pronoun like himis not possi-
+ble. So we can bump up our counts for Croad;toandCsend;intoby
+one based on these two sentences. But many sentences are ambiguous.That, after all, is the reason why we need an automatic procedure for theresolution of attachment ambiguity.
+Hindle and Rooth (1993) propose a heuristic for determining Cv;p
+andCn;p from unlabeled data that has essentially three steps.
+1. Build an initial model by counting all unambiguous cases (examples
+like (8.22a) and (8.22b)).
+2. Apply the initial model to all ambiguous cases and assign them to the
+appropriate count if exceeds a threshold (for example, >2:0f o r
+verb attachment and <−2:0 for noun attachment).
+3. Divide the remaining ambiguous cases evenly between the counts (that
+is, increase both Cv;p andCn;p by 0:5 for each ambiguous case).
+Sentence (8.15a), here repeated as (8.23), may serve as an example of
+how the method is applied (Hindle and Rooth 1993: 109–110).
+
+p/CX /CX284 8 Lexical Acquisition
+(8.23) Moscow sent more than 100,000 soldiers into Afghanistan . . .
+First we estimate the two probabilities we need for the likelihood ratio.
+The count data are from Hindle and Rooth’s test corpus.
+PVAinto1jsendCsend;into
+Csend86
+1742:50:049
+PNAinto1jsoldiersCsoldiers;into
+Csoldiers1
+14780:0007
+The fractional count is due to the step of the heuristic that divides the
+hardest ambiguous cases evenly between noun and verb. We also have:
+PNAinto0jsoldiers1−PNAinto1jsoldiers0:9993 (8.24)
+Plugging these numbers into formula (8.22), we get the following like-
+lihood ratio.
+send;soldiers;intolog20:0490:9993
+0:00076:13
+So attachment to the verb is much more likely (26:1370 times more
+likely), which is the right prediction here. In general, the procedure is
+accurate in about 80% of cases if we always make a choice (Hindle and
+Rooth 1993: 115). We can trade higher precision for lower recall if weonly make a decision for values of that exceed a certain threshold. For
+example, Hindle and Rooth (1993) found that precision was 91.7% andrecall was 55.2% for 3:0.
+8.3.2 General remarks on PP attachment
+Much of the early psycholinguistic literature on parsing emphasized the
+use of structural heuristics to resolve ambiguities, but they clearly don’thelp in cases like the PP attachments we have been looking at. For identi-cal sequences of word classes, sometimes one parse structure is correct,and sometimes another. Rather, as suggested by Ford et al. (1982), lexicalpreferences seem very important here.
+There are several major limitations to the model presented here. One
+is that it only considers the identity of the preposition and the noun
+and verb to which it might be attached. Sometimes other information isimportant (studies suggest human accuracy improves by around 5% whenthey see more than just a v;n;p triple). In particular, in sentences like
+those in (8.25), the identity of the noun that heads the NP inside the PP isclearly crucial:
+
+p/CX /CX8.3 Attachment Ambiguity 285
+The board approved [its acquisition] [by Royal Trustco Ltd.] [of Toronto] [for
+$27 a share] [at its monthly meeting].
+Figure 8.2 Attachments in a complex sentence.
+(8.25) a. I examined the man with a stethoscope
+b. I examined the man with a broken leg
+Other information might also be important. For instance Hindle and
+Rooth (1993) note that a superlative adjective preceding the noun highlybiased things towards an NP attachment (in their data). This condition-ing was probably omitted by Hindle and Rooth because of the infrequentoccurrence of superlative adjectives. However, a virtue of the likelihood
+ratio approach is that other factors can be incorporated in a principled
+manner (providing that they are assumed to be independent). Much otherwork has used various other features, in particular the identity of thehead noun inside the PP (Resnik and Hearst 1993; Brill and Resnik 1994;Ratnaparkhi et al. 1994; Zavrel et al. 1997; Ratnaparkhi 1998). Franz(1996) is able to include lots of features within a loglinear model ap-proach, but at the cost of reducing the most basic association strength
+parameters to categorical variables.
+A second major limitation is that Hindle and Rooth (1993) consider
+only the most basic case of a PP immediately after an NP object whichis modifying either the immediately preceding noun or verb. But thereare many more possibilities for PP attachments than this. Gibson andPearlmutter (1994) argue that psycholinguistic studies have been greatlybiased by their overconcentration on this one particular case. A PP sep-
+arated from an object noun by another PP may modify any of the noun
+inside the preceding PP, the object noun, or the preceding verb. Figure 8.2shows a variety of the distant and complex attachment patterns that oc-cur in texts. Additionally, in a complex sentence, a PP might not modifyjust the immediately preceding verb, but might modify a higher verb. SeeFranz (1997) for further discussion, and exercise 8.9.
+
+p/CX /CX286 8 Lexical Acquisition
+Other attachment issues
+Apart from prepositional phrases, attachment ambiguity also occurs with
+various kinds of adverbial and participial phrases and clauses, and in
+noun compounds . The issue of the scope of coordinations in parsing is noun compounds
+also rather similar to an attachment decision, but we will not consider it
+further here.
+A noun phrase consisting of a sequence of three or more nouns either
+has the left-branching structure [[N N] N] or the right-branching structure[N [N N]]. For example, door bell manufacturer is left-branching: [[door
+bell] manufacturer] . It’s a manufacturer of door bells, not a manufac-
+turer of bells that somehow has to do with doors. The phrase woman
+aid worker is an example of a right-branching NP: [woman [aid worker]] .
+The phrase refers to an aid worker who is female, not a worker workingfor or on woman aid . The left-branching case roughly corresponds to at-
+tachment of the PP to the verb ([V N P]), while the right-branching casecorresponds to attachment to the noun ([V [N P]]).
+We could directly apply the formalism we’ve developed for preposi-
+tional phrases to noun compounds. However, data sparseness tends tobe a more serious problem for noun compounds than for prepositionalphrases because prepositions are high-frequency words whereas mostnouns are not. For this reason, one approach is to use some form ofsemantic generalization based on word classes in combination with at-tachment information. See Lauer (1995a) for one take on the problem
+(use of semantic classes for the PP attachment problem was explored by
+Resnik and Hearst (1993) with less apparent success). A diﬀerent exam-ple of class-based generalization will be discussed in the next section.
+As a ﬁnal comment on attachment ambiguity, note that a large pro-
+portion of prepositional phrases exhibit ‘indeterminacy’ with respect toattachment (Hindle and Rooth 1993: 112). Consider the PP with them
+in (8.26):
+(8.26) We have not signed a settlement agreement with them .
+When you sign an agreement with person X,t h e ni nm o s tc a s e si ti sa n
+agreement with X, but you also do the signing with X. It is rather unclear
+whether the PP should be attached to the verb or the noun or whether weshould rather say that a PP like with them in sentence (8.26) should attach
+toboth verb and noun. Lauer (1995a) found that a signiﬁcant proportion
+of noun compounds also had this type of attachment indeterminacy. This
+
+p/CX /CX8.3 Attachment Ambiguity 287
+is an example of a possibly important insight that came out of Statisti-
+calNLPwork. Before Hindle and Rooth’s study, computational linguists
+were not generally aware of how widespread attachment indeterminacyis (though see Church and Patil (1982) for a counterexample).
+After becoming aware of this fact, we could just say that it doesn’t mat-
+ter how we attach in indeterminate cases. But the phenomenon might
+also motivate us to explore new ways of determining the contributiona prepositional phrase makes to the meaning of a sentence. The phe-nomenon of attachment indeterminacy suggests that it may not be agood idea to require that PP meaning always be mediated through a nounphrase or a verb phrase as current syntactic formalisms do.
+Exercise 8.6 [«]
+As is usually the case with maximum likelihood estimates, they suﬀer in accuracy
+if data are sparse. Modify the estimation procedure using one of the proceduressuggested in chapter 6. Hindle and Rooth (1993) use an ‘Add One’ method intheir experiments.
+Exercise 8.7 [«]
+Hindle and Rooth (1993) used a partially parsed corpus to determine Cv;p , and
+Cn;p . Discuss whether we could use an unparsed corpus and what additional
+problems we would have to grapple with.
+Exercise 8.8 [«]
+Consider sentences with two PPs headed by two diﬀerent prepositions, for ex-
+ample, “He put the book on Churchill in his backpack.” The model we developedcould attach on Churchill toputwhen applied to the preposition onandin his
+backpack tobook when applied to the preposition in. But that is an incorrect
+parse tree since it has crossing brackets. Develop a model that makes consistentdecisions for sentences with two PPs headed by diﬀerent prepositions.
+Exercise 8.9 [««]
+Develop a model that resolves the attachment of the second PP in a sequence of
+the form: V . . . N . . . PP PP. There are three possible cases here: attachment tothe verb, attachment to the noun and attachment to the noun in the ﬁrst PP.
+Exercise 8.10 [«]
+Note the following diﬀerence between a) the acquisition methods for attachment
+ambiguity in this section and b) those for subcategorization frames in the lastsection and those for collocations in chapter 5. In the case of PP attachment,we are interested in what is predictable . We choose the pattern that best ﬁts
+what we would predict to happen from the training corpus. (For example, a PPheaded by inafter send.) In the case of subcategorization and collocations, we
+are interested in what is unpredictable , that is, patterns that shouldn’t occur if
+our model was right. Discuss this diﬀerence.
+
+p/CX /CX288 8 Lexical Acquisition
+8.4 Selectional Preferences
+Most verbs prefer arguments of a particular type. Such regularities are
+called selectional preferences orselectional restrictions . Examples are that selectional
+preferences
+selectional
+restrictionsthe objects of the verb eattend to be food items, the subjects of think
+tend to be people, and the subjects of bark tend to be dogs. These seman-
+ticconstraints on arguments are analogous to the syntactic constraints
+we looked at earlier, subcategorization for objects, PPs, inﬁnitives etc.
+We use the term preferences as opposed to rules because the preferences
+can be overridden in metaphors and other extended meanings. For exam-ple,eattakes non-food arguments in eating one’s words orfear eats the
+soul.
+The acquisition of selectional preferences is important in Statistical
+NLPfor a number of reasons. If a word like durian is missing from our
+machine-readable dictionary, then we can infer part of its meaning from
+selectional restrictions. In the case of sentence (8.27), we can infer that a
+durian is a type of food.
+(8.27) Susan had never eaten a fresh durian before.
+Another important use of selectional preferences is for ranking the
+possible parses of a sentence. We will give higher scores to parses wherethe verb has ‘natural’ arguments than to those with atypical arguments,a strategy that allows us to choose among parses that are equally goodon syntactic criteria. Scoring the semantic wellformedness of a sentencebased on selectional preferences is more amenable to automated lan-guage processing than trying to understand the meaning of a sentence
+more fully. This is because the semantic regularities captured in selec-
+tional preferences are often quite strong and, due to the tight syntacticlink between a verb and its arguments, can be acquired more easily fromcorpora than other types of semantic information and world knowledge.
+We will now introduce the model of selectional preferences proposed
+by Resnik (1993, 1996). In principle, the model can be applied to anyclass of words that imposes semantic constraints on a grammatically de-
+pendent phrase: verb $subject, verb $direct object, verb $prepositional
+phrase, adjective $noun, noun$noun (in noun-noun compounds). But
+we will only consider the case ‘verb $direct object’ here, that is, the case
+of verbs selecting a semantically restricted class of direct object nounphrases.
+The model formalizes selectional preferences using two notions: selec-
+
+p/CX /CX8.4 Selectional Preferences 289
+tional preference strength and selectional association. Selectional prefer- selectional
+preference
+strengthence strength measures how strongly the verb constrains its direct object.
+It is deﬁned as the KL divergence between the prior distribution of directobjects (the distribution of direct objects for verbs in general) and thedistribution of direct objects of the verb we are trying to characterize.
+We make two assumptions to simplify the model. First, we only take
+thehead noun of the direct object into account (for example, apple in
+Susan ate the green apple ) since the head is the crucial part of the noun
+phrase that determines compatibility with the verb. Second, instead ofdealing with individual nouns, we will instead look at classes of nouns.
+As usual, a class-based model facilitates generalization and parameterestimation. With these assumptions, we can deﬁne selectional preference
+strengthSv as follows:
+SvDPCjvkPCX
+cPcjvlogPcjv
+Pc(8.28)
+wherePC is the overall probability distribution of noun classes and
+PCjvis the probability distribution of noun classes in the direct object
+position ofv. We can take the noun classes from any lexical resource that
+groups nouns into classes. Resnik (1996) uses WordNet.
+Based on selectional preference strength, we can deﬁne selectional as- selectional
+association sociation between a verb vand a classcas follows:
+Av;cPcjvlogPcjv
+Pc
+Sv(8.29)
+That is, the association between a verb and a class is deﬁned as the pro-
+portion that its summand PcjvlogPcjv
+Pccontributes to the overall pref-
+erence strength Sv.
+Finally, we need a rule for assigning association strength to nouns (as
+opposed to noun classes). If the noun nis in only one class c, then
+we simply deﬁne Av;nÖAv;c . If the noun is a member of several
+classes, then we deﬁne its association strength as the highest associationstrength of any of its classes.
+Av;n max
+c2classesnAv;c (8.30)
+A noun like chair in (8.31) is in several classes because it is polysemous
+(or ambiguous).
+(8.31) Susan interrupted the chair.
+
+p/CX /CX290 8 Lexical Acquisition
+Noun classcPc PcjeatP  cjseeP  cjﬁnd
+people 0.25 0.01 0.25 0.33
+furniture 0.25 0.01 0.25 0.33
+food 0.25 0.97 0.25 0.33
+action 0.25 0.01 0.25 0.01
+SPSSv 1.76 0.00 0.35
+Table 8.5 Selectional Preference Strength ( SPS). The argument distributions and
+selectional preference strengths of three verbs for a classiﬁcation of nouns with
+four classes (based on hypothetical data).
+In the case of chair , we have two candidate classes, ‘furniture’ and ‘peo-
+ple’ (the latter in the sense ‘chairperson’). Equating Av;n with the max-
+imumAv;c amounts to disambiguating the noun. In sentence (8.31) we disambiguation
+will base the association strength Ainterrupt;chairon the class ‘peo-
+ple’ since interrupting people is much more common than interrupting
+pieces of furniture, that is:
+Ainterrupt;peopleAinterrupt;furniture
+Hence:Ainterrupt;chair max
+c2classeschairAinterrupt;c
+Ainterrupt;people
+So we can disambiguate chair as a by-product of determining the associ-
+ation of interrupt andchair .
+The hypothetical data in table 8.5 (based on (Resnik 1996: 139)) may
+serve as a further illustration of the model. The table shows the prior dis-tribution of object NPs over noun classes (assuming that there are onlythe four classes shown) and posterior distributions for three verbs. Theverb eatoverwhelmingly prefers food items as arguments; see’s distri-
+bution is not very diﬀerent from the prior distribution since all physicalobjects can be seen; ﬁnd has a uniform distribution over the ﬁrst three
+classes, but ‘disprefers’ actions since actions are not really the type of
+entities that are found.
+The selectional preference strengths of the three verbs are shown in
+the row ‘SPS.’ The numbers conform well with our intuition about thethree verbs: eatis very speciﬁc with respect to the arguments it can take,
+ﬁnd is less speciﬁc, and seehas no selectional preferences (at least in
+
+p/CX /CX8.4 Selectional Preferences 291
+our hypothetical data). Note that there is a clear interpretation of SPS
+as the amount of information we gain about the argument after learning
+about the verb. In the case of eat,SPSis 1.76, corresponding to almost 2
+binary questions. That is just the number of binary questions we need toget from four classes (people, furniture, food, action) to one, namely the
+class ‘food’ that eatselects. (Binary logarithms were used to compute
+SPS
+and association strength.)
+Computing the association strengths between verbs and noun classes,
+we ﬁnd that the class ‘food’ is strongly preferred by eat(8.32) whereas
+the class ‘action’ is dispreferred by ﬁnd(8.33). This example shows that
+the model formalizes selectional ‘dispreferences’ (negative numbers) aswell as selectional preferences (positive numbers).
+Aeat;food1:08 (8.32)
+Aﬁnd;action− 0:13 (8.33)
+The association strengths between seeand all four noun classes are zero,
+corresponding to the intuition that seedoes not put strong constraints
+on its possible arguments.
+The remaining problem is to estimate the probability that a direct ob-
+j e c ti nn o u nc l a s s coccurs given a verb v,Pcjv
+Pv;c
+Pv. The maximum
+likelihood estimate for Pv isCv=P
+v0Cv0, the relative frequency of
+vwith respect to all verbs. Resnik (1996) proposes the following estimate
+forPv;c :
+Pv;c1
+NX
+n2wordsc1
+jclassesnjCv;n (8.34)
+whereNis the total number of verb-object pairs in the corpus, words c
+is the set of all nouns in class c, classesnis the number of noun classes
+that containnas a member and Cv;n is the number of verb-object
+pairs withvas the verb and nas the head of the object NP. This way of
+estimatingPv;c bypasses the problem of disambiguating nouns. If a
+noun that is a member of two classes c1andc2occurs withv, then we
+assign half of this occurrence to Pv;c 1and half toPv;c 2.
+So far, we have only presented constructed examples. Table 8.6 shows
+some actual data from Resnik’s experiments on the Brown corpus (Resnik1996: 142). The verbs and nouns were taken from a psycholinguisticstudy (Holmes et al. 1989). The nouns in the left and right halves ofthe table are ‘typical’ and ‘atypical’ objects, respectively. For most verbs,
+
+p/CX /CX292 8 Lexical Acquisition
+Verbv NounnA  v ; n  Class NounnA  v ; n  Class
+answer request 4.49 speech act tragedy 3.88 communication
+ﬁnd label 1.10 abstraction fever 0.22 psych. feature
+hear story 1.89 communication issue 1.89 communication
+remember reply 1.31 statement smoke 0.20 article of commerce
+repeat comment 1.23 communication journal 1.23 communication
+read article 6.80 writing fashion−0:20 activity
+see friend 5.79 entity method−0:01 method
+write letter 7.26 writing market 0.00 commerce
+Table 8.6 Association strength distinguishes a verb’s plausible and implausible
+objects. The left half of the table shows typical objects, the right half shows
+atypical objects. In most cases, association strength Av;n is a good predictor
+of object typicality.
+association strength accurately predicts which object is typical. For ex-
+ample, it correctly predicts that friend is a more natural object for see
+than method . Most errors the model makes are due to the fact that it
+performs a form of disambiguation, by choosing the highest association
+strength among the possible classes of the noun (cf. the example of chair
+we discussed earlier). Even if a noun is an atypical object, if it has arare interpretation as a plausible object, then it will be rated as typical.A ne x a m p l eo ft h i si s hear. Both story andissue can be forms of commu-
+nication, but this meaning is rarer for issue . Yet the model chooses the
+rare interpretation because it makes more sense for the verb hear.
+Apart from the speciﬁc question of selectional preference, Resnik also
+investigates how well the model predicts whether or not a verb has the
+so-called implicit object alternation (orunspeciﬁed object alternation , see
+implicit object
+alternation Levin (1993: 33)). An example is the alternation between sentences (8.35a)
+and (8.35b). The verb eatalternates between explicitly naming what was
+eaten (8.35a) and leaving the thing eaten implicit (8.35b).
+(8.35) a. Mike ate the cake.
+b. Mike ate.
+The explanation Resnik oﬀers for this phenomenon is that the more
+constraints a verb puts on its object, the more likely it is to permit theimplicit-object construction. The intuition is that for a verb like eatwith a
+strong selectional preference, just knowing the verb gives us so much in-
+
+pa/CX /CX8.4 Selectional Preferences 293
+formation about the direct object that we don’t have to mention it. Resnik
+ﬁnds evidence that selectional preference strength is a good predictor ofthe permissibility of the implicit-object alternation for verbs.
+We can now see why Resnik’s model deﬁnes selectional preference
+strength (
+SPS) as the primary concept and derives association strength
+from it. SPSis seen as the more basic phenomenon which explains the
+occurrence of implicit objects as well as association strength.
+An alternative is to deﬁne association strength directly as Pcjv–o r
+asPnjvif we don’t want to go through an intermediate class represen-
+tation. Approaches to computing Pnjvinclude distributional clustering
+(the work by Pereira et al. (1993) described in chapter 14) and methodsfor computing the similarity of nouns. If a measure of the similarity of
+nouns is available, then Pnjvcan be computed from the distribution of
+nouns similar to nthat are found in the argument slot of v. See the next
+section for more on this approach.
+Exercise 8.11 [«]
+As we pointed out above, we can use a model of selectional preferences for dis-
+ambiguating nouns by computing the association strengths for diﬀerent sensesof the noun. This strategy assumes that we know what the senses of the nounare and which classes they are members of. How could one use selectional pref-erences to discover senses of nouns whose senses we don’t know?
+Exercise 8.12 [«]
+Verbs can also be ambiguous as in the case of ﬁrein these two sentences.
+(8.36) a. The president ﬁred the chief ﬁnancial oﬃcer.
+b. Mary ﬁred her gun ﬁrst.
+How can the model be used to disambiguate verbs? Consider two scenarios, one
+in which we have a training set in which verb senses are labeled, one in which wedon’t.
+Exercise 8.13 [«]
+The model discussed in this section assigns the noun sense with the maximum
+association strength. This approach does not take prior probabilities into ac-count. We may not want to choose an extremely rare sense of a noun even if itis the best ﬁt as the object NP of a verb.
+Example: The noun shot has the rare meaning ‘marksman’ as in John was reputed
+t ob eac r a c ks h o t . So, theoretically, we could choose this sense for shot in
+the sentence John ﬁred a shot , corresponding to the meaning John laid oﬀ a
+marksman .
+How could prior probabilities be used to avoid such incorrect inferences?
+
+p/CX /CX294 8 Lexical Acquisition
+Exercise 8.14 [««]
+In the approach developed above, WordNet is treated as a ﬂat set of noun classes,
+but it is actually a hierarchy. How could one make use of the information presentin the hierarchy (for example, the fact, that the class ‘dog’ is a subclass of ‘animal’which in turn is a subclass of ‘entity’)?
+Exercise 8.15 [««]
+Verbs can be organized into a hierarchy too. How could one use hierarchical
+information about verbs for better parameter estimation?
+Exercise 8.16 [«]
+One assumption of the model is that it is the head noun that determines the
+compatibility of an object NP with the selectional preferences of the verb. How-ever, as pointed out by Resnik (1996: 137), that is not always the case. Examplesinclude negation ( you can’t eat stones ), and certain adjectival modiﬁers ( he ate
+a chocolate ﬁretruck ;the tractor beam pulled the ship closer ); neither stones
+nor ﬁretrucks are compatible with the selectional preferences of eat, but these
+sentences are still well-formed. Discuss this problem.
+Exercise 8.17 [«]
+Hindle and Rooth (1993) go through several iterations of estimating initial pa-
+rameters of their model, disambiguating some ambiguous attachments and re-
+estimating parameters based on disambiguated instances. How could this ap-
+proach be used to estimate the prior probabilities of noun classes in (8.34)?The goal would be to improve on the uniform distribution over possible classesassumed in the equation.
+Exercise 8.18 [«]
+Resnik’s model expresses association strength as a proportion of selectional
+preference strength. This leads to interesting diﬀerences from an approachbased on formalizing selectional preference as Pnjv. Compare two noun-verb
+pairs with equal Pnjv, that is,Pn
+1jv1Pn 2jv2. If the selectional prefer-
+ence strength of v1is much larger than that of v2, then we get Av 1;cn 1
+Av 2;cn 2. So the two models make diﬀerent predictions here. Discuss these
+diﬀerences.
+8.5 Semantic Similarity
+The holy grail of lexical acquisition is the acquisition of meaning. There
+are many tasks (like text understanding and information retrieval) forwhich Statistical
+NLPcould make a big diﬀerence if we could automati-
+cally acquire meaning. Unfortunately, how to represent meaning in a waythat can be operationally used by an automatic system is a largely un-solved problem. Most work on acquiring semantic properties of words
+
+p/CX /CX8.5 Semantic Similarity 295
+has therefore focused on semantic similarity . Automatically acquiring a semantic similarity
+relative measure of how similar a new word is to known words (or how
+dissimilar) is much easier than determining what the meaning actually is.
+Despite its limitations, semantic similarity is still a useful measure to
+have. It is most often used for generalization under the assumption that generalization
+semantically similar words behave similarly. An example would be the
+problem of selectional preferences that we discussed in the previoussection. Suppose we want to ﬁnd out how appropriate durian is as an
+argument of eatin sentence (8.37) (our previous example (8.27)):
+(8.37) Susan had never eaten a fresh durian before.
+Suppose further that we don’t have any information about durian except
+that it’s semantically similar to apple ,banana ,a n d mango , all of which
+perfectly ﬁt the selectional preferences of eat. Then we can generalize
+from the behavior of apple ,banana ,a n d mango to the semantically sim-
+ilardurian and hypothesize that durian is also a good argument of eat.
+This scheme can be implemented in various ways. We could base ourtreatment of durian only on the closest semantic neighbor (say, mango ),
+or we could base it on a combination of evidence from a ﬁxed number of
+nearest neighbors, a combination that can be weighted according to howsemantically similar each neighbor is to durian .
+Similarity-based generalization is a close relative of class-based gener-
+class-based
+generalization alization. In similarity-based generalization we only consider the closest
+neighbors in generalizing to the word of interest. In class-based general-ization, we consider the whole class of elements that the word of interest
+is most likely to be a member of. (See exercise 8.20.)
+Semantic similarity is also used for query expansion in information re-
+trieval. A user who describes a request for information in her own wordsmay not be aware of related terms which are used in the documents thatthe user would be most interested in. If a user describes a request fordocuments on Russian space misions using the word astronaut , then a
+query expansion system can suggest the term cosmonaut based on the
+semantic similarity between astronaut andcosmonaut .
+Another use of semantic similarity is for so-called knearest neighbors
+knearest neighbors
+(orKNN ) classiﬁcation, see section 16.4). We ﬁrst need a training set of KNN
+elements that are each assigned to a category. The elements might be
+words and the categories might be topic categories as they are used bynewswire services (‘ﬁnancial,’ ‘agriculture,’ ‘politics’ etc.). In
+KNN classi-
+
+p/CX /CX296 8 Lexical Acquisition
+ﬁcation we assign a new element to the category that is most prevalent
+among itsknearest neighbors.
+Before delving into the details of how to acquire measures of semantic
+similarity, let us remark that semantic similarity is not as intuitive andclear a notion as it may seem at ﬁrst. For some, semantic similarity is an
+extension of synonymy and refers to cases of near-synonymy like the pair
+dwelling /abode . Often semantic similarity refers to the notion that two
+words are from the same semantic domain ortopic . On this understand-
+semantic domain
+topicing of the term, words are similar if they refer to entities in the world that
+are likely to co-occur like doctor ,nurse ,fever ,a n d intravenous ,w o r d s
+that can refer to quite diﬀerent entities or even be members of diﬀerentsyntactic categories.
+One attempt to put the notion of semantic similarity on a more solid
+footing is provided by Miller and Charles (1991), who show that judge-ments of semantic similarity can be explained by the degree of contextual
+contextual
+interchangeability interchangeability or the degree to which one word can be substituted for
+another in context.
+Note that ambiguity presents a problem for all notions of semantic
+similarity. If a word is semantically similar to one sense of an ambiguous
+word, then it is rarely semantically similar to the other sense. For exam-
+ple,litigation is similar to the legal sense of suit, but not to the ‘clothes’
+sense. When applied to ambiguous words, semantically similar usuallymeans ‘similar to the appropriate sense’.
+8.5.1 Vector space measures
+A large class of measures of semantic similarity are best conceptualizedas measures of vector similarity. The two words whose semantic similar-ity we want to compute are represented as vectors in a multi-dimensionalspace. Figures 8.3, 8.4, and 8.5 give (constructed) examples of such multi-dimensional spaces (see also ﬁgure 15.5).
+The matrix in ﬁgure 8.3 represents words as vectors in document space .
+document space
+Entryaijcontains the number of times word joccurs in document i.
+Words are deemed similar to the extent that they occur in the same doc-
+uments. In document space, cosmonaut andastronaut are dissimilar (no
+shared documents); truck andcarare similar since they share a docu-
+ment: they co-occur in d4.
+The matrix in ﬁgure 8.4 represents words as vectors in word space . word space
+Entrybijcontains the number of times word jco-occurs with word i.
+
+p/CX /CX8.5 Semantic Similarity 297
+cosmonaut astronaut moon car truck
+d110 1 1 0
+d201 1 0 0
+d310 0 0 0
+d400 0 1 1
+d500 0 1 0
+d600 0 0 1
+Figure 8.3 A document-by-word matrix A.
+cosmonaut astronaut moon car truck
+cosmonaut 20 1 1 0
+astronaut 01 1 0 0
+moon 11 2 1 0
+car 10 1 3 1
+truck 00 0 1 2
+Figure 8.4 A word-by-word matrix B.
+cosmonaut astronaut moon car truck
+Soviet 10 0 1 1
+American 01 0 1 1
+spacewalking 11 0 0 0
+red 00 0 1 1
+full 00 1 0 0
+old 00 0 1 1
+Figure 8.5 A modiﬁer-by-head matrix C. The nouns (or heads of noun phrases)
+in the top row are modiﬁed by the adjectives in the left column.
+Co-occurrence can be deﬁned with respect to documents, paragraphs or
+other units. Words are similar to the extent that they co-occur with thesame words. Here, cosmonaut andastronaut are more similar than before
+since they both co-occur with moon .
+We have deﬁned co-occurrence in ﬁgure 8.4 with respect to the doc-
+uments in ﬁgure 8.3. In other words, the following relationship holds:BA
+TA. (HereTis the transpose , where we swap the rows and columns transpose
+so thatXT
+ijXji.)
+The matrix in ﬁgure 8.5 represents nouns (interpreted as heads of noun
+
+p/CX /CX298 8 Lexical Acquisition
+phrases) as vectors in modiﬁer space . Entrycijcontains the number of modiﬁer space
+times that head jis modiﬁed by modiﬁer i. Heads are similar to the ex-
+tent that they are modiﬁed by the same modiﬁers. Again, cosmonaut and
+astronaut are similar. But, interestingly moon is dissimilar from cosmo-
+naut andastronaut here, in contrast to the document space in ﬁgure 8.3
+and the word space in ﬁgure 8.4. This contrast demonstrates that diﬀer-
+ent spaces get at diﬀerent types of semantic similarity. The type of un-diﬀerentiated co-occurrence information in document and word spacescaptures topical similarity (words pertaining to the same topic domain).
+topical similarity
+Head-modiﬁer information is more ﬁne-grained. Although astronaut and
+moon are part of the same domain (‘space exploration’), they are obvi-
+ously entities with very diﬀerent properties (a human being versus a
+celestial body). Diﬀerent properties correspond to diﬀerent modiﬁers,
+which explains why the two words come out as dissimilar on the head-modiﬁer metric.
+6
+The three matrices also have an interesting interpretation if we look
+at the similarity of rows instead of the similarity of columns (or, equiv-
+alently, look at the similarity of columns of the transposed matrices).Looking at the matrices this way, Adeﬁnes similarity between docu-
+ments. This is the standard way of deﬁning similarity among documents
+and between documents and queries in information retrieval. Matrix C
+deﬁnes similarity between modiﬁers when transposed. For example, red
+andoldare similar (they share carandtruck ), suggesting that they are
+used to modify the same types of nouns. Matrix Bissymmetric ,s o
+looking at similarity of rows is no diﬀerent from looking at similarityof columns.
+So far we have appealed to an intuitive notion of vector similarity. Ta-
+ble 8.7 deﬁnes several measures that have been proposed to make thisnotion precise (adapted from (van Rijsbergen 1979: 39)). At ﬁrst, we onlyconsider binary vectors , that is, vectors with entries that are either 0 or 1.
+binary vectors
+The simplest way to describe a binary vector is as the set of dimensions
+on which it has non-zero values. So, for example, the vector for cosmo-
+naut in ﬁgure 8.5 can be represented as the set fSoviet;spacewalking g.
+Having done this, we can calculate similarities using set operations, as in
+table 8.7.
+6. See Grefenstette (1996) and Schütze and Pedersen (1997) for a discussion of the pros
+and cons of measuring word similarity based on associations versus head-modiﬁer rela-tionships.
+
+p/CX /CX8.5 Semantic Similarity 299
+Similarity measure Deﬁnition
+matching coeﬃcient X\Y
+Dice coeﬃcient2jX\Yj
+jXjjYj
+Jaccard (or Tanimoto) coeﬃcientjX\Yj
+jX[Yj
+Overlap coeﬃcientjX\Yj
+minjXj;jYj
+cosinejX\Yjp
+jXjjYj
+Table 8.7 Similarity measures for binary vectors.
+The ﬁrst similarity measure, the matching coeﬃcient , simply counts the matching
+coefﬁcient number of dimensions on which both vectors are non-zero. In contrast
+to the other measures, it does not take into account the length of thevectors and the total number of non-zero entries in each.
+7
+TheDice coeﬃcient normalizes for length by dividing by the total num- Dice coefﬁcient
+ber of non-zero entries. We multiply by 2 so that we get a measure that
+ranges from 0.0 to 1.0 with 1.0 indicating identical vectors.
+TheJaccard coeﬃcient penalizes a small number of shared entries (as Jaccard coefﬁcient
+a proportion of all non-zero entries) more than the Dice coeﬃcient does.
+Both measures range from 0.0 (no overlap) to 1.0 (perfect overlap), but theJaccard coeﬃcient gives lower values to low-overlap cases. For example,two vectors with ten non-zero entries and one common entry get a Dicescore of 21=10100:1 and a Jaccard score of 1 =1010−10:05.
+The Jaccard coeﬃcient is frequently used in chemistry as a measure ofsimilarity between chemical compounds (Willett and Winterman 1986).
+TheOverlap coeﬃcient has the ﬂavor of a measure of inclusion. It has
+Overlap coefﬁcient
+a value of 1.0 if every dimension with a non-zero value for the ﬁrst vector
+is also non-zero for the second vector or vice versa (in other words ifXYorYX).
+Thecosine is identical to the Dice coeﬃcient for vectors with the same
+cosine
+number of non-zero entries (see exercise 8.24), but it penalizes less in
+cases where the number of non-zero entries is very diﬀerent. For ex-
+ample, if we compare one vector with one non-zero entry and anothervector with 1000 non-zero entries and if there is one shared entry, then
+7. This can be desirable to reﬂect our conﬁdence in the similarity judgement. Hindle
+(1990) recommends a measure for noun similarity with this property.
+
+p/CX /CX300 8 Lexical Acquisition
+we get a Dice coeﬃcient of 2 1=110000:002 and a cosine of
+1=p
+100010:03. This property of the cosine is important in Statisti-
+calNLPsince we often compare words or objects that we have diﬀerent
+amounts of data for, but we don’t want to say they are dissimilar justbecause of that.
+So far we have looked at binary vectors, but binary vectors only have
+one bit of information on each dimension. A more powerful represen-tation for linguistic objects is the real-valued vector space .W e w i l l n o t
+vector space
+give a systematic introduction to linear algebra here, but let us brieﬂy
+review the basic concepts of vector spaces that we need in this book.A real-valued vector ~xof dimensionality nis a sequence of nreal num-
+bers, wherex
+idenotes theithcomponent of ~x(its value on dimension i).
+The components of a vector are properly written as a column:
+~x0
+BBBB@x
+1
+x2
+...
+xn1
+CCCCA(8.38)
+However, we sometimes write vectors horizontally within paragraphs. We
+writeR
+nfor the vector space of real-valued vectors with dimensionality
+n,s ow eh a v e~x2Rn. In a Euclidean vector space, the length of a vector length of a vector
+is deﬁned as follows.
+j~xjrXn
+i1x2
+i (8.39)
+Finally, the dot product between two vectors is deﬁned as ~x~yPn
+i1xiyi.
+The cosine, the last similarity measure we introduced for binary vec-
+tors, is also the most important one for real-valued vectors. The cosine
+measures the cosine of the angle between two vectors. It ranges from 1.0(cos0
+1:0) for vectors pointing in the same direction over 0.0 for or-
+thogonal vectors (cos 900:0) to−1:0 for vectors pointing in opposite
+directions (cos 180−1:0).
+For the general case of two n-dimensional vectors ~xand~yin a real-
+valued space, the cosine measure can be calculated as follows:
+cos~x;~y~x~y
+j~xjj~yjPn
+i1xiyiqPn
+i1x2
+iqPn
+i1y2
+i(8.40)
+This deﬁnition highlights another interpretation of the cosine, the inter-
+pretation as the normalized correlation coeﬃcient . We compute how well normalized corre-
+lation coefﬁcient
+
+p/CX /CX8.5 Semantic Similarity 301
+thexiand theyicorrelate and then divide by the (Euclidean) length of
+the two vectors to scale for the magnitude of the individual xiandyi.
+We call a vector normalized if it has unit length according to the Eu- normalization
+clidean norm:
+jxjnX
+i1x2
+i1 (8.41)
+For normalized vectors, the cosine is simply the dot product:
+cos~x;~y~x~y (8.42)
+TheEuclidean distance between two vectors measures how far apart Euclidean distance
+they are in the vector space:
+j~x−~yjrXn
+i1xi−yi2 (8.43)
+An interesting property of the cosine is that, if applied to normalized
+vectors, it will give the same ranking of similarities as Euclidean distancedoes. That is, if we only want to know which of two objects is closest toa third object, then cosine and Euclidean distance give the same answerfor normalized vectors. The following derivation shows why ranking ac-cording to cosine and Euclidean distance comes out to be the same:
+j~x−~yj
+2nX
+i1xi−yi2(8.44)
+nX
+i1x2
+i−2nX
+i1xiyinX
+i1y2
+i
+1−2nX
+i1xiyi1
+21−~x~y
+Finally, the cosine has also been used as a similarity measure of prob-
+ability distributions (Goldszmidt and Sahami 1998). Two distributionsfp
+igandfqigare ﬁrst transformed into fppigandfpqig. Taking the
+cosine of the two resulting vectors gives the measure DPn
+i1ppiqi,
+which can be interpreted as the sum over the geometric means of thefp
+igandfqig.
+Table 8.8 shows some cosine similarities computed for the New York
+Times corpus described in chapter 5. We compiled a 20,000-by-1,000 ma-
+trix similar to the word-by-word matrix in ﬁgure 8.4. As rows we selected
+
+p/CX /CX302 8 Lexical Acquisition
+Focus word Nearest neighbors
+garlic sauce .732 pepper .728 salt .726 cup .726
+fallen fell .932 decline .931 rise .930 drop .929
+engineered genetically .758 drugs .688 research .687 drug .685
+Alfred named .814 Robert .809 William .808 W .808
+simple something .964 things .963 You .963 always .962
+Table 8.8 The cosine as a measure of semantic similarity. For each of the ﬁve
+words in the left column, the table shows the words that were most similaraccording to the cosine measure when applied to a word-by-word co-occurrencematrix. For example, sauce is the word that is most similar to garlic . The cosine
+between the vectors of sauce andgarlic is 0.732.
+the 20,000 most frequent words, as columns the 1,000 most frequent
+words (after elimination of the 100 most frequent words in both cases).Instead of raw co-occurrence counts, we used the logarithmic weightingfunctionfx1logxfor non-zero counts (see section 15.2.2). A co-
+occurrence event was deﬁned as two words occurring within 25 words
+of each other. The table shows cosine similarities between rows of the
+matrix.
+For some word pairs, cosine in word space is a good measure of se-
+mantic similarity. The neighbors of garlic are generally close in meaning
+to garlic (with the possible exception of cup) .T h es a m ei st r u ef o r fallen .
+Note, however, that grammatical distinctions are not reﬂected becauseco-occurrence information is insensitive to word order and grammatical
+dependencies (the past participle fallen and the past tense fellare near-
+est neighbors of each other). The word engineered shows the corpus-
+dependency of the similarity measure. In the New York Times , the word
+is often used in the context of genetic engineering. A corpus of automo-bile magazine articles would give us a very diﬀerent set of neighbors ofengineered . Finally, the words Alfred andsimple show us the limits of
+the chosen similarity measure. Some of the neighbors of Alfred are also
+names, but this is a case of part-of-speech similarity rather than seman-
+tic similarity. The neighbors of simple seem completely random. Since
+simple is frequently used and its occurrences are distributed throughout
+the corpus, co-occurrence information is not useful here to characterizethe semantics of the word.
+The examples we have given demonstrate the advantage of vector
+
+p/CX /CX8.5 Semantic Similarity 303
+spaces as a representational medium: their simplicity. It is easy to visu-
+alize vectors in a two-dimensional or three-dimensional space. Equatingsimilarity with the extent to which the vectors point in the same directionis equally intuitive. In addition, vector space measures are easy to com-pute. Intuitive simplicity and computational eﬃciency are probably the
+main reasons that vector space measures have been used for a long time
+in information retrieval, notably for word-by-document matrices (Lesk1969; Salton 1971a; Qiu and Frei 1993). Work on using vector measuresfor word-by-word and modiﬁer-by-head matrices is more recent (Grefen-stette 1992b; Schütze 1992b). See (Grefenstette 1992a) and (Burgess andLund 1997) for research demonstrating that vector-based similarity mea-sures correspond to psychological notions of semantic similarity such as
+the degree to which one word primes another.
+priming
+8.5.2 Probabilistic measures
+The problem with vector space based measures is that, except for the
+cosine, they operate on binary data (yes or no). The cosine is the onlyvector space measure that accommodates quantitative information, but it
+has its own problems. Computing the cosine assumes a Euclidean space.
+This is because the cosine is deﬁned as the ratio of the lengths of twosides of a triangle. So we need a measure of length, the Euclidean met-ric. But a Euclidean space is not a well-motivated choice if the vectorswe are dealing with are vectors of probabilities or counts – which is whatmost representations for computing semantic similarity are based on. Tosee this observe that the Euclidean distance between the probabilities 0 :0
+and 0:1 is the same as the distance between the probabilities 0 :9a n d1:0.
+But in the ﬁrst case we have the diﬀerence between impossibility anda chance of 1 in 10 whereas in the second there is only a small diﬀer-ence of about 10%. The Euclidean distance is appropriate for normallydistributed quantities, not for counts and probabilities.
+Matrices of counts like those in ﬁgures 8.3, 8.4, and 8.5 can be easily
+transformed into matrices of conditional probabilities by dividing each
+element in a row by the sum of all entries in the row (this amounts to
+using maximum likelihood estimates). For example, in the matrix in ﬁg-ure 8.5, the entry for American;astronautwould be transformed into
+PAmericanjastronaut
+1
+20:5. The question of semantic similarity
+can then be recast as a question about the similarity (or dissimilarity) oftwo probability distributions.
+
+p/CX /CX304 8 Lexical Acquisition
+(Dis-)similarity measure Deﬁnition
+KL divergence DpkqP
+ipilogpi
+qi
+information radius (IRad) Dpkpq
+2Dqkpq
+2
+L1normP
+ijpi−qij
+Table 8.9 Measures of (dis-)similarity between probability distributions.
+Table 8.9 shows three measures of dissimilarity between probability
+distributions investigated by Dagan et al. (1997b). We are already familiarwith the KL divergence from section 2.2.5. It measures how well distribu-
+KL divergence
+tionqapproximates distribution p; or, more precisely, how much infor-
+mation is lost if we assume distribution qwhen the true distribution is p.
+The KL divergence has two problems for practical applications. First, weget a value of 1if there is a ‘dimension’ with q
+i0a n dpi0 (which will
+happen often, especially if we use simple maximum likelihood estimates).
+Secondly, KL divergence is asymmetric, that is, usually DpkqDqkp.
+The intuitive notion of semantic similarity and most other types of sim-ilarity we are interested in is symmetric, so the following should hold:simp;qsimq;p .
+8
+The second measure in table 8.9, information radius (or total diver- information radius
+gence to the average as Dagan et al. (1997b) call it), overcomes both
+these problems. It is symmetric (IRad p;qIRadq;p ) and there is
+no problem with inﬁnite values sincepiqi
+20 if eitherpi0o rqi0.
+The intuitive interpretation of IRad is that it answers the question: Howmuch information is lost if we describe the two words (or random vari-ables in the general case) that correspond to pandqwith their average
+distribution? IRad ranges from 0 for identical distributions to 2 log 2 formaximally diﬀerent distributions (see exercise 8.26). As usual we assume
+0 log 00.
+A third measure considered by Dagan et al. (1997b) is the L
+1(orMan- L1norm
+Manhattan norm hattan )norm . It also has the desirable properties of being symmetric and
+well-deﬁned for arbitrary pandq. We can interpret it as a measure of the
+expected proportion of diﬀerent events , that is, as the expected propor-
+8. Note that in clustering, asymmetry can make sense since we are comparing two diﬀer-
+ent entities, the individual word that we need to assign to a cluster and the representationof the cluster. The question here is how well the cluster represents the word which isdiﬀerent from similarity in the strict sense of the word. See (Pereira et al. 1993).
+
+p/CX /CX8.5 Semantic Similarity 305
+tion of events that are going to be diﬀerent between the distributions p
+andq. This is because1
+2L1p;q1−P
+iminpi;qi,a n dP
+iminpi;qi
+is the expected proportion of trials with the same outcome.9
+As an example consider the following conditional distributions com-
+puted from the data in ﬁgure 8.5.
+p1PSovietjcosmonaut0:5
+p20
+p3Pspacewalking jcosmonaut0:5
+q10
+q2PAmericanjastronaut0:5
+q3Pspacewalking jastronaut0:5
+Here we have:
+1
+2L1p;q1−X
+iminpi;qi1−0:50:5
+So if we looked at the sets of adjectives that occurred with a large number
+of uses of cosmonaut andastronaut in a corpus, then the overlap of the
+two sets would be expected to be 0.5, corresponding to the proportion of
+occurrences of spacewalking with each noun.
+Dagan et al. (1997b) compared the three dissimilarity measures (KL,
+IRad, andL1) on a task similar to the selectional preferences problem in
+section 8.4. Instead of looking at the ﬁt of nouns as argument of verbs,they looked at the ﬁt of verbs as predicates for nouns. For example, givena choice of the verbs make andtake the similarity measures were used to
+determine that make is the right verb to use with plans (make plans )a n d
+take is the right verb to use with actions (take actions ).
+9. The following derivation shows that1
+2L1p;q1−P
+iminpi;qi:
+L1p;qX
+ijpi−qij
+X
+ih
+maxpi;qi−minpi;qii
+X
+ih
+piqi−minpi;qi−minpi;qii
+X
+ipiX
+iqi−2X
+iminpi;qi
+2
+1−X
+iminpi;qi
+Note that this also shows that 0 L1p;q2 sinceP
+iminp;q0.
+
+pa/CX /CX306 8 Lexical Acquisition
+Here is how the similarity measure is used to compute the conditional
+probabilityPverbjnoun, which Dagan et al. (1997b) use as a measure of
+‘goodness of ﬁt:’
+PSIMvjnX
+n02SnWn;n0
+NnPvjn0 (8.45)
+Here,vis the verb,nis the noun,Sn is the set of nouns closest to n
+according to the similarity measure,10Wn;n0is a similarity measure
+derived from the dissimilarity measure and Nn is a normalizing factor:
+NnP
+n0Wn;n0.
+This formulation makes it necessary to transform the dissimilarity
+measure (KL, IRad or L1) into the similarity measure W. The following
+three transformations were used.
+WKLp;q10−Dpkq(8.46)
+WIRadp;q10−IRadpkq(8.47)
+WL1p;q(
+2−L1p;q(8.48)
+The parameter can be tuned for optimal performance.
+Dagan et al. (1997b) show that IRad consistently performs better than
+KL andL1. Consequently, they recommend IRad as the measure that is
+best to use in general.
+This concludes our brief survey of measures of semantic similarity and
+dissimilarity. Vector space measures have the advantage of conceptualsimplicity and of producing a similarity value that can be directly used
+for generalization. But they lack a clear interpretation of the computed
+measure. Probabilistic dissimilarity measures are on a more solid footingtheoretically, but require an additional transformation to get to a mea-sure of similarity that can be used for nearest neighbor generalization. Ei-ther approach is valuable in acquiring semantic properties of words fromcorpora by using similarity to transfer knowledge from known words tothose that are not covered in the lexicon.
+Exercise 8.19 [«]
+Similarity-based generalization depends on the premise that similar things be-
+have similarly. This premise is unobjectionable if the two uses of the word simi-
+larhere refer to the same notion. But it is easy to fall into the trap of interpreting
+10. For the experiments, Sn was chosen to be the entire set of nouns, but one can limit
+the words considered to those closest to the target word.
+
+pa/CX /CX8.5 Semantic Similarity 307
+them diﬀerently. In that case, similarity-based generalization can give inaccurate
+results.
+Find examples of such potentially dangerous cases, that is, examples where
+words that are similar with respect to one aspect behave very diﬀerently withrespect to another aspect.
+Exercise 8.20 [«]
+Similarity-based and class-based generalization are more closely related than it
+may seem at ﬁrst glance. Similarity-based generalization looks at the closestneighbors and weights the input from these neighbors according to their sim-ilarity. Class-based generalization looks at the most promising class and, inthe simplest case, generalizes the novel word to the average of that class. Butclass-based generalization can be made to look like similarity-based generaliza-
+tion by integrating evidence from all classes and weighting it according to how
+well the element ﬁts into each class. Similarity-based generalization looks likeclass-based generalization if we view each element as a class.
+Discuss the relationship between the two types of generalization. What role do
+eﬃciency considerations play?
+Exercise 8.21 [«]
+Co-occurrence matrices like the one in ﬁgure 8.3 represent diﬀerent types of in-
+formation depending on how co-occurrence is deﬁned. What types of wordswould you expect ﬁreto be similar to for the following deﬁnitions of co-
+occurrence: co-occurrence within a document; co-occurrence within a sentence;co-occurrence with words at a maximum distance of three words to the right;co-occurrence with the word immediately adjacent to the right. (See Finch andChater (1994) and Schütze (1995) for two studies that show how the latter typeof immediate co-occurrence can be used to discover syntactic categories.)
+Exercise 8.22 [««]
+The measures we have looked at compare simple objects like vectors and proba-
+bility distributions. There have also been attempts to measure semantic similar-ity between more complex objects like trees (see (Sheridan and Smeaton 1992)for one example). How could one measure the (semantic?) similarity betweentrees? How might such an approach lead to a better measure of semantic simi-larity between words than ‘ﬂat’ structures?
+Exercise 8.23 [«]
+Select two words heading columns in ﬁgure 8.3 and compute pairwise similar-
+ities using each of the measures in table 8.7 for each of the three matrices inﬁgures 8.3 through 8.5.
+Exercise 8.24 [«]
+Show that dice and cosine coeﬃcients are identical if the two vectors compared
+have the same number of non-zero entries.
+
+p/CX /CX308 8 Lexical Acquisition
+Exercise 8.25 [«]
+Semantic similarity can be context-dependent. For example, electrons and tennis
+balls are similar when we are talking about their form (both have a round shape)and dissimilar when we are talking about their sizes.
+Discuss to what extent similarity is context-dependent and when this can hinder
+correct generalization.
+Exercise 8.26 [«]
+Show that divergence to the average (IRad) is bounded by 2 log 2.
+Exercise 8.27 [«]
+Select two words heading columns in ﬁgure 8.3 and compute the three measures
+of dissimilarity in table 8.9 for each of the matrices in ﬁgures 8.3 through 8.5.You will have to smooth the probabilities for KL divergence. Are the dissimilaritymeasures asymmetric for KL divergence?
+Exercise 8.28 [««]
+Both theL
+1norm and the Euclidean norm are special cases of the Minkowski
+normLp:
+Lpa;bpsX
+ijai−bijp (8.49)
+In this context, the Euclidean norm is also referred to as L2.S o t h eL1norm
+can be seen as a more appropriate version of the Euclidean norm for probabilitydistributions.
+Another norm that has been used for vectors is L
+1, that isLpforp!1 (Salton
+et al. 1983). What well-known function does L1correspond to?
+Exercise 8.29 [«]
+Does a dissimilarity measure of 0 on one of the measures in table 8.9 imply that
+the other two measures are 0 too?
+Exercise 8.30 [«]
+If two probability distributions are maximally dissimilar according to one mea-
+sure in table 8.9 (e.g., IRad p;q2 log 2), does that imply that they are maxi-
+mally dissimilar according to the other two?
+8.6 The Role of Lexical Acquisition in Statistical NLP
+Lexical acquisition plays a key role in Statistical NLPbecause available lex-
+ical resources are always lacking in some way. There are several reasonsfor this.
+
+p/CX /CX8.6 The Role of Lexical Acquisition in Statistical NLP 309
+One reason is the cost of building lexical resources manually. For many
+types of lexical information, professional lexicographers will collect moreaccurate and comprehensive data than automatic procedures. But oftenmanually constructed dictionaries are not available due to the cost oftheir construction. One estimate for the average time it takes to create
+a lexical entry from scratch is half an hour (Neﬀ et al. 1993; obviously it
+depends on the complexity of the entry), so manual resource constructioncan be quite expensive.
+There is one type of data that humans, including lexicographers, are
+notoriously bad at collecting: quantitative information. So the quantita-tive part of lexical acquisition almost always has to be done automati-cally, even if excellent manually constructed lexical resources are avail-
+able for qualitative properties.
+More generally, many lexical resources were designed for human con-
+sumption. The ﬂip side of quantitative information being missing (whichmay be less important for people) is that the computer has no accessto contextual information that is necessary to interpret lexical entries inconventional dictionaries. This is expressed aptly by Mercer (1993): “onecannot learn a new language by reading a bilingual dictionary.” An ex-
+ample is the irregular plural postmen which is not listed as an exception
+in the lexical entry of postman in some dictionaries because it is obvious
+to a human reader that the plural of postman is formed in analogy to
+the plural of man. The best solution to problems like these is often the
+augmentation of a manual resource by automatic means.
+Despite the importance of these other considerations motivating au-
+tomated lexical acquisition, the main reason for its importance is the
+inherent productivity of language. Natural language is in a constant state
+productivity
+of ﬂux, adapting to the changing world by creating names and words to
+refer to new things, new people and new concepts. Lexical resources haveto be updated to keep pace with these changes. Some word classes aremore likely to have coverage gaps than others. Most documents will men-tion proper nouns that we have not encountered before whereas therewill hardly ever be newly created auxiliaries or prepositions. But the cre-
+ativity of language is not limited to names. New nouns and verbs also
+occur at a high rate in many texts. Words that are covered in the diction-ary may still need the application of lexical acquisition methods becausethey develop new senses or new syntactic usage patterns.
+How can we quantify the amount of lexical information that has to be
+learned automatically, even if lexical resources are available? For a rough
+
+p/CX /CX310 8 Lexical Acquisition
+Type of coverage problem Example
+proper noun Caramello ,Château-Chalon
+foreign word perestroika
+code R101
+mathematical object x1
+non-standard English havin’
+abbreviation NLP
+hyphenated word non-examination
+hyphen omitted bedclothes
+negated adjective unassailable
+adverbs ritualistically
+technical vocabulary normoglycaemia
+plural of mass noun estimations
+other cases deglutition ,don’ts ,aﬃnitizes (VBZ)
+Table 8.10 Types of words occurring in the LOBcorpus that were not covered
+by the OALD dictionary.
+assessment, we can consult Zipf’s law and other attempts to estimate the
+proportion of as yet unseen words and uses in text (see chapter 6 and,for example, (Baayen and Sproat 1996) and (Youmans 1991)).
+A more detailed analysis is provided in (Sampson 1989). Sampson
+tested the coverage of a dictionary with close to 70,000 entries (the
+OALD , lexical coverage
+Hornby 1974) for a 45,000 word subpart of the LOBcorpus. (Numbers
+were not counted as words.) He found that about 3% of tokens were not
+listed in the dictionary. It is instructive to look at the diﬀerent types of
+words that are the cause of coverage problems. Table 8.10 lists the majortypes found by Sampson and some examples.
+More than half of the missing words were proper nouns. The other
+half is due to the other categories in the table. Some of the coverageproblems would be expected not to occur in a larger dictionary (somefrequent proper nouns and words like unassailable ). But based on Samp-
+son’s ﬁndings, one would expect between one and two percent of tokens
+in a corpus to be missing from even a much larger dictionary. It is also im-portant to note that this type of study only gets at character strings thatare entirely missing from the dictionary. It is much harder to estimateat what rate known words are used with new senses or in novel syntacticconstructions. Finally, the one to two percent of unknown words tend to
+
+p/CX /CX8.6 The Role of Lexical Acquisition in Statistical NLP 311
+be among the most important in a document: the name of the person pro-
+ﬁled in an article or the abbreviation for a new scientiﬁc phenomenon. Soeven if novel words constitute only a small percentage of the text, havingan operational representation for their properties is paramount.
+It took a long time until the limitations of dictionaries and hand-crafted
+knowledge bases for successful language processing became clear to
+NLP
+researchers. A common strategy in early NLPresearch was to focus on a
+small subdomain to attack what seemed to be the two most fundamentalproblems: parsing and knowledge representation. As a result of thisfocus on small subdomains, this early research “provided nothing forgeneral use on large-scale texts” and “work in computational linguisticswas largely inapplicable to anything but to sub-languages of very limited
+semantic and syntactic scope” (Ide and Walker 1992).
+Problems of lexical coverage started to take center stage in the late
+eighties when interest shifted from subdomains to large corpora and ro-bust systems, partly due to the inﬂuence of speech recognition research.One of the earliest pieces of work on lexical acquisition from corpora wasdone for the
+FORCE 4 system developed by Walker and Amsler (1986) at
+SRIInternational. Since then, lexical acquisition has become one of the
+most active areas of Statistical NLP.
+What does the future hold for lexical acquisition? One important trend
+is to look harder for sources of prior knowledge that can constrain theprocess of lexical acquisition. This is in contrast to earlier work that triedto start ‘from scratch’ and favored deriving everything from the corpus.Prior knowledge can be discrete as is the case when a lexical hierarchy like
+WordNet is used or probabilistic , for example, when a prior distribution
+over object noun classes is derived from a verb’s dictionary entry and
+this prior distribution is then reﬁned based on corpora. Much of the hardwork of lexical acquisition will be in building interfaces that admit easyspeciﬁcation of prior knowledge and easy correction of mistakes made inautomatic learning.
+One important source of prior knowledge should be linguistic theory,
+which has been surprisingly underutilized in Statistical
+NLP. In addition
+to the attempts we have discussed here to constrain the acquisition pro-
+cess using linguistic insights, we refer the reader to Pustejovsky et al.(1993), Boguraev and Pustejovsky (1995), and Boguraev (1993) for workthat takes linguistic theory as the foundation of acquisition. The lasttwo articles summarize the important work on computational lexicogra-phy done at Cambridge University (described in detail in (Boguraev and
+
+p/CX /CX312 8 Lexical Acquisition
+Briscoe 1989)), which, although mostly non-statistical, contains impor-
+tant insights on how to combine theoretical linguistics and empirical ac-quisition from lexical resources.
+Dictionaries are only one source of information that can be important
+in lexical acquisition in addition to text corpora. Other sources are en-
+cyclopedias, thesauri, gazeteers, collections of technical vocabulary and
+any other reference work or data base that is likely to contribute to acharacterization of the syntactic and semantic properties of uncommonwords and names.
+The reader may have wondered why we have limited ourselves to tex-
+tual sources. What about speech, images, video? Lexical acquisition hasfocused on text because words are less ambiguous descriptors of content
+than features that can be automatically extracted from audio and visual
+data. But we can hope that, as work on speech recognition and imageunderstanding progresses, we will be able to ground the linguistic rep-resentation of words in the much richer context that non-textual mediaprovide. It has been estimated that the average educated person readson the order of one million words in a year, but hears ten times as manywords spoken. If we succeed in emulating human acquisition of language
+by tapping into this rich source of information, then a breakthrough in
+the eﬀectiveness of lexical acquisition can be expected.
+8.7 Further Reading
+There are several books and special issues of journals on lexical acqui-
+sition: (Zernik 1991a), (Ide and Walker 1992), (Church and Mercer 1993),
+and (Boguraev and Pustejovsky 1995). More recent work is covered inlater issues of Computational Linguistics ,Natural Language Engineering ,
+andComputers and the Humanities . In what follows, we point the reader
+to some of the work on lexical acquisition we were not able to cover.
+Other approaches to the resolution of attachment ambiguity include
+transformation-based learning (Brill and Resnik 1994) and loglinear mod-
+els (Franz 1997). Collins and Brooks (1995) used a back-oﬀ model to
+address data sparseness issues. Attachment ambiguity in noun phrasesalso occurs in Romance languages. See (Bourigault 1993) for French and(Basili et al. 1997) for Italian.
+An alternative to Resnik’s information-theoretic approach to the acqui-
+sition of selectional preferences is work by Li and Abe (1995) that uses a
+
+p/CX /CX8.7 Further Reading 313
+Minimum Description Length framework. In (Li and Abe 1996), this work
+is extended to take into account the dependency between two or morearguments of a verb. For example, drive can take caras a subject ( This
+car drives well ), but only if there is no object. This type of regularity
+can only be discovered we we look at all arguments of the verb simulta-
+neously. See also (Velardi and Pazienza 1989) and (Webster and Marcus
+1989) for early (non-probabilistic, but corpus-based) work on selectionalpreferences.
+Once we have acquired information about the selectional preferences
+of a verb, we can exploit this knowledge to acquire subcategorizationframes, the ﬁrst problem we looked at in this chapter. Pozna ´nski and
+Sanﬁlippo (1995) and Aone and McKee (1995) take this approach. For
+example, a verb that takes an NP of type ‘beneﬁciary’ or ‘recipient’ is
+likely to subcategorize for a to-PP.
+Apart from semantic similarity, the automatic enhancement of hierar-
+chies has been another focus in the area of acquiring semantics. Hearstand Schütze (1995) and Hearst (1992) describe systems that insert newwords into an existing semantic hierarchy and Coates-Stephens (1993)and Paik et al. (1995) do the same for proper nouns. Riloﬀ and Shep-
+herd (1997) and Roark and Charniak (1998) assign words to categories
+assuming a ﬂat category structure (which can be regarded as a simpliﬁedsemantic hierarchy).
+Two other important types of semantic information that attempts have
+been made to acquire from corpora are antonyms (Justeson and Katz1991) and metaphors (Martin 1991).
+We suggested above that non-textual data are a worthwhile source of
+information to exploit. There are some research projects that investigate
+how lexical acquisition could take advantage of such data once the prob-lem of how to automatically build a representation of the context of anutterance has been solved. Suppes et al. (1996) stress the importance ofaction-oriented matching between linguistic forms and their contextualmeaning (as opposed to acquiring word meaning from passive percep-tion). Siskind (1996) shows that even if the contextual representation is
+highly ambiguous (as one would expect in a realistic learning situation),
+lexical acquisition can proceed successfully.
+As a last source of information for acquiring meaning, we mention
+work on exploiting morphology for this purpose. An example of a mor-phological regularity that implies a particular type of meaning is the pro-gressive tense. In English, only non-stative verbs occur in the progressive
+
+p/CX /CX314 8 Lexical Acquisition
+tense. Oversimplifying somewhat, we can infer from the fact that we ﬁnd
+he is running in a corpus, but not he is knowing that know is stative and
+runis non-stative. See (Dorr and Olsen 1997), (Light 1996) and (Viegas
+et al. 1996) for work along these lines. While none of these papers takea statistical approach, such morphological information could be a fertile
+ground for applying statistical methods.
+We conclude these bibliographic remarks by pointing the reader to
+two important bodies of non-statistical work that warrant careful studyby anybody interested in lexical acquisition. They are of great poten-tial importance either because they suggest ways of combining statisti-cal approaches with symbolic approaches (as in the regular-expressionpost-ﬁltering of collocations in (Justeson and Katz 1995b)) or because
+the insights they oﬀer can often be expressed in a statistical framework
+as well as in a non-statistical framework, making them a valuable sourcefor future statistical work.
+The ﬁrst area is the work on building syntactic and semantic know-
+ledge bases from machine-readable dictionaries described by Boguraevand Briscoe (1989) and Jensen et al. (1993). These two books are agood starting point for those who want to learn about the strengths and
+weaknesses of dictionaries for lexical acquisition. We have focused on
+corpus-based acquisition here because that has been the bias in Statisti-cal
+NLP, but we believe that most future work will combine corpus-based
+and dictionary-based acquisition.
+The second area is the application of regular expression matching to
+natural language processing. (See (Appelt et al. 1993), (Jacquemin 1994),(Voutilainen 1995), (Sproat et al. 1996), and (Jacquemin et al. 1997) for
+examples.) There are phenomena and processing steps in lexical acqui-
+sition that deal with purely symbolic information and that can be wellmodeled in terms of regular languages. (Tokenization of English is anexample.) In such cases, the speed and simplicity of ﬁnite state automatacannot be matched by other methods (Roche and Schabes 1997; Levineet al. 1992).
+

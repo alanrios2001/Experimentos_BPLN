@@ -1,0 +1,133 @@
+Chapter /three.pnum
+Data Cleaning for Training Large
+Language Models
+/three.pnum./one.pnum Introduction
+Large Language Models (LLMs) like GPT-/four.pnum, BERT, and their var iants rely heavily on vast amounts of
+high-quality data for training. However, raw data is typica lly noisy, inconsistent, and unstructured,
+necessitating a series of preprocessing steps to ensure the data is in a state suitable for training. In
+this chapter, we will explore the essential data cleaning te chniques that contribute to the creation of
+a high-quality training dataset for LLMs.
+/three.pnum./two.pnum Key Challenges in Raw Data
+Datacollectedfromtheweb,books,oranyotherlarge-scale corpusoftencontainsseveralchallenges:
+•Noise: Unwanted characters, HTML tags, advertisements, etc.
+•Inconsistencies : Different text formats, inconsistent use of abbreviation s, capitalization errors.
+•Repetitions : Duplicate text that skews model training.
+•Bias and Toxic Content : Data reﬂecting harmful biases, profanity, or toxic conten t.
+•Multilingual Data : Presence of multiple languages where a monolingual model i s desired.
+The following sections describe strategies to address thes e issues.
+/three.pnum./three.pnum Text Normalization
+Text normalization is the ﬁrst and most crucial step in data c leaning. It transforms text into a stan-
+dard format, ensuring consistency across the entire corpus . The steps involved in text normalization
+include:
+/five.pnum/five.pnum
+
+CHAPTER /three.pnum. DATA CLEANING FOR TRAINING LARGE LANGUAGE MODELS /five.pnum6
+/three.pnum./three.pnum./one.pnum Lowercasing
+Converting all characters to lowercase helps eliminate var iations between words due to case sensi-
+tivity. For example, "Apple" and "apple" would be treated as the same token.
+Listing /three.pnum./one.pnum: Python code for lowercasing text
+text = "Large␣Language␣Models␣are␣Amazing!"
+normalized_text = text.lower()
+print(normalized_text) # "large language models are amazi ng!"
+/three.pnum./three.pnum./two.pnum Removing Punctuation
+Punctuation, such as periods, commas, and exclamation mark s, may not contribute to training de-
+pending on the model’s objectives. Thus, punctuation can be removed or substituted based on the
+use case.
+Listing /three.pnum./two.pnum: Removing punctuation from text
+import re
+text = "Hello,␣world!␣Let’s␣clean␣data."
+cleaned_text = re.sub(r’[^\w\s]’, ’’, text)
+print(cleaned_text) # "Hello world Lets clean data"
+/three.pnum./three.pnum./three.pnum Whitespace Normalization
+Multiple spaces, tabs, or newline characters often creep in to data. These should be condensed into a
+single space to avoid affecting tokenization.
+Listing /three.pnum./three.pnum: Normalizing whitespace
+text = "This␣␣␣is␣␣an␣example␣␣␣text."
+normalized_text = "␣".join(text.split())
+print(normalized_text) # "This is an example text."
+/three.pnum./three.pnum./four.pnum Expanding Contractions
+Contractions like"can’t" shouldbeexpandedto "cannot" fo r amodelto treat themasseparatetokens.
+Listing /three.pnum./four.pnum: Expanding contractions
+import contractions
+text = "We␣can’t␣stop␣here."
+expanded_text = contractions.fix(text)
+print(expanded_text) # "We cannot stop here."
+
+CHAPTER /three.pnum. DATA CLEANING FOR TRAINING LARGE LANGUAGE MODELS /five.pnum/seven.pnum
+/three.pnum./four.pnum Removing Noise and Unwanted Content
+/three.pnum./four.pnum./one.pnum HTML and Markup Removal
+Whensourcing datafromtheweb,youoftenencounterHTML tag sorothermarkuplanguages. These
+should be stripped from the text.
+Listing /three.pnum./five.pnum: Removing HTML tags using BeautifulSoup
+from bs4 import BeautifulSoup
+html = "<html><body><p>Hello␣World</p></body></html>"
+soup = BeautifulSoup(html, "html.parser")
+clean_text = soup.get_text()
+print(clean_text) # "Hello World"
+/three.pnum./four.pnum./two.pnum Removing Stopwords
+Stopwordsarecommonwords(e.g.,"the","is","in")thatma ynotcontributesigniﬁcantlytothemeaning
+of text. However, their removal depends on the model’s goals and might not always be desirable for
+LLMs, as context is important.
+Listing /three.pnum.6: Removing stopwords using NLTK
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+text = "This␣is␣an␣example␣sentence."
+stop_words = set(stopwords.words(’english’))
+word_tokens = word_tokenize(text)
+filtered_sentence = [w for w in word_tokens if not w.lower() in stop_words]
+print(filtered_sentence) # [’This’, ’example’, ’sentenc e’, ’.’]
+/three.pnum./four.pnum./three.pnum Handling URLs and Special Characters
+URLs, email addresses, or other special patterns (such as ha shtags or mentions) are generally not
+useful for training language models and should be removed or masked.
+Listing /three.pnum./seven.pnum: Removing URLs using regular expressions
+import re
+text = "Visit␣https://example.com␣for␣more␣info."
+cleaned_text = re.sub(r"http\S+", "", text)
+print(cleaned_text) # "Visit for more info."
+
+CHAPTER /three.pnum. DATA CLEANING FOR TRAINING LARGE LANGUAGE MODELS /five.pnum8
+/three.pnum./five.pnum Deduplication and Data Filtering
+/three.pnum./five.pnum./one.pnum Removing Duplicate Entries
+Largedatasetsoftencontain duplicaterecordsthatcanske w thelearning process. Simplededuplica-
+tion techniques can be employed to eliminate these.
+Listing /three.pnum.8: Removing duplicate entries from a list
+text_data = ["Hello␣World", "Hello␣World", "Goodbye␣Wor ld"]
+unique_text_data = list(set(text_data))
+print(unique_text_data) # [’Hello World’, ’Goodbye World ’]
+/three.pnum./five.pnum./two.pnum Filtering Offensive and Biased Content
+LLMsare sensitiveto thequality of data. Biases andoffensi vecontent in the training data can lead to
+thepropagationof theseissuesinthetrained model. Prepro cessing pipelinesshouldincludestepsto
+detect and ﬁlter harmful content using techniques like:
+•Keyword matching : Manually crafted lists of offensive words.
+•Toxicity classiﬁers : Pre-trained models that score content based on its likelih ood to contain
+toxic language.
+/three.pnum.6 Handling Multilingual Data
+For a monolingual LLM, non-target languages must be detecte d and removed. Language detection
+libraries such as langdetect orfastText can be employed.
+Listing /three.pnum./nine.pnum: Detecting language using langdetect
+from langdetect import detect
+text = "Hello,␣how␣are␣you?"
+language = detect(text)
+print(language) # ’en’ (English)
+/three.pnum./seven.pnum Tokenization and Text Segmentation
+Tokenizationsplitstextintosmallerunitssuchaswordsor subwords,whichareessentialforthetrain-
+ing process. For LLMs, subword tokenization techniques lik e Byte Pair Encoding (BPE) or WordPiece
+[66] are preferred as they handle out-of-vocabulary words more gracefully.
+/three.pnum./seven.pnum./one.pnum Subword Tokenization
+BPEmergesthemostfrequentcharactersequencesiterative ly. Thisresultsinavocabularyofsubword
+units that are more expressive than word-level tokenizatio n.
+
+CHAPTER /three.pnum. DATA CLEANING FOR TRAINING LARGE LANGUAGE MODELS /five.pnum/nine.pnum
+Listing /three.pnum./one.pnum/zero.pnum: Example of BPE tokenization using the Hugging Face tokenizer
+from transformers import GPT2Tokenizer
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+tokens = tokenizer.tokenize("Machine␣learning␣is␣grea t!")
+print(tokens)
+# [’Machine’, ’ learning’, ’ is’, ’ great’, ’!’]
+/three.pnum.8 Final Thoughts
+The process of cleaning data for training LLMs is critical fo r the quality and robustness of the model.
+By removing noise, normalizing text, and ensuring the datas et is free from harmful biases, we can
+produce data that allows models to learn more effectively. T he importance of these preprocessing
+steps cannot be overstated, as poor data quality will propag ate through to the model’s predictions
+and behaviors.
+

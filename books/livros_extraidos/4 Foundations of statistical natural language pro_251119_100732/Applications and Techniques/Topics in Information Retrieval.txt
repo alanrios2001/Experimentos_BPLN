@@ -1,0 +1,1504 @@
+p/CX /CX15 Topics in Information Retrieval
+Information Retrieval (IR) research is concerned with devel-
+oping algorithms and models for retrieving information from documentrepositories. IR might be regarded as a natural subﬁeld of
+NLPbecause it
+deals with a particular application of natural language processing. (Tra-
+ditional IR research deals with text although retrieval of speech, imagesand video are becoming increasingly common.) But in actuality, inter-actions between the ﬁelds have been limited, partly because the specialdemands of IR were not seen as interesting problems in
+NLP,p a r t l yb e -
+cause statistical methods, the dominant approach in IR, were out of favorin
+NLP.
+With the resurgence of quantitative methods in NLP, the connections
+between the ﬁelds have increased. We have selected four examples ofrecent interaction between the ﬁelds: probabilistic models of term dis-tribution in documents, a problem that has received attention in bothStatistical
+NLPand IR; discourse segmentation, an NLPtechnique that has
+been used for more eﬀective document retrieval; and the Vector SpaceModel and Latent Semantic Indexing (
+LSI), two IR techniques that have
+been used in Statistical NLP. Latent Semantic Indexing will also serve
+as an example of dimensionality reduction ,a ni m p o r t a n ts t a t i s t i c a lt e c h -
+nique in itself. Our selection is quite subjective and we refer the readerto the IR literature for coverage of other topics (see section 15.6). In thefollowing section, we give some basic background on IR, and then discussthe four topics in turn.
+
+p/CX /CX530 15 Topics in Information Retrieval
+15.1 Some Background on Information Retrieval
+The goal of IR research is to develop models and algorithms for retrieving
+information from document repositories, in particular, textual informa-tion. The classical problem in IR is the ad-hoc retrieval problem .I na d - h o c
+ad-hoc retrieval
+problem retrieval, the user enters a query describing the desired information. The
+system then returns a list of documents. There are two main models.Exact match systems return documents that precisely satisfy some struc-
+exact match
+tured query expression, of which the best known type is Boolean queries , Boolean queries
+which are still widely used in commercial information systems. But for
+large and heterogeneous document collections, the result sets of exactmatch systems usually are either empty or huge and unwieldy, and so
+most recent work has concentrated on systems which rank documents
+according to their estimated relevance to the query. It is within such anapproach that probabilistic methods are useful, and so we restrict ourattention to such systems henceforth.
+An example of ad-hoc retrieval is shown in ﬁgure 15.1. The query is
+‘ “glass pyramid” Pei Louvre,’ entered on the internet search engine AltaVista. The user is looking for web pages about I. M. Pei’s glass pyramid
+over the Louvre entrance in Paris. The search engine returns several rele-
+vant pages, but also some non-relevant ones – a result that is typical forad-hoc searches due to the diﬃculty of the problem.
+Some of the aspects of ad-hoc retrieval that are addressed in IR re-
+search are how users can improve the original formulation of a queryinteractively, by way of relevance feedback ; how results from several text
+relevance feedback
+databases can be merged into one result list ( database merging ); which database merging
+models are appropriate for partially corrupted data, for example, OCRed
+documents; and how the special problems that languages other than En-glish pose can be addressed in IR.
+Some subﬁelds of information retrieval rely on a training corpus of
+documents that have been classiﬁed as either relevant or non-relevant toa particular query. In text categorization , one attempts to assign docu-
+text
+categorization ments to two or more pre-deﬁned categories. An example is the subject
+codes assigned by Reuters to its news stories (Lewis 1992). Codes like
+CORP-NEWS (corporate news), CRUDE (crude oil) or ACQ (acquisitions)
+make it easier for subscribers to ﬁnd stories of interest to them. A ﬁnan-cial analyst interested in acquisitions can request a customized newsfeedthat only delivers documents tagged with
+ACQ.
+Filtering androuting are special cases of text categorization with only ﬁltering
+routing
+
+p/CX /CX15.1 Some Background on Information Retrieval 531
+[ AltaVista] [ Advanced Query] [ Simple Query] [ Private eXtension Products] [ Help with Query] 
+Search the  Web  Usenet
+Display results  Compact   Detailed  
+  
+Tip: When in doubt use lower-case. Check out Help for better matches. 
+ Word count: glass pyramid:  about 200; Pei:9453; Louvre:26578
+Documents 1-10 of about 10000 matching the query, best matches first.
+Paris, France
+Paris, France. Practical Info.-A Brief Overview. Layout: One of the most densely populated citiesin Europe, Paris is also one of the most accessible,...
+http://www.catatravel.com/paris.htm
+ - size 8K - 29 Sep 95
+Culture
+Culture. French culture is an integral part of France’s image, as foreign tourists are the first toacknowledge by thronging to the Louvre and the Centre..
+http://www.france.diplomatie.fr/france/edu/culture.gb.html
+ - size 48K - 20 Jun 96
+Travel World - Science Education Tour of Europe
+Science Education Tour of Europe. B E M I D J I S T A T E U N I V E R S I T Y ScienceEducation Tour of EUROPE July 19-August 1, 1995...
+http://www.omnitravel.com/007etour.html
+ - size 16K - 21 Jul 95
+http://www.omnitravel.com/etour.html  - size 16K - 15 May 95
+FRANCE REAL ESTATE RENTAL
+LOIRE VALLEY RENTAL. ANCIENT STONE HOME FOR RENT. Available to rent is afurnished, french country decorated, two bedroom, small stone home, built in the..
+http://frost2.flemingc.on.ca/~pbell/france.htm
+ - size 10K - 21 Jun 96
+LINKS
+PAUL’S LINKS. Click here to view CNN interactive and WEBNEWSor CNET. Click here tomake your own web site. Click here to manage your cash. Interested in...
+http://frost2.flemingc.on.ca/~pbell/links.htm
+ - size 9K - 19 Jun 96
+Digital Design Media, Chapter 9: Lines in Space
+Construction planes... Glass-sheet models... Three-dimensional geometric transformations...Sweeping points... Space curves... Structuring wireframe...
+http://www.gsd.harvard.edu/~malcolm/DDM/DDM09.html
+ - size 36K - 22 Jul 95
+No Title
+Boston Update 94: A VISION FOR BOSTON’S FUTURE. Ian Menzies. Senior Fellow,McCormack Institute. University of Massachusetts Boston. April 1994. Prepared..
+http://www.cs.umb.edu/~serl/mcCormack/Menzies.html
+ - size 25K - 31 Jan 96
+Paris - Photograph
+The Arc de Triomphe du Carrousel neatly frames IM Pei’s glass pyramid, Paris 1/6. © 1996Richard Nebesky.
+Figure 15.1 Results of the search ‘ “glass pyramid” Pei Louvre’ on an internet
+search engine.
+
+p/CX /CX532 15 Topics in Information Retrieval
+two categories: relevant and non-relevant to a particular query (or infor- information need
+mation need ). In routing, the desired output is a ranking of documents
+according to estimated relevance, similar to the ranking shown in ﬁg-ure 15.1 for the ad-hoc problem. The diﬀerence between routing andad-hoc is that training information in the form of relevance labels is
+available in routing, but not in ad-hoc retrieval. In ﬁltering, an estima-
+tion of relevance has to be made for each document, typically in the formof a probability estimate. Filtering is harder than routing because anabsolute (‘Document dis relevant’) rather than a relative assessment of
+relevance (‘Document d
+1is more relevant than d2’) is required. In many
+practical applications, an absolute assessment of relevance for each indi-vidual document is necessary. For example, when a news group is ﬁltered
+for stories about a particular company, users do not want to wait for a
+month, and then receive a ranked list of all stories about the companyin the past month, with the most relevant shown at the top. Instead, itis desirable to deliver relevant stories as soon as they come in withoutknowledge about subsequent postings. As special cases of classiﬁcation,ﬁltering and routing can be accomplished using any of the classiﬁcationalgorithms described in chapter 16 or elsewhere in this book.
+15.1.1 Common design features of IR systems
+Most IR systems have as their primary data structure an inverted index . inverted index
+An inverted index is a data structure that lists for each word in the col-
+lection all documents that contain it (the postings ) and the frequency of postings
+occurrence in each document. An inverted index makes it easy to search
+for ‘hits’ of a query word. One just goes to the part of the inverted index
+that corresponds to the query word and retrieves the documents listedthere.
+A more sophisticated version of the inverted index also contains posi-
+position
+information tion information . Instead of just listing the documents that a word oc-
+curs in, the positions of all occurrences in the document are also listed.A position of occurrence can be encoded as a byte oﬀset relative to the
+beginning of the document. An inverted index with position information
+lets us search for phrases . For example, to search for ‘car insurance,’
+phrases
+we simultaneously work through the entries for carand insurance in
+the inverted index. First, we intersect the two sets so that we only havedocuments in which both words occur. Then we look at the position in-formation and keep only those hits for which the position information
+
+p/CX /CX15.1 Some Background on Information Retrieval 533
+a also an and as at be but by
+can could do for from gohave he her here his howi if in into it itsmy of on or our say she
+that the their there therefore they
+this these those through to untilwe what when where which while who with wouldyou your
+Table 15.1 A small stop list for English. Stop words are function words that
+can be ignored in keyword-oriented information retrieval without a signiﬁcanteﬀect on retrieval accuracy.
+indicates that insurance occurs immediately after car.T h i si sm u c hm o r e
+eﬃcient than having to read in and process all documents of the collec-tion sequentially.
+The notion of phrase used here is a fairly primitive one. We can only
+search for ﬁxed phrases. For example, a search for ‘car insurance rates’
+would not ﬁnd documents talking about rates for car insurance .T h i s
+is an area in which future Statistical
+NLPresearch can make important
+contributions to information retrieval. Most recent research on phrasesin IR has taken the approach of designing a separate phrase identiﬁcationmodule and then indexing documents for identiﬁed phrases as well aswords. In such a system, a phrase is treated as no diﬀerent from an
+ordinary word. The simplest approach to phrase identiﬁcation, which is
+anathema to
+NLPresearchers, but often performs surprisingly well, is to
+just select the most frequent bigrams as phrases, for example, those thatoccur at least 25 times.
+In cases where phrase identiﬁcation is a separate module, it is very
+similar to the problem of discovering collocations. Many of the tech-niques in chapter 5 for ﬁnding collocations can therefore also be applied
+to identifying good phrases for indexing and searching.
+In some IR systems, not all words are represented in the inverted index.
+Astop list of ‘grammatical’ or function words lists those words that are
+stop list
+function wordsdeemed unlikely to be useful for searching. Common stop words are
+the,from andcould . These words have important semantic functions in
+English, but they rarely contribute information if the search criterion is
+
+p/CX /CX534 15 Topics in Information Retrieval
+a simple word-by-word match. A small stop list for English is shown in
+table 15.1.
+A stop list has the advantage that it reduces the size of the inverted
+index. According to Zipf’s law (see section 1.4.3), a stop list that coversa few dozen words can reduce the size of the inverted index by half.
+However, it is impossible to search for phrases that contain stop words
+once the stop list has been applied – note that some occasionally usedphrases like when and where consist entirely of words in the stop list in
+table 15.1. For this reason, many retrieval engines do not make use of astop list for indexing.
+Another common feature of IR systems is stemming , which we brieﬂy
+stemming
+discussed in section 4.2.3. In IR, stemming usually refers to a simpliﬁed
+form of morphological analysis consisting simply of truncating a word.
+For example, laughing ,laugh ,laughs andlaughed are all stemmed to
+laugh- . Common stemmers are the Lovins andPorter stemmers, which Lovins stemmer
+Porter stemmer diﬀer in the actual algorithms used for determining where to truncate
+words (Lovins 1968; Porter 1980). Two problems with truncation stem-mers are that they conﬂate semantically diﬀerent words (for example,gallery andgallmay both be stemmed to gall-) and that the truncated
+stems can be unintelligible to users (for example, if gallery is presented
+asgall-). They are also much harder to make work well for morphology-
+rich languages.
+15.1.2 Evaluation measures
+Since the quality of many retrieval systems depends on how well theymanage to rank relevant documents before non-relevant ones, IR resear-chers have developed evaluation measures speciﬁcally designed to eval-uate rankings. Most of these measures combine precision and recall ina way that takes account of the ranking. As we explained in section 8.1,precision is the percentage of relevant items in the returned set and re-call is the percentage of all relevant documents in the collection that is in
+the returned set.
+Figure 15.2 demonstrates why the ranking of documents is important.
+All three retrieved sets have the same number of relevant and not rele-vant documents. A simple measure of precision (50% correct) would notdistinguish between them. But ranking 1 is clearly better than ranking 2for a user who scans a returned list of documents from top to bottom
+
+p/CX /CX15.1 Some Background on Information Retrieval 535
+Evaluation Ranking 1 Ranking 2 Ranking 3
+d1:¬ d10: d6:
+d2:¬ d9: d1:¬
+d3:¬ d8: d2:¬
+d4:¬ d7: d10:
+d5:¬ d6: d9:
+d6: d1:¬ d3:¬
+d7: d2:¬ d5:¬
+d8: d3:¬ d4:¬
+d9: d4:¬ d7:
+d10: d5:¬ d8:
+precision at 5 1.0 0.0 0.4
+precision at 10 0.5 0.5 0.5uninterpolated av. prec. 1.0 0.3544 0.5726
+interpolated av. prec. (11-point) 1.0 0.5 0.6440
+Table 15.2 An example of the evaluation of rankings. The columns show three
+diﬀerent rankings of ten documents, where a ¬indicates a relevant document
+and aindicates a non-relevant document. The rankings are evaluated accord-
+ing to four measures: precision at 5 documents, precision at 10 documents,uninterpolated average precision, and interpolated average precision over 11points.
+(which is what users do in many practical situations, for example, when
+web searching).
+One measure used is precision at a particular cutoﬀ , for example 5 cutoff
+or 10 documents (other typical cutoﬀs are 20 and 100). By looking at
+precision for several initial segments of the ranked list, one can gain agood impression of how well a method ranks relevant documents beforenon-relevant documents.
+Uninterpolated average precision aggregates many precision numbers
+uninterpolated
+average precision into one evaluation ﬁgure. Precision is computed for each point in the
+list where we ﬁnd a relevant document and these precision numbers are
+then averaged. For example, for ranking 1 precision is 1.0 for d1, d2,d3, d4 and d5 since for each of these documents there are only relevantdocuments up to that point in the list. The uninterpolated average istherefore also 1.0. For ranking 3, we get the following precision numbersfor the relevant documents: 1/2 (d1), 2/3 (d2), 3/6 (d3), 4/7 (d5), 5/8
+
+p/CX /CX536 15 Topics in Information Retrieval
+(d4), which averages to 0.5726.
+If there are other relevant documents further down the list then these
+also have to be taken into account in computing uninterpolated averageprecision. Precision at relevant documents that are not in the returned setis assumed to be zero. This shows that average precision indirectly mea-
+sures recall , the percentage of relevant documents that were returned in
+the retrieved set (since omitted documents are entered as zero precision).
+Interpolated average precision is more directly based on recall. Preci-
+interpolated
+average precision sion numbers are computed for various levels of recall , for example for
+levels of recallthe levels 0%, 10%, 20%, 30%, 40%, 50%, 60%, 70%, 80%, 90%, and 100% in
+the case of an 11-point average (the most widely used measure). At recalllevel, precisionis computed at the point of the ranked list where the
+proportion of retrieved relevant documents reaches . However, if preci-
+sion goes up again while we are moving down the list, then we interpolate
+interpolate
+and take the highest value of precision anywhere beyond the point where
+recall levelwas ﬁrst reached. For example, for ranking 3 in ﬁgure 15.2
+interpolated precision for recall level 60% is not 4/7, the precision at thepoint where 60% recall is ﬁrst reached as shown in the top diagram ofﬁgure 15.2. Instead, it is 5 =8>4=7 as shown in the bottom diagram of
+ﬁgure 15.2. (We are assuming that the ﬁve relevant documents shown
+are the only relevant documents.) The thinking here is that the user willbe willing to look at more documents if the precision goes up. The twographs in ﬁgure 15.2 are so-called precision-recall curves , with interpo-
+precision-recall
+curves lated and uninterpolated values for 0%, 20%, 40%, 60%, 80%, and 100%
+recall for ranking 3 in table 15.2.
+There is an obvious trade-oﬀ between precision and recall. If the whole
+collection is retrieved, then recall is 100%, but precision is low. On the
+other hand, if only a few documents are retrieved, then the most relevant-seeming documents will be returned, resulting in high precision, but re-call will be low.
+Average precision is one way of computing a measure that captures
+both precision and recall. Another way is the Fmeasure , which we intro-
+Fmeasure
+duced in section 8.1:
+F1
+1
+P1−1
+R(15.1)
+wherePis the precision, Ris the recall and determines the weighting
+of precision and recall. The Fmeasure can be used for evaluation at ﬁxed
+cutoﬀs if both recall and precision are important.
+
+p/CX /CX15.1 Some Background on Information Retrieval 537
+0 101
+××
+×××precision
+recall
+0 101
+××
+×××interpolated
+precision
+recall
+Figure 15.2 Two examples of precision-recall curves. The two curves are for
+ranking 3 in table 15.2: uninterpolated (above) and interpolated (below).
+
+p/CX /CX538 15 Topics in Information Retrieval
+Any of the measures discussed above can be used to compare the per-
+formance of information retrieval systems. One common approach is torun the systems on a corpus and a set of queries and average the perfor-mance measure over queries. If the average of system 1 is better than theaverage of system 2, then that is evidence that system 1 is better than
+system 2.
+Unfortunately, there are several problems with this experimental de-
+sign. The diﬀerence in averages could be due to chance. Or it could bedue to one query on which system 1 outperforms system 2 by a largemargin with performance on all other queries being about the same. It istherefore advisable to use a statistical test like the ttest for system com-
+parison (as shown in section 6.2.3).
+15.1.3 The probability ranking principle ( PRP)
+Ranking documents is intuitively plausible since it gives the user some
+control over the tradeoﬀ between precision and recall. If recall for the
+ﬁrst page of results is low and the desired information is not found, thenthe user can look at the next page, which in most cases trades higherrecall for lower precision.
+The following principle is a guideline which is one way to make the
+assumptions explicit that underlie the design of retrieval by ranking. Wepresent it in a form simpliﬁed from (van Rijsbergen 1979: 113):
+Probability Ranking Principle (PRP). Ranking documents in order
+of decreasing probability of relevance is optimal.
+The basic idea is that we view retrieval as a greedy search that aims to
+identify the most valuable document at any given time. The documentdthat is most likely to be valuable is the one with the highest estimated
+probability of relevance (where we consider all documents that haven’tbeen retrieved yet), that is, with a maximum value for PRjd.A f t e rm a k -
+ing many consecutive decisions like this, we arrive at a list of documentsthat is ranked in order of decreasing probability of relevance.
+Many retrieval systems are based on the
+PRP,s oi ti si m p o r t a n tt ob e
+clear about the assumptions that are made when it is accepted.
+One assumption of the PRPis that documents are independent. The
+clearest counterexamples are duplicates. If we have two duplicates d1
+andd2, then the estimated probability of relevance of d2does not change
+after we have presented d1further up in the list. But d2does not give
+
+p/CX /CX15.2 The Vector Space Model 539
+the user any information that is not already contained in d1. Clearly, a
+better design is to show only one of the set of identical documents, butthat violates the
+PRP.
+Another simpliﬁcation made by the PRPis to break up a complex in-
+formation need into a number of queries which are each optimized in
+isolation. In practice, a document can be highly relevant to the complex
+information need as a whole even if it is not the optimal one for an in-termediate step. An example here is an information need that the userinitially expresses using ambiguous words, for example, the query jaguar
+to search for information on the animal (as opposed to the car). The op-timal response to this query may be the presentation of documents thatmake the user aware of the ambiguity and permit disambiguation of the
+query. In contrast, the
+PRPwould mandate the presentation of documents
+that are highly relevant to either the car or the animal.
+A third important caveat is that the probability of relevance is only es-
+timated. Given the many simplifying assumptions we make in designingprobabilistic models for IR, we cannot completely trust the probabilityestimates. One aspect of this problem is that the variance of the esti-
+variance
+mate of probability of relevance may be an important piece of evidence
+in some retrieval contexts. For example, a user may prefer a document
+that we are certain is probably relevant (low variance of probability esti-mate) to one whose estimated probability of relevance is higher, but thatalso has a higher variance of the estimate.
+15.2 The Vector Space Model
+Thevector space model is one of the most widely used models for ad-hoc vector space model
+retrieval, mainly because of its conceptual simplicity and the appeal of
+the underlying metaphor of using spatial proximity for semantic proxim-ity. Documents and queries are represented in a high-dimensional space,in which each dimension of the space corresponds to a word in the doc-ument collection. The most relevant documents for a query are expected
+to be those represented by the vectors closest to the query, that is, doc-
+uments that use similar words to the query. Rather than considering themagnitude of the vectors, closeness is often calculated by just looking atangles and choosing documents that enclose the smallest angle with thequery vector.
+In ﬁgure 15.3, we show a vector space with two dimensions, corre-
+
+p/CX /CX540 15 Topics in Information Retrieval
+0 101
+insurancecar
+qd1
+d2
+d3
+Figure 15.3 A vector space with two dimensions. The two dimensions corre-
+spond to the terms carand insurance . One query and three documents are
+represented in the space.
+sponding to the words carandinsurance . The entities represented in the
+space are the query qrepresented by the vector 0:71;0:71, and three
+documentsd1,d2,a n dd3with the following coordinates: 0:13;0:99,
+0:8;0:6,a n d0:99;0:13. The coordinates or term weights are derived term weights
+from occurrence counts as we will see below. For example, insurance may
+have only a passing reference in d1while there are several occurrences
+ofcar– hence the low weight for insurance and the high weight for car.
+(In the context of information retrieval, the word term is used for both term
+words and phrases. We say term weights rather than word weights be-
+cause dimensions in the vector space model can correspond to phrasesas well as words.)
+In the ﬁgure, document d
+2has the smallest angle with q,s oi tw i l lb e
+the top-ranked document in response to the query car insurance .T h i si s
+because both ‘concepts’ ( carandinsurance ) are salient in d2and there-
+fore have high weights. The other two documents also mention both
+terms, but in each case one of them is not a centrally important term in
+the document.
+15.2.1 Vector similarity
+To do retrieval in the vector space model, documents are ranked accord-ing to similarity with the query as measured by the cosine measure or
+cosine
+
+p/CX /CX15.2 The Vector Space Model 541
+normalized correlation coeﬃcient . We introduced the cosine as a measure normalized
+correlation
+coefﬁcientof vector similarity in section 8.5.1 and repeat its deﬁnition here:
+cos~q;~dPn
+i1qidiqPn
+i1q2
+iqPn
+i1d2
+i(15.2)
+where~qand~daren-dimensional vectors in a real-valued space, the space
+of all terms in the case of the vector space model. We compute how wellthe occurrence of term i(measured by q
+ianddi) correlates in query and
+document and then divide by the Euclidean length of the two vectors toscale for the magnitude of the individual q
+ianddi.
+Recall also from section 8.5.1 that cosine and Euclidean distance give
+rise to the same ranking for normalized vectors:
+j~x−~yj2nX
+i1xi−yi2
+nX
+i1x2
+i−2nX
+i1xiyinX
+i1y2
+i
+1−2nX
+i1xiyi1
+21−nX
+i1xiyi (15.3)
+So for a particular query ~qand any two documents ~d1and~d2we have:
+cos~q;~d1>cos~q;~d2,j~q−~d1j<j~q−~d2j (15.4)
+which implies that the rankings are the same. (We again assume normal-
+ized vectors here.)
+If the vectors are normalized, we can compute the cosine as a simple
+dot product. Normalization is generally seen as a good thing – otherwiselonger vectors (corresponding to longer documents) would have an unfair
+advantage and get ranked higher than shorter ones. (We leave it as an
+exercise to show that the vectors in ﬁgure 15.3 are normalized, that is,q
+P
+id2
+i1.)
+15.2.2 Term weighting
+We now turn to the question of how to weight words in the vector space
+model. One could just use the count of a word in a document as its term
+
+p/CX /CX542 15 Topics in Information Retrieval
+Quantity Symbol Deﬁnition
+term frequency tf i;j number of occurrences of wiindj
+document frequency df i number of documents in the collection that wioccurs in
+collection frequency cf i total number of occurrences of wiin the collection
+Table 15.3 Three quantities that are commonly used in term weighting in in-
+formation retrieval.
+Word Collection Frequency Document Frequency
+insurance 10440 3997
+try 10422 8760
+Table 15.4 Term and document frequencies of two words in an example cor-
+pus.
+weight, but there are more eﬀective methods of term weighting. The
+basic information used in term weighting is term frequency ,document term frequency
+document
+frequencyfrequency , and sometimes collection frequency as deﬁned in table 15.3.
+collection
+frequencyNote that df icfiand thatP
+jtfi;jcfi. It is also important to note
+that document frequency and collection frequency can only be used if
+there is a collection. This assumption is not always true, for example ifcollections are created dynamically by selecting several databases froma large set (as may be the case on one of the large on-line informationservices), and joining them into a temporary collection.
+The information that is captured by term frequency is how salient a
+word is within a given document. The higher the term frequency (the
+more often the word occurs) the more likely it is that the word is a good
+description of the content of the document. Term frequency is usuallydampened by a function like ftfp
+tf orftf1logtf;tf>0
+because more occurrences of a word indicate higher importance, but notas much importance as the undampened count would suggest. For ex-ample,p
+3o r1log 3 better reﬂect the importance of a word with three
+occurrences than the count 3 itself. The document is somewhat more
+important than a document with one occurrence, but not three times as
+important.
+The second quantity, document frequency, can be interpreted as an in-
+dicator of informativeness. A semantically focussed word will often occurseveral times in a document if it occurs at all. Semantically unfocussedwords are spread out homogeneously over all documents. An example
+
+p/CX /CX15.2 The Vector Space Model 543
+from a corpus of New York Times articles is the words insurance andtry
+in table 15.4. The two words have about the same collection frequency,the total number of occurrences in the document collection. But insur-
+ance occurs in only half as many documents as try. This is because the
+word trycan be used when talking about almost any topic since one can
+tryto do something in any context. In contrast, insurance refers to a
+narrowly deﬁned concept that is only relevant to a small set of topics.Another property of semantically focussed words is that, if they comeup once in a document, they often occur several times. Insurance occurs
+about three times per document, averaged over documents it occurs in atleast once. This is simply due to the fact that most articles about healthinsurance, car insurance or similar topics will refer multiple times to the
+concept of insurance.
+One way to combine a word’s term frequency tf
+i;jand document fre-
+quency dfiinto a single weight is as follows:
+weighti;j(
+1logtfi;jlogN
+dfiif tfi;j1
+0i f t f i;j0(15.5)
+whereNis the total number of documents. The ﬁrst clause applies for
+words occurring in the document, whereas for words that do not appear
+(tfi;j0), we set weight i;j0.
+Document frequency is also scaled logarithmically. The formula
+logN
+dfilogN−log dfigives full weight to words that occur in 1 doc-
+ument (logN−log dfilogN−log 1logN). A word that occurred in
+all documents would get zero weight (log N−log dfilogN−logN0).
+This form of document frequency weighting is often called inverse doc- inverse document
+frequency ument frequency or idf weighting. More generally, the weighting scheme
+idfin (15.5) is an example of a larger family of so-called tf.idf weightingtf.idf
+schemes. Each such scheme can be characterized by its term occurrence
+weighting, its document frequency weighting and its normalization. Inone description scheme, we assign a letter code to each component ofthe tf.idf scheme. The scheme in (15.5) can then be described as “ltn”for logarithmic occurrence count weighting (l), logarithmic document fre-
+quency weighting (t), and no normalization (n). Other weighting possi-
+bilities are listed in table 15.5. For example, “ann” is augmented termoccurrence weighting, no document frequency weighting and no normal-ization. We refer to vector length normalization as cosine normalizationbecause the inner product between two length-normalized vectors (thequery-document similarity measure used in the vector space model) is
+
+p/CX /CX544 15 Topics in Information Retrieval
+Term occurrence Document frequency Normalization
+n (natural) tf t;d n (natural) df t n (no normalization)
+l (logarithm) 1 logtft;d tl o gN
+dftc( c o s i n e )
+a (augmented) 0 :50:5tft;d
+maxttft;d1q
+w2
+1w2
+2:::w2n
+Table 15.5 Components of tf.idf weighting schemes. tf t;dis the frequency of
+termtin documentd,d ftis the number of documents toccurs in,Nis the total
+number of documents, and wiis the weight of term i.
+their cosine. Diﬀerent weighting schemes can be applied to queries and
+documents. In the name “ltc.lnn,” the halves refer to document and queryweighting, respectively.
+The family of weighting schemes shown in table 15.5 is sometimes crit-
+icized as ‘ad-hoc’ because it is not directly derived from a mathematicalmodel of term distributions or relevancy. However, these schemes areeﬀective in practice and work robustly in a broad range of applications.For this reason, they are often used in situations where a rough measureof similarity between vectors of counts is needed.
+15.3 Term Distribution Models
+An alternative to tf.idf weighting is to develop a model for the distribu-tion of a word and to use this model to characterize its importance forretrieval. That is, we wish to estimate P
+ik, the proportion of times that
+wordwiappearsktimes in a document. In the simplest case, the dis-
+tribution model is used for deriving a probabilistically motivated termweighting scheme for the vector space model. But models of term distri-bution can also be embedded in other information retrieval frameworks.
+Apart from its importance for term weighting, a precise characteriza-
+tion of the occurrence patterns of words in text is arguably at least asimportant a topic in Statistical
+NLPasZipf’s law . Zipf’s law describes Zipf’s law
+word behavior in an entire corpus . In contrast, term distribution mod-
+els capture regularities of word occurrence in subunits of a corpus (e.g.,
+documents or chapters of a book). In addition to information retrieval, agood understanding of distribution patterns is useful wherever we wantto assess the likelihood of a certain number of occurrences of a speciﬁcword in a unit of text. For example, it is also important for author identiﬁ-
+
+p/CX /CX15.3 Term Distribution Models 545
+cation where one compares the likelihood that diﬀerent writers produced
+a text of unknown authorship.
+Most term distribution models try to characterize how informative a
+word is, which is also the information that inverse document frequencyis getting at. One could cast the problem as one of distinguishing con-
+tent words from non-content (or function) words, but most models have
+a graded notion of how informative a word is. In this section, we intro-duce several models that formalize notions of informativeness. Three arebased on the Poisson distribution, one motivates inverse document fre-quency as a weight optimal for Bayesian classiﬁcation and the ﬁnal one,residual inverse document frequency , can be interpreted as a combination
+of idf and the Poisson distribution.
+15.3.1 The Poisson distribution
+The standard probabilistic model for the distribution of a certain type ofevent over units of a ﬁxed size (such as periods of time or volumes of
+liquid) is the Poisson distribution . Classical examples of Poisson distribu-
+Poisson
+distribution tions are the number of items that will be returned as defects in a given
+period of time, the number of typing mistakes on a page, and the numberof microbes that occur in a given volume of water.
+The deﬁnition of the Poisson distribution is as follows.
+Poisson Distribution. pk;
+ie−iik
+k!for somei>0
+In the most common model of the Poisson distribution in IR, the parame-
+teri>0 is the average number of occurrences of wiper document, that
+is,icfi
+Nwhere cfiis the collection frequency and Nis the total number
+of documents in the collection. Both the mean and the variance of thePoisson distribution are equal to 
+i:
+EpVarpi
+Figure 15.4 shows two examples of the Poisson distribution.
+In our case, the event we are interested in is the occurrence of a partic-
+ular wordwiand the ﬁxed unit is the document. We can use the Poisson
+distribution to estimate an answer to the question: What is the probabil-ity that a word occurs a particular number of times in a document. Wemight say that P
+ikpk;iis the probability of a document having
+exactlykoccurrences of wi,w h e r eiis appropriately estimated for each
+word.
+
+p/CX /CX546 15 Topics in Information Retrieval
+·
+·
+·
+·· · ·
+countprobability
+01234560.0 0.2 0.4 0.6···
+·
+·
+·
+·
+01234560.0 0.2 0.4 0.6
+Figure 15.4 The Poisson distribution. The graph shows p k;0:5(solid line)
+and pk;2:0(dotted line) for 0 k6. In the most common use of this
+distribution in IR, kis the number of occurrences of term iin a document, and
+pk;iis the probability of a document with that many occurrences.
+The Poisson distribution is a limit of the binomial distribution. For the
+binomial distribution b k;n;p,i fw el e tn!1 andp!0i ns u c haw a y
+thatnpremains ﬁxed at value >0, then bx;n;p!pk;. Assuming
+a Poisson distribution for a term is appropriate if the following conditionshold.
+The probability of one occurrence of the term in a (short) piece of textis proportional to the length of the text.
+The probability of more than one occurrence of a term in a short pieceof text is negligible compared to the probability of one occurrence.
+Occurrence events in non-overlapping intervals of text are indepen-dent.
+We will discuss problems with these assumptions for modeling the dis-
+tribution of terms shortly. Let us ﬁrst look at some examples.
+
+p/CX /CX15.3 Term Distribution Models 547
+Word dfi cfiiN1−p0;iOverestimation
+follows 21744 23533 0.2968 20363 0.94
+transformed 807 840 0.0106 835 1.03
+soviet 8204 35337 0.4457 28515 3.48
+students 4953 15925 0.2008 14425 2.91
+james 9191 11175 0.1409 10421 1.13
+freshly 395 611 0.0077 609 1.54
+Table 15.6 Document frequency (df) and collection frequency (cf) for 6 words
+in the New York Times corpus. Computing N1−p0;iaccording to the
+Poisson distribution is a reasonable estimator of df for non-content words (likefollows ), but severely overestimates df for content words (like soviet ). The pa-
+rameter
+iof the Poisson distribution is the average number of occurrences of
+termiper document. The corpus has N79291 documents.
+Table 15.6 shows for six terms in the New York Times newswire how
+well the Poisson distribution predicts document frequency. For eachword, we show document frequency df
+i, collection frequency cf i, the es-
+timate of(collection frequency divided by total number of documents
+(79291)), the predicted df, and the ratio of predicted df and actual df.
+Examining document frequency is the easiest way to check whether a
+term is Poisson distributed. The number of documents predicted to haveat least one occurrence of a term can be computed as the complementof the predicted number with no occurrences. Thus, the Poisson predictsthat the document frequency is cdf
+iN1−Pi0whereNis the number
+of documents in the corpus. A better way to check the ﬁt of the Poisson
+is to look at the complete distribution: the number of documents with 0,1, 2, 3, etc. occurrences. We will do this below.
+In table 15.6, we can see that the Poisson estimates are good for non-
+content words like follows andtransformed . We use the term non-content
+word loosely to refer to words that taken in isolation (which is what most
+IR systems do) do not give much information about the contents of the
+document. But the estimates for content words are much too high, by a
+factor of about 3 (3.48 and 2.91).
+This result is not surprising since the Poisson distribution assumes
+independence between term occurrences. This assumption holds approx-imately for non-content words, but most content words are much morelikely to occur again in a text once they have occurred once, a property
+
+p/CX /CX548 15 Topics in Information Retrieval
+that is sometimes called burstiness orterm clustering . However, there burstiness
+term clusteringare some subtleties in the behavior of words as we can see for the last
+two words in the table. The distribution of james is surprisingly close to
+Poisson, probably because in many cases a person’s full name is given atﬁrst mention in a newspaper article, but following mentions only use the
+last name or a pronoun. On the other hand, freshly is surprisingly non-
+Poisson. Here we get strong dependence because of the genre of recipesin the New York Times in which freshly frequently occurs several times.
+So non-Poisson-ness can also be a sign of clustered term occurrences ina particular genre like recipes.
+The tendency of content word occurrences to cluster is the main prob-
+lem with using the Poisson distribution for words. But there is also the
+opposite eﬀect. We are taught in school to avoid repetitive writing. In
+many cases, the probability of reusing a word immediately after its ﬁrstoccurrence in a text is lower than in general. A ﬁnal problem with thePoisson is that documents in many collections diﬀer widely in size. Sodocuments are not a uniform unit of measurement as the second is fortime or the kilogram is for mass. But that is one of the assumptions ofthe Poisson distribution.
+15.3.2 The two-Poisson model
+A better ﬁt to the frequency distribution of content words is provided bythetwo-Poisson Model (Bookstein and Swanson 1975), a mixture of two
+two-Poisson Model
+Poissons. The model assumes that there are two classes of documents
+associated with a term, one class with a low average number of occur-
+rences (the non-privileged class) and one with a high average number ofoccurrences (the privileged class):
+tpk;;
+1;2e−11k
+k!1−e−22k
+k!
+whereis the probability of a document being in the privileged class,
+1−is the probability of a document being in the non-privileged class,
+and1and2are the average number of occurrences of word wiin the
+privileged and non-privileged classes, respectively.
+The two-Poisson model postulates that a content word plays two dif-
+ferent roles in documents. In the non-privileged class, its occurrence isaccidental and it should therefore not be used as an index term, just asa non-content word. The average number of occurrences of the word in
+
+p/CX /CX15.3 Term Distribution Models 549
+this class is low. In the privileged class, the word is a central content
+word. The average number of occurrences of the word in this class ishigh and it is a good index term.
+Empirical tests of the two-Poisson model have found a spurious “dip” at
+frequency 2. The model incorrectly predicts that documents with 2 occur-
+rences of a term are less likely than documents with 3 or 4 occurrences.
+In reality, the distribution for most terms is monotonically decreasing.IfP
+ikis the proportion of times that word wiappearsktimes in a doc-
+ument, thenPi0>Pi1>Pi2>Pi3>Pi4>:::: As a ﬁx, one can
+use more than two Poisson distributions. The negative binomial is one negative binomial
+such mixture of an inﬁnite number of Poissons (Mosteller and Wallace
+1984), but there are many others (Church and Gale 1995). The negative
+binomial ﬁts term distributions better than one or two Poissons, but it
+can be hard to work with in practice because it involves the computationof large binomial coeﬃcients.
+15.3.3 The K mixture
+A simpler distribution that ﬁts empirical word distributions about as wellas the negative binomial is Katz’s K mixture:
+P
+ik1−k;0
+1 
+
+1!k
+wherek;01i ﬀk0a n dk;00 otherwise and andare parame-
+ters that can be ﬁt using the observed mean and the observed inverse
+document frequency IDF as follows.
+cf
+N
+IDFlog2N
+df
+2IDF−1cf−df
+df
+
+
+The parameter is the number of “extra terms” per document in which
+the term occurs (compared to the case where a term has only one occur-
+rence per document). The decay factor
+1cf−df
+cf(extra terms per term
+occurrence) determines the ratioPik
+Pik−1. For example, if there are1
+10as
+
+p/CX /CX550 15 Topics in Information Retrieval
+Word k
+0 1 2 345678 9
+follows act. 57552.0 20142.0 1435.0 148.0 18.0 1.0
+est. 57552.0 20091.0 1527.3 116.1 8.8 0.7 0.1 0.0 0.0 0.0
+trans- act. 78489.0 776.0 29.0 2.0
+formed est. 78489.0 775.3 30.5 1.2 0.0 0.0 0.0 0.0 0.0 0.0
+soviet act. 71092.0 3038.0 1277.0 784.0 544.0 400.0 356.0 302.0 255.0 1248.0
+est. 71092.0 1904.7 1462.5 1122.9 862.2 662.1 508.3 390.3 299.7 230.1
+students act. 74343.0 2523.0 761.0 413.0 265.0 178.0 143.0 112.0 96.0 462.0
+est. 74343.0 1540.5 1061.4 731.3 503.8 347.1 239.2 164.8 113.5 78.2
+james act. 70105.0 7953.0 922.0 183.0 52.0 24.0 19.0 9.0 7.0 22.0
+est. 70105.0 7559.2 1342.1 238.3 42.3 7.5 1.3 0.2 0.0 0.0
+freshly act. 78901.0 267.0 66.0 47.0 8.0 4.0 2.0 1.0
+est. 78901.0 255.4 90.3 31.9 11.3 4.0 1.4 0.5 0.2 0.1
+Table 15.7 Actual and estimated number of documents with koccurrences for
+six terms. For example, there were 1435 documents with 2 occurrences of fol-
+lows. The K mixture estimate is 1527.3.
+many extra terms as term occurrences, then there will be ten times as
+many documents with 1 occurrence as with 2 occurrences and ten timesas many with 2 occurrences as with 3 occurrences. If there are no extra
+terms (cfdf)
+
+10), then we predict that there are no documents
+with more than 1 occurrence.
+The parameter captures the absolute frequency of the term. Two
+terms with the same have identical ratios of collection frequency to doc-
+ument frequency, but diﬀerent values for if their collection frequencies
+are diﬀerent.
+Table 15.7 shows the number of documents with koccurrences in the
+New York Times corpus for the six words that we looked at earlier. We
+observe that the ﬁt is always perfect for k0. It is easy to show that this
+is a general property of the K mixture (see exercise 15.3).
+The K mixture is a fairly good approximation of term distribution, espe-
+cially for non-content words. However, it is apparent from the empiricalnumbers in table 15.7 that the assumption:
+P
+ik
+Pik1c; k1
+does not hold perfectly for content words. As in the case of the two-
+Poisson mixture we are making a distinction between low base rate ofoccurrence and another class of documents that have clusters of occur-rences. The K mixture assumes
+Pik
+Pik1cfork1, which concedes
+
+p/CX /CX15.3 Term Distribution Models 551
+thatk0 is a special case due to a low base rate of occurrence for many
+words. But the ratioPik
+Pik1seems to decline for content words even for
+k1. For example, for soviet we have:
+Pi0
+Pi171092
+303823:4Pi1
+Pi23038
+12772:38
+Pi2
+Pi31277
+7841:63Pi3
+Pi4784
+5441:44
+Pi4
+Pi5544
+4001:36
+In other words, each occurrence of a content word we ﬁnd in a text de-
+creases the probability of ﬁnding an additional term, but the decreases
+become consecutively smaller. The reason is that occurrences of content
+words tend to cluster in documents whose core topic is associated withthe content word. A large number of occurrences indicates that the con-tent word describes a central concept of the document. Such a centralconcept is likely to be mentioned more often than a “constant decay”model would predict.
+We have introduced Katz’s K mixture here as an example of a term dis-
+tribution model that is more accurate than the Poisson distribution and
+the two-Poisson model. The interested reader can ﬁnd more discussionof the characteristics of content words in text and of several probabilisticmodels with a better ﬁt to empirical distributions in (Katz 1996).
+15.3.4 Inverse document frequency
+We motivated inverse document frequency ( IDF) heuristically in section
+15.2.2, but we can also derive it from a term distribution model. In thederivation we present here, we only use binary occurrence information
+and do not take into account term frequency.
+To derive
+IDF, we view ad-hoc retrieval as the task of ranking docu-
+ments according to the odds of relevance : odds of relevance
+OdPRjd
+P:Rjd
+wherePRjdis the probability of relevance of dandP:Rjdis the
+probability of non-relevance. We then take logs to compute the log odds,and apply Bayes’ formula:
+logOdlogPRjd
+P:Rjd
+
+p/CX /CX552 15 Topics in Information Retrieval
+logPdjRPR
+Pd
+Pdj:RP:R
+Pd
+logPdjR−logPdj:RlogPR−logP:R
+Let us assume that the query Qis the set of words fwig, and let the
+indicator random variables Xibe 1 or 0, corresponding to occurrence
+and non-occurrence of word wiind. If we then make the conditional
+independence assumption discussed in section 7.2.1, we can write:
+logOdX
+i
+logPXijR−logPXij:R
+logPR−logP:R
+Since we are only interested in ranking, we can create a new rank-
+ing functiongd which drops the constant term log PR−logP:R.
+With the abbreviations piPXi1jR(wordioccurring in a rele-
+vant document) and qiPXi1j:R(wordioccurring in a non-
+relevant document), we can write gd as follows. (In the second line,
+we make use of PXi1j_yy11−y0yXi1−y1−Xiand
+PXi0j_1−yy01−y1yXi1−y1−Xiso that we can write
+the equation more compactly.)
+gdX
+ilogPXijR−logPXij:R
+X
+ilogpXi
+i1−pi1−Xi−logqXi
+i1−qi1−Xi
+X
+iXilogpi1−qi
+1−piqiX
+ilog1−pi
+1−qi
+X
+iXilogpi
+1−piX
+iXilog1−qi
+qiX
+ilog1−pi
+1−qi
+In the last equation above,P
+ilog1−pi
+1−qiis another constant term which
+does not aﬀect the ranking of documents, and so we can drop it as wellgiving the ﬁnal ranking function:
+g
+0dX
+iXilogpi
+1−piX
+iXilog1−qi
+qi(15.6)
+If we have a set of documents that is categorized according to relevance
+to the query, we can estimate the piandqidirectly. However, in ad-hoc
+retrieval we do not have such relevance information. That means we
+
+p/CX /CX15.3 Term Distribution Models 553
+have to make some simplifying assumptions in order to be able to rank
+documents in a meaningful way.
+First, we assume that piis small and constant for all terms. The ﬁrst
+term ofg0then becomesP
+iXilogpi
+1−picP
+iXi, a simple count of the
+number of matches between query and document, weighted by c.
+The fraction in the second term can be approximated by assuming that
+most documents are not relevant so qiPXi1j:RPwidfi
+N,
+which is the maximum likelihood estimate of Pwi, the probability of
+occurrence of winot conditioned on relevance.
+1−qi
+qi1−dfi
+N
+dfi
+NN−dfi
+dfiN
+dfi
+The last approximation,N−dfi
+dfiN
+dfi, holds for most words since most
+words are relatively rare. After applying the logarithm, we have nowarrived at the
+IDFweight we introduced earlier. Substituting it back into
+the formula for g0we get:
+g0dcX
+iXiX
+iXiidfi (15.7)
+This derivation may not satisfy everyone since we weight the term ac-
+cording to the ‘opposite’ of the probability of non-relevance rather thandirectly according to the probability of relevance. But the probability ofrelevance is impossible to estimate in ad-hoc retrieval. As in many other
+cases in Statistical
+NLP, we take a somewhat circuitous route to get to a
+desired quantity from others that can be more easily estimated.
+15.3.5 Residual inverse document frequency
+An alternative to IDFisresidual inverse document frequency orRIDF . residual inverse
+document
+frequency
+RIDFResidual IDFis deﬁned as the diﬀerence between the logs of actual docu-
+ment frequency and document frequency predicted by Poisson:
+RIDFIDF−log21−p0;i
+where IDFlog2N
+df, and p is the Poisson distribution with parameter i
+cfi
+N, the average number of occurrences of wiper document. 1 −p0;i
+is the Poisson probability of a document with at least one occurrence. So,for example,
+RIDF forinsurance andtryin table 15.4 would be 7.3 and
+6.2, respectively (with N79291, verify this!).
+
+p/CX /CX554 15 Topics in Information Retrieval
+Term 1 Term 2 Term 3 Term 4
+Query user interface
+Document 1 user interface HCI interaction
+Document 2 HCI interaction
+Table 15.8 Example for exploiting co-occurrence in computing content similar-
+ity. For the query and the two documents, the terms they contain are listed intheir respective rows.
+As we saw above, the Poisson distribution only ﬁts the distribution of
+non-content words well. Therefore, the deviation from Poisson is a good
+predictor of the degree to which a word is a content word.
+15.3.6 Usage of term distribution models
+We can exploit term distribution models in information retrieval by using
+the parameters of the model ﬁt for a particular term as indicators ofrelevance. For example, we could use
+RIDF or thein the K mixture as a
+replacement for IDFweights (since content words have large and large
+RIDF, non-content words have smaller and smaller RIDF).
+Better models of term distribution than IDFhave the potential of as-
+sessing a term’s properties more accurately, leading to a better modelof query-document similarity. Although there has been little work onemploying term distribution models diﬀerent from
+IDFin IR, it is to be
+hoped that such models will eventually lead to better measures of content
+similarity.
+15.4 Latent Semantic Indexing
+In the previous section, we looked at the occurrence patterns of individ-
+ual words. A diﬀerent source of information about terms that can beexploited in information retrieval is co-occurrence : the fact that two or
+co-occurrence
+more terms occur in the same documents more often than chance. Con-
+sider the example in table 15.8. Document 1 is likely to be relevant to thequery since it contains all the terms in the query. But document 2 is alsoa good candidate for retrieval. Its terms HCI andinteraction co-occur
+with user andinterface , which can be evidence for semantic relatedness.
+Latent Semantic Indexing (
+LSI) is a technique that projects queries and Latent Semantic
+Indexing
+
+p/CX /CX15.4 Latent Semantic Indexing 555
+A0
+BBBBBBBB@d1d2d3d4d5d6
+cosmonaut 101000
+astronaut 010000
+moon 110000
+car 100110
+truck 0001011
+CCCCCCCCA
+Figure 15.5 An example of a term-by-document matrix A.
+−0:5 −1:0 −1:50:51:0
+−0:5
+−1:0dim 2
+dim 1
+×
+d1
+×
+d2×d3×
+d4
+×
+d5×d6
+Figure 15.6 Dimensionality reduction. The documents in matrix 15.5 are
+shown after the ﬁve-dimensional term space has been reduced to two dimen-sions. The reduced document representations are taken from ﬁgure 15.11. Inaddition to the document representations d
+1;:::;d 6, we also show their length-
+normalized vectors, which show more directly the similarity measure of cosine
+that is used after LSIis applied.
+
+p/CX /CX556 15 Topics in Information Retrieval
+documents into a space with “latent” semantic dimensions. Co-occurring
+terms are projected onto the same dimensions, non-co-occurring termsare projected onto diﬀerent dimensions. In the latent semantic space, aquery and a document can have high cosine similarity even if they do notshare any terms – as long as their terms are semantically similar accord-
+ing to the co-occurrence analysis. We can look at
+LSIas a similarity metric
+that is an alternative to word overlap measures like tf.idf.
+The latent semantic space that we project into has fewer dimensions
+than the original space (which has as many dimensions as terms). LSIis
+thus a method for dimensionality reduction . A dimensionality reduction dimensionality
+reduction technique takes a set of objects that exist in a high-dimensional space and
+represents them in a low-dimensional space, often in a two-dimensional
+or three-dimensional space for the purposes of visualization. The exam-
+ple in ﬁgure 15.5 may demonstrate the basic idea. This matrix deﬁnes aﬁve-dimensional space (whose dimensions are the ﬁve words astronaut ,
+cosmonaut ,moon ,carandtruck ) and six objects in the space, the docu-
+mentsd
+1;:::;d 6. Figure 15.6 shows how the six objects can be displayed
+in a two-dimensional space after the application of SVD(dimension 1 and
+dimension 2 are taken from ﬁgure 15.11, to be explained later). The visu-
+alization shows some of the relations between the documents, in partic-
+ular the similarity between d4andd5(car/truck documents) and d2and
+d3(space exploration documents). These relationships are not as clear in
+ﬁgure 15.5. For example, d2andd3have no terms in common.
+There are many diﬀerent mappings from high-dimensional spaces to
+low-dimensional spaces. Latent Semantic Indexing chooses the mappingthat, for a given dimensionality of the reduced space, is optimal in a
+sense to be explained presently. This setup has the consequence that the
+dimensions of the reduced space correspond to the axes of greatest vari-
+ation . Consider the case of reducing dimensionality to 1 dimension. In
+order to get the best possible representation in 1 dimension, we will lookfor the axis in the original space that captures as much of the variation inthe data as possible. The second dimension corresponds to the axis thatbest captures the variation remaining after subtracting out what the ﬁrst
+axis explains and so on. This reasoning shows that Latent Semantic In-
+dexing is closely related to Principal Component Analysis (
+PCA), another Principal
+Component Analysis technique for dimensionality reduction. One diﬀerence between the two
+techniques is that PCAc a no n l yb ea p p l i e dt oas q u a r em a t r i xw h e r e a s LSI
+can be applied to any matrix.
+Latent semantic indexing is the application of a particular mathemat-
+
+p/CX /CX15.4 Latent Semantic Indexing 557
+ical technique, called Singular Value Decomposition or SVD, to a word-
+by-document matrix. SVD(and hence LSI) is a least-squares method. The
+projection into the latent semantic space is chosen such that the repre-sentations in the original space are changed as little as possible whenmeasured by the sum of the squares of the diﬀerences. We ﬁrst give a
+simple example of a least-squares method and then introduce
+SVD.
+15.4.1 Least-squares methods
+Before deﬁning the particular least-squares method used in LSI,i ti si n -
+structive to study the most common least-squares approximation: ﬁttinga line to a set of points in the plane by way of linear regression .
+linear regression
+Consider the following problem. We have a set of npoints:x1;y1,
+x2;y2,...,xn;yn. We would like to ﬁnd the line:
+fxmxb
+with parameters mandbthat ﬁts these points best. In a least-squares ap-
+proximation, the best ﬁt is the one that minimizes the sum of the squares
+of the diﬀerences:
+SSm;bnX
+i1(
+yi−fxi2nX
+i1yi−mxi−b2(15.8)
+We computebby solving@SSm;b
+@b0, the value of bfor whichSSm;b
+reaches its minimum:
+@SSm;b
+@bnX
+i12yi−mxi−b−10
+,Xn
+i1yi
+−
+mXn
+i1xi
+−
+nb
+0
+,b¯y−m¯x (15.9)
+where ¯yPn
+i1yi
+nand¯xPn
+i1xi
+nare the means of the xandycoordinates,
+respectively.
+We now substitute (15.9) for bin (15.8) and solve@SSm;b
+@m0f o rm:
+@SSm;b
+@m@Pn
+i1yi−mxi−¯ym¯x2
+@m0
+,nX
+i12yi−mxi−¯ym¯x−xi¯x0
+
+p/CX /CX558 15 Topics in Information Retrieval
+01234567801234
+××
+××y
+x
+Figure 15.7 An example of linear regression. The line y0:25x1i st h e
+best least-squares ﬁt for the four points (1,1), (2,2), (6,1.5), (7,3.5). Arrows show
+which points on the line the original points are projected to.
+, 0−nX
+i1¯y−yi¯x−ximnX
+i1¯x−xi2
+,mPn
+i1¯y−yi¯x−xiPn
+i1¯x−xi2(15.10)
+Figure 15.7 shows an example of a least square ﬁt for the four points
+1;1;2;2;6;1:5;7;3:5.W eh a v e :
+¯x4;¯y2;mPn
+i1¯y−yi¯x−xiPn
+i1¯x−xi26:5
+260:25
+and
+b¯y−m¯x2−0:2541
+15.4.2 Singular Value Decomposition
+As we have said, we can view Singular Value Decomposition or SVDas a
+method of word co-occurrence analysis. Instead of using a simple wordoverlap measure like the cosine, we instead use a more sophisticated sim-ilarity measure that makes better similarity judgements based on word
+
+p/CX /CX15.4 Latent Semantic Indexing 559
+co-occurrence. Equivalently, we can view SVDas a method for dimension-
+ality reduction. The relation between these two viewpoints is that in theprocess of dimensionality reduction, co-occurring terms are mapped ontothe same dimensions of the reduced space, thus increasing similarity inthe representation of semantically similar documents.
+Co-occurrence analysis and dimensionality reduction are two ‘func-
+tional’ ways of understanding
+LSI. We now look at the formal deﬁnition
+ofLSI.LSIis the application of Singular Value Decomposition ( SVD)t o
+document-by-term matrices in information retrieval. SVD takes a ma-
+trixAand represents it as ˆAin a lower dimensional space such that
+the “distance” between the two matrices as measured by the 2-norm isminimized:
+kA−ˆAk
+2 (15.11)
+The 2-norm for matrices is the equivalent of Euclidean distance for vec-
+tors. SVDis in fact very similar to ﬁtting a line, a one-dimensional object,
+to a set of points, which exists in the two-dimensional plane. Figure 15.7shows which point on the one-dimensional line each of the original points
+corresponds to (see arrows).
+Just as the linear regression in ﬁgure 15.7 can be interpreted as pro-
+jecting a two-dimensional space onto a one-dimensional line, so does
+SVD
+project ann-dimensional space onto a k-dimensional space where nk.
+In our application (word-document matrices), nis the number of word
+types in the collection. Values of kthat are frequently chosen are 100 and
+150. The projection transforms a document’s vector in n-dimensional
+word space into a vector in the k-dimensional reduced space.
+One possible source of confusion is that equation (15.11) compares the
+original matrix and a lower-dimensional approximation. Shouldn’t thesecond matrix have fewer rows and columns, which would make equa-tion (15.11) ill-deﬁned? The analogy with line ﬁtting is again helpful here.The ﬁtted line exists in two dimensions, but it is a one-dimensional ob-j e c t .T h es a m ei st r u ef o r ˆA: it is a matrix of lower rank, that is, it could
+be represented in a lower-dimensional space by transforming the axes of
+the space. But for the particular axes chosen it has the same number ofrows and columns as A.
+The
+SVD projection is computed by decomposing the document-by-
+term matrixAtdinto the product of three matrices, Ttn,Snn,a n dDdn:
+AtdTtnSnn(
+DdnT(15.12)
+
+p/CX /CX560 15 Topics in Information Retrieval
+T0
+BBBBBBBB@cosm. astr. moon car truck
+Dimension 1 −0:44−0:13−0:48−0:70−0:26
+Dimension 2 −0:30−0:33−0:51 0.35 0.65
+Dimension 3 0.57−0:59−0:37 0.15 −0:41
+Dimension 4 0.58 0.00 0.00 −0:58 0.58
+Dimension 5 0.25 0.73 −0:61 0.16 −0:091
+CCCCCCCCA
+Figure 15.8 The matrixTof the SVDdecomposition of the matrix in ﬁgure 15.5.
+Values are rounded.
+S0
+BBBBBB@2.16 0.00 0.00 0.00 0.00
+0.00 1.59 0.00 0.00 0.000.00 0.00 1.28 0.00 0.000.00 0.00 0.00 1.00 0.000.00 0.00 0.00 0.00 0.391
+CCCCCCA
+Figure 15.9 The matrix of singular values of the SVD decomposition of the
+matrix in ﬁgure 15.5. Values are rounded.
+wherenmint;d . We indicate dimensionality by subscripts: Ahast
+rows anddcolumns,Thastrows andncolumns and so on. DTis the
+transpose ofD, the matrixDrotated around its diagonal: Dij(
+DT
+ji.
+Examples ofA,T,S,a n dDare given in ﬁgure 15.5 and ﬁgures 15.8
+through 15.10. Figure 15.5 shows an example of A.Acontains the docu-
+ment vectors with each column corresponding to one document. In otherwords, element a
+ijof the matrix records how often term ioccurs in doc-
+umentj. The counts should be appropriately weighted (as discussed in
+section 15.2). For simplicity of exposition, we have not applied weightingand assumed term frequencies of 1.
+Figures 15.8 and 15.10 show TandD, respectively. These matrices
+have orthonormal columns. This means that the column vectors have
+orthonormal
+unit length and are all orthogonal to each other. (If a matrix Chas or-
+thonormal columns, then CTCI,w h e r eIis the diagonal matrix with a
+diagonal of 1’s, and zeroes elsewhere. So we have TTTDTDI.)
+We can view SVDas a method for rotating the axes of the n-dimensional
+space such that the ﬁrst axis runs along the direction of largest variation
+
+p/CX /CX15.4 Latent Semantic Indexing 561
+D0
+BBBBBBBB@d1d2d3d4d5d6
+Dimension 1 −0:75−0:28−0:20−0:45−0:33−0:12
+Dimension 2 −0:29−0:53−0:19 0.63 0.22 0.41
+Dimension 3 0.28−0:75 0.45 −0:20 0.12 −0:33
+Dimension 4 0.00 0.00 0.58 0.00 −0:58 0.58
+Dimension 5 −0:53 0.29 0.63 0.19 0.41 −0:221
+CCCCCCCCA
+Figure 15.10 The matrixDof the SVD decomposition of the matrix in ﬁg-
+ure 15.5. Values are rounded.
+among the documents, the second dimension runs along the direction
+with the second largest variation and so forth. The matrices TandD
+represent terms and documents in this new space. For example, the ﬁrst
+column ofTcorresponds to the ﬁrst row of A, and the ﬁrst column of D
+corresponds to the ﬁrst column of A.
+The diagonal matrix Scontains the singular values of Ain descending
+order (as in ﬁgure 15.9). The ithsingular value indicates the amount of
+variation along the ithaxis. By restricting the matrices T,S,a n dDto
+their ﬁrstk<n rows one obtains the matrices Ttk,Skk,a n dDdkT.
+Their product ˆAis the best least square approximation of Aby a matrix
+of rankkin the sense deﬁned in equation (15.11). One can also prove
+that SVDis unique, that is, there is only one possible decomposition of a
+given matrix.1See Golub and van Loan (1989) for an extensive treatment
+ofSVDincluding a proof of the optimality property.
+That SVDﬁnds the optimal projection to a low-dimensional space is the
+key property for exploiting word co-occurrence patterns. SVDrepresents
+terms and documents in the lower dimensional space as well as possible.
+In the process, some words that have similar co-occurrence patterns are
+projected (or collapsed) onto the same dimension. As a consequence, thesimilarity metric will make topically similar documents and queries comeout as similar even if diﬀerent words are used for describing the topic. Ifwe restrict the matrix in ﬁgure 15.8 to the ﬁrst two dimensions, we endup with two groups of terms: space exploration terms ( cosmonaut ,as-
+tronaut ,a n d moon ) which have negative values on the second dimension
+1.SVD is unique up to sign ﬂips. If we ﬂip all signs in the matrices DandT,w eg e ta
+second solution.
+
+p/CX /CX562 15 Topics in Information Retrieval
+d1d2d3d4d5d6
+Dimension 1 −1:62−0:60−0:04−0:97−0:71−0:26
+Dimension 2 −0:46−0:84−0:30 1.00 0.35 0.65
+Figure 15.11 The matrixBS22D2nof documents after rescaling with sin-
+gular values and reduction to two dimensions. Values are rounded.
+d1d2d3d4d5d6
+d11.00
+d20.78 1.00
+d30.40 0.88 1.00
+d40.47−0:18−0:62 1.00
+d50.74 0.16 −0:32 0.94 1.00
+d60.10−0:54−0:87 0.93 0.74 1.00
+Table 15.9 The matrix of document correlations BTB. For example, the nor-
+malized correlation coeﬃcient of documents d3andd2(when represented as in
+ﬁgure 15.11) is 0.88. Values are rounded.
+and automobile terms ( carandtruck ) which have positive values on the
+second dimension. The second dimension directly reﬂects the diﬀerentco-occurrence patterns of these two groups: space exploration terms onlyco-occur with other space exploration terms, automobile terms only co-occur with other automobile terms (with one exception: the occurrenceofcarind
+1). In some cases, we will be misled by such co-occurrences
+patterns and wrongly infer semantic similarity. However, in most cases
+co-occurrence is a valid indicator of topical relatedness.
+These term similarities have a direct impact on document similarity.
+Let us assume a reduction to two dimensions. After rescaling with thesingular values, we get the matrix BS
+22D2nshown in ﬁgure 15.11
+whereS22isSrestricted to two dimensions (with the diagonal elements
+2.16, 1.59). Matrix Bis a dimensionality reduction of the original matrix
+Aand is what was shown in ﬁgure 15.6.
+Table 15.9 shows the similarities between documents when they are
+represented in this new space. Not surprisingly, there is high similaritybetweend
+1andd2(0.78) andd4,d5,a n dd6(0.94, 0.93, 0.74). These
+document similarities are about the same in the original space (i.e. whenwe compute correlations for the original document vectors in ﬁgure 15.5).The key change is that d
+2andd3, whose similarity is 0.00 in the original
+
+p/CX /CX15.4 Latent Semantic Indexing 563
+space, are now highly similar (0.88). Although d2andd3have no common
+terms, they are now recognized as being topically similar because of theco-occurrence patterns in the corpus.
+Notice that we get the same similarity as in the original space (that is,
+zero similarity) if we compute similarity in the transformed space without
+any dimensionality reduction. Using the full vectors from ﬁgure 15.10
+and rescaling them with the appropriate singular values we get:
+−0:28−0:202:16
+2−0:53−0:191:592
+−0:750:451:2820:000:581:0020:290:630:3920:00
+(If you actually compute this expression, you will ﬁnd that the answer is
+not quite zero, but this is only because of rounding errors. But this is asgood a point as any to observe that many matrix computations are quitesensitive to rounding errors.)
+We have computed document similarity in the reduced space using the
+product ofDandS. The correctness of this procedure can be seen by
+looking atA
+TA, which is the matrix of all document correlations for the
+original space:
+ATA(
+TSDTTTSDTDSTTTTSDTDSDST(15.13)
+BecauseThas orthonormal columns, we have TTTI. Furthermore,
+sinceSis diagonal,SST. Term similarities are computed analogously
+since one observes that the term correlations are given by:
+AATTSDT(
+TSDTTTSDTDSTTTTSTST(15.14)
+One remaining problem for a practical application is how to fold que-
+ries and new documents into the reduced space. The SVD computation
+only gives us reduced representations for the document vectors in ma-
+trixA. We do not want to do a completely new SVD every time a new
+query is launched. In addition, in order to handle large corpora eﬃcientlyw em a yw a n tt od o
+SVDfor only a sample of the documents (for example
+a third or a fourth). The remaining documents would then be folded in.
+The equation for folding documents into the space can again be derived
+from the basic SVDequation:
+ATSDT(15.15)
+,TTATTTSDT
+,TTASDT
+
+p/CX /CX564 15 Topics in Information Retrieval
+So we just multiply the query or document vector with the transpose of
+the term matrix T(after it has been truncated to the desired dimensional-
+ity). For example, for a query vector ~qand a reduction to dimensionality
+k, the query representation in the reduced space is TtkT~q.
+15.4.3 Latent Semantic Indexing in IR
+The application of SVD to information retrieval was originally proposed
+by a group of researchers at Bellcore (Deerwester et al. 1990) and calledLatent Semantic Indexing (
+LSI) in this context. LSIhas been compared Latent Semantic
+Indexing to standard vector space search on several document collections. It was
+found that LSIperforms better than vector space search in many cases,
+especially for high-recall searches (Deerwester et al. 1990; Dumais 1995).
+LSI’s strength in high-recall searches is not surprising since a method that
+takes co-occurrence into account is expected to achieve higher recall. Onthe other hand, due to the noise added by spurious co-occurrence dataone sometimes ﬁnds a decrease in precision.
+The appropriateness of
+LSIalso depends on the document collection.
+Recall the example of the vocabulary problem in ﬁgure 15.8. In a hetero-
+geneous collection, documents may use diﬀerent words to refer to the
+same topic like HCI anduser interface in the ﬁgure. Here, LSIcan help
+identify the underlying semantic similarity between seemingly dissimilardocuments. However, in a collection with homogeneous vocabulary,
+LSI
+is less likely to be useful.
+The application of SVDto information retrieval is called Latent Seman-
+tic Indexing because the document representations in the original term
+space are transformed to representations in a new reduced space. The
+dimensions in the reduced space are linear combinations of the originaldimensions (this is so since matrix multiplications as in equation (15.16)are linear operations). The assumption here (and similarly for otherforms of dimensionality reduction like principal component analysis) isthat these new dimensions are a better representation of documents andqueries. The metaphor underlying the term “latent” is that these new di-
+mensions are the true representation. This true representation was then
+obscured by a generation process that expressed a particular dimensionwith one set of words in some documents and a diﬀerent set of words inanother document.
+LSIanalysis recovers the original semantic structure
+of the space and its original dimensions. The process of assigning dif-ferent words to the same underlying dimension is sometimes interpreted
+
+p/CX /CX15.4 Latent Semantic Indexing 565
+as a form of soft term clustering since it groups terms according to the
+dimensions that they are represented on in the reduced space.
+One could also argue that the SVD representation is not only better
+(since it is based on the ‘true’ dimensions), but also more compact. Manydocuments have more than 150 unique terms. So the sparse vector rep-
+resentation will take up more storage space than the compact
+SVD rep-
+resentation if we reduce to 150 dimensions. However, the eﬃciency gaindue to more compact representations is often outweighed by the addi-tional cost of having to go through a high-dimensional matrix multiplica-tion whenever we map a query or a new document to the reduced space.Another problem is that an inverted index cannot be constructed for
+SVD
+representations. If we have to compute the similarity between the query
+and every single document, then an SVD-based system can be slower than
+a term-based system that searches an inverted index.
+The actual computation of SVDis quadratic in the rank of the document
+by term matrix (the rank is (bounded by) the smaller of the number ofdocuments and the number of terms) and cubic in the number of singularvalues that are computed (Deerwester et al. 1990: 395).
+2For very large
+collections subsampling of documents and selection of terms according
+to frequency is often employed in order to reduce the cost of computing
+the Singular Value Decomposition.
+One objection to SVD is that, along with all other least-squares meth-
+ods, it is really designed for normally-distributed data. But, as can be normality
+assumption seen from the discussion earlier in this chapter, such a distribution is
+inappropriate for count data, and count data is, after all, what a term-by-document matrix consists of. The link between least squares and normal
+distribution can be easily seen by looking at the deﬁnition of the normal
+distribution (section 2.1.9):
+nx;;1
+p
+2exp"
+−1
+2x−
+2#
+whereis the mean andthecovariance . The smaller the squared de-
+viation from the mean x−2, the higher the probability nx;; .S o
+the least squares solution is the maximum likelihood solution. But thisis only true if the underlying data distribution is normal. Other distri-
+2. However, others have suggested that given the particular characteristics of the matri-
+ces that SVDis applied to in information retrieval the complexity is linear in the number
+of documents and (approximately) quadratic in the number of singular values. See (Oardand DeClaris 1996), (Berry et al. 1995), and (Berry and Young 1995) for discussion.
+
+p/CX /CX566 15 Topics in Information Retrieval
+butions like Poisson or negative binomial are more appropriate for term
+counts. One problematic feature of SVDis that, since the reconstruction
+ˆAof the term-by-document matrix Ais based on a normal distribution,
+it can have negative entries, clearly an inappropriate approximation forcounts. A dimensionality reduction based on Poisson would not predict
+such impossible negative counts.
+In defense of
+LSI(and the vector space model in general which can also
+be argued to assume a normal distribution), one can say that the matrixentries are not counts, but weights. Although this is not an issue thathas been investigated systematically, the normal distribution could beappropriate for the weighted vectors even if it is not for count vectors.
+From a practical point of view,
+LSIhas been criticized for being compu-
+tationally more expensive than other word co-occurrence methods while
+not being more eﬀective. Another method that also uses co-occurrenceispseudo-feedback (also called pseudo relevance feedback andtwo-stage
+pseudo-feedback
+retrieval , Buckley et al. 1996; Kwok and Chan 1998). In pseudo-feedback,
+the topndocuments (typically the top 10 or 20) returned by an ad-hoc
+query are assumed to be relevant and added to the query. Some of thesetopndocuments will not actually be relevant, but a large enough pro-
+portion usually is to improve the quality of the query. Words that occur
+frequently with query words will be among the most frequent in the top n.
+So pseudo-feedback can be viewed as a cheap query-speciﬁc way of doingco-occurrence analysis and co-occurrence-based query modiﬁcation.
+Still, in contrast to many heuristic methods that incorporate term co-
+occurrence into information retrieval,
+LSIhas a clean formal framework
+and a clearly deﬁned optimization criterion (least squares) with one glo-
+bal optimum that can be eﬃciently computed. This conceptual simplicity
+and clarity make LSIone of the most interesting IR approaches that go
+beyond query-document term matching.
+15.5 Discourse Segmentation
+Text collections are increasingly heterogeneous. An important aspect ofheterogeneity is length. On the world wide web, document sizes rangefrom home pages with just one sentence to server logs of half a megabyte.
+The weighting schemes discussed in section 15.2.2 take account of dif-
+ferent lengths by applying cosine normalization. However, cosine nor-malization and other forms of normalization that discount term weights
+
+p/CX /CX15.5 Discourse Segmentation 567
+according to document length ignore the distribution of terms within a
+document. Suppose that you are looking for a short description of angio-plasty. You would probably prefer a document in which the occurrencesof angioplasty are concentrated in one or two paragraphs since such aconcentration is most likely to contain a deﬁnition of what angioplasty
+is. On the other hand, a document of the same length in which the occur-
+rences of angioplasty are scattered uniformly is less likely to be helpful.
+We can exploit the structure of documents and search over structurally
+deﬁned units like sections and paragraphs instead of full documents.However, the best subpart of a document to be returned to the user oftenencompasses several paragraphs. For example, in response to a query onangioplasty we may want to return the ﬁrst two paragraphs of a subsec-
+tion on angioplasty, which introduce the term and its deﬁnition, but not
+the rest of the subsection that goes into technical detail.
+Some documents are not structured into paragraphs and sections. Or,
+in the case of documents structured by means of a markup language like
+HTML , it is not obvious how to break them apart into units that would be
+suitable for retrieval.
+These considerations motivate an approach that breaks documents
+into topically coherent multi-paragraph subparts. In the rest of this sub-
+section we will describe one approach to multiparagraph segmentation,theTextTiling algorithm (Hearst and Plaunt 1993; Hearst 1994, 1997).
+TextTiling
+15.5.1 TextTiling
+The basic idea of this algorithm is to search for parts of a text where the
+vocabulary shifts from one subtopic to another. These points are then subtopic
+interpreted as the boundaries of multi-paragraph units.
+Sentence length can vary considerably. Therefore, the text is ﬁrst di-
+vided into small ﬁxed size units, the token sequences . Hearst suggests token sequences
+a size of 20 words for token sequences. We refer to the points between
+token sequences as gaps . The TextTiling algorithm has three main com- gaps
+ponents: the cohesion scorer , the depth scorer and the boundary selector.
+Thecohesion scorer measures the amount of ‘topic continuity’ or cohe- cohesion scorer
+sion at each gap, that is, the amount of evidence that the same subtopic
+is prevalent on both sides of the gap. Intuitively, we want to considergaps with low cohesion as possible segmentation points.
+Thedepth scorer assigns a depth score to each gap depending on how
+depth scorer
+low its cohesion score is compared to the surrounding gaps. If cohesion
+
+p/CX /CX568 15 Topics in Information Retrieval
+at the gap is lower than at surrounding gaps, then the depth score is high.
+Conversely, if cohesion is about the same at surrounding gaps, then thedepth score is low. The intuition here is that cohesion is relative. Onepart of the text (say, the introduction) may have many successive shifts invocabulary. Here we want to be cautious in selecting subtopic boundaries
+and only choose those points with the lowest cohesion scores compared
+to their neighbors. Another part of the text may have only slight shifts forseveral pages. Here it is reasonable to be more sensitive to topic changesand change points that have relatively high cohesion scores, but scoresthat are low compared to their neighbors.
+Theboundary selector is the module that looks at the depth scores and
+boundary selector
+selects the gaps that are the best segmentation points.
+Several methods of cohesion scoring have been proposed.
+Vector Space Scoring. We can form one artiﬁcial document out of the
+token sequences to the left of the gap (the left block ) and another
+artiﬁcial document to the right of the gap (the right block ). (Hearst
+suggests a length of two token sequences for each block.) These twoblocks are then compared by computing the correlation coeﬃcient of
+their term vectors, using the weighting schemes that were described
+earlier in this chapter for the vector space model. The idea is that themore terms two blocks share the higher their cohesion score and theless likely they will be classiﬁed as a segment boundary. Vector SpaceScoring was used by Hearst and Plaunt (1993) and Salton and Allen(1993).
+Block comparison. The block comparison algorithm also computes the
+correlation coeﬃcient of the gap’s left block and right block, but it only
+uses within-block term frequency without taking into account (inverse)document frequency.
+Vocabulary introduction. A gap’s cohesion score in this algorithm is
+the negative of the number of new terms that occur in left and rightblock, that is terms that have not occurred up to this point in the text.The idea is that subtopic changes are often signaled by the use of new
+vocabulary (Youmans 1991). (In order to make the score a cohesion
+score we multiply the count of new terms by −1 so that larger scores
+(fewer new terms) correspond to higher cohesion and smaller scores(more new terms) correspond to lower cohesion.)
+The experimental evidence in (Hearst 1997) suggests that Block Compar-
+ison is the best performing of these three algorithms.
+
+p/CX /CX15.5 Discourse Segmentation 569
+g1g2g3s1
+s2s3
+g1g2g3g4g5s1
+s2s3
+s4s5
+g1g2g3g4g5g6g7s1
+s2s3
+s4s5
+s6s7
+text 1 text 2 text 3gapscohesion
+Figure 15.12 Three constellations of cohesion scores in topic boundary identi-
+ﬁcation.
+The second step in TextTiling is the transformation of cohesion scores
+intodepth scores . We compute the depth score for a gap by summing the
+heights of the two sides of the valley it is located in, for example s1−s2
+s3−s2forg2in text 1 in ﬁgure 15.12. Note that high absolute values
+of the cohesion scores by themselves will not result in the creation of asegment boundary. TextTiling views subtopic changes and segmentation
+as relative. In a text with rapid ﬂuctuations of topic or vocabulary from
+paragraph to paragraph only the most radical changes will be accordedthe status of segment boundaries. In a text with only subtle subtopicchanges the algorithm will be more discriminating.
+For a practical implementation, several enhancements of the basic al-
+gorithm are needed. First, we need to smooth cohesion scores to addresssituations like the one in text 2 in ﬁgure 15.12. Intuitively, the diﬀerence
+s
+1−s2should contribute to the depth score of gap g4. This is achieved by
+smoothing scores using a low pass ﬁlter. For example, the depth score si
+forgiis replaced by si−1sisi1=3. This procedure eﬀectively takes
+into consideration the cohesion scores of gaps at a distance of two fromthe central gap. If they are as high as or higher than the two immediatelysurrounding gaps, they will increase the score of the central gap.
+
+p/CX /CX570 15 Topics in Information Retrieval
+We also need to add heuristics to avoid a sequence of many small
+segments (this type of segmentation is rarely chosen by human judgeswhen they segment text into coherent units). Finally, the parameters ofthe methods for computing cohesion and depth scores (size of tokensequence, size of block, smoothing method) may have to be adjusted de-
+pending on the text sort we are working with. For example, a corpus with
+long sentences will require longer token sequences.
+The third component of TextTiling is the boundary selector. It esti-
+mates average and standard deviation of the depth scores and selects
+all gaps as boundaries that have a depth score higher than −cfor
+some constant c(for example, c0:5o rc1:0). We again try to avoid
+using absolute scores. This method selects gaps that have ‘signiﬁcantly’
+low depth scores, where signiﬁcant is deﬁned with respect to the average
+and the variance of scores.
+In an evaluation, Hearst (1997) found good agreement between seg-
+ments found by TextTiling and segments demarcated by human judges.It remains an open question to what degree segment retrieval leads tobetter information retrieval performance than document retrieval whenevaluated on precision and recall. However, many users prefer to see a
+hit in the context of a natural segment which makes it easier to quickly
+understand the context of the hit (Egan et al. 1989).
+Text segmentation could also have important applications in other ar-
+eas of Natural Language Processing. For example, in word sense disam-biguation segmentation could be used to ﬁnd the natural units that aremost informative for determining the correct sense of a usage. Given theincreasing diversity of document collections, discourse segmentation is
+guaranteed to remain an important topic of research in Statistical
+NLP
+and IR.
+15.6 Further Reading
+Two major venues for publication of current research in IR are the TREC
+proceedings (Harman 1996, see also the links on the website), which re-
+port results of competitions sponsored by the US government, and the
+ACM SIGIR proceedings series. Prominent journals are Information Pro-
+cessing & Management , the Journal of the American Society for Informa-
+tion Science ,a n d Information Retrieval .
+The best known textbooks on information retrieval are books by van
+
+p/CX /CX15.6 Further Reading 571
+Rijsbergen (1979), Salton and McGill (1983) and Frakes and Baeza-Yates
+(1992). See also (Losee 1998) and (Korfhage 1997). A collection of seminalpapers was recently edited by Sparck Jones and Willett (1998). Smeaton(1992) and Lewis and Jones (1996) discuss the role of
+NLPin informa-
+tion retrieval. Evaluation of IR systems is discussed in (Cleverdon and
+Mills 1963), (Tague-Sutcliﬀe 1992), and (Hull 1996). Inverse document
+frequency as a term weighting method was proposed by Sparck Jones(1972). Diﬀerent forms of tf.idf weighting were extensively investigatedwithin the
+SMART project at Cornell University, led by Gerard Salton
+(Salton 1971b; Salton and McGill 1983). Two recent studies are (Singhalet al. 1996) and (Moﬀat and Zobel 1998).
+The Poisson distribution is further discussed in most introductions to
+probability theory, e.g., (Mood et al. 1974: 95). See (Harter 1975) for a
+way of estimating the parameters ;
+1;and2of the two-Poisson model
+without having to assume a set of documents labeled as to their classmembership. Our derivation of
+IDFis based on (Croft and Harper 1979)).
+RIDF was introduced by Church (1995).
+Apart from work on better phrase extraction, the impact of NLPon IR in
+recent decades has been surprisingly small, with most IR researchers fo-
+cusing on shallow analysis techniques. Some exceptions are (Fagan 1987;
+Bonzi and Liddy 1988; Sheridan and Smeaton 1992; Strzalkowski 1995;Klavans and Kan 1998). However, recently there has been much moreinterest in tasks such as automatically summarizing documents ratherthan just returning them as is (Salton et al. 1994; Kupiec et al. 1995), andsuch trends may tend to increase the usefulness of
+NLPin IR applications.
+One task that has beneﬁted from the application of NLPtechniques is
+cross-language information retrieval orCLIR (Hull and Grefenstette 1998; cross-language
+information
+retrieval
+CLIRGrefenstette 1998). The idea is to help a user who has enough knowledge
+of a foreign language to understand texts, but not enough ﬂuency to for-mulate a query. In
+CLIR, such a user can type in a query in her native
+language, the system then translates the query into the target languageand retrieves documents in the target language. Recent work includes(Sheridan et al. 1997; Nie et al. 1998) and the Notes of the
+AAAI sympo-
+sium on cross-language text and speech retrieval (Hull and Oard 1997).
+Littman et al. (1998b) and Littman et al. (1998a) use Latent Semantic In-dexing for
+CLIR.
+We have only presented a small selection of work on modeling term
+distributions in IR. See (van Rijsbergen 1979: ch. 6) for a more systema-tic introduction. (Robertson and Sparck Jones 1976) and (Bookstein and
+
+p/CX /CX572 15 Topics in Information Retrieval
+Swanson 1975) are other important papers (the latter is a decision theo-
+retic approach). Information theory has also been used to motivate IDF
+(Wong and Yao 1992). An application of residual inverse document fre-quency to the characterization of index terms is described by Yamamotoand Church (1998).
+The example in table 15.8 is adapted from (Deerwester et al. 1990). The
+term-by-document matrix we used as an example for
+SVDis small. It can
+easily be decomposed using one of the standard statistical packages (weused S-plus). For a large corpus, we have to deal with several hundredthousand terms and documents. Special algorithms have been developedfor this purpose. See (Berry 1992) and NetLib on the world wide web fora description and implementation of several such algorithms.
+Apart from term-by-document matrices,
+SVDhas been applied to word-
+by-word matrices by Schütze and Pedersen (1997) and to discourse seg-mentation (Kaufmann 1998). Dolin (1998) uses
+LSIfor query categoriza-
+tion and distributed search, using automated classiﬁcation for collectionsummarization.
+Latent Semantic Indexing has also been proposed as a cognitive model
+for human memory. Landauer and Dumais (1997) argue that it can ex-
+plain the rapid vocabulary growth found in school-age children.
+Text segmentation is an active area of research. Other work on the
+text segmentation
+problem includes (Salton and Buckley 1991), (Beeferman et al. 1997) and(Berber Sardinha 1997). Kan et al. (1998) make an implementation of theirsegmentation algorithm publicly available (see website). An informationsource that is diﬀerent from the word overlap measure used in TextTilingis so-called lexical chains : chains of usages of one or more semantically
+lexical chains
+related words throughout a text. By observing starts, interruptions, and
+terminations of such chains, one can derive a diﬀerent type of descriptionof the subtopic structure of text (Morris and Hirst 1991).
+Text segmentation is a rather crude treatment of the complexity of
+written texts and spoken dialogues which often have a hierarchical andnon-linear structure. Trying to do justice to this complex structure isa much harder task than merely detecting topic changes. Finding the
+best approach to this problem is an active area of research in Statistical
+NLP. The special issue of Computational Linguistics on empirical dis- discourse analysis
+course analysis , edited by Walker and Moore (1997), is a good starting
+point for interested readers.
+When Statistical NLPmethods became popular again in the early 1990s,
+discourse modeling was initially an area with a low proportion of statisti-
+
+pa/CX /CX15.7 Exercises 573
+cal work, but there has been a recent surge in the application of quantita-
+tive methods. For some examples, see (Stolcke et al. 1998), (Walker et al.1998) and (Samuel et al. 1998) for probabilistic approaches to dialog mod-
+dialog modeling
+eling and (Kehler 1997) and (Ge et al. 1998) for probabilistic approaches
+toanaphora resolution . anaphora
+resolution
+15.7 Exercises
+Exercise 15.1 [«]
+Try to ﬁnd out the characteristics of various internet search engines. Do they
+use a stop list? Try to search for stop words. Can you search for the phrase the
+the? Do the engines use stemming? Do they normalize words to lowercase? For
+example, does a search for iNfOrMaTiOn return anything?
+Exercise 15.2 [«]
+The simplest way to process phrases in the vector space model is to add them as
+separate terms. For example, the query car insurance rates might be translated
+into an internal representation that contains the terms car,insurance ,rates ,car
+insurance ,insurance rates . This means that phrases and their constituent words
+are treated as independent sources of evidence. Discuss why this is problematic.
+Exercise 15.3 [«]
+Show that Katz’s K mixture satisﬁes:
+Pi01−dfi
+N:
+That is, the ﬁt of the estimate to the actual count is always perfect for the num-
+ber of documents with zero occurrences.
+Exercise 15.4 [«]
+Compute Residual IDFfor the words in table 15.7. Are content words and non-
+content words well separated?
+Exercise 15.5 [«]
+Select a non-content word, a content word and a word which you are not sure
+how to classify and compute the following quantities for them: (a) documentfrequency and collection frequency, (b)
+IDF,( c ) RIDF, and (d)andof the
+K mixture. (You can use any reasonable size corpus of your choice.)
+Exercise 15.6 [«]
+Depending on , the Poisson distribution is either monotonically falling or has
+the shape of a curve that ﬁrst rises, and then falls. Find examples of each. Whatis the property of that determines the shape of the graph?
+
+p/CX /CX574 15 Topics in Information Retrieval
+Exercise 15.7 [«]
+Compute the SVDdecomposition of the term-by-document matrix in ﬁgure 15.5
+using S-Plus or another software package.
+Exercise 15.8 [««]
+In this exercise, we look at two assumptions about subtopic structure that are
+made in TextTiling.
+First, TextTiling performs a linear segmentation, that is, a text is divided into
+a sequence of segments. No attempt is made to impose further structure. Oneexample where the assumption of linearity is not justiﬁed is noted by Hearst:a sequence of three paragraphs that is then summarized in a fourth paragraph.Since the summary paragraph has vocabulary from paragraphs 1 and 2 that doesnot occur in paragraph 3 a segment boundary between 3 and 4 is inferred. Pro-pose a modiﬁcation of TextTiling that would recognize paragraphs 1–4 as a unit.
+Another assumption that TextTiling relies on is that most segment boundaries
+are characterized by pronounced valleys like the one in text 1 in ﬁgure 15.12.But sometimes there is a longer ﬂat region between two segments. Why is this aproblem for the formulation of the algorithm described above? How could oneﬁx it?
+

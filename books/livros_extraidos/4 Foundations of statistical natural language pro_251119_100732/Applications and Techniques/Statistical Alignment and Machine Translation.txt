@@ -1,0 +1,4272 @@
+p/CX /CX13Statistical Alignment and
+Machine Translation
+Machine translation, the automatic translation of text or speech
+from one language to another, is one the most important applicationsof
+NLP. The dream of building machines that let people from diﬀerent
+cultures talk to each other easily is one of the most appealing ideas we as
+NLPresearchers can use to justify our profession (and to get money from
+funding agencies).
+Unfortunately, machine translation (MT) is a hard problem. It is true
+that nowadays you can buy inexpensive packages that call themselves
+translation programs. They produce low-quality translations which aresuﬃcient for a translator who can post-edit the output or for people whoknow enough about a foreign language to be able to decipher the originalwith the help of a buggy translation. The goal of many
+NLPresearchers
+is instead to produce close to error-free output that reads ﬂuently in thetarget language. Existing systems are far from this goal for all but the
+most restricted domains (like weather reports, Isabelle 1987).
+Why is machine translation hard? The best way to answer this question
+is to look at diﬀerent approaches to MT that have been pursued. Someimportant approaches are schematically presented in ﬁgure 13.1.
+The simplest approach is to translate word for word (the bottom ar-
+word for word
+row in ﬁgure 13.1). One obvious problem with this is that there is no
+one-to-one correspondence between words in diﬀerent languages. Lexical
+ambiguity is one reason. One of the examples we discussed in chapter 7
+is the English word suitwhich has diﬀerent translations in French, de-
+pending on whether it means ‘lawsuit’ or ‘set of garments.’ One needsto look at context larger than the individual word to choose the correctFrench translation for ambiguous words like suit.
+Another challenge for the word-for-word approach is that languages
+
+p/CX /CX464 13 Statistical Alignment and Machine Translation
+Interlingua
+(knowledge representation)
+(knowledge-based
+translation)
+English(semanticrepresentation)semantic transferFrench
+(semanticrepresentation)
+English(syntactic parse) syntactic transfer French(syntactic parse)
+English Text(word string) word-for-word French Text(word string)
+Figure 13.1 Diﬀerent strategies for Machine Translation. Examples are for the
+case of translation from English (the source) to French (the target). Word-basedmethods translate the source word by word. Transfer methods build a struc-tured representation of the source (syntactic or semantic), transform it into a
+structured representation of the target and generate a target string from this
+representation. Semantic methods use a richer semantic representation thanparse trees with, for example, quantiﬁer scope disambiguated. Interlingua meth-ods translate via a language-independent knowledge representation. Adaptedfrom (Knight 1997: ﬁgure 1).
+have diﬀerent word orders. A naive word-for-word translation will usu-
+ally get the word order in the target language wrong. This problem isaddressed by the syntactic transfer approach . We ﬁrst parse the source
+syntactic transfer
+approach text, then transform the parse tree of the source text into a syntactic tree
+in the target language (using appropriate rules), and then generate thetranslation from this syntactic tree. Note that we are again faced withambiguity, syntactic ambiguity here, since we are assuming that we cancorrectly disambiguate the source text.
+The syntactic transfer approach solves problems of word order, but of-
+
+p/CX /CX465
+ten a syntactically correct translation has inappropriate semantics. For
+example, German Ich esse gern ‘I like to eat’ is a verb-adverb construction
+that translates literally as I eat readily (orwillingly ,with pleasure ,gladly ).
+There is no verb-adverb construction in English that can be used to ex-press the meaning of I like to eat . So a syntax-based approach cannot
+work here.
+Insemantic transfer approaches , we represent the meaning of the
+semantic transfer
+approach source sentence (presumably derived via an intermediate step of parsing
+as indicated by the arrows in ﬁgure 13.1), and then generate the transla-tion from the meaning. This will ﬁx cases of syntactic mismatch, but eventhis is not general enough to work for all cases. The reason is that evenif the literal meaning of a translation is correct, it can still be unnatural
+to the point of being unintelligible. A classic example is the way that En-
+glish and Spanish express direction and manner of motion (Talmy 1985).In Spanish, the direction is expressed using the verb and the manner isexpressed with a separate phrase:
+(13.1) La botella entró a la cueva ﬂotando.
+With some eﬀort, English speakers may be able to understand the literal
+translation ‘the bottle entered the cave ﬂoating.’ But if there are too manysuch literal translations in a text, then it becomes cumbersome to read.The correct English translation expresses the manner of motion using theverb and the direction using a preposition:
+(13.2) The bottle ﬂoated into the cave.
+An approach that does not rely on literal translations is translation via
+aninterlingua . An interlingua is a knowledge representation formalism
+interlingua
+that is independent of the way particular languages express meaning.
+An interlingua has the added advantage that it eﬃciently addresses theproblem of translating for a large number of languages, as is, for exam-ple, necessary in the European Community. Instead of building On
+2
+translation systems, for all possible pairs of languages, one only has to
+buildOn systems to translate between each language and the interlin-
+gua. Despite these advantages, there are signiﬁcant practical problemswith interlingua approaches due to the diﬃculty of designing eﬃcientand comprehensive knowledge representation formalisms and due to thelarge amount of ambiguity that has to be resolved to translate from anatural language to a knowledge representation language.
+
+p/CX /CX466 13 Statistical Alignment and Machine Translation
+Where do statistical methods come into play in this? In theory, each of
+the arrows in ﬁgure 13.1 can be implemented based on a probabilisticmodel. For example, we can implement the arrow from the box “En-glish Text (word string)” to the box “English Text (syntactic parse)” asa probabilistic parser (see chapters 11 and 12). Some components not
+shown in the ﬁgure could also be implemented statistically, for example,
+a word sense disambiguator. Such probabilistic implementation of se-lected modules is in fact the main use of statistical methods in machinetranslation at this point. Most systems are a mix of probabilistic and non-probabilistic components. However, there are a few completely statisticaltranslation systems and we will describe one such system in section 13.3.
+So why do we need a separate chapter on machine translation then, if
+a large part of the probabilistic work done for MT, such as probabilistic
+parsing and word sense disambiguation, is already covered in other chap-ters? Apart from a few speciﬁc MT problems (like probabilistic transfer,see the Further Reading), there is one task that mainly comes up in theMT context, the task of text alignment . Text alignment is not part of the
+translation process per se. Instead, text alignment is mostly used to cre-ate lexical resources such as bilingual dictionaries and parallel grammars,
+which then improve the quality of machine translation.
+Surprisingly, there has been more work on text alignment in Statistical
+NLPthan on machine translation proper, partly due the above-mentioned
+fact that many other components of MT systems like parsers and dis-ambiguators are not MT-speciﬁc. For this reason, the bulk of this chapterwill be about text alignment. We will then brieﬂy discuss word alignment,the step necessary after text alignment for deriving a bilingual dictionary
+from a parallel text. The last two sections describe the best known at-
+tempt to construct a completely statistical MT system and conclude withsome suggestions for further reading.
+13.1 Text Alignment
+A variety of work has applied Statistical NLP methods to multilingual
+texts. Most of this work has involved the use of parallel texts orbitexts parallel texts
+bitexts– where the same content is available in several languages, due to doc-
+ument translation. The parallel texts most often used have been parlia-mentary proceedings ( Hansards ) or other oﬃcial documents of countries
+Hansards
+with multiple oﬃcial languages, such as Canada, Switzerland and Hong
+
+p/CX /CX13.1 Text Alignment 467
+Kong. One reason for using such texts is that they are easy to obtain
+in quantity, but we suspect that the nature of these texts has also beenhelpful to Statistical
+NLPresearchers: the demands of accuracy lead the
+translators of this sort of material to to use very consistent, literal trans-lations. Other sources have been used (such as articles from newspapers
+and magazines published in several languages), and yet other sources
+are easily available (religious and literary works are often freely avail-able in many languages), but these not only do not provide such a largesupply of text from a consistent period and genre, but they also tend toinvolve much less literal translation, and hence good results are harderto come by.
+Given that parallel texts are available online, a ﬁrst task is to perform
+gross large scale alignment , noting which paragraphs or sentences in one
+alignment
+language correspond to which paragraphs or sentences in another lan-
+guage. This problem has been well-studied and a number of quite suc-cessful methods have been proposed. Once this has been achieved, asecond problem is to learn which words tend to be translated by whichother words, which one could view as the problem of acquiring a bilin-gual dictionary from text. In this section we deal with the text alignment
+problem, while the next section deals with word alignment and induction
+of bilingual dictionaries from aligned text.
+13.1.1 Aligning sentences and paragraphs
+Text alignment is an almost obligatory ﬁrst step for making use of mul-tilingual text corpora. Text alignment can be used not only for the two
+tasks considered in the following sections (bilingual lexicography and ma-
+chine translation), but it is also a ﬁrst step in using multilingual corporaas knowledge sources in other domains, such as for word sense disam-biguation, or multilingual information retrieval. Text alignment can alsobe a useful practical tool for assisting translators. In many situations,such as when dealing with product manuals, documents are regularlyrevised and then each time translated into various languages. One can
+reduce the burden on human translators by ﬁrst aligning the old and re-
+vised document to detect changes, then aligning the old document withits translation, and ﬁnally splicing in changed sections in the new docu-ment into the translation of the old document, so that a translator onlyhas to translate the changed sections.
+The reason that text alignment is not trivial is that translators do not al-
+
+p/CX /CX468 13 Statistical Alignment and Machine Translation
+ways translate one sentence in the input into one sentence in the output,
+although, naturally, this is the most common situation. Indeed, it is im-portant at the outset of this chapter to realize the extent to which humantranslators change and rearrange material so the output text will ﬂow wellin the target language, even when they are translating material from quite
+technical domains. As an example, consider the extract from English and
+French versions of a document shown in ﬁgure 13.2. Although the ma-terial in both languages comprises two sentences, note that their contentand organization in the two languages diﬀers greatly. Not only is therea great deal of reordering (denoted imperfectly by bracketed groupingsand arrows), but large pieces of material can just disappear: for exam-ple, the ﬁnal English words achieved above-average growth rates . In the
+reordered French version, this content is just implied from the fact that
+we are talking about how in general sales of soft drinks were higher, in
+particular, cola drinks .
+In the sentence alignment problem one seeks to say that some group
+of sentences in one language corresponds in content to some group ofsentences in the other language, where either group can be empty soas to allow insertions and deletions. Such a grouping is referred to as a
+sentence alignment or bead . There is a question of how much content has
+bead
+to overlap between sentences in the two languages before the sentences
+are said to be in an alignment. In work which gives a speciﬁc criterion,normally an overlapping word or two is not taken as suﬃcient, but if aclause overlaps, then the sentences are said to be part of the alignment,no matter how much they otherwise diﬀer. The commonest case of onesentence being translated as one sentence is referred to as a 1:1 sentence
+alignment. Studies suggest around 90% of alignments are usually of this
+sort. But sometimes translators break up or join sentences, yielding 1:2or 2:1, and even 1:3 or 3:1 sentence alignments.
+Using this framework, each sentence can occur in only one bead. Thus
+although in ﬁgure 13.2 the whole of the ﬁrst French sentence is trans-lated in the ﬁrst English sentence, we cannot make this a 1:1 alignment,since much of the second French sentence also occurs in the ﬁrst English
+sentence. Thus this is an example of a 2:2 alignment. If we are aligning
+at the sentence level, whenever translators move part of one sentenceinto another, we can only describe this by saying that some group ofsentences in the source are parallel with some group of sentences in thetranslation. An additional problem is that in real texts there are a sur-prising number of cases of crossing dependencies , where the order of
+crossing
+dependencies
+
+p/CX /CX13.1 Text Alignment 469
+With regard to Quant aux (à) According to
+(the) mineral waters
+and (the) lemonades(soft drinks)2
+664(les) eaux
+minérales et aux(les) limonades,3
+775h
+our survey,i
+1988
+they encounter
+still moreusers2
+664elles rencontrent
+toujours plusd’adeptes.3
+775h
+salesi
+of
+Indeed
+our surveyEn eﬀet
+h
+notre sondagei2
+4mineral water
+and soft drinks3
+5were
+makes stand out
+the salesfait ressortir
+h
+des ventesih
+much higheri
+clearly superior2
+4nettement
+supérieures3
+5h
+than in 1987,i
+reﬂecting
+to those in 1987h
+à celles de 1987,ih
+the growing popularityi
+of these products.
+for cola-based
+drinkspour2
+4les boissons à
+base de cola3
+5h
+Cola drinki
+manufacturers
+especiallyh
+notamment.ih
+in particulari
+achieved above
+average growth rates.
+Figure 13.2 Alignment and correspondence. The middle and right columns
+show the French and English versions with arrows connecting parts that can beviewed as translations of each other. The italicized text in the left column is a
+fairly literal translation of the French text.
+
+p/CX /CX470 13 Statistical Alignment and Machine Translation
+Paper Languages Corpus Basis
+Brown et al. (1991c) English, French Canadian Hansard # of words
+Gale and Church (1993) English, French, Union Bank of # of characters
+German Switzerland reports
+Wu (1994) English, Cantonese Hong Kong Hansard # of characters
+Church (1993) various various (incl. Hansard) 4-gram signals
+Fung and McKeown English, Cantonese Hong Kong Hansard lexical signals
+(1994)
+Kay and Röscheisen English, French, Scientiﬁc American lexical (not
+(1993) German probabilistic)
+Chen (1993) English, French Canadian Hansard lexical
+EECproceedings
+Haruno and Yamazaki English, Japanese newspaper, magazines lexical (incl.
+(1996) dictionary)
+Table 13.1 Sentence alignment papers. The table lists diﬀerent techniques for
+text alignment, including the languages and corpora that were used as a testbedand (in column “Basis”) the type of information that the alignment is based on.
+sentences are changed in the translation (Dan Melamed, p.c., 1998). The
+algorithms we present here are not able to handle such cases accurately.Following the statistical string matching literature we can distinguish be-tween alignment problems and correspondence problems, by adding the
+alignment
+correspondencerestriction that alignment problems do not allow crossing dependencies.
+If this restriction is added, then any rearrangement in the order of sen-
+tences must also be described as a many to many alignment. Given these
+restrictions, we ﬁnd cases of 2:2, 2:3, 3:2, and, in theory at least, evenmore exotic alignment conﬁgurations. Finally, either deliberately or bymistake, sentences may be deleted or added during translation, yielding1:0 and 0:1 alignments.
+A considerable number of papers have examined aligning sentences in
+parallel texts between various languages. A selection of papers is shown
+in table 13.1. In general the methods can be classiﬁed along several di-
+mensions. On the one hand there are methods that are simply length-based versus those methods that use lexical (or character string) content.Secondly, there is a contrast between methods that just give an averagealignment in terms of what position in one text roughly corresponds witha certain position in the other text and those that align sentences to form
+
+p/CX /CX13.1 Text Alignment 471
+sentence beads. We outline and compare the salient features of some of
+these methods here. In this discussion let us refer to the parallel texts inthe two languages as SandTwhere each is a succession of sentences, so
+Ss
+1;:::;sIandTt1;:::;tJ. If there are more than two languages,
+we reduce the problem to the two language case by doing pairwise align-
+ments. Many of the methods we consider use dynamic programming
+methods to ﬁnd the best alignment between the texts, so the reader maywish to review an introduction of dynamic programming such as Cormenet al. (1990: ch. 16).
+13.1.2 Length-based methods
+Much of the earliest work on sentence alignment used models that justcompared the lengths of units of text in the parallel corpora. While itseems strange to ignore the richer information available in the text, itturns out that such an approach can be quite eﬀective, and its eﬃciency
+allows rapid alignment of large quantities of text. The rationale of length-
+based methods is that short sentences will be translated as short sen-tences and long sentences as long sentences. Length usually is deﬁned asthe number of words or the number of characters.
+Gale and Church (1993)
+Statistical approaches to alignment attempt to ﬁnd the alignment Awith
+highest probability given the two parallel texts SandT:
+arg max
+APAjS;Targ max
+APA;S;T (13.3)
+To estimate the probabilities involved here, most methods decompose
+the aligned texts into a sequence of aligned beads B1;:::;BK,a n ds u g -
+gest that the probability of a bead is independent of the probability of
+other beads, depending only on the sentences in the bead. Then:
+PA;S;TKY
+k1PBk (13.4)
+The question then is how to estimate the probability of a certain type of
+alignment bead (such as 1:1, or 2:1) given the sentences in that bead.
+The method of Gale and Church (1991; 1993) depends simply on the
+length of source and translation sentences measured in characters. The
+
+p/CX /CX472 13 Statistical Alignment and Machine Translation
+hypothesis is that longer sentences in one language should correspond
+to longer sentences in the other language. This seems uncontroversial,and turns out to be suﬃcient information to do alignment, at least withsimilar languages and literal translations.
+The Union Bank of Switzerland (
+UBS) corpus used for their experiments
+provided parallel documents in English, French, and German. The texts in
+the corpus could be trivially aligned at a paragraph level, because para-graph structure was clearly marked in the corpus, and any confusionsat this level were checked and eliminated by hand. For the experimentspresented, this ﬁrst step was important, since Gale and Church (1993)report that leaving it out and simply running the algorithm on wholedocuments tripled the number of errors. However, they suggest that the
+need for prior paragraph alignment can be avoided by applying the algo-
+rithm they discuss twice: ﬁrstly to align paragraphs within the document,and then again to align sentences within paragraphs. Shemtov (1993) de-velops this idea, producing a variant dynamic programming algorithmthat is especially suited to dealing with deletions and insertions at thelevel of paragraphs instead of just at the sentence level.
+Gale and Church’s (1993) algorithm uses sentence length to evaluate
+how likely an alignment of some number of sentences in L
+1is with some
+number of sentences in L 2. Possible alignments in the study were lim-
+ited to {1:1, 1:0, 0:1, 2:1, 1:2, 2:2}. This made it possible to easily ﬁndthe most probable text alignment by using a dynamic programming al-gorithm, which tries to ﬁnd the minimum possible distance between thetwo texts, or in other words, the best possible alignment. Let Di;j be
+the lowest cost alignment between sentences s
+1;:::;siandt1;:::;tj.T h e n
+one can recursively deﬁne and calculate Di;j by using the obvious base
+cases thatD0;00, etc., and then deﬁning:
+Di;jmin8
+>>>>>>>>><
+>>>>>>>>>:Di;j−1cost(0:1 align ;;t
+j)
+Di−1;jcost(1:0 align si;;)
+Di−1;j−1cost(1:1 align si;tj)
+Di−1;j−2cost(1:2 align si;tj−1;tj)
+Di−2;j−1cost(2:1 align si−1;si;tj)
+Di−2;j−2cost(2:2 align si−1;si;tj−1;tj)
+For instance, one can start to calculate the cost of aligning two texts
+as indicated in ﬁgure 13.3. Dynamic programming allows one to eﬃ-ciently consider all possible alignments and ﬁnd the minimum cost align-mentDI;J . While the dynamic programming algorithm is quadratic,
+
+p/CX /CX13.1 Text Alignment 473
+L1alignment 1 L2L1alignment 2
+s1t1cost(align(s1;t1))
+cost(align(s1;s2;t1))t1 +
++ s2t2cost(align(s2;t2))
++
+cost(align(s3;t2))t2s3 cost(align(s3;;))
++ +
+cost(align(s4;t3))t3s4t3cost(align(s4;t3))
+Figure 13.3 Calculating the cost of alignments. The costs of two diﬀerent align-
+ments are computed, one in the left column (which aligns t1withs1ands2and
+alignst2withs3) and one in the right column (which aligns s3with the empty
+sentence).
+since it is only run between paragraph anchors, in practice things pro-
+ceed quickly.
+This leaves determining the cost of each type of alignment. This is done
+based on the length in characters of the sentences of each language in thebead,l
+1andl2. One assumes that each character in one language gives
+rise to a random number of characters in the other language. These ran-
+dom variables are assumed to be independent and identically distributed,and the randomness can then be modeled by a normal distribution withmeanand variances
+2. These parameters are estimated from data about
+the corpus. For , the authors compare the length of the respective texts.
+German/English = 1.1, and French/English = 1.06, so they are content to
+modelas 1. The squares of the diﬀerences of the lengths of paragraphs
+are used to estimate s2.
+The cost above is then determined in terms of a distance measure be-
+tween a list of sentences in one language and a list in the other. Thedistance measure compares the diﬀerence in the sum of the lengths
+of the sentences in the two lists to the mean and variance of the wholecorpus:l
+2−l1=p
+l1s2. The cost is of the form:
+costl1;l2−logPalignjl1;l2;;s2
+wherealign is one of the allowed match types (1:1, 2:1, etc.). The neg-
+ative log is used just so one can regard this cost as a ‘distance’ measure:the highest probability alignment will correspond to the shortest ‘dis-tance’ and one can just add ‘distances.’ The above probability is calcu-lated using Bayes’ law in terms of P alignPjalign, and therefore
+
+p/CX /CX474 13 Statistical Alignment and Machine Translation
+the ﬁrst term will cause the program to give a higher a priori probability
+to 1:1 matches, which are the most common.
+So, in essence, we are trying to align beads so that the length of the
+sentences from the two languages in each bead are as similar as possible.The method performs well (at least on related languages like English,
+French and German). The basic method has a 4% error rate, and by using
+a method of detecting dubious alignments Gale and Church are able toproduce a best 80% of the corpus on which the error rate is only 0.7%. Themethod works best on 1:1 alignments, for which there is only a 2% errorrate. Error rates are high for the more diﬃcult alignments; in particularthe program never gets a 1:0 or 0:1 alignment correct.
+Brown et al. (1991c)
+The basic approach of Brown et al. (1991c) is similar to Gale and Church,
+but works by comparing sentence lengths in words rather than charac-ters. Gale and Church (1993) argue that this is not as good because of thegreater variance in number of words than number of characters betweentranslations. Among the salient diﬀerences between the papers is a dif-
+ference in goal: Brown et al. did not want to align whole articles, but just
+produce an aligned subset of the corpus suitable for further research.Thus for higher level section alignment, they used lexical anchors andsimply rejected sections that did not align adequately. Using this methodon the Canadian Hansard transcripts, they found that sometimes sec-tions appeared in diﬀerent places in the two languages, and this ‘bad’ textcould simply be ignored. Other diﬀerences in the model used need not
+overly concern us, but we note that they used the EM algorithm to auto-
+matically set the various parameters of the model (see section 13.3). Theyreport very good results, at least on 1:1 alignments, but note that some-times small passages were misaligned because the algorithm ignores theidentity of words (just looking at sentence lengths).
+Wu (1994)
+Wu (1994) begins by applying the method of Gale and Church (1993) to
+a corpus of parallel English and Cantonese text from the Hong KongHansard. He reports that some of the statistical assumptions underly-ing Gale and Church’s model are not as clearly met when dealing withthese unrelated languages, but nevertheless, outside of certain header
+
+p/CX /CX13.1 Text Alignment 475
+passages, Wu reports results not much worse than those reported by
+Gale and Church. To improve accuracy, Wu explores using lexical cues,which heads this work in the direction of the lexical methods that wecover in section 13.1.4. Incidentally, it is interesting to note that Wu’s 500sentence test suite includes one each of a 3:1, 1:3 and 3:3 alignments –
+alignments considered too exotic to be generable by most of the methods
+we discuss, including Wu’s.
+13.1.3 Oﬀset alignment by signal processing techniques
+What ties these methods together is that they do not attempt to alignbeads of sentences but rather just to align position oﬀsets in the two
+parallel texts so as to show roughly what oﬀset in one text aligns with
+what oﬀset in the other.
+Church (1993)
+Church (1993) argues that while the above length-based methods work
+well on clean texts, such as the Canadian Hansard, they tend to break
+down in real world situations when one is dealing with noisy optical char-
+acter recognition (
+OCR) output, or ﬁles that contain unknown markup
+conventions. OCR programs can lose paragraph breaks and punctua-
+tion characters, and ﬂoating material (headers, footnotes, tables, etc.)can confuse the linear order of text to be aligned. In such texts, ﬁnd-ing even paragraph and sentence boundaries can be diﬃcult. Electronictexts should avoid most of these problems, but may contain unknown
+markup conventions that need to be treated as noise. Church’s approach
+is to induce an alignment by using cognates. Cognates are words that are
+cognates
+similar across languages either due to borrowing or common inheritance
+from a linguistic ancestor, for instance, French supérieur and English su-
+perior . However, rather than considering cognate words (as in Simard
+et al. (1992)) or ﬁnding lexical correspondences (as in the methods towhich we will turn next), the procedure works by ﬁnding cognates at
+the level of character sequences. The method is dependent on there be-
+ing an ample supply of identical character sequences between the sourceand target languages, but Church suggests that this happens not only inlanguages with many cognates but in almost any language using the Ro-man alphabet, since there are usually many proper names and numberspresent. He suggests that the method can even work with non-Roman
+
+p/CX /CX476 13 Statistical Alignment and Machine Translation/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS
+/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS
+/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/BS/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4 /D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4 /D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4 /D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4 /D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4/D4 /D4/D4 /D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4 /D4
+/D4/D4/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4 /D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4 /D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4 /D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4 /D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4 /D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4 /D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4 /D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4 /D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4 /D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4 /D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4 /D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4 /D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4 /D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4 /D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4 /D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4 /D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4 /D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4 /D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4 /D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4 /D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4 /D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4 /D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4 /D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4 /D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4 /D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4/D4 /D4/D4 /D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4 /D4
+/D4/D4/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4 /D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4 /D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4 /D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4 /D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4 /D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4 /D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4 /D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4 /D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4 /D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4 /D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4 /D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4 /D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4 /D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4 /D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4 /D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4 /D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4 /D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4 /D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4 /D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4 /D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4 /D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4 /D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4 /D4
+/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4
+/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4
+/D4
+/D4/D4
+/D4/D4/D4
+/D4/D4/D4
+/D4
+/D4/D4/D4
+/D4/D4
+/D4/D4
+/D4
+Figure 13.4 A sample dot plot. The source and the translated text are concate-
+nated. Each coordinate x;y is marked with a dot iﬀ there is a correspondence
+between position xand position y. The source text has more random corre-
+spondences with itself than with the translated text, which explains the darker
+shade of the upper left and, by analogy, the darker shade of the lower right. Thediagonals are black because there is perfect correspondence of each text withitself (the diagonals in the upper left and the lower right), and because of thecorrespondences between the source text and its translation (diagonals in lowerleft and upper right).
+writing systems, providing they are liberally sprinkled with names and
+numbers (or computer keywords!).
+The method used is to construct a dot-plot . The source and translated dot-plot
+texts are concatenated and then a square graph is made with this text on
+both axes. A dot is placed at x;y whenever there is a match between po-
+sitionsxandyin this concatenated text. In Church (1993) the unit that is
+matched is character 4-grams. Various signal processing techniques are
+then used to compress the resulting plot. Dot plots have a characteristiclook, roughly as shown in ﬁgure 13.4. There is a straight diagonal line,since each position x;x has a dot. There are then two darker rectangles
+in the upper left and lower right. (Since the source is more similar toitself, and the translation to itself than each to the other.) But the im-
+
+p/CX /CX13.1 Text Alignment 477
+portant information for text alignment is found in the other two, lighter
+colored quadrants. Either of these matches between the text of the twolanguages, and hence represents what is sometimes called a bitext map .
+bitext map
+In these quadrants, there are two other, fainter, roughly straight, diago-
+nal lines. These lines result from the propensity of cognates to appear in
+the two languages, so that often the same character sequences appear in
+the source and the translation of a sentence. A heuristic search is thenused to ﬁnd the best path along the diagonal, and this provides an align-ment in terms of oﬀsets in the two texts. The details of the algorithmneed not concern us, but in practice various methods are used so as notto calculate the entire dotplot, and n-grams are weighted by inverse fre-
+quency so as to give more importance to when rare n-grams match (with
+commonn-grams simply being ignored). Note that there is no attempt
+here to align whole sentences as beads, and hence one cannot provideperformance ﬁgures corresponding to those for most other methods wediscuss. Perhaps because of this, the paper oﬀers no quantitative evalua-tion of performance, although it suggests that error rates are “often verysmall.” Moreover, while this method may often work well in practice, itcan never be a fully general solution to the problem of aligning paral-
+lel texts, since it will fail completely when no or extremely few identical
+character sequences appear between the text and the translation. Thisproblem can occur when diﬀerent character sets are used, as with east-ern European or Asian languages (although even in such case there areoften numbers and foreign language names that occur on both sides).
+Fung and McKeown (1994)
+Following earlier work in Fung and Church (1994), Fung and McKeown
+(1994) seek an algorithm that will work: (i) without having found sen-tence boundaries (as we noted above, punctuation is often lost in
+OCR),
+(ii) in only roughly parallel texts where some sections may have no corre-
+sponding section in the translation or vice versa, and (iii) with unrelatedlanguage pairs. In particular, they wish to apply this technique to a par-allel corpus of English and Cantonese (Chinese). The technique is to infera small bilingual dictionary that will give points of alignment. For eachword, a signal is produced, as an arrival vector of integer numbers giv-
+arrival vector
+
+p/CX /CX478 13 Statistical Alignment and Machine Translation
+ing the number of words between each occurrence of the word at hand.1
+For instance, if a word appears at word oﬀsets (1, 263, 267, 519) then
+the arrival vector will be (262, 4, 252). These vectors are then comparedfor English and Cantonese words. If the frequency or position of occur-rence of an English and a Cantonese word diﬀer too greatly it is assumed
+that they cannot match, otherwise a measure of similarity between the
+signals is calculated using Dynamic Time Warping – a standard dynamicprogramming algorithm used in speech recognition for aligning signalsof potentially diﬀerent lengths (Rabiner and Juang 1993: sec. 4.7). For allsuch pairs of an English word and a Cantonese word, a few dozen pairswith very similar signals are retained to give a small bilingual dictionarywith which to anchor the text alignment. In a manner similar to Church’s
+dot plots, each occurrence of this pair of words becomes a dot in a graph
+of the English text versus the Cantonese text, and again one expects tosee a stronger signal in a line along the diagonal (producing a ﬁgure sim-ilar to ﬁgure 13.4). This best match between the texts is again found bya dynamic programming algorithm and gives a rough correspondence inoﬀsets between the two texts. This second phase is thus much like theprevious method, but this method has the advantages that it is genuinely
+language independent, and that it is sensitive to lexical content.
+13.1.4 Lexical methods of sentence alignment
+The previous methods attacked the lack of robustness of the length-
+based methods in the face of noisy and imperfect input, but they dothis by abandoning the goal of aligning sentences, and just aligning textoﬀsets. In this section we review a number of methods which still alignbeads of sentences like the ﬁrst methods, but are more robust because
+they use lexical information to guide the alignment process.
+Kay and Röscheisen (1993)
+The early proposals of Brown et al. (1991c) and Gale and Church (1993)
+make little or no use of the actual lexical content of the sentences. How-ever, it seems that lexical information could give a lot of conﬁrmation ofalignments, and be vital in certain cases where a string of similar length
+1. Since Chinese is not written divided into words, being able to do this depends on an
+earlier text segmentation phase.
+
+p/CX /CX13.1 Text Alignment 479
+sentences appears in two languages (as often happens in reports when
+there are things like lists). Kay and Röscheisen (1993) thus use a partialalignment of lexical items to induce the sentence alignment. The use oflexical cues also means the method does not require a prior higher levelparagraph alignment.
+The method involves a process of convergence where a partial align-
+ment at the word level induces a maximum likelihood alignment at thesentence level, which is used in turn to reﬁne the word level alignmentand so on. Word alignment is based on the assumption that two wordsshould correspond if their distributions are the same. The steps are ba-sically as follows:
+Assume the ﬁrst and last sentences of the texts align. These are the
+initial anchors.
+Then until most sentences are aligned:
+1. Form an envelope of possible alignments from the cartesian prod- envelope
+uct of the list of sentences in the source language and the target
+language. Alignments are excluded if they cross anchors or theirrespective distances from an anchor diﬀer too greatly. The diﬀer-ence is allowed to increase as distance from an anchor increases,giving a pillow shape of possible alignments, as in ﬁgure 13.5.
+2. Choose pairs of words that tend to co-occur in these potential par-
+tial alignments. Choose words whose distributions are similar in
+the sense that most of the sentences in which one appears arealignable with sentences in which the other appears, and whichare suﬃciently common that alignments are not likely to be dueto chance.
+3. Find pairs of source and target sentences which contain many pos-
+sible lexical correspondences. The most reliable of these pairs areused to induce a set of partial alignments which will be part of theﬁnal result. We commit to these alignments, and add them to our
+list of anchors, and then repeat the steps above.
+The accuracy of the approach depends on the annealing schedule .I f
+annealing schedule
+you accept many pairs as reliable in each iteration, you need fewer it-
+erations but the results might suﬀer. Typically, about 5 iterations areneeded for satisfactory results. This method does not assume any lim-itations on the types of possible alignments, and is very robust, in that
+
+p/CX /CX480 13 Statistical Alignment and Machine Translation
+111111111122
+123456789012345678901
+1
+2
+3
+4
+5
+6 
+7 
+8 
+9 
+10 
+11 
+12 
+13 
+14 
+15 
+16 
+17 
+Figure 13.5 The pillow-shaped envelope that is searched. Sentences in the L1
+text are shown on the vertical axis (1–17), sentences in the L2text are shown
+on the horizontal axis (1–21). There is already an anchor between the begin-ning of both texts, and between sentences 17;21.A‘’ indicates that the two
+corresponding sentences are in the set of alignments that are considered in the
+current iteration of the algorithm. Based on (Kay and Röscheisen 1993: ﬁgure 3).
+‘bad’ sentences just will not have any match in the ﬁnal alignment. Re-
+sults are again good. On Scientiﬁc American articles, Kay and Röscheisen(1993) achieved 96% coverage after four passes, and attributed the re-mainder to 1:0 and 0:1 matches. On 1000 Hansard sentences and using5 passes, there were 7 errors, 5 of which they attribute not to the main
+algorithm but to the naive sentence boundary detection algorithm that
+they employed. On the other hand, the method is computationally inten-sive. If one begins with a large text with only the endpoints for anchors,there will be a large envelope to search. Moreover, the use of a pillow-shaped envelope to somewhat constrain the search could cause problemsif large sections of the text have been moved around or deleted, as thenthe correct alignments for certain sentences may lie outside the search
+envelope.
+Chen (1993)
+Chen (1993) does sentence alignment by constructing a simple word-to-
+word translation model as he goes along. The best alignment is then
+
+p/CX /CX13.1 Text Alignment 481
+the one that maximizes the likelihood of generating the corpus given the
+translation model. This best alignment is again found by using dynamicprogramming. Chen argues that whereas previous length-based meth-ods lacked robustness and previous lexical methods were too slow to bepractical for large tasks, his method is robust, fast enough to be practical
+(thanks to using a simple translation model and thresholding methods
+to improve the search for the best alignment), and more accurate thanprevious methods.
+The model is essentially like that of Gale and Church (1993), except that
+a translation model is used to estimate the cost of a certain alignment. So,to align two texts SandT, we divide them into a sequence of sentence
+beadsB
+k, each containing zero or more sentences of each language as
+before, so that the sequence of beads covers the corpus:
+Bksak;:::;sbk;tck;:::;tdk
+Then, assuming independence between sentence beads, the most proba-
+ble alignment AB1;:::;BmAof the corpus is determined by:
+arg max
+APS;T;Aarg max
+APLmAY
+k1PBk
+The termPL is the probability that one generates an alignment of L
+beads, but Chen eﬀectively ignores this term by suggesting that this dis-tribution is uniform up to some suitably high ‘greater than the number
+of sentences in the corpus, and zero thereafter.
+The task then is to determine a translation model that gives a more
+accurate probability estimate, and hence cost for a certain bead than a
+model based only on the length of the respective sentences. Chen argues
+that for reasons of simplicity and eﬃciency one should stick to a fairlysimple translation model. The model used ignores issues of word order,and the possibility of a word corresponding to more than one word inthe translation. It makes use of word beads, and these are restricted
+word beads
+to 1:0, 0:1, and 1:1 word beads. The essence of the model is that if aword is commonly translated by another word, then the probability of the
+corresponding 1:1 word bead will be high, much higher than the product
+of the probability of the 1:0 and 0:1 word beads using the same words. Weomit the details of the translation model here, since it is a close relative ofthe model introduced in section 13.3. For the probability of an alignment,the program does not sum over possible word beadings derived from thesentences in the bead, but just takes the best one. Indeed, it does not
+
+p/CX /CX482 13 Statistical Alignment and Machine Translation
+even necessarily ﬁnd the best one since it does a greedy search for the
+best word beading: the program starts with a 1:0 and 0:1 beading of theputative alignment, and greedily replaces a 1:0 and a 0:1 bead with the1:1 bead that produces the biggest improvement in the probability of thealignment until no further improvement can be gained.
+The parameters of Chen’s model are estimated by a Viterbi version
+of the EM algorithm.
+2The model is bootstrapped from a small corpus
+of 100 sentence pairs that have been manually aligned. It then reesti-mates parameters using an incremental version of the EM algorithm onan (unannotated) chunk of 20,000 corresponding sentences from eachlanguage. The model then ﬁnally aligns the corpora using a single passthrough the data. The method of ﬁnding the best total alignment uses
+dynamic programming as in Gale and Church (1993). However, thresh-
+olding is used for speed reasons (to give a linear search rather than thequadratic performance of dynamic programming): a beam search is usedand only partial preﬁx alignments that are almost as good as the bestpartial alignment are maintained in the beam. This technique for limit-ing search is generally very eﬀective, but it causes problems when thereare large deletions or insertions in one text (vanilla dynamic program-
+ming should be much more robust against such events, but see Simard
+and Plamondon (1996)). However, Chen suggests it is easy to detect largedeletions (the probability of all alignments becomes low, and so the beambecomes very wide), and a special procedure is then invoked to search fora clear alignment after the deletion, and the regular alignment process isthen restarted from this point.
+This method has been used for large scale alignments: several million
+sentences each of English and French from both Canadian Hansard and
+European Economic Community proceedings. Chen has estimated the er-ror rate based on assessment of places where the proposed alignment isdiﬀerent from the results of Brown et al. (1991c). He estimates an er-ror rate of 0.4% over the entire text whereas others have either reportedhigher error rates or similar error rates over only a subset of the text. Fi-nally Chen suggests that most of the errors are apparently due to the not-
+terribly-good sentence boundary detection method used, and that further
+2. In the standard EM algorithm, for each data item, one sums over all ways of doing
+something to get an expectation for a parameter. Sometimes, for computational reasons,people adopt the expedient of just using the probabilities of the best way of doing some-thing for each data item instead. This method is referred to as a Viterbi version of the EMalgorithm. It is heuristic, but can be reasonably eﬀective.
+
+p/CX /CX13.1 Text Alignment 483
+improvements in the translation model are unlikely to improve the align-
+ments, while tending to make the alignment process much slower. Wenote, however, that the presented work limits matches to 1:0, 0:1, 1:1,2:1, and 1:2, and so it will fail to ﬁnd the more exotic alignments that dosometimes occur. Extending the model to other alignment types appears
+straightforward, although we note that in practice Gale and Church had
+less success in ﬁnding unusual alignment types. Chen does not presentany results broken down according to the type of alignment involved.
+Haruno and Yamazaki (1996)
+Haruno and Yamazaki (1996) argue that none of the above methods
+work eﬀectively when trying to align short texts in structurally diﬀer-ent languages. Their proposed method is essentially a variant of Kayand Röscheisen (1993), but nevertheless, the paper contains several in-teresting observations.
+3Firstly they suggest that for structurally very
+diﬀerent languages like Japanese and English, including function words
+in lexical matching actually impedes alignment, and so the authors leave
+all function words out and do lexical matching on content words only.This is achieved by using part of speech taggers to classify words inthe two languages. Secondly, if trying to align short texts, there are notenough repeated words for reliable alignment using the techniques Kayand Röscheisen (1993) describe, and so they use an online dictionary toﬁnd matching word pairs. Both these techniques mark a move from the
+knowledge-poor approach that characterized early Statistical
+NLPwork
+to a knowledge-rich approach. For practical purposes, since knowledgesources like taggers and online dictionaries are widely available, it seemssilly to avoid their use purely on ideological grounds. On the other hand,when dealing with more technical texts, Haruno and Yamazaki point outthat ﬁnding word correspondences in the text is still important – usinga dictionary is not a substitute for this. Thus, using a combination of
+methods they are able to achieve quite good results on even short texts
+between very diﬀerent languages.
+3. On the other hand some of the details of their method are questionable: use of mutual
+information to evaluate word matching (see the discussion in section 5.4 – adding use ofatscore to ﬁlter the unreliability of mutual information when counts are low is only a
+partial solution) and the use of an ad hoc scoring function to combine knowledge fromthe dictionary with corpus statistics.
+
+p/CX /CX484 13 Statistical Alignment and Machine Translation
+13.1.5 Summary
+The upshot seems to be that if you have clean texts from a controlled
+translation environment, sentence alignment does not seem that diﬃculta problem, and there are now many methods that perform well. On the
+other hand, real world problems and less literal translations, or languages
+with few cognates and diﬀerent writing systems can pose considerableproblems. Methods that model relationships between lexical items in oneway or another are much more general and robust in circumstances ofthis sort. Both signal processing techniques and whole sentence align-ment techniques are crude approximations to the ﬁne-grained structureof a match between a sentence and its translation (compare, again, the
+elaborate microstructure of the match shown in ﬁgure 13.2), but they
+have somewhat diﬀerent natures. The choice of which to use should bedetermined by the languages of interest, the required accuracy, and theintended application of the text alignment.
+13.1.6 Exercises
+Exercise 13.1 [«]
+For two languages you know, ﬁnd an example where the basic assumption of
+the length-based approach breaks down, that is a short and a long sentence aretranslations of each other. It is easier to ﬁnd examples if length is deﬁned asnumber of words.
+Exercise 13.2 [«]
+Gale and Church (1993) argue that measuring length in number of characters is
+preferable because the variance in number of words is greater. Do you agree thatword-based length is more variable? Why?
+Exercise 13.3 [«]
+The dotplot ﬁgure is actually incorrect: it is not symmetric with respect to the
+main diagonal. (Verify this!) It should be. Why?
+13.2 Word Alignment
+A common use of aligned texts is the derivation of bilingual dictionaries bilingual
+dictionaries and terminology databases. This is usually done in two steps. First the
+terminology
+databasestext alignment is extended to a word alignment (unless we are dealing
+with an approach in which word and text alignment are induced simulta-neously). Then some criterion such as frequency is used to select aligned
+
+p/CX /CX13.2 Word Alignment 485
+pairs for which there is enough evidence to include them in the bilin-
+gual dictionary. For example, if there is just one instance of the wordalignment “ adeptes –products ” (an alignment that might be derived from
+ﬁgure 13.2), then we will probably not include it in a dictionary (whichis the right decision here since adeptes means ‘users’ in the context, not
+‘products’).
+One approach to word alignment was brieﬂy discussed in section 5.3.3:
+word alignment based on measures of association. Association measures
+association
+such as the2measure used by Church and Gale (1991b) are an eﬃcient
+way of computing word alignments from a bitext. In many cases, theyare suﬃcient, especially if a high conﬁdence threshold is used. However,association measures can be misled in situations where a word in L
+1fre-
+quently occurs with more than one word in L2. This was the example of
+house being incorrectly translated as communes instead of chambre be-
+cause, in the Hansard, House most often occurs with both French words
+in the phrase Chambre de Communes .
+Pairs like chambre$house can be identiﬁed if we take into account a
+source of information that is ignored by pure association measures: thefact that, on average, a given word is the translation of only one other
+word in the second language. Of course, this is true for only part of the
+words in an aligned text, but assuming one-to-one correspondence hasbeen shown to give highly accurate results (Melamed 1997b). Most algo-rithms that incorporate this type of information are implementations ofthe EM algorithm or involve a similar back-and-forth between a hypoth-esized dictionary of word correspondences and an alignment of wordtokens in the aligned corpus. Examples include Chen (1993) as described
+in the previous section, Brown et al. (1990) as described in the next sec-
+tion, Dagan et al. (1993), Kupiec (1993a), and Vogel et al. (1996). Mostof these approaches involve several iterations of recomputing word cor-respondences from aligned tokens and then recomputing the alignmentof tokens based on the improved word correspondences. Other authorsaddress the additional complexity of deriving correspondences betweenphrases since in many cases the desired output is a database of termi-
+phrases
+nological expressions, many of which can be quite complex (Wu 1995;
+Gaussier 1998; Hull 1998). The need for several iterations makes all ofthese algorithms somewhat less eﬃcient than pure association methods.
+As a ﬁnal remark, we note that future work is likely to make signiﬁ-
+cant use of the prior knowledge present in existing bilingual dictionariesrather than attempting to derive everything from the aligned text. See
+
+p/CX /CX486 13 Statistical Alignment and Machine Translation
+Language Model
+PeTranslation Model
+PfjeDecoder
+ˆearg maxePejfe f ˆe
+Figure 13.6 The noisy channel model in machine translation. The Language
+Model generates an English sentence e. The Translation Model transmits eas the
+French sentence f. The decoder ﬁnds the English sentence ˆewhich is most likely
+to have given rise to f.
+Klavans and Tzoukermann (1995) for one example of such an approach.
+13.3 Statistical Machine Translation
+In section 2.2.4, we introduced the noisy channel model . One of its appli- noisy channel
+model cations in NLPis machine translation as shown in ﬁgure 13.6. In order to
+translate from French to English, we set up a noisy channel that receives
+as input an English sentence e, transforms it into a French sentence f,
+and sends the French sentence fto a decoder. The decoder then deter-
+mines the English sentence ˆethatfis most likely to have arisen from
+(and which is not necessarily identical to e).
+We thus have to build three components for translation from French to
+English: a language model, a translation model, and a decoder. We also
+have to estimate the parameters of the model, the translation probabili-
+ties.
+Language model. The language model gives us the probability Pe of
+the English sentence. We already know how to build language models
+based onn-grams (chapter 6) or probabilistic grammars (chapter 11 and
+chapter 12), so we just assume here that we have an appropriate languagemodel.
+Translation model. Here is a simple translation model based on word
+alignment:
+Pfje1
+ZlX
+a10lX
+am0mY
+j1Pfjjeaj (13.5)
+We use the notation of Brown et al. (1993): eis the English sentence; lis
+the length of ein words;fis the French sentence; mis the length of f;
+
+p/CX /CX13.3 Statistical Machine Translation 487
+fjis wordjinf;ajis the position in ethatfjis aligned with; eajis the
+word inethatfjis aligned with; Pwfjweis the translation probability , translation
+probability the probability that we will see wfin the French sentence given that we
+seewein the English sentence; and Zis a normalization constant.
+The basic idea of this formula is fairly straightforward. The msumsPl
+a10Pl
+am0sum over all possible alignments of French words to En-
+glish words. The meaning of aj0f o ra najis that wordjin the French
+sentence is aligned with the empty cept , that is, it has no (overt) trans- empty cept
+lation. Note that an English word can be aligned with multiple French
+words, but that each French word is aligned with at most one Englishword.
+For a particular alignment, we multiply the mtranslation probabilities,
+assuming independence of the individual translations (see below for how
+to estimate the translation probabilities). So for example, if we want tocompute:
+PJean aime Marie jJohn loves Mary 
+for the alignment ( Jean,John), (aime ,loves ), and ( Marie ,Mary ), then we
+multiply the three corresponding translation probabilities.
+PJeanjJohnPaimejlovesPMariejMary
+To summarize, we compute Pfjeby summing the probabilities of all
+alignments. For each alignment, we make two (rather drastic) simplifyingassumptions: Each French word is generated by exactly one English word
+(or the empty cept); and the generation of each French word is indepen-
+dent of the generation of all other French words in the sentence.
+4
+Decoder. We saw examples of decoders in section 2.2.4 and this one
+does the same kind of maximization, based on the observation that wecan omitPf from the maximization since fis ﬁxed:
+ˆearg max
+ePejfarg max
+ePePfje
+Pfarg max
+ePePfje (13.6)
+The problem is that the search space is inﬁnite, so we need a heuris-
+tic search algorithm. One possibility is to use stack search (see sec-
+tion 12.1.10). The basic idea is that we build an English sentence in-
+crementally. We keep a stack of partial translation hypotheses. At each
+4. Going in the other direction, note that one English word can correspond to multiple
+French words.
+
+p/CX /CX488 13 Statistical Alignment and Machine Translation
+point, we extend these hypotheses with a small number of words and
+alignments and then prune the stack to its previous size by discardingthe least likely extended hypotheses. This algorithm is not guaranteed toﬁnd the best translation, but can be implemented eﬃciently.
+Translation probabilities. The translation probabilities are estimated
+using the EM algorithm (see section 14.2.2 for a general introduction toEM). We assume that we have a corpus of aligned sentences.
+As we discussed in the previous section on word alignment, one way to
+guess at which words correspond to each other is to compute an associ-ation measure like 
+2. But that will generate many spurious correspon-
+dences because a source word is not penalized for being associated withmore than one target word (recall the example chambre$house ,cham-
+bre$chamber ).
+The basic idea of the EM algorithm is that it solves the credit assign-
+credit assignment
+ment problem. If a word in the source is strongly aligned with a word in
+the target, then it is not available anymore to be aligned with other wordsin the target. This avoids cases of double and triple alignment on the onehand, and an excessive number of unaligned words on the other hand.
+We start with a random initialization of the translation probabilities
+Pw
+fjwe. In the E step, we compute the expected number of times we
+will ﬁndwfin the French sentence given that we have wein the English
+sentence.
+zwf;weX
+e;f s:t:we2e;wf2fPwfjwe
+where the summation ranges over all pairs of aligned sentences such
+that the English sentence contains weand the French sentence contains
+wf. (We have simpliﬁed slightly here since we ignore cases where words
+occur more than once in a sentence.)
+The M step reestimates the translation probabilities from these expec-
+tations:
+Pwfjwezwf;weP
+vzwf;v
+where the summation ranges over all English words v.
+What we have described is a very simple version of the algorithms de-
+scribed by Brown et al. (1990) and Brown et al. (1993) (see also Kupiec(1993a) for a clear statement of EM for alignment). The main part we
+
+p/CX /CX13.3 Statistical Machine Translation 489
+have simpliﬁed is that, in these models, implausible alignments are pe-
+nalized. For example, if an English word at the beginning of the Englishsentence is aligned with a French word at the end of the French sentence,then this distortion in the positions of the two aligned words will decrease
+distortion
+the probability of the alignment.
+Similarly, a notion of fertility is introduced for each English word which fertility
+tells us how many French words it usually generates. In the uncon-
+strained model, we do not distinguish the case where each French word isgenerated by a diﬀerent English word, or at least approximately so (whichsomehow seems the normal case) from the case where all French wordsare generated by a single English word. The notion of fertility allows usto capture the tendency of word alignments to be one-to-one and one-to-
+two in most cases (and one-to-zero is another possibility in this model).
+For example, the most likely fertility of farmers in the corpus that the
+models were tested on is 2 because it is most often translated as twowords: les agriculteurs . For most English words, the most likely fertility
+is 1 since they tend to be translated by a single French word.
+An evaluation of the model on the aligned Hansard corpus found that
+only about 48% of French sentences were decoded (or translated) cor-
+rectly. The errors were either incorrect decodings as in (13.7) or ungram-
+matical decodings as in (13.8) (Brown et al. 1990: 84).
+(13.7) a. Source sentence. Permettez que je donne un example à la chambre.
+b.Correct translation. Let me give the House one example.
+c.Incorrect decoding. Let me give an example in the House.
+(13.8) a. Source sentence. Vous avez besoin de toute l’aide disponible.
+b.Correct translation. You need all the help you can get.
+c.Ungrammatical decoding. You need of the whole beneﬁts available.
+A detailed analysis in (Brown et al. 1990) and (Brown et al. 1993) reveals
+several problems with the model.
+Fertility is asymmetric. Often a single French word corresponds to
+several English words. For example, to go is translated as aller.T h e r e
+is no way to capture this generalization in the formalization proposed.The model can get individual sentences with to go right by translating
+
+p/CX /CX490 13 Statistical Alignment and Machine Translation
+toas the empty set and goasaller, but this is done in an error-prone
+way on a case by case basis instead of noting the general correspon-dence of the two expressions.
+Note that there is an asymmetry here since we can formalize the fact
+that a single English word corresponds to several French words. This isthe example of farmers which has fertility 2 and produces two words
+lesandagriculteurs .
+Independence assumptions. As so often in Statistical NLP,m a n yi n d e -
+pendence assumptions are made in developing the probabilistic modelthat don’t strictly hold. As a result, the model gives an unfair advan-tage to short sentences because, simply put, fewer probabilities are
+multiplied and therefore the resulting likelihood is a larger number.
+One can ﬁx this by multiplying the ﬁnal likelihood with a constant c
+l
+that increases with the length lof the sentence, but a more principled
+solution would be to develop a more sophisticated model in which in-appropriate independence assumptions need not be made. See Brownet al. (1993: 293), and also the discussion in section 12.1.11.
+Sensitivity to training data. Small changes in the model and the
+training data (e.g., taking the training data from diﬀerent parts of theHansard) can cause large changes in the estimates of the parameters.
+For example, the 1990 model has a translation probability Plejthe
+of 0.610, the 1993 model has 0.497 instead (Brown et al. 1993: 286).It does not necessarily follow that such discrepancies would impacttranslation performance negatively, but they certainly raise questionsabout how close the training text and the text of application need to bein order to get acceptable results. See section 10.3.2 for a discussionof the eﬀect of divergence between training and application corpora in
+the case of part-of-speech tagging.
+Eﬃciency. Sentences of more than 30 words had to be eliminated
+from the training set presumably because decoding them took too long
+(Brown et al. 1993: 282).
+On the surface, these are problems of the model, but they are all related
+to the lack of linguistic knowledge in the model. For example, syntacticanalysis would make it possible to relate subparts of the sentence toeach other instead of simulating such relations inadequately using thenotion of fertility. And a stronger model would make fewer independence
+
+p/CX /CX13.3 Statistical Machine Translation 491
+assumptions, make better use of the training data (since a higher bias
+reduces variance in parameter estimates) and reduce the search spacewith potential beneﬁts for eﬃciency in decoding.
+Other problems found by Brown et al. (1990) and Brown et al. (1993)
+show directly that the lack of linguistic knowledge encoded in the system
+causes many translation failures.
+No notion of phrases. The model relates only individual words. As the
+examples of words with high fertility show, one should really modelrelationships between phrases, for example, the relationship betweento go andaller and between farmers andles agriculteurs .
+Non-local dependencies. Non-local dependencies are hard to capture
+with ‘local’ models like n-gram models (see page 98 in chapter 3). So
+even if the translation model generates the right set of words, thelanguage model will not assemble them correctly (or will give the re-
+assembled sentence a low probability) if a long-distance dependency
+occurs. In later work that builds on the two models we discuss here,sentences are preprocessed to reduce the number of long-distance de-pendencies in order to address this problem (Brown et al. 1992a). Forexample, is she a mathematician would be transformed to she is a
+mathematician in a preprocessing step.
+Morphology. Morphologically related words are treated as separate
+symbols. For example, the fact that each of the 39 forms of the Frenchverb diriger can be translated as to conduct andto direct in appropriate
+contexts has to be learned separately for each form.
+Sparse data problems. Since parameters are solely estimated from
+the training corpus without any help from other sources of informa-tion about words, estimates for rare words are unreliable. Sentenceswith rare words were excluded from the evaluation in (Brown et al.1990) because of the diﬃculty of deriving a good characterization ofinfrequent words automatically.
+In summary, the main problem with the noisy channel model that we
+have described here is that it incorporates very little domain knowledgeabout natural language. This is an argument that is made in both (Brownet al. 1990) and (Brown et al. 1993). All subsequent work on statisti-cal machine translation (starting with Brown et al. (1992a)) has therefore
+
+p/CX /CX492 13 Statistical Alignment and Machine Translation
+focussed on building models that formalize the linguistic regularities in-
+herent in language.
+Non-linguistic models are fairly successful for word alignment as
+shown by Brown et al. (1993) among others. The research results we havediscussed in this section suggest that they fail for machine translation.
+Exercise 13.4 [««]
+The model’s task is to ﬁnd an English sentence given a French input sentence.
+Why don’t we just estimate Pejfand do without a language model? What
+would happen to ungrammatical French sentences if we relied on Pejf? What
+happens with ungrammatical French sentences in the model described abovethat relies on Pfje? These questions are answered by (Brown et al. 1993: 265).
+Exercise 13.5 [«]
+Translation and fertility probabilities tell us which words to generate, but not
+where to put them. Why do the generated words end up in the right places in
+the decoded sentence, at least most of the time?
+Exercise 13.6 [««]
+TheViterbi translation is deﬁned as the translation resulting from the maximum
+Viterbi translation
+likelihood alignment. In other words, we don’t sum over all possible alignments
+as in the translation model in equation (13.5). Would you expect there to besigniﬁcant diﬀerences between the Viterbi translation and the best translationaccording to equation (13.5)?
+Exercise 13.7 [««]
+Construct a small training example for EM and compute at least two iterations.
+Exercise 13.8 [««]
+For the purposes of machine translation, n-gram models are reasonable language
+models for short sentences. However, with increasing sentence length it becomesmore likely that there are several (semantically distinct) ways of ordering thewords into a grammatical sentence. Find a set of (a) 4 English words, (b) 10English words that can be turned into two semantically distinct and grammaticalsequences.
+13.4 Further Reading
+For more background on statistical methods in MT, we recommend the
+overview article by Knight (1997). Readers interested in eﬃcient decod-ing algorithms (in practice one of the hardest problems in statistical MT)should consult Wu (1996), Wang and Waibel (1997), and Nießen et al.(1998). Alshawi et al. (1997), Wang and Waibel (1998), and Wu and Wong
+
+p/CX /CX13.4 Further Reading 493
+(1998) attempt to replace the statistical word-for-word approach with a
+statistical transfer approach (in the terminology of ﬁgure 13.1). An al-gorithm for statistical generation is proposed by Knight and Hatzivas-siloglou (1995).
+An ‘empirical’ approach to MT that is diﬀerent from the noisy channel
+m o d e lw eh a v ec o v e r e dh e r ei s example-based translation. In example-
+example-based
+based translation, one translates a sentence by using the closest match in
+an aligned corpus as a template. If there is an exact match in the alignedcorpus, one can just retrieve the previous translation and be done. Oth-erwise, the previous translation needs to be modiﬁed appropriately. SeeNagao (1984) and Sato (1992) for descriptions of example-based MT sys-tems.
+One purpose of word correspondences is to use them in translating
+unknown words. However, even with automatic acquisition from alignedcorpora, there will still be unknown words in any new text, in particularnames. This is a particular problem when translating between languageswith diﬀerent writing systems since one cannot use the unknown stringverbatim in the translation of, say, Japanese to English. Knight and Graehl(1997) show how many proper names can be handled by a transliteration
+transliteration
+system that infers the written form of the name in the target language
+directly from the written form in the source language. Since the ro-man alphabet is transliterated fairly systematically into character setslike Cyrillic, the original Roman form can often be completely recovered.
+Finding word correspondences can be seen as a special case of the
+more general problem of knowledge acquisition for machine translation.See Knight et al. (1995) for a more high-level view of acquisition in the MT
+context that goes beyond the speciﬁc problems we have discussed here.
+Using parallel texts as a knowledge source for word sense disambigua-
+tion is described in Brown et al. (1991b) and Gale et al. (1992d) (see alsosection 7.2.2). The example of the use of text alignment as an aid fortranslators revising product literature is taken from Shemtov (1993). Thealignment example at the beginning of the chapter is drawn from an ex-ample text from the
+UBS data considered by Gale and Church (1993),
+although they do not discuss the word level alignment. Note that the
+text in both languages is actually a translation from a German original.A search interface to examples of aligned French and English CanadianHansard sentences is available on the web; see the website.
+The term bead was introduced by Brown et al. (1991c). The notion
+bead
+of a bitext is from (Harris 1988), and the term bitext map comes from bitext
+bitext map
+
+p/CX /CX494 13 Statistical Alignment and Machine Translation
+(Melamed 1997a). Further work on signal-processing-based approaches
+to parallel text alignment appears in (Melamed 1997a) and (Chang andChen 1997). A recent evaluation of a number of alignment systems isavailable on the web (see website). Particularly interesting is the verydivergent performance of the systems on diﬀerent parallel corpora pre-
+senting diﬀerent degrees of diﬃculty in alignment.
+

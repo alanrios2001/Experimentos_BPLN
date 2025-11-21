@@ -1,0 +1,953 @@
+Chapter 4 1705
+Linguistic applications of 1706
+classiﬁcation 1707
+Having learned some techniques for classiﬁcation, this chapter shifts the focus from math- 1708
+ematics to linguistic applications. Later in the chapter, we will consider the design deci- 1709
+sions involved in text classiﬁcation, as well as evaluation practices. 1710
+4.1 Sentiment and opinion analysis 1711
+A popular application of text classiﬁcation is to automatically determine the sentiment 1712
+oropinion polarity of documents such as product reviews and social media posts. For 1713
+example, marketers are interested to know how people respond to advertisements, ser- 1714
+vices, and products (Hu and Liu, 2004); social scientists are interested in how emotions 1715
+are affected by phenomena such as the weather (Hannak et al., 2012), and how both opin- 1716
+ions and emotions spread over social networks (Coviello et al., 2014; Miller et al., 2011). 1717
+In the ﬁeld of digital humanities , literary scholars track plot structures through the ﬂow 1718
+of sentiment across a novel (Jockers, 2015).11719
+Sentiment analysis can be framed as a direct application of document classiﬁcation, 1720
+assuming reliable labels can be obtained. In the simplest case, sentiment analysis is a 1721
+two or three-class problem, with sentiments of POSITIVE ,NEGATIVE , and possibly NEU - 1722
+TRAL . Such annotations could be annotated by hand, or obtained automatically through 1723
+a variety of means: 1724
+•Tweets containing happy emoticons can be marked as positive, sad emoticons as 1725
+negative (Read, 2005; Pak and Paroubek, 2010). 1726
+1Comprehensive surveys on sentiment analysis and related problems are offered by Pang and Lee (2008)
+and Liu (2015).
+81
+
+82 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+•Reviews with four or more stars can be marked as positive, two or fewer stars as 1727
+negative (Pang et al., 2002). 1728
+•Statements from politicians who are voting for a given bill are marked as positive 1729
+(towards that bill); statements from politicians voting against the bill are marked as 1730
+negative (Thomas et al., 2006). 1731
+The bag-of-words model is a good ﬁt for sentiment analysis at the document level: if 1732
+the document is long enough, we would expect the words associated with its true senti- 1733
+ment to overwhelm the others. Indeed, lexicon-based sentiment analysis avoids machine 1734
+learning altogether, and classiﬁes documents by counting words against positive and neg- 1735
+ative sentiment word lists (Taboada et al., 2011). 1736
+Lexicon-based classiﬁcation is less effective for short documents, such as single-sentence 1737
+reviews or social media posts. In these documents, linguistic issues like negation and ir- 1738
+realis (Polanyi and Zaenen, 2006) — events that are hypothetical or otherwise non-factual 1739
+— can make bag-of-words classiﬁcation ineffective. Consider the following examples: 1740
+(4.1) That’s not bad for the ﬁrst day. 1741
+(4.2) This is not the worst thing that can happen. 1742
+(4.3) It would be nice if you acted like you understood. 1743
+(4.4) There is no reason at all to believe that the polluters are suddenly going to be- 1744
+come reasonable. (Wilson et al., 2005) 1745
+(4.5) This ﬁlm should be brilliant. The actors are ﬁrst grade. Stallone plays a happy, 1746
+wonderful man. His sweet wife is beautiful and adores him. He has a fascinat- 1747
+ing gift for living life fully. It sounds like a great plot, however , the ﬁlm is a 1748
+failure. (Pang et al., 2002) 1749
+A minimal solution is to move from a bag-of-words model to a bag-of- bigrams model, 1750
+where each base feature is a pair of adjacent words, e.g., 1751
+(that’s,not),(not,bad),(bad,for),... [4.1]
+Bigrams can handle relatively straightforward cases, such as when an adjective is immedi- 1752
+ately negated; trigrams would be required to extend to larger contexts (e.g., not the worst ). 1753
+But this approach will not scale to more complex examples like (4.4) and (4.5). More 1754
+sophisticated solutions try to account for the syntactic structure of the sentence (Wilson 1755
+et al., 2005; Socher et al., 2013), or apply more complex classiﬁers such as convolutional 1756
+neural networks (Kim, 2014), which are described in chapter 3. 1757
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.1. SENTIMENT AND OPINION ANALYSIS 83
+4.1.1 Related problems 1758
+Subjectivity Closely related to sentiment analysis is subjectivity detection , which re- 1759
+quires identifying the parts of a text that express subjective opinions, as well as other non- 1760
+factual content such speculation and hypotheticals (Riloff and Wiebe, 2003). This can be 1761
+done by treating each sentence as a separate document, and then applying a bag-of-words 1762
+classiﬁer: indeed, Pang and Lee (2004) do exactly this, using a training set consisting of 1763
+(mostly) subjective sentences gathered from movie reviews, and (mostly) objective sen- 1764
+tences gathered from plot descriptions. They augment this bag-of-words model with a 1765
+graph-based algorithm that encourages nearby sentences to have the same subjectivity 1766
+label. 1767
+Stance classiﬁcation In debates, each participant takes a side: for example, advocating 1768
+for or against proposals like adopting a vegetarian lifestyle or mandating free college ed- 1769
+ucation. The problem of stance classiﬁcation is to identify the author’s position from the 1770
+text of the argument. In some cases, there is training data available for each position, 1771
+so that standard document classiﬁcation techniques can be employed. In other cases, it 1772
+sufﬁces to classify each document as whether it is in support or opposition of the argu- 1773
+ment advanced by a previous document (Anand et al., 2011). In the most challenging 1774
+case, there is no labeled data for any of the stances, so the only possibility is group docu- 1775
+ments that advocate the same position (Somasundaran and Wiebe, 2009). This is a form 1776
+ofunsupervised learning , discussed in chapter 5. 1777
+Targeted sentiment analysis The expression of sentiment is often more nuanced than a 1778
+simple binary label. Consider the following examples: 1779
+(4.6) The vodka was good, but the meat was rotten. 1780
+(4.7) Go to Heaven for the climate, Hell for the company. – Mark Twain 1781
+These statements display a mixed overall sentiment: positive towards some entities (e.g., 1782
+the vodka ), negative towards others (e.g., the meat ).Targeted sentiment analysis seeks to 1783
+identify the writer’s sentiment towards speciﬁc entities (Jiang et al., 2011). This requires 1784
+identifying the entities in the text and linking them to speciﬁc sentiment words — much 1785
+more than we can do with the classiﬁcation-based approaches discussed thus far. For 1786
+example, Kim and Hovy (2006) analyze sentence-internal structure to determine the topic 1787
+of each sentiment expression. 1788
+Aspect-based opinion mining seeks to identify the sentiment of the author of a review 1789
+towards predeﬁned aspects such as PRICE and SERVICE , or, in the case of (4.7), CLIMATE 1790
+and COMPANY (Hu and Liu, 2004). If the aspects are not deﬁned in advance, it may again 1791
+be necessary to employ unsupervised learning methods to identify them (e.g., Branavan 1792
+et al., 2009). 1793
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+84 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+Emotion classiﬁcation While sentiment analysis is framed in terms of positive and neg- 1794
+ative categories, psychologists generally regard emotion as more multifaceted. For ex- 1795
+ample, Ekman (1992) argues that there are six basic emotions — happiness, surprise, fear, 1796
+sadness, anger, and contempt — and that they are universal across human cultures. Alm 1797
+et al. (2005) build a linear classiﬁer for recognizing the emotions expressed in children’s 1798
+stories. The ultimate goal of this work was to improve text-to-speech synthesis, so that 1799
+stories could be read with intonation that reﬂected the emotional content. They used bag- 1800
+of-words features, as well as features capturing the story type (e.g., jokes, folktales), and 1801
+structural features that reﬂect the position of each sentence in the story. The task is difﬁ- 1802
+cult: even human annotators frequently disagreed with each other, and the best classiﬁers 1803
+achieved accuracy between 60-70%. 1804
+4.1.2 Alternative approaches to sentiment analysis 1805
+Regression A more challenging version of sentiment analysis is to determine not just 1806
+the class of a document, but its rating on a numerical scale (Pang and Lee, 2005). If the 1807
+scale is continuous, it is most natural to apply regression , identifying a set of weights θ 1808
+that minimize the squared error of a predictor ˆy=θ·x+b, wherebis an offset. This 1809
+approach is called linear regression , and sometimes least squares , because the regression 1810
+coefﬁcientsθare determined by minimizing the squared error, (y−ˆy)2. If the weights are 1811
+regularized using a penalty λ||θ||2
+2, then it is ridge regression . Unlike logistic regression, 1812
+both linear regression and ridge regression can be solved in closed form as a system of 1813
+linear equations. 1814
+Ordinal ranking In many problems, the labels are ordered but discrete: for example, 1815
+product reviews are often integers on a scale of 1−5, and grades are on a scale of A−F. 1816
+Such problems can be solved by discretizing the score θ·xinto “ranks”, 1817
+ˆy= argmin
+r:θ·x≥brr, [4.2]
+whereb= [b1=−∞,b2,b3,...,bK]is a vector of boundaries. It is possible to learn the 1818
+weights and boundaries simultaneously, using a perceptron-like algorithm (Crammer and 1819
+Singer, 2001). 1820
+Lexicon-based classiﬁcation Sentiment analysis is one of the only NLP tasks where 1821
+hand-crafted feature weights are still widely employed. In lexicon-based classiﬁcation (Taboada 1822
+et al., 2011), the user creates a list of words for each label, and then classiﬁes each docu- 1823
+ment based on how many of the words from each list are present. In our linear classiﬁca- 1824
+tion framework, this is equivalent to choosing the following weights: 1825
+θy,j={
+1, j∈Ly
+0,otherwise,[4.3]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.2. WORD SENSE DISAMBIGUATION 85
+whereLyis the lexicon for label y. Compared to the machine learning classiﬁers discussed 1826
+in the previous chapters, lexicon-based classiﬁcation may seem primitive. However, su- 1827
+pervised machine learning relies on large annotated datasets, which are time-consuming 1828
+and expensive to produce. If the goal is to distinguish two or more categories in a new 1829
+domain, it may be simpler to start by writing down a list of words for each category. 1830
+An early lexicon was the General Inquirer (Stone, 1966). Today, popular sentiment lexi- 1831
+cons include sentiwordnet (Esuli and Sebastiani, 2006) and an evolving set of lexicons 1832
+from Liu (2015). For emotions and more ﬁne-grained analysis, Linguistic Inquiry and Word 1833
+Count (LIWC) provides a set of lexicons (Tausczik and Pennebaker, 2010). The MPQA lex- 1834
+icon indicates the polarity (positive or negative) of 8221 terms, as well as whether they are 1835
+strongly or weakly subjective (Wiebe et al., 2005). A comprehensive comparison of senti- 1836
+ment lexicons is offered by Ribeiro et al. (2016). Given an initial seed lexicon , it is possible 1837
+to automatically expand the lexicon by looking for words that frequently co-occur with 1838
+words in the seed set (Hatzivassiloglou and McKeown, 1997; Qiu et al., 2011). 1839
+4.2 Word sense disambiguation 1840
+Consider the the following headlines: 1841
+(4.8) Iraqi head seeks arms 1842
+(4.9) Prostitutes appeal to Pope 1843
+(4.10) Drunk gets nine years in violin case21844
+These headlines are ambiguous because they contain words that have multiple mean- 1845
+ings, or senses . Word sense disambiguation is the problem of identifying the intended 1846
+sense of each word token in a document. Word sense disambiguation is part of a larger 1847
+ﬁeld of research called lexical semantics , which is concerned with meanings of the words. 1848
+At a basic level, the problem of word sense disambiguation is to identify the correct 1849
+sense for each word token in a document. Part-of-speech ambiguity (e.g., noun versus 1850
+verb) is usually considered to be a different problem, to be solved at an earlier stage. 1851
+From a linguistic perspective, senses are not properties of words, but of lemmas , which 1852
+are canonical forms that stand in for a set of inﬂected words. For example, arm/N is a 1853
+lemma that includes the inﬂected form arms/N — the/N indicates that it we are refer- 1854
+ring to the noun, and not its homonym arm/V, which is another lemma that includes 1855
+the inﬂected verbs (arm/V,arms/V,armed/V,arming/V). Therefore, word sense disam- 1856
+biguation requires ﬁrst identifying the correct part-of-speech and lemma for each token, 1857
+2These examples, and many more, can be found at http://www.ling.upenn.edu/ ˜beatrice/
+humor/headlines.html
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+86 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+and then choosing the correct sense from the inventory associated with the corresponding 1858
+lemma.3(Part-of-speech tagging is discussed in §8.1.) 1859
+4.2.1 How many word senses? 1860
+Words sometimes have many more than two senses, as exempliﬁed by the word serve : 1861
+•[FUNCTION ]:The tree stump served as a table 1862
+•[CONTRIBUTE TO ]:His evasive replies only served to heighten suspicion 1863
+•[PROVIDE ]:We serve only the rawest ﬁsh 1864
+•[ENLIST ]:She served in an elite combat unit 1865
+•[JAIL]:He served six years for a crime he didn’t commit 1866
+•[LEGAL ]:They were served with subpoenas41867
+These sense distinctions are annotated in WordNet (http://wordnet.princeton. 1868
+edu), a lexical semantic database for English. WordNet consists of roughly 100,000 synsets , 1869
+which are groups of lemmas (or phrases) that are synonymous. An example synset is 1870
+{chump1,fool2,sucker1,mark9}, where the superscripts index the sense of each lemma that 1871
+is included in the synset: for example, there are at least eight other senses of mark that 1872
+have different meanings, and are not part of this synset. A lemma is polysemous if it 1873
+participates in multiple synsets. 1874
+WordNet deﬁnes the scope of the word sense disambiguation problem, and, more 1875
+generally, formalizes lexical semantic knowledge of English. (WordNets have been cre- 1876
+ated for a few dozen other languages, at varying levels of detail.) Some have argued 1877
+that WordNet’s sense granularity is too ﬁne (Ide and Wilks, 2006); more fundamentally, 1878
+the premise that word senses can be differentiated in a task-neutral way has been criti- 1879
+cized as linguistically na ¨ıve (Kilgarriff, 1997). One way of testing this question is to ask 1880
+whether people tend to agree on the appropriate sense for example sentences: accord- 1881
+ing to Mihalcea et al. (2004), people agree on roughly 70% of examples using WordNet 1882
+senses; far better than chance, but less than agreement on other tasks, such as sentiment 1883
+annotation (Wilson et al., 2005). 1884
+*Other lexical semantic relations Besides synonymy , WordNet also describes many 1885
+other lexical semantic relationships, including: 1886
+•antonymy :xmeans the opposite of y, e.g. FRIEND -ENEMY ; 1887
+3Navigli (2009) provides a survey of approaches for word-sense disambiguation.
+4Several of the examples are adapted from WordNet (Fellbaum, 2010).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.2. WORD SENSE DISAMBIGUATION 87
+•hyponymy :xis a special case of y, e.g. RED-COLOR ; the inverse relationship is 1888
+hypernymy ; 1889
+•meronymy :xis a part ofy, e.g., WHEEL -BICYCLE ; the inverse relationship is holonymy . 1890
+Classiﬁcation of these relations relations can be performed by searching for character- 1891
+istic patterns between pairs of words, e.g., X,such as Y, which signals hyponymy (Hearst, 1892
+1992), or Xbut Y , which signals antonymy (Hatzivassiloglou and McKeown, 1997). An- 1893
+other approach is to analyze each term’s distributional statistics (the frequency of its 1894
+neighboring words). Such approaches are described in detail in chapter 14. 1895
+4.2.2 Word sense disambiguation as classiﬁcation 1896
+How can we tell living plants from manufacturing plants ? The context is often critical: 1897
+(4.11) Town ofﬁcials are hoping to attract new manufacturing plants through weakened 1898
+environmental regulations. 1899
+(4.12) The endangered plants play an important role in the local ecosystem. 1900
+It is possible to build a feature vector using the bag-of-words representation, by treat-
+ing each context as a pseudo-document. The feature function is then,
+f((plant,The endangered plants play an . . . ),y) =
+{(the,y) : 1,(endangered,y) : 1,(play,y) : 1,(an,y) : 1,...}
+As in document classiﬁcation, many of these features are irrelevant, but a few are very 1901
+strong predictors. In this example, the context word endangered is a strong signal that 1902
+the intended sense is biology rather than manufacturing. We would therefore expect a 1903
+learning algorithm to assign high weight to (endangered,BIOLOGY ), and low weight to 1904
+(endangered,MANUFACTURING ).51905
+It may also be helpful to go beyond the bag-of-words: for example, one might encode
+the position of each context word with respect to the target, e.g.,
+f((bank,I went to the bank to deposit my paycheck ),y) =
+{(i−3,went,y) : 1,(i+ 2,deposit,y) : 1,(i+ 4,paycheck,y) : 1}
+These are called collocation features , and they give more information about the speciﬁc 1906
+role played by each context word. This idea can be taken further by incorporating addi- 1907
+tional syntactic information about the grammatical role played by each context feature, 1908
+such as the dependency path (see chapter 11). 1909
+5The context bag-of-words can be also used be used to perform word-sense disambiguation without
+machine learning: the Lesk (1986) algorithm selects the word sense whose dictionary deﬁnition best overlaps
+the local context.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+88 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+Using such features, a classiﬁer can be trained from labeled data. A semantic concor- 1910
+dance is a corpus in which each open-class word (nouns, verbs, adjectives, and adverbs) 1911
+is tagged with its word sense from the target dictionary or thesaurus. SemCor is a seman- 1912
+tic concordance built from 234K tokens of the Brown corpus (Francis and Kucera, 1982), 1913
+annotated as part of the WordNet project (Fellbaum, 2010). SemCor annotations look like 1914
+this: 1915
+(4.13) As of Sunday1
+Nnight1
+Nthere was4
+Vno word2
+N. . . , 1916
+with the superscripts indicating the annotated sense of each polysemous word, and the 1917
+subscripts indicating the part-of-speech. 1918
+As always, supervised classiﬁcation is only possible if enough labeled examples can 1919
+be accumulated. This is difﬁcult in word sense disambiguation, because each polysemous 1920
+lemma requires its own training set: having a good classiﬁer for the senses of serve is no 1921
+help towards disambiguating plant . For this reason, unsupervised and semisupervised 1922
+methods are particularly important for word sense disambiguation (e.g., Yarowsky, 1995). 1923
+These methods will be discussed in chapter 5. Unsupervised methods typically lean on 1924
+the heuristic of “one sense per discourse”, which means that a lemma will usually have 1925
+a single, consistent sense throughout any given document (Gale et al., 1992). Based on 1926
+this heuristic, we can propagate information from high-conﬁdence instances to lower- 1927
+conﬁdence instances in the same document (Yarowsky, 1995). 1928
+4.3 Design decisions for text classiﬁcation 1929
+Text classiﬁcation involves a number of design decisions. In some cases, the design deci- 1930
+sion is clear from the mathematics: if you are using regularization, then a regularization 1931
+weightλmust be chosen. Other decisions are more subtle, arising only in the low level 1932
+“plumbing” code that ingests and processes the raw data. Such decision can be surpris- 1933
+ingly consequential for classiﬁcation accuracy. 1934
+4.3.1 What is a word? 1935
+The bag-of-words representation presupposes that extracting a vector of word counts 1936
+from text is unambiguous. But text documents are generally represented as a sequences of 1937
+characters (in an encoding such as ascii or unicode), and the conversion to bag-of-words 1938
+presupposes a deﬁnition of the “words” that are to be counted. 1939
+4.3.1.1 Tokenization 1940
+The ﬁrst subtask for constructing a bag-of-words vector is tokenization : converting the 1941
+text from a sequence of characters to a sequence of word tokens . A simple approach is 1942
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.3. DESIGN DECISIONS FOR TEXT CLASSIFICATION 89
+Whitespace Isn’t Ahab, Ahab? ;)
+Treebank Is n’t Ahab , Ahab ? ; )
+Tweet Isn’t Ahab , Ahab ? ;)
+TokTok (Dehdari, 2014) Isn ’ t Ahab , Ahab ? ; )
+Figure 4.1: The output of four nltk tokenizers, applied to the string Isn’t Ahab, Ahab? ;)
+to deﬁne a subset of characters as whitespace, and then split the text on these tokens. 1943
+However, whitespace-based tokenization is not ideal: we may want to split conjunctions 1944
+like isn’t and hyphenated phrases like prize-winning and half-asleep , and we likely want 1945
+to separate words from commas and periods that immediately follow them. At the same 1946
+time, it would be better not to split abbreviations like U.S. and Ph.D. In languages with 1947
+Roman scripts, tokenization is typically performed using regular expressions, with mod- 1948
+ules designed to handle each of these cases. For example, the nltk package includes a 1949
+number of tokenizers (Loper and Bird, 2002); the outputs of four of the better-known tok- 1950
+enizers are shown in Figure 4.1. Social media researchers have found that emoticons and 1951
+other forms of orthographic variation pose new challenges for tokenization, leading to the 1952
+development of special purpose tokenizers to handle these phenomena (O’Connor et al., 1953
+2010). 1954
+Tokenization is a language-speciﬁc problem, and each language poses unique chal- 1955
+lenges. For example, Chinese does not include spaces between words, nor any other 1956
+consistent orthographic markers of word boundaries. A “greedy” approach is to scan the 1957
+input for character substrings that are in a predeﬁned lexicon. However, Xue et al. (2003) 1958
+notes that this can be ambiguous, since many character sequences could be segmented in 1959
+multiple ways. Instead, he trains a classiﬁer to determine whether each Chinese character, 1960
+orhanzi , is a word boundary. More advanced sequence labeling methods for word seg- 1961
+mentation are discussed in §8.4. Similar problems can occur in languages with alphabetic 1962
+scripts, such as German, which does not include whitespace in compound nouns, yield- 1963
+ing examples such as Freundschaftsbezeigungen (demonstration of friendship) and Dilet- 1964
+tantenaufdringlichkeiten (the importunities of dilettantes). As Twain (1997) argues, “ These 1965
+things are not words, they are alphabetic processions. ” Social media raises similar problems 1966
+for English and other languages, with hashtags such as #TrueLoveInFourWords requiring 1967
+decomposition for analysis (Brun and Roux, 2014). 1968
+4.3.1.2 Normalization 1969
+After splitting the text into tokens, the next question is which tokens are really distinct. 1970
+Is it necessary to distinguish great ,Great , and GREAT? Sentence-initial capitalization may 1971
+be irrelevant to the classiﬁcation task. Going further, the complete elimination of case 1972
+distinctions will result in a smaller vocabulary, and thus smaller feature vectors. However, 1973
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+90 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+Original The Williams sisters are leaving this tennis centre
+Porter stemmer the william sister are leav thi tenni centr
+Lancaster stemmer the william sist ar leav thi ten cent
+WordNet lemmatizer The Williams sister are leaving this tennis centre
+Figure 4.2: Sample outputs of the Porter (1980) and Lancaster (Paice, 1990) stemmers, and
+theWordNet lemmatizer
+case distinctions might be relevant in some situations: for example, apple is a delicious 1974
+pie ﬁlling, while Apple is a company that specializes in proprietary dongles and power 1975
+adapters. 1976
+For Roman script, case conversion can be performed using unicode string libraries. 1977
+Many scripts do not have case distinctions (e.g., the Devanagari script used for South 1978
+Asian languages, the Thai alphabet, and Japanese kana), and case conversion for all scripts 1979
+may not be available in every programming environment. (Unicode support is an im- 1980
+portant distinction between Python’s versions 2 and 3, and is a good reason for mi- 1981
+grating to Python 3 if you have not already done so. Compare the output of the code 1982
+"\`a l\’hˆotel".upper() in the two language versions.)61983
+Case conversion is a type of normalization , which refers to string transformations that 1984
+remove distinctions that are irrelevant to downstream applications (Sproat et al., 2001). 1985
+Other normalizations include the standardization of numbers (e.g., 1,000 to1000 ) and 1986
+dates (e.g., August 11, 2015 to2015/11/08 ). Depending on the application, it may even be 1987
+worthwhile to convert all numbers and dates to special tokens, !NUM and!DATE . In social 1988
+media, there are additional orthographic phenomena that may be normalized, such as ex- 1989
+pressive lengthening, e.g., cooooool (Aw et al., 2006; Yang and Eisenstein, 2013). Similarly, 1990
+historical texts feature spelling variations that may need to be normalized to a contempo- 1991
+rary standard form (Baron and Rayson, 2008). 1992
+A more extreme form of normalization is to eliminate inﬂectional afﬁxes , such as the 1993
+-edand -ssufﬁxes in English. On this view, bike,bikes ,biking , and biked all refer to the 1994
+same underlying concept, so they should be grouped into a single feature. A stemmer is 1995
+a program for eliminating afﬁxes, usually by applying a series of regular expression sub- 1996
+stitutions. Character-based stemming algorithms are necessarily approximate, as shown 1997
+in Figure 4.2: the Lancaster stemmer incorrectly identiﬁes -ersas an inﬂectional sufﬁx of 1998
+sisters (by analogy to ﬁx/ﬁxers ), and both stemmers incorrectly identify -sas a sufﬁx of this 1999
+and Williams . Fortunately, even inaccurate stemming can improve bag-of-words classiﬁ- 2000
+cation models, by merging related strings and thereby reducing the vocabulary size. 2001
+Accurately handling irregular orthography requires word-speciﬁc rules. Lemmatizers 2002
+6[todo: I want to make this a footnote, but can’t ﬁgure out how.]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.3. DESIGN DECISIONS FOR TEXT CLASSIFICATION 91
+0 10000 20000 30000 40000
+Vocabulary size0.51.0Token coveragePang and Lee Movie Reviews (English)
+(a) Movie review data in English
+010000 20000 30000 40000 50000 60000 70000
+Vocabulary size0.51.0Token coverageMAC-Morpho Corpus (Brazilian Portuguese) (b) News articles in Brazilian Portuguese
+Figure 4.3: Tradeoff between token coverage (y-axis) and vocabulary size, on the nltk
+movie review dataset, after sorting the vocabulary by decreasing frequency. The red
+dashed lines indicate 80%, 90%, and 95% coverage.
+are systems that identify the underlying lemma of a given wordform. They must avoid the 2003
+over-generalization errors of the stemmers in Figure 4.2, and also handle more complex 2004
+transformations, such as geese→goose . The output of the WordNet lemmatizer is shown in 2005
+the ﬁnal line of Figure 4.2. Both stemming and lemmatization are language-speciﬁc: an 2006
+English stemmer or lemmatizer is of little use on a text written in another language. The 2007
+discipline of morphology relates to the study of word-internal structure, and is described 2008
+in more detail in §9.1.2. 2009
+The value of normalization depends on the data and the task. Normalization re- 2010
+duces the size of the feature space, which can help in generalization. However, there 2011
+is always the risk of merging away linguistically meaningful distinctions. In supervised 2012
+machine learning, regularization and smoothing can play a similar role to normalization 2013
+— preventing the learner from overﬁtting to rare features — while avoiding the language- 2014
+speciﬁc engineering required for accurate normalization. In unsupervised scenarios, such 2015
+as content-based information retrieval (Manning et al., 2008) and topic modeling (Blei 2016
+et al., 2003), normalization is more critical. 2017
+4.3.2 How many words? 2018
+Limiting the size of the feature vector reduces the memory footprint of the resulting mod- 2019
+els, and increases the speed of prediction. Normalization can help to play this role, but 2020
+a more direct approach is simply to limit the vocabulary to the Nmost frequent words 2021
+in the dataset. For example, in the movie-reviews dataset provided with nltk (orig- 2022
+inally from Pang et al., 2002), there are 39,768 word types, and 1.58M tokens. As shown 2023
+in Figure 4.3a, the most frequent 4000 word types cover 90% of all tokens, offering an 2024
+order-of-magnitude reduction in the model size. Such ratios are language-speciﬁc: in for 2025
+example, in the Brazilian Portuguese Mac-Morpho corpus (Alu ´ısio et al., 2003), attain- 2026
+ing 90% coverage requires more than 10000 word types (Figure 4.3b). This reﬂects the 2027
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+92 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+morphological complexity of Portuguese, which includes many more inﬂectional sufﬁxes 2028
+than English. 2029
+Eliminating rare words is not always advantageous for classiﬁcation performance: for 2030
+example, names, which are typically rare, play a large role in distinguishing topics of news 2031
+articles. Another way to reduce the size of the feature space is to eliminate stopwords such 2032
+asthe,to, and and, which may seem to play little role in expressing the topic, sentiment, 2033
+or stance. This is typically done by creating a stoplist (e.g.,nltk.corpus.stopwords ), 2034
+and then ignoring all terms that match the list. However, corpus linguists and social psy- 2035
+chologists have shown that seemingly inconsequential words can offer surprising insights 2036
+about the author or nature of the text (Biber, 1991; Chung and Pennebaker, 2007). Further- 2037
+more, high-frequency words are unlikely to cause overﬁtting in discriminative classiﬁers. 2038
+As with normalization, stopword ﬁltering is more important for unsupervised problems, 2039
+such as term-based document retrieval. 2040
+Another alternative for controlling model size is feature hashing (Weinberger et al., 2041
+2009). Each feature is assigned an index using a hash function. If a hash function that 2042
+permits collisions is chosen (typically by taking the hash output modulo some integer), 2043
+then the model can be made arbitrarily small, as multiple features share a single weight. 2044
+Because most features are rare, accuracy is surprisingly robust to such collisions (Ganchev 2045
+and Dredze, 2008). 2046
+4.3.3 Count or binary? 2047
+Finally, we may consider whether we want our feature vector to include the count of each 2048
+word, or its presence . This gets at a subtle limitation of linear classiﬁcation: it worse to 2049
+have two failure s than one, but is it really twice as bad? Motivated by this intuition, Pang 2050
+et al. (2002) use binary indicators of presence or absence in the feature vector: fj(x,y)∈ 2051
+{0,1}. They ﬁnd that classiﬁers trained on these binary vectors tend to outperform feature 2052
+vectors based on word counts. One explanation is that words tend to appear in clumps: 2053
+if a word has appeared once in a document, it is likely to appear again (Church, 2000). 2054
+These subsequent appearances can be attributed to this tendency towards repetition, and 2055
+thus provide little additional information about the class label of the document. 2056
+4.4 Evaluating classiﬁers 2057
+In any supervised machine learning application, it is critical to reserve a held-out test set. 2058
+This data should be used for only one purpose: to evaluate the overall accuracy of a single 2059
+classiﬁer. Using this data more than once would cause the estimated accuracy to be overly 2060
+optimistic, because the classiﬁer would be customized to this data, and would not perform 2061
+as well as on unseen data in the future. It is usually necessary to set hyperparameters or 2062
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.4. EVALUATING CLASSIFIERS 93
+perform feature selection, so you may need to construct a tuning ordevelopment set for 2063
+this purpose, as discussed in §2.1.5. 2064
+There are a number of ways to evaluate classiﬁer performance. The simplest is accu- 2065
+racy : the number of correct predictions, divided by the total number of instances, 2066
+acc(y,ˆy) =1
+NN∑
+iδ(y(i)= ˆy). [4.4]
+Exams are usually graded by accuracy. Why are other metrics necessary? The main 2067
+reason is class imbalance . Suppose you are building a classiﬁer to detect whether an 2068
+electronic health record (EHR) describes symptoms of a rare disease, which appears in 2069
+only 1% of all documents in the dataset. A classiﬁer that reports ˆy=NEGATIVE for 2070
+all documents would achieve 99% accuracy, but would be practically useless. We need 2071
+metrics that are capable of detecting the classiﬁer’s ability to discriminate between classes, 2072
+even when the distribution is skewed. 2073
+One solution is to build a balanced test set , in which each possible label is equally rep- 2074
+resented. But in the EHR example, this would mean throwing away 98% of the original 2075
+dataset! Furthermore, the detection threshold itself might be a design consideration: in 2076
+health-related applications, we might prefer a very sensitive classiﬁer, which returned a 2077
+positive prediction if there is even a small chance that y(i)=POSITIVE . In other applica- 2078
+tions, a positive result might trigger a costly action, so we would prefer a classiﬁer that 2079
+only makes positive predictions when absolutely certain. We need additional metrics to 2080
+capture these characteristics. 2081
+4.4.1 Precision, recall, and F-MEASURE 2082
+For any label (e.g., positive for presence of symptoms of a disease), there are two possible 2083
+errors: 2084
+•False positive : the system incorrectly predicts the label. 2085
+•False negative : the system incorrectly fails to predict the label. 2086
+Similarly, for any label, there are two ways to be correct: 2087
+•True positive : the system correctly predicts the label. 2088
+•True negative : the system correctly predicts that the label does not apply to this 2089
+instance. 2090
+Classiﬁers that make a lot of false positives are too sensitive; classiﬁers that make a
+lot of false negatives are not sensitive enough. These two conditions are captured by the
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+94 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+metrics of recall and precision :
+RECALL (y,ˆy,k) =TP
+TP+FN[4.5]
+PRECISION (y,ˆy,k) =TP
+TP+FP. [4.6]
+Recall and precision are both conditional likelihoods of a correct prediction, which is why 2091
+their numerators are the same. Recall is conditioned on kbeing the correct label, y(i)=k, 2092
+so the denominator sums over true positive and false negatives. Precision is conditioned 2093
+onkbeing the prediction, so the denominator sums over true positives and false positives. 2094
+Note that true negatives are not considered in either statistic. The classiﬁer that labels 2095
+every document as “negative” would achieve zero recall; precision would be0
+0. 2096
+Recall and precision are complementary. A high-recall classiﬁer is preferred when 2097
+false negatives are cheaper than false positives: for example, in a preliminary screening 2098
+for symptoms of a disease, the cost of a false positive might be an additional test, while a 2099
+false negative would result in the disease going untreated. Conversely, a high-precision 2100
+classiﬁer is preferred when false positives are more expensive: for example, in spam de- 2101
+tection, a false negative is a relatively minor inconvenience, while a false positive might 2102
+mean that an important message goes unread. 2103
+TheF-MEASURE combines recall and precision into a single metric, using the har-
+monic mean:
+F-MEASURE (y,ˆy,k) =2rp
+r+p, [4.7]
+whereris recall and pis precision.72104
+Evaluating multi-class classiﬁcation Recall, precision, and F-MEASURE are deﬁned with
+respect to a speciﬁc label k. When there are multiple labels of interest (e.g., in word sense
+disambiguation or emotion classiﬁcation), it is necessary to combine the F-MEASURE
+across each class. MacroF-MEASURE is the average F-MEASURE across several classes,
+Macro-F(y,ˆy) =1
+|K|∑
+k∈KF-MEASURE (y,ˆy,k) [4.8]
+In multi-class problems with unbalanced class distributions, the macro F-MEASURE is a 2105
+balanced measure of how well the classiﬁer recognizes each class. In microF-MEASURE , 2106
+we compute true positives, false positives, and false negatives for each class, and then add 2107
+them up to compute a single recall, precision, and F-MEASURE . This metric is balanced 2108
+across instances rather than classes, so it weights each class in proportion to its frequency 2109
+— unlike macro F-MEASURE , which weights each class equally. 2110
+7F-MEASURE is sometimes called F1, and generalizes to Fβ=(1+β2)rp
+β2p+r. Theβparameter can be tuned to
+emphasize recall or precision.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.4. EVALUATING CLASSIFIERS 95
+0.0 0.2 0.4 0.6 0.8 1.0
+False positive rate0.00.20.40.60.81.0True positive rateAUC=0.89
+AUC=0.73
+AUC=0.5
+Figure 4.4: ROC curves for three classiﬁers of varying discriminative power, measured by
+AUC (area under the curve)
+4.4.2 Threshold-free metrics 2111
+In binary classiﬁcation problems, it is possible to trade off between recall and precision by 2112
+adding a constant “threshold” to the output of the scoring function. This makes it possible 2113
+to trace out a curve, where each point indicates the performance at a single threshold. In 2114
+thereceiver operating characteristic (ROC) curve,8thex-axis indicates the false positive 2115
+rate,FP
+FP+TN, and the y-axis indicates the recall, or true positive rate . A perfect classiﬁer 2116
+attains perfect recall without any false positives, tracing a “curve” from the origin (0,0) to 2117
+the upper left corner (0,1), and then to (1,1). In expectation, a non-discriminative classiﬁer 2118
+traces a diagonal line from the origin (0,0) to the upper right corner (1,1). Real classiﬁers 2119
+tend to fall between these two extremes. Examples are shown in Figure 4.4. 2120
+The ROC curve can be summarized in a single number by taking its integral, the area 2121
+under the curve ( AUC ). The AUC can be interpreted as the probability that a randomly- 2122
+selected positive example will be assigned a higher score by the classiﬁer than a randomly- 2123
+selected negative example. A perfect classiﬁer has AUC = 1 (all positive examples score 2124
+higher than all negative examples); a non-discriminative classiﬁer has AUC = 0.5(given 2125
+a randomly selected positive and negative example, either could score higher with equal 2126
+probability); a perfectly wrong classiﬁer would have AUC = 0(all negative examples score 2127
+higher than all positive examples). One advantage of AUC in comparison to F-MEASURE 2128
+is that the baseline rate of 0.5does not depend on the label distribution. 2129
+8The name “receiver operator characteristic” comes from the metric’s origin in signal processing applica-
+tions (Peterson et al., 1954). Other threshold-free metrics include precision-recall curves ,precision-at- k, and
+balancedF-MEASURE ; see Manning et al. (2008) for more details.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+96 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+4.4.3 Classiﬁer comparison and statistical signiﬁcance 2130
+Natural language processing research and engineering often involves comparing different 2131
+classiﬁcation techniques. In some cases, the comparison is between algorithms, such as 2132
+logistic regression versus averaged perceptron, or L2regularization versus L1. In other 2133
+cases, the comparison is between feature sets, such as the bag-of-words versus positional 2134
+bag-of-words (see §4.2.2). Ablation testing involves systematically removing (ablating) 2135
+various aspects of the classiﬁer, such as feature groups, and testing the null hypothesis 2136
+that the ablated classiﬁer is as good as the full model. 2137
+A full treatment of hypothesis testing is beyond the scope of this text, but this section 2138
+contains a brief summary of the techniques necessary to compare classiﬁers. The main 2139
+aim of hypothesis testing is to determine whether the difference between two statistics 2140
+— for example, the accuracies of two classiﬁers — is likely to arise by chance. We will 2141
+be concerned with chance ﬂuctuations that arise due to the ﬁnite size of the test set.9An 2142
+improvement of 10% on a test set with ten instances may reﬂect a random ﬂuctuation that 2143
+makes the test set more favorable to classiﬁer c1thanc2; on another test set with a different 2144
+ten instances, we might ﬁnd that c2does better than c1. But if we observe the same 10% 2145
+improvement on a test set with 1000 instances, this is highly unlikely to be explained 2146
+by chance. Such a ﬁnding is said to be statistically signiﬁcant at a levelp, which is the 2147
+probability of observing an effect of equal or greater magnitude when the null hypothesis 2148
+is true. The notation p < . 05indicates that the likelihood of an equal or greater effect is 2149
+less than 5%, assuming the null hypothesis is true.102150
+4.4.3.1 The binomial test 2151
+The statistical signiﬁcance of a difference in accuracy can be evaluated using classical tests, 2152
+such as the binomial test .11Suppose that classiﬁers c1andc2disagree on Ninstances in a 2153
+test set with binary labels, and that c1is correct on kof those instances. Under the null hy- 2154
+pothesis that the classiﬁers are equally accurate, we would expect k/N to be roughly equal 2155
+to1/2, and asNincreases,k/N should be increasingly close to this expected value. These 2156
+properties are captured by the binomial distribution , which is a probability over counts 2157
+9Other sources of variance include the initialization of non-convex classiﬁers such as neural networks,
+and the ordering of instances in online learning such as stochastic gradient descent and perceptron.
+10Statistical hypothesis testing is useful only to the extent that the existing test set is representative of
+the instances that will be encountered in the future. If, for example, the test set is constructed from news
+documents, no hypothesis test can predict which classiﬁer will perform best on documents from another
+domain, such as electronic health records.
+11A well-known alternative to the binomial test is McNemar’s test , which computes a test statistic based
+on the number of examples that are correctly classiﬁed by one system and incorrectly classiﬁed by the other.
+The null hypothesis distribution for this test statistic is known to be drawn from a chi-squared distribution
+with a single degree of freedom, so a p-value can be computed from the cumulative density function of this
+distribution (Dietterich, 1998). Both tests give similar results in most circumstances, but the binomial test is
+easier to understand from ﬁrst principles.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.4. EVALUATING CLASSIFIERS 97
+0 5 10 15 20 25 30
+Instances where c1 is right and c2 is wrong0.000.050.100.15p(kN=30,=0.5)
+Figure 4.5: Probability mass function for the binomial distribution. The pink highlighted
+areas represent the cumulative probability for a signiﬁcance test on an observation of
+k= 10 andN= 30 .
+of binary random variables. We write k∼Binom (θ,N)to indicate that kis drawn from 2158
+a binomial distribution, with parameter Nindicating the number of random “draws”, 2159
+andθindicating the probability of “success” on each draw. Each draw is an example on 2160
+which the two classiﬁers disagree, and a “success” is a case in which c1is right and c2is 2161
+wrong. (The label space is assumed to be binary, so if the classiﬁers disagree, exactly one 2162
+of them is correct. The test can be generalized to multi-class classiﬁcation by focusing on 2163
+the examples in which exactly one classiﬁer is correct.) 2164
+The probability mass function (PMF) of the binomial distribution is, 2165
+pBinom(k;N,θ) =(N
+k)
+θk(1−θ)N−k, [4.9]
+withθkrepresenting the probability of the ksuccesses, (1−θ)N−krepresenting the prob- 2166
+ability of the N−kunsuccessful draws. The expression(N
+k)
+=N!
+k!(N−k)!is a binomial 2167
+coefﬁcient, representing the number of possible orderings of events; this ensures that the 2168
+distribution sums to one over all k∈{0,1,2,...,N}. 2169
+Under the null hypothesis, when the classiﬁers disagree, each classiﬁer is equally
+likely to be right, so θ=1
+2. Now suppose that among Ndisagreements, c1is correctk<N
+2
+times. The probability of c1being correct kor fewer times is the one-tailed p-value , be-
+cause it is computed from the area under the binomial probability mass function from 0
+tok, as shown in the left tail of Figure 4.5. This cumulative probability is computed as a
+sum over all values i≤k,
+Pr
+Binom(
+count (ˆy(i)
+2=y(i)̸= ˆy(i)
+1)≤k;N,θ=1
+2)
+=k∑
+i=0pBinom(
+i;N,θ=1
+2)
+. [4.10]
+The one-tailed p-value applies only to the asymmetric null hypothesis that c1is at least 2170
+as accurate as c2. To test the two-tailed null hypothesis that c1andc2are equally accu- 2171
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+98 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+Algorithm 7 Bootstrap sampling for classiﬁer evaluation. The original test set is
+{x(1:N),y(1:N)}, the metric is δ(·), and the number of samples is M.
+procedure BOOTSTRAP -SAMPLE (x(1:N),y(1:N),δ(·),M)
+fort∈{1,2,...,M}do
+fori∈{1,2,...,N}do
+j∼UniformInteger (1,N)
+˜x(i)←x(j)
+˜y(i)←y(j)
+d(t)←δ(˜x(1:N),˜y(1:N))
+return{d(t)}M
+t=1
+rate, we would take the sum of one-tailed p-values, where the second term is computed 2172
+from the right tail of Figure 4.5. The binomial distribution is symmetric, so this can be 2173
+computed by simply doubling the one-tailed p-value. 2174
+Two-tailed tests are more stringent, but they are necessary in cases in which there is 2175
+no prior intuition about whether c1orc2is better. For example, in comparing logistic 2176
+regression versus averaged perceptron, a two-tailed test is appropriate. In an ablation 2177
+test,c2may contain a superset of the features available to c1. If the additional features are 2178
+thought to be likely to improve performance, then a one-tailed test would be appropriate, 2179
+if chosen in advance. However, such a test can only prove that c2is more accurate than 2180
+c1, and not the reverse. 2181
+4.4.3.2 *Randomized testing 2182
+The binomial test is appropriate for accuracy, but not for more complex metrics such as 2183
+F-MEASURE . To compute statistical signiﬁcance for arbitrary metrics, we can apply ran- 2184
+domization. Speciﬁcally, draw a set of Mbootstrap samples (Efron and Tibshirani, 1993), 2185
+by resampling instances from the original test set with replacement. Each bootstrap sam- 2186
+ple is itself a test set of size N. Some instances from the original test set will not appear 2187
+in any given bootstrap sample, while others will appear multiple times; but overall, the 2188
+sample will be drawn from the same distribution as the original test set. We can then com- 2189
+pute any desired evaluation on each bootstrap sample, which gives a distribution over the 2190
+value of the metric. Algorithm 7 shows how to perform this computation. 2191
+To compare the F-MEASURE of two classiﬁers c1andc2, we set the function δ(·)to 2192
+compute the difference in F-MEASURE on the bootstrap sample. If the difference is less 2193
+than or equal to zero in at least 5% of the samples, then we cannot reject the one-tailed 2194
+null hypothesis that c2is at least as good as c1(Berg-Kirkpatrick et al., 2012). We may 2195
+also be interested in the 95% conﬁdence interval around a metric of interest, such as 2196
+theF-MEASURE of a single classiﬁer. This can be computed by sorting the output of 2197
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.5. BUILDING DATASETS 99
+Algorithm 7, and then setting the top and bottom of the 95% conﬁdence interval to the 2198
+values at the 2.5% and 97.5% percentiles of the sorted outputs. Alternatively, you can ﬁt 2199
+a normal distribution to the set of differences across bootstrap samples, and compute a 2200
+Gaussian conﬁdence interval from the mean and variance. 2201
+As the number of bootstrap samples goes to inﬁnity, M→∞ , the bootstrap estimate 2202
+is increasingly accurate. A typical choice for Mis104or105; larger numbers of samples 2203
+are necessary for smaller p-values. One way to validate your choice of Mis to run the test 2204
+multiple times, and ensure that the p-values are similar; if not, increase Mby an order of 2205
+magnitude. This is a heuristic measure of the variance of the test, which can decreases 2206
+with the square root√
+M(Robert and Casella, 2013). 2207
+4.4.4 *Multiple comparisons 2208
+Sometimes it is necessary to perform multiple hypothesis tests, such as when compar- 2209
+ing the performance of several classiﬁers on multiple datasets. Suppose you have ﬁve 2210
+datasets, and you compare four versions of your classiﬁer against a baseline system, for a 2211
+total of 20 comparisons. Even if none of your classiﬁers is better than the baseline, there 2212
+will be some chance variation in the results, and in expectation you will get one statis- 2213
+tically signiﬁcant improvement at p= 0.05 =1
+20. It is therefore necessary to adjust the 2214
+p-values when reporting the results of multiple comparisons. 2215
+One approach is to require a threshold ofα
+mto report a pvalue ofp < α when per- 2216
+formingmtests. This is known as the Bonferroni correction , and it limits the overall 2217
+probability of incorrectly rejecting the null hypothesis at α. Another approach is to bound 2218
+thefalse discovery rate (FDR), which is the fraction of null hypothesis rejections that are 2219
+incorrect. Benjamini and Hochberg (1995) propose a p-value correction that bounds the 2220
+fraction of false discoveries at α: sort thep-values of each individual test in ascending 2221
+order, and set the signiﬁcance threshold equal to largest ksuch thatpk≤k
+mα. Ifk>1, the 2222
+FDR adjustment is more permissive than the Bonferroni correction. 2223
+4.5 Building datasets 2224
+Sometimes, if you want to build a classiﬁer, you must ﬁrst build a dataset of your own. 2225
+This includes selecting a set of documents or instances to annotate, and then performing 2226
+the annotations. The scope of the dataset may be determined by the application: if you 2227
+want to build a system to classify electronic health records, then you must work with a 2228
+corpus of records of the type that your classiﬁer will encounter when deployed. In other 2229
+cases, the goal is to build a system that will work across a broad range of documents. In 2230
+this case, it is best to have a balanced corpus, with contributions from many styles and 2231
+genres. For example, the Brown corpus draws from texts ranging from government doc- 2232
+uments to romance novels (Francis, 1964), and the Google Web Treebank includes an- 2233
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+100 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+notations for ﬁve “domains” of web documents: question answers, emails, newsgroups, 2234
+reviews, and blogs (Petrov and McDonald, 2012). 2235
+4.5.1 Metadata as labels 2236
+Annotation is difﬁcult and time-consuming, and most people would rather avoid it. It 2237
+is sometimes possible to exploit existing metadata to obtain labels for training a classi- 2238
+ﬁer. For example, reviews are often accompanied by a numerical rating, which can be 2239
+converted into a classiﬁcation label (see §4.1). Similarly, the nationalities of social media 2240
+users can be estimated from their proﬁles (Dredze et al., 2013) or even the time zones of 2241
+their posts (Gouws et al., 2011). More ambitiously, we may try to classify the political af- 2242
+ﬁliations of social media proﬁles based on their social network connections to politicians 2243
+and major political parties (Rao et al., 2010). 2244
+The convenience of quickly constructing large labeled datasets without manual an- 2245
+notation is appealing. However this approach relies on the assumption that unlabeled 2246
+instances — for which metadata is unavailable — will be similar to labeled instances. 2247
+Consider the example of labeling the political afﬁliation of social media users based on 2248
+their network ties to politicians. If a classiﬁer attains high accuracy on such a test set, 2249
+is it safe to assume that it accurately predicts the political afﬁliation of all social media 2250
+users? Probably not. Social media users who establish social network ties to politicians 2251
+may be more likely to mention politics in the text of their messages, as compared to the 2252
+average user, for whom no political metadata is available. If so, the accuracy on a test set 2253
+constructed from social network metadata would give an overly optimistic picture of the 2254
+method’s true performance on unlabeled data. 2255
+4.5.2 Labeling data 2256
+In many cases, there is no way to get ground truth labels other than manual annotation. 2257
+An annotation protocol should satisfy several criteria: the annotations should be expressive 2258
+enough to capture the phenomenon of interest; they should be replicable , meaning that 2259
+another annotator or team of annotators would produce very similar annotations if given 2260
+the same data; and they should be scalable , so that they can be produced relatively quickly. 2261
+Hovy and Lavid (2010) propose a structured procedure for obtaining annotations that 2262
+meet these criteria, which is summarized below. 2263
+1.Determine what the annotations are to include . This is usually based on some 2264
+theory of the underlying phenomenon: for example, if the goal is to produce an- 2265
+notations about the emotional state of a document’s author, one should start with a 2266
+theoretical account of the types or dimensions of emotion (e.g., Mohammad and Tur- 2267
+ney, 2013). At this stage, the tradeoff between expressiveness and scalability should 2268
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.5. BUILDING DATASETS 101
+be considered: a full instantiation of the underlying theory might be too costly to 2269
+annotate at scale, so reasonable approximations should be considered. 2270
+2. Optionally, one may design or select a software tool to support the annotation 2271
+effort . Existing general-purpose annotation tools include BRAT (Stenetorp et al., 2272
+2012) and MMAX2 (M¨uller and Strube, 2006). 2273
+3.Formalize the instructions for the annotation task . To the extent that the instruc- 2274
+tions are not explicit, the resulting annotations will depend on the intuitions of the 2275
+annotators. These intuitions may not be shared by other annotators, or by the users 2276
+of the annotated data. Therefore explicit instructions are critical to ensuring the an- 2277
+notations are replicable and usable by other researchers. 2278
+4.Perform a pilot annotation of a small subset of data, with multiple annotators for 2279
+each instance. This will give a preliminary assessment of both the replicability and 2280
+scalability of the current annotation instructions. Metrics for computing the rate of 2281
+agreement are described below. Manual analysis of speciﬁc disagreements should 2282
+help to clarify the instructions, and may lead to modiﬁcations of the annotation task 2283
+itself. For example, if two labels are commonly conﬂated by annotators, it may be 2284
+best to merge them. 2285
+5.Annotate the data . After ﬁnalizing the annotation protocol and instructions, the 2286
+main annotation effort can begin. Some, if not all, of the instances should receive 2287
+multiple annotations, so that inter-annotator agreement can be computed. In some 2288
+annotation projects, instances receive many annotations, which are then aggregated 2289
+into a “consensus” label (e.g., Danescu-Niculescu-Mizil et al., 2013). However, if the 2290
+annotations are time-consuming or require signiﬁcant expertise, it may be preferable 2291
+to maximize scalability by obtaining multiple annotations for only a small subset of 2292
+examples. 2293
+6.Compute and report inter-annotator agreement, and release the data . In some 2294
+cases, the raw text data cannot be released, due to concerns related to copyright or 2295
+privacy. In these cases, one solution is to publicly release stand-off annotations , 2296
+which contain links to document identiﬁers. The documents themselves can be re- 2297
+leased under the terms of a licensing agreement, which can impose conditions on 2298
+how the data is used. It is important to think through the potential consequences of 2299
+releasing data: people may make personal data publicly available without realizing 2300
+that it could be redistributed in a dataset and publicized far beyond their expecta- 2301
+tions (boyd and Crawford, 2012). 2302
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+102 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+4.5.2.1 Measuring inter-annotator agreement 2303
+To measure the replicability of annotations, a standard practice is to compute the extent to 2304
+which annotators agree with each other. If the annotators frequently disagree, this casts 2305
+doubt on either their reliability or on the annotation system itself. For classiﬁcation, one 2306
+can compute the frequency with which the annotators agree; for rating scales, one can 2307
+compute the average distance between ratings. These raw agreement statistics must then 2308
+be compared with the rate of chance agreement — the level of agreement that would be 2309
+obtained between two annotators who ignored the data. 2310
+Cohen’s Kappa is widely used for quantifying the agreement on discrete labeling 2311
+tasks (Cohen, 1960; Carletta, 1996),122312
+κ=agreement−E[agreement ]
+1−E[agreement ]. [4.11]
+The numerator is the difference between the observed agreement and the chance agree- 2313
+ment, and the denominator is the difference between perfect agreement and chance agree- 2314
+ment. Thus, κ= 1when the annotators agree in every case, and κ= 0when the annota- 2315
+tors agree only as often as would happen by chance. Various heuristic scales have been 2316
+proposed for determining when κindicates “moderate”, “good”, or “substantial” agree- 2317
+ment; for reference, Lee and Narayanan (2005) report κ≈0.45−0.47for annotations 2318
+of emotions in spoken dialogues, which they describe as “moderate agreement”; Stolcke 2319
+et al. (2000) report κ= 0.8for annotations of dialogue acts , which are labels for the pur- 2320
+pose of each turn in a conversation. 2321
+When there are two annotators, the expected chance agreement is computed as, 2322
+E[agreement ] =∑
+kˆPr(Y=k)2, [4.12]
+wherekis a sum over labels, and ˆPr(Y=k)is the empirical probability of label kacross 2323
+all annotations. The formula is derived from the expected number of agreements if the 2324
+annotations were randomly shufﬂed. Thus, in a binary labeling task, if one label is applied 2325
+to 90% of instances, chance agreement is .92+.12=.82. 2326
+4.5.2.2 Crowdsourcing 2327
+Crowdsourcing is often used to rapidly obtain annotations for classiﬁcation problems. 2328
+For example, Amazon Mechanical T urk makes it possible to deﬁne “human intelligence 2329
+tasks (hits)”, such as labeling data. The researcher sets a price for each set of annotations 2330
+and a list of minimal qualiﬁcations for annotators, such as their native language and their 2331
+12For other types of annotations, Krippendorf’s alpha is a popular choice (Hayes and Krippendorff, 2007;
+Artstein and Poesio, 2008).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.5. BUILDING DATASETS 103
+satisfaction rate on previous tasks. The use of relatively untrained “crowdworkers” con- 2332
+trasts with earlier annotation efforts, which relied on professional linguists (Marcus et al., 2333
+1993). However, crowdsourcing has been found to produce reliable annotations for many 2334
+language-related tasks (Snow et al., 2008). Crowdsourcing is part of the broader ﬁeld of 2335
+human computation (Law and Ahn, 2011). 2336
+Additional resources 2337
+Many of the preprocessing issues discussed in this chapter also arise in information re- 2338
+trieval. See (Manning et al., 2008, chapter 2) for discussion of tokenization and related 2339
+algorithms. 2340
+Exercises 2341
+1. As noted in§4.3.3, words tend to appear in clumps, with subsequent occurrences 2342
+of a word being more probable. More concretely, if word jhas probability φy,j 2343
+of appearing in a document with label y, then the probability of two appearances 2344
+(x(i)
+j= 2) is greater than φ2
+y,j. 2345
+Suppose you are applying Na ¨ıve Bayes to a binary classiﬁcation. Focus on a word j 2346
+which is more probable under label y= 1, so that, 2347
+Pr(w=j|y= 1)>Pr(w=j|y= 0). [4.13]
+Now suppose that x(i)
+j>1. All else equal, will the classiﬁer overestimate or under- 2348
+estimate the posterior Pr(y= 1|x)? 2349
+2. Prove that F-measure is never greater than the arithmetic mean of recall and preci- 2350
+sion,r+p
+2. Your solution should also show that F-measure is equal tor+p
+2iffr=p. 2351
+3. Given a binary classiﬁcation problem in which the probability of the “positive” label 2352
+is equal toα, what is the expected F-MEASURE of a random classiﬁer which ignores 2353
+the data, and selects ˆy= +1 with probability1
+2? (Assume that p (ˆy)⊥p(y).) What is 2354
+the expected F-MEASURE of a classiﬁer that selects ˆy= +1 with probability α(also 2355
+independent of y(i))? Depending on α, which random classiﬁer will score better? 2356
+4. Suppose that binary classiﬁers c1andc2disagree on N= 30 cases, and that c1is 2357
+correct ink= 10 of those cases. 2358
+•Write a program that uses primitive functions such as expand factorial to com- 2359
+pute the two-tailed p-value — you may use an implementation of the “choose” 2360
+function if one is avaiable. Verify your code against the output of a library for 2361
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+104 CHAPTER 4. LINGUISTIC APPLICATIONS OF CLASSIFICATION
+computing the binomial test or the binomial CDF, such as scipy.stats.binom 2362
+in Python. 2363
+•Then use a randomized test to try to obtain the same p-value. In each sample, 2364
+draw from a binomial distribution with N= 30 andθ=1
+2. Count the fraction 2365
+of samples in which k≤10. This is the one-tailed p-value; double this to 2366
+compute the two-tailed p-value. 2367
+•Try this with varying numbers of bootstrap samples: M∈{100,1000,5000,10000}. 2368
+ForM= 100 andM= 1000 , run the test 10times, and plot the resulting p- 2369
+values. 2370
+•Finally, perform the same tests for N= 70 andk= 25 . 2371
+5. SemCor 3.0 is a labeled dataset for word sense disambiguation. You can download 2372
+it,13or access it in nltk.corpora.semcor . 2373
+Choose a word that appears at least ten times in SemCor ( ﬁnd), and annotate its 2374
+WordNet senses across ten randomly-selected examples, without looking at the ground 2375
+truth. Use online WordNet to understand the deﬁnition of each of the senses.14Have 2376
+a partner do the same annotations, and compute the raw rate of agreement, expected 2377
+chance rate of agreement, and Cohen’s kappa. 2378
+6. Download the Pang and Lee movie review data, currently available from http: 2379
+//www.cs.cornell.edu/people/pabo/movie-review-data/ . Hold out a 2380
+randomly-selected 400 reviews as a test set. 2381
+Download a sentiment lexicon, such as the one currently available from Bing Liu, 2382
+https://www.cs.uic.edu/ ˜liub/FBS/sentiment-analysis.html . Tokenize 2383
+the data, and classify each document as positive iff it has more positive sentiment 2384
+words than negative sentiment words. Compute the accuracy and F-MEASURE on 2385
+detecting positive reviews on the test set, using this lexicon-based classiﬁer. 2386
+Then train a discriminative classiﬁer (averaged perceptron or logistic regression) on 2387
+the training set, and compute its accuracy and F-MEASURE on the test set. 2388
+Determine whether the differences are statistically signiﬁcant, using two-tailed hy- 2389
+pothesis tests: Binomial for the difference in accuracy, and bootstrap for the differ- 2390
+ence in macro- F-MEASURE . 2391
+The remaining problems will require you to build a classiﬁer and test its properties. Pick 2392
+a multi-class text classiﬁcation dataset, such as RCV115). Divide your data into training 2393
+13e.g.,https://github.com/google-research-datasets/word_sense_disambigation_
+corpora orhttp://globalwordnet.org/wordnet-annotated-corpora/
+14http://wordnetweb.princeton.edu/perl/webwn
+15http://www.ai.mit.edu/projects/jmlr/papers/volume5/lewis04a/lyrl2004_
+rcv1v2_README.htm
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+4.5. BUILDING DATASETS 105
+(60%), development (20%), and test sets (20%), if no such division already exists. [todo: 2394
+this dataset is already tokenized, ﬁnd something else] 2395
+7. Compare various vocabulary sizes of 102,103,104,105, using the most frequent words 2396
+in each case (you may use any reasonable tokenizer). Train logistic regression clas- 2397
+siﬁers for each vocabulary size, and apply them to the development set. Plot the 2398
+accuracy and Macro- F-MEASURE with the increasing vocabulary size. For each vo- 2399
+cabulary size, tune the regularizer to maximize accuracy on a subset of data that is 2400
+held out from the training set. 2401
+8. Compare the following tokenization algorithms: 2402
+•Whitespace, using a regular expression 2403
+•Penn Treebank 2404
+•Split input into ﬁve-character units, regardless of whitespace or punctuation 2405
+Compute the token/type ratio for each tokenizer on the training data, and explain 2406
+what you ﬁnd. Train your classiﬁer on each tokenized dataset, tuning the regularizer 2407
+on a subset of data that is held out from the training data. Tokenize the development 2408
+set, and report accuracy and Macro- F-MEASURE . 2409
+9. Apply the Porter and Lancaster stemmers to the training set, using any reasonable 2410
+tokenizer, and compute the token/type ratios. Train your classiﬁer on the stemmed 2411
+data, and compute the accuracy and Macro- F-MEASURE on stemmed development 2412
+data, again using a held-out portion of the training data to tune the regularizer. 2413
+10. Identify the best combination of vocabulary ﬁltering, tokenization, and stemming 2414
+from the previous three problems. Apply this preprocessing to the test set, and 2415
+compute the test set accuracy and Macro- F-MEASURE . Compare against a baseline 2416
+system that applies no vocabulary ﬁltering, whitespace tokenization, and no stem- 2417
+ming. 2418
+Use the binomial test to determine whether your best-performing system is signiﬁ- 2419
+cantly more accurate than the baseline. 2420
+Use the bootstrap test with M= 104to determine whether your best-performing 2421
+system achieves signiﬁcantly higher macro- F-MEASURE . 2422
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+
+

@@ -1,0 +1,794 @@
+Chapter 13 6501
+Predicate-argument semantics 6502
+This chapter considers more “lightweight” semantic representations, which discard some 6503
+aspects of ﬁrst-order logic, but focus on predicate-argument structures. Let’s begin by 6504
+thinking about the semantics of events, with a simple example: 6505
+(13.1) Asha gives Boyang a book. 6506
+A ﬁrst-order logical representation of this sentence is, 6507
+∃x.BOOK (x)∧GIVE (ASHA,BOYANG,x) [13.1]
+In this representation, we deﬁne variable xfor the book, and we link the strings Asha and 6508
+Boyang to entities A SHA and B OYANG . Because the action of giving involves a giver, a 6509
+recipient, and a gift, the predicate GIVE must take three arguments. 6510
+Now suppose we have additional information about the event: 6511
+(13.2) Yesterday, Asha reluctantly gave Boyang a book. 6512
+One possible to solution is to extend the predicate GIVE to take additional arguments, 6513
+∃x.BOOK(x)∧GIVE(ASHA,BOYANG,x,YESTERDAY ,RELUCTANTLY ) [13.2]
+But this is clearly unsatisfactory: yesterday and relunctantly are optional arguments,
+and we would need a different version of the G IVEpredicate for every possible combi-
+nation of arguments. Event semantics solves this problem by reifying the event as an
+existentially quantiﬁed variable e,
+∃e,x. GIVE -EVENT (e)∧GIVER (e,ASHA)∧GIFT(e,x)∧BOOK (e,x)∧RECIPIENT (e,BOYANG )
+∧TIME (e,YESTERDAY )∧MANNER (e,RELUCTANTLY )
+309
+
+310 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+In this way, each argument of the event — the giver, the recipient, the gift — can be rep- 6514
+resented with a relation of its own, linking the argument to the event e. The expression 6515
+GIVER (e,ASHA)says that A SHA plays the role ofGIVER in the event. This reformulation 6516
+handles the problem of optional information such as the time or manner of the event, 6517
+which are called adjuncts . Unlike arguments, adjuncts are not a mandatory part of the 6518
+relation, but under this representation, they can be expressed with additional logical rela- 6519
+tions that are conjoined to the semantic interpretation of the sentence.16520
+The event semantic representation can be applied to nested clauses, e.g., 6521
+(13.3) Chris sees Asha pay Boyang. 6522
+This is done by using the event variable as an argument:
+∃e1∃e2SEE-EVENT (e1)∧SEER (e1,CHRIS)∧SIGHT (e1,e2)
+∧PAY-EVENT (e2)∧PAYER (e2,ASHA)∧PAYEE (e2,BOYANG ) [13.3]
+As with ﬁrst-order logic, the goal of event semantics is to provide a representation that 6523
+generalizes over many surface forms. Consider the following paraphrases of (13.1): 6524
+(13.4) Asha gives a book to Boyang. 6525
+(13.5) A book is given to Boyang by Asha. 6526
+(13.6) A book is given by Asha to Boyang. 6527
+(13.7) The gift of a book from Asha to Boyang . . . 6528
+All have the same event semantic meaning as Equation 13.1, but the ways in which the 6529
+meaning can be expressed are diverse. The ﬁnal example does not even include a verb: 6530
+events are often introduced by verbs, but as shown by (13.7), the noun giftcan introduce 6531
+the same predicate, with the same accompanying arguments. 6532
+Semantic role labeling (SRL) is a relaxed form of semantic parsing, in which each 6533
+semantic role is ﬁlled by a set of tokens from the text itself. This is sometimes called 6534
+“shallow semantics” because, unlike model-theoretic semantic parsing, role ﬁllers need 6535
+not be symbolic expressions with denotations in some world model. A semantic role 6536
+labeling system is required to identify all predicates, and then specify the spans of text 6537
+that ﬁll each role. To give a sense of the task, here is a more complicated example: 6538
+(13.8) Boyang wants Asha to give him a linguistics book. 6539
+1This representation is often called Neo-Davidsonian event semantics . The use of existentially-
+quantiﬁed event variables was proposed by Davidson (1967) to handle the issue of optional adjuncts. In
+Neo-Davidsonian semantics, this treatment of adjuncts is extended to mandatory arguments as well (e.g.,
+Parsons, 1990).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.1. SEMANTIC ROLES 311
+In this example, there are two predicates, expressed by the verbs want and give. Thus, a 6540
+semantic role labeler might return the following output: 6541
+•(PREDICATE :wants,WANTER :Boyang,DESIRE :Asha to give him a linguistics book ) 6542
+•(PREDICATE :give,GIVER :Asha,RECIPIENT :him,GIFT:a linguistics book ) 6543
+Boyang and him may refer to the same person, but the semantic role labeling is not re- 6544
+quired to resolve this reference. Other predicate-argument representations, such as Ab- 6545
+stract Meaning Representation (AMR) , do require reference resolution. We will return to 6546
+AMR in§13.3, but ﬁrst, let us further consider the deﬁnition of semantic roles. 6547
+13.1 Semantic roles 6548
+In event semantics, it is necessary to specify a number of additional logical relations to 6549
+link arguments to events: GIVER ,RECIPIENT ,SEER ,SIGHT , etc. Indeed, every predicate re- 6550
+quires a set of logical relations to express its own arguments. In contrast, adjuncts such as 6551
+TIME and MANNER are shared across many types of events. A natural question is whether 6552
+it is possible to treat mandatory arguments more like adjuncts, by identifying a set of 6553
+generic argument types that are shared across many event predicates. This can be further 6554
+motivated by examples involving related verbs: 6555
+(13.9) Asha gave Boyang a book. 6556
+(13.10) Asha loaned Boyang a book. 6557
+(13.11) Asha taught Boyang a lesson. 6558
+(13.12) Asha gave Boyang a lesson. 6559
+The respective roles of Asha, Boyang, and the book are nearly identical across the ﬁrst 6560
+two examples. The third example is slightly different, but the fourth example shows that 6561
+the roles of GIVER and TEACHER can be viewed as related. 6562
+One way to think about the relationship between roles such as GIVER and TEACHER is 6563
+by enumerating the set of properties that an entity typically possesses when it fulﬁlls these 6564
+roles: givers and teachers are usually animate (they are alive and sentient) and volitional 6565
+(they choose to enter into the action).2In contrast, the thing that gets loaned or taught is 6566
+usually not animate or volitional; furthermore, it is unchanged by the event. 6567
+Building on these ideas, thematic roles generalize across predicates by leveraging the 6568
+shared semantic properties of typical role ﬁllers (Fillmore, 1968). For example, in exam- 6569
+ples (13.9-13.12), Asha plays a similar role in all four sentences, which we will call the 6570
+2There are always exceptions. For example, in the sentence The C programming language has taught me a
+lot about perseverance , the “teacher” is the The C programming language , which is presumably not animate or
+volitional.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+312 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+Asha gave Boyang a book
+VerbNet AGENT RECIPIENT THEME
+PropBank ARG0: giver A RG2: entity given to A RG1: thing given
+FrameNet DONOR RECIPIENT THEME
+Asha taught Boyang algebra
+VerbNet AGENT RECIPIENT TOPIC
+PropBank ARG0: teacher A RG2: student A RG1: subject
+FrameNet TEACHER STUDENT SUBJECT
+Figure 13.1: Example semantic annotations according to VerbNet, PropBank, and
+FrameNet
+agent . This reﬂects several shared semantic properties: she is the one who is actively and 6571
+intentionally performing the action, while Boyang is a more passive participant; the book 6572
+and the lesson would play a different role, as non-animate participants in the event. 6573
+Example annotations from three well known systems are shown in Figure 13.1. We 6574
+will now discuss these systems in more detail. 6575
+13.1.1 VerbNet 6576
+VerbNet (Kipper-Schuler, 2005) is a lexicon of verbs, and it includes thirty “core” thematic 6577
+roles played by arguments to these verbs. Here are some example roles, accompanied by 6578
+their deﬁnitions from the VerbNet Guidelines.36579
+•AGENT : “A CTOR in an event who initiates and carries out the event intentionally or 6580
+consciously, and who exists independently of the event.” 6581
+•PATIENT : “U NDERGOER in an event that experiences a change of state, location or 6582
+condition, that is causally involved or directly affected by other participants, and 6583
+exists independently of the event.” 6584
+•RECIPIENT : “D ESTINATION that is animate” 6585
+•THEME : “U NDERGOER that is central to an event or state that does not have control 6586
+over the way the event occurs, is not structurally changed by the event, and/or is 6587
+characterized as being in a certain position or condition throughout the state.” 6588
+•TOPIC : “T HEME characterized by information content transferred to another partic- 6589
+ipant.” 6590
+3http://verbs.colorado.edu/verb-index/VerbNet_Guidelines.pdf
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.1. SEMANTIC ROLES 313
+VerbNet roles are organized in a hierarchy, so that a TOPIC is a type of THEME , which in 6591
+turn is a type of UNDERGOER , which is a type of PARTICIPANT , the top-level category. 6592
+In addition, VerbNet organizes verb senses into a class hierarchy, in which verb senses 6593
+that have similar meanings are grouped together. Recall from §4.2 that multiple meanings 6594
+of the same word are called senses , and that WordNet identiﬁes senses for many English 6595
+words. VerbNet builds on WordNet, so that verb classes are identiﬁed by the WordNet 6596
+senses of the verbs that they contain. For example, the verb class give-13.1 includes 6597
+the ﬁrst WordNet sense of loan and the second WordNet sense of lend. 6598
+Each VerbNet class or subclass takes a set of thematic roles. For example, give-13.1 6599
+takes arguments with the thematic roles of A GENT , THEME , and R ECIPIENT ;4the pred- 6600
+icate TEACH takes arguments with the thematic roles A GENT , TOPIC , RECIPIENT , and 6601
+SOURCE .5So according to VerbNet, Asha and Boyang play the roles of A GENT and R ECIP - 6602
+IENT in the sentences, 6603
+(13.13) Asha gave Boyang a book. 6604
+(13.14) Asha taught Boyang algebra. 6605
+The book and algebra are both T HEMES , but algebra is a subcategory of T HEME — a T OPIC 6606
+— because it consists of information content that is given to the receiver. 6607
+13.1.2 Proto-roles and PropBank 6608
+Detailed thematic role inventories of the sort used in VerbNet are not universally accepted. 6609
+For example, Dowty (1991, pp. 547) notes that “Linguists have often found it hard to agree 6610
+on, and to motivate, the location of the boundary between role types.” He argues that a 6611
+solid distinction can be identiﬁed between just two proto-roles : 6612
+Proto-Agent. Characterized by volitional involvement in the event or state; sentience 6613
+and/or perception; causing an event or change of state in another participant; move- 6614
+ment; exists independently of the event. 6615
+Proto-Patient. Undergoes change of state; causally affected by another participant; sta- 6616
+tionary relative to the movement of another participant; does not exist indepen- 6617
+dently of the event.66618
+4https://verbs.colorado.edu/verb-index/vn/give-13.1.php
+5https://verbs.colorado.edu/verb-index/vn/transfer_mesg-37.1.1.php
+6Reisinger et al. (2015) ask crowd workers to annotate these properties directly, ﬁnding that annotators
+tend to agree on the properties of each argument. They also ﬁnd that in English, arguments having more
+proto-agent properties tend to appear in subject position, while arguments with more proto-patient proper-
+ties appear in object position.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+314 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+In the examples in Figure 13.1, Asha has most of the proto-agent properties: in giving 6619
+the book to Boyang, she is acting volitionally (as opposed to Boyang got a book from Asha , in 6620
+which it is not clear whether Asha gave up the book willingly); she is sentient; she causes 6621
+a change of state in Boyang; she exists independently of the event. Boyang has some 6622
+proto-agent properties: he is sentient and exists independently of the event. But he also 6623
+some proto-patient properties: he is the one who is causally affected and who undergoes 6624
+change of state. The book that Asha gives Boyang has even fewer of the proto-agent 6625
+properties: it is not volitional or sentient, and it has no causal role. But it also lacks many 6626
+of the proto-patient properties: it does not undergo change of state, exists independently 6627
+of the event, and is not stationary. 6628
+The Proposition Bank , or PropBank (Palmer et al., 2005), builds on this basic agent- 6629
+patient distinction, as a middle ground between generic thematic roles and roles that are 6630
+speciﬁc to each predicate. Each verb is linked to a list of numbered arguments, with A RG0 6631
+as the proto-agent and A RG1 as the proto-patient. Additional numbered arguments are 6632
+verb-speciﬁc. For example, for the predicate TEACH ,7the arguments are: 6633
+•ARG0: the teacher 6634
+•ARG1: the subject 6635
+•ARG2: the student(s) 6636
+Verbs may have any number of arguments: for example, WANT and GET have ﬁve, while 6637
+EAT has only A RG0 and A RG1. In addition to the semantic arguments found in the frame 6638
+ﬁles, roughly a dozen general-purpose adjuncts may be used in combination with any 6639
+verb. These are shown in Table 13.1. 6640
+PropBank-style semantic role labeling is annotated over the entire Penn Treebank. This 6641
+annotation includes the sense of each verbal predicate, as well as the argument spans. 6642
+13.1.3 FrameNet 6643
+Semantic frames are descriptions of situations or events. Frames may be evoked by one 6644
+of their lexical units (often a verb, but not always), and they include some number of 6645
+frame elements , which are like roles (Fillmore, 1976). For example, the act of teaching 6646
+is a frame, and can be evoked by the verb taught ; the associated frame elements include 6647
+the teacher, the student(s), and the subject being taught. Frame semantics has played a 6648
+signiﬁcant role in the history of artiﬁcial intelligence, in the work of Minsky (1974) and 6649
+Schank and Abelson (1977). In natural language processing, the theory of frame semantics 6650
+has been implemented in FrameNet (Fillmore and Baker, 2009), which consists of a lexicon 6651
+7http://verbs.colorado.edu/propbank/framesets-english-aliases/teach.html
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.1. SEMANTIC ROLES 315
+TMP time Boyang ate a bagel [AM-TMPyesterday ].
+LOC location Asha studies in [AM-LOCStuttgart ]
+MOD modal verb Asha [AM-MODwill]study in Stuttgart
+ADV general purpose [AM-ADVLuckily ], Asha knew algebra.
+MNR manner Asha ate [AM-MNRaggressively ].
+DIS discourse connective [AM-DISHowever ], Asha prefers algebra.
+PRP purpose Barry studied [AM-PRPto pass the bar ].
+DIR direction Workers dumped burlap sacks [AM-DIRinto a bin ].
+NEG negation Asha does [AM-NEGnot]speak Albanian.
+EXT extent Prices increased [AM-EXT4%].
+CAU cause Boyang returned the book [AM-CAUbecause it was overdue ].
+Table 13.1: PropBank adjuncts (Palmer et al., 2005), sorted by frequency in the corpus
+of roughly 1000 frames, and a corpus of more than 200,000 “exemplar sentences,” in which 6652
+the frames and their elements are annotated.86653
+Rather than seeking to link semantic roles such as TEACHER and GIVER into the- 6654
+matic roles such as AGENT , FrameNet aggressively groups verbs into frames, and links 6655
+semantically-related roles across frames. For example, the following two sentences would 6656
+be annotated identically in FrameNet: 6657
+(13.15) Asha taught Boyang algebra. 6658
+(13.16) Boyang learned algebra from Asha. 6659
+This is because teach and learn are both lexical units in the EDUCATION TEACHING frame. 6660
+Furthermore, roles can be shared even when the frames are distinct, as in the following 6661
+two examples: 6662
+(13.17) Asha gave Boyang a book. 6663
+(13.18) Boyang got a book from Asha. 6664
+The GIVING and GETTING frames both have R ECIPIENT and T HEME elements, so Boyang 6665
+and the book would play the same role. Asha’s role is different: she is the D ONOR in the 6666
+GIVING frame, and the S OURCE in the GETTING frame. FrameNet makes extensive use of 6667
+multiple inheritance to share information across frames and frame elements: for example, 6668
+the COMMERCE SELL and LENDING frames inherit from GIVING frame. 6669
+8Current details and data can be found at https://framenet.icsi.berkeley.edu/
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+316 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+13.2 Semantic role labeling 6670
+The task of semantic role labeling is to identify the parts of the sentence comprising the 6671
+semantic roles. In English, this task is typically performed on the PropBank corpus, with 6672
+the goal of producing outputs in the following form: 6673
+(13.19) [ARG0Asha ] [GIVE .01gave ] [ARG2Boyang’s mom ] [ARG1a book ] [AM-TMP yesterday ]. 6674
+Note that a single sentence may have multiple verbs, and therefore a given word may be 6675
+part of multiple role-ﬁllers: 6676
+(13.20) [ARG0Asha ]
+Asha[WANT .01wanted ]
+wanted6677
+[ARG1Boyang to give her the book ].
+[ARG0Boyang ] [GIVE .01to give ] [ARG2her] [ARG1the book ].6678
+13.2.1 Semantic role labeling as classiﬁcation 6679
+PropBank is annotated on the Penn Treebank, and annotators used phrasal constituents 6680
+(§9.2.2) to ﬁll the roles. PropBank semantic role labeling can be viewed as the task of as- 6681
+signing to each phrase a label from the set R={∅,PRED, ARG0, A RG1, A RG2, . . . , A M-LOC, AM-TMP, . . .} 6682
+with respect to each predicate. If we treat semantic role labeling as a classiﬁcation prob- 6683
+lem, we obtain the following functional form: 6684
+ˆy(i,j)= argmax
+yψ(w,y,i,j,ρ,τ ), [13.4]
+where, 6685
+•(i,j)indicates the span of a phrasal constituent (wi+1,wi+2,...,wj);96686
+•wrepresents the sentence as a sequence of tokens; 6687
+•ρis the index of the predicate verb in w; 6688
+•τis the structure of the phrasal constituent parse of w. 6689
+Early work on semantic role labeling focused on discriminative feature-based models, 6690
+whereψ(w,y,i,j,ρ,τ ) =θ·f(w,y,i,j,ρ,τ ). Table 13.2 shows the features used in a sem- 6691
+inal paper on FrameNet semantic role labeling (Gildea and Jurafsky, 2002). By 2005 there 6692
+9PropBank roles can also be ﬁlled by split constituents , which are discontinuous spans of text. This
+situation most frequently in reported speech, e.g. [ARG1By addressing these problems ], Mr. Maxwell said,
+[ARG1the new funds have become extremely attractive. ](example adapted from Palmer et al., 2005). This issue
+is typically addressed by deﬁning “continuation arguments”, e.g. C-A RG1, which refers to the continuation
+of A RG1 after the split.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.2. SEMANTIC ROLE LABELING 317
+Predicate lemma and
+POS tagThe lemma of the predicate verb and its part-of-speech tag
+Voice Whether the predicate is in active or passive voice, as deter-
+mined by a set of syntactic patterns for identifying passive
+voice constructions
+Phrase type The constituent phrase type for the proposed argument in
+the parse tree, e.g. NP , PP
+Headword and POS
+tagThe head word of the proposed argument and its POS tag,
+identiﬁed using the Collins (1997) rules
+Position Whether the proposed argument comes before or after the
+predicate in the sentence
+Syntactic path The set of steps on the parse tree from the proposed argu-
+ment to the predicate (described in detail in the text)
+Subcategorization The syntactic production from the ﬁrst branching node
+above the predicate. For example, in Figure 13.2, the
+subcategorization feature around taught would be VP→
+VBD NP PP.
+Table 13.2: Features used in semantic role labeling by Gildea and Jurafsky (2002).
+were several systems for PropBank semantic role labeling, and their approaches and fea- 6693
+ture sets are summarized by Carreras and M `arquez (2005). Typical features include: the 6694
+phrase type, head word, part-of-speech, boundaries, and neighbors of the proposed argu- 6695
+mentwi+1:j; the word, lemma, part-of-speech, and voice of the verb wρ(active or passive), 6696
+as well as features relating to its frameset; the distance and path between the verb and 6697
+the proposed argument. In this way, semantic role labeling systems are high-level “con- 6698
+sumers” in the NLP stack, using features produced from lower-level components such as 6699
+part-of-speech taggers and parsers. More comprehensive feature sets are enumerated by 6700
+Das et al. (2014) and T ¨ackstr ¨om et al. (2015). 6701
+A particularly powerful class of features relate to the syntactic path between the ar- 6702
+gument and the predicate. These features capture the sequence of moves required to get 6703
+from the argument to the verb by traversing the phrasal constituent parse of the sentence. 6704
+The idea of these features is to capture syntactic regularities in how various arguments 6705
+are realized. Syntactic path features are best illustrated by example, using the parse tree 6706
+in Figure 13.2: 6707
+•The path from Asha to the verb taught is N NP↑NP↑S↓VP↓VBD. The ﬁrst part of 6708
+the path, NNP↑NP↑S, means that we must travel up the parse tree from the N NP 6709
+tag (proper noun) to the S (sentence) constituent. The second part of the path, 6710
+S↓VP↓VBD, means that we reach the verb by producing a VP (verb phrase) from 6711
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+318 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+S
+VP
+PP(Arg1)
+Nn
+algebraIn
+aboutNP(Arg2)
+Nn
+classDet
+theVbd
+taughtNP
+Nnp(Arg0)
+Asha
+Figure 13.2: Semantic role labeling on the phrase-structure parse tree for a sentence. The
+dashed line indicates the syntactic path from Asha to the predicate verb taught .
+the S constituent, and then by producing a V BD(past tense verb). This feature is 6712
+consistent with Asha being in subject position, since the path includes the sentence 6713
+root S. 6714
+•The path from the class totaught is NP↑VP↓VBD. This is consistent with the class 6715
+being in object position, since the path passes through the VP node that dominates 6716
+the verb taught . 6717
+Because there are many possible path features, it can also be helpful to look at smaller 6718
+parts: for example, the upward and downward parts can be treated as separate features; 6719
+another feature might consider whether S appears anywhere in the path. 6720
+Rather than using the constituent parse, it is also possible to build features from the 6721
+dependency path between the head word of each argument and the verb (Pradhan et al., 6722
+2005). Using the Universal Dependency part-of-speech tagset and dependency relations (Nivre 6723
+et al., 2016), the dependency path from Asha totaught is P ROPN←
+NSUBJVERB, because taught 6724
+is the head of a relation of type ←
+NSUBJwith Asha . Similarly, the dependency path from class 6725
+totaught is N OUN←
+DOBJVERB, because class heads the noun phrase that is a direct object of 6726
+taught . A more interesting example is Asha wanted to teach the class , where the path from 6727
+Asha toteach is P ROPN←
+NSUBJVERB→
+XCOMPVERB. The right-facing arrow in second relation 6728
+indicates that wanted is the head of its X COMP relation with teach . 6729
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.2. SEMANTIC ROLE LABELING 319
+13.2.2 Semantic role labeling as constrained optimization 6730
+A potential problem with treating SRL as a classiﬁcation problem is that there are a num- 6731
+ber of sentence-level constraints , which a classiﬁer might violate. 6732
+•For a given verb, there can be only one argument of each type (A RG0, A RG1, etc.) 6733
+•Arguments cannot overlap. This problem arises when we are labeling the phrases 6734
+in a constituent parse tree, as shown in Figure 13.2: if we label the PP about algebra 6735
+as an argument or adjunct, then its children about and algebra must be labeled as ∅. 6736
+The same constraint also applies to the syntactic ancestors of this phrase. 6737
+These constraints introduce dependencies across labeling decisions. In structure pre- 6738
+diction problems such as sequence labeling and parsing, such dependencies are usually 6739
+handled by deﬁning a scoring over the entire structure, y. Efﬁcient inference requires 6740
+that the global score decomposes into local parts: for example, in sequence labeling, the 6741
+scoring function decomposes into scores of pairs of adjacent tags, permitting the applica- 6742
+tion of the Viterbi algorithm for inference. But the constraints that arise in semantic role 6743
+labeling are less amenable to local decomposition.10We therefore consider constrained 6744
+optimization as an alternative solution. 6745
+Let the setC(τ)refer to all labelings that obey the constraints introduced by the parse
+τ. The semantic role labeling problem can be reformulated as a constrained optimization
+overy∈C(τ),
+max
+y∑
+(i,j)∈τψ(w,yi,j,i,j,ρ,τ )
+s.t.y∈C(τ). [13.5]
+In this formulation, the objective (shown on the ﬁrst line) is a separable function of each 6746
+individual labeling decision, but the constraints (shown on the second line) apply to the 6747
+overall labeling. The sum∑
+(i,j)∈τindicates that we are summing over all constituent 6748
+spans in the parse τ. The expression s.t. in the second line means that we maximize the 6749
+objective subject to the constraint y∈C(τ). 6750
+A number of practical algorithms exist for restricted forms of constrained optimiza- 6751
+tion. One such restricted form is integer linear programming , in which the objective and 6752
+constraints are linear functions of integer variables. To formulate SRL as an integer linear 6753
+program, we begin by rewriting the labels as a set of binary variables z={zi,j,r}(Pun- 6754
+yakanok et al., 2008), 6755
+zi,j,r={
+1, yi,j=r
+0,otherwise,[13.6]
+10Dynamic programming solutions have been proposed by Tromble and Eisner (2006) and T ¨ackstr ¨om et al.
+(2015), but they involves creating a trellis structure whose size is exponential in the number of labels.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+320 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+wherer∈R is a label in the set {ARG0,ARG1,..., AM-LOC,...,∅}. Thus, the variables 6756
+zare a binarized version of the semantic role labeling y. 6757
+The objective can then be formulated as a linear function of z.
+∑
+(i,j)∈τψ(w,yi,j,i,j,ρ,τ ) =∑
+i,j,rψ(w,r,i,j,ρ,τ )×zi,j,r, [13.7]
+which is the sum of the scores of all relations, as indicated by zi,j,r. 6758
+Constraints Integer linear programming permits linear inequality constraints, of the
+general form Az≤b, where the parameters Aandbdeﬁne the constraints. To make
+this more concrete, let’s start with the constraint that each non-null role type can occur
+only once in a sentence. This constraint can be written,
+∀r̸=∅,∑
+(i,j)∈τzi,j,r≤1. [13.8]
+Recall thatzi,j,r= 1iff the span (i,j)has labelr; this constraint says that for each possible 6759
+labelr̸=∅, there can be at most one (i,j)such thatzi,j,r= 1. Rewriting this constraint 6760
+can be written in the form Az≤b, as you will ﬁnd if you complete the exercises at the 6761
+end of the chapter. 6762
+Now consider the constraint that labels cannot overlap. Let’s deﬁne the convenience
+functiono((i,j),(i′,j′)) = 1 iff(i,j)overlaps (i′,j′), and zero otherwise. Thus, owill
+indicate if a constituent (i′,j′)is either an ancestor or descendant of (i,j). The constraint
+is that if two constituents overlap, only one can have a non-null label:
+∀(i,j)∈τ,∑
+(i′,j′)∈τ∑
+r̸=∅o((i,j),(i′,j′))×zi′,j′,r≤1, [13.9]
+whereo((i,j),(i,j)) = 1 . 6763
+In summary, the semantic role labeling problem can thus be rewritten as the following
+integer linear program,
+max
+z∈{0,1}|τ|∑
+(i,j)∈τ∑
+r∈Rzi,j,rψi,j,r [13.10]
+s.t.∀r̸=∅,∑
+(i,j)∈τzi,j,r≤1. [13.11]
+∀(i,j)∈τ,∑
+(i′,j′)∈τ∑
+r̸=∅o((i,j),(i′,j′))×zi′,j′,r≤1. [13.12]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.2. SEMANTIC ROLE LABELING 321
+Learning with constraints Learning can be performed in the context of constrained op- 6764
+timization using the usual perceptron or large-margin classiﬁcation updates. Because 6765
+constrained inference is generally more time-consuming, a key question is whether it is 6766
+necessary to apply the constraints during learning. Chang et al. (2008) ﬁnd that better per- 6767
+formance can be obtained by learning without constraints, and then applying constraints 6768
+only when using the trained model to predict semantic roles for unseen data. 6769
+How important are the constraints? Das et al. (2014) ﬁnd that an unconstrained, classiﬁcation- 6770
+based method performs nearly as well as constrained optimization for FrameNet parsing: 6771
+while it commits many violations of the “no-overlap” constraint, the overall F1score is 6772
+less than one point worse than the score at the constrained optimum. Similar results 6773
+were obtained for PropBank semantic role labeling by Punyakanok et al. (2008). He et al. 6774
+(2017) ﬁnd that constrained inference makes a bigger impact if the constraints are based 6775
+on manually-labeled “gold” syntactic parses. This implies that errors from the syntac- 6776
+tic parser may limit the effectiveness of the constraints. Punyakanok et al. (2008) hedge 6777
+against parser error by including constituents from several different parsers; any con- 6778
+stituent can be selected from any parse, and additional constraints ensure that overlap- 6779
+ping constituents are not selected. 6780
+Implementation Integer linear programming solvers such as glpk ,11cplex ,12andGurobi136781
+allow inequality constraints to be expressed directly in the problem deﬁnition, rather than 6782
+in the matrix form Az≤b. The time complexity of integer linear programming is theoret- 6783
+ically exponential in the number of variables |z|, but in practice these off-the-shelf solvers 6784
+obtain good solutions efﬁciently. Das et al. (2014) report that the cplex solver requires 43 6785
+seconds to perform inference on the FrameNet test set, which contains 4,458 predicates. 6786
+Recent work has shown that many constrained optimization problems in natural lan- 6787
+guage processing can be solved in a highly parallelized fashion, using optimization tech- 6788
+niques such as dual decomposition , which are capable of exploiting the underlying prob- 6789
+lem structure (Rush et al., 2010). Das et al. (2014) apply this technique to FrameNet se- 6790
+mantic role labeling, obtaining an order-of-magnitude speedup over cplex . 6791
+13.2.3 Neural semantic role labeling 6792
+Neural network approaches to SRL have tended to treat it as a sequence labeling task, 6793
+using a labeling scheme such as the BIO notation , which we previously saw in named 6794
+entity recognition ( §8.3). In this notation, the ﬁrst token in a span of type A RG1 is labeled 6795
+11https://www.gnu.org/software/glpk/
+12https://www-01.ibm.com/software/commerce/optimization/cplex-optimizer/
+13http://www.gurobi.com/
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+322 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+B-A RG1; all remaining tokens in the span are inside , and are therefore labeled I-A RG1. 6796
+Tokens outside any argument are labeled O. For example: 6797
+(13.21) Asha
+B-A RG0taught
+PREDBoyang
+B-A RG2’s
+I-A RG2mom
+I-A RG2about
+B-A RG1algebra
+I-A RG16798
+Recurrent neural networks are a natural approach to this tagging task. For example,
+Zhou and Xu (2015) apply a deep bidirectional multilayer LSTM (see §7.6) to PropBank
+semantic role labeling. In this model, each bidirectional LSTM serves as input for an-
+other, higher-level bidirectional LSTM, allowing complex non-linear transformations of
+the original input embeddings, X= [x1,x2,...,xM]. The hidden state of the ﬁnal LSTM
+isZ(K)= [z(K)
+1,z(K)
+2,...,z(K)
+M]. The “emission” score for each tag Ym=yis equal to the
+inner product θy·z(K)
+m, and there is also a transition score for each pair of adjacent tags.
+The complete model can be written,
+Z(1)=BiLSTM (X) [13.13]
+Z(i)=BiLSTM (Z(i−1)) [13.14]
+ˆy= argmax
+yM∑
+m−1Θ(y)z(K)
+m+ψym−1,ym. [13.15]
+Note that the ﬁnal step maximizes over the entire labeling y, and includes a score for 6799
+each tag transition ψym−1,ym. This combination of LSTM and pairwise potentials on tags 6800
+is an example of an LSTM-CRF . The maximization over yis performed by the Viterbi 6801
+algorithm. 6802
+This model strongly outperformed alternative approaches at the time, including con- 6803
+strained decoding and convolutional neural networks.14More recent work has combined 6804
+recurrent neural network models with constrained decoding, using the A∗search algo- 6805
+rithm to search over labelings that are feasible with respect to the constraints (He et al., 6806
+2017). This yields small improvements over the method of Zhou and Xu (2015). He et al. 6807
+(2017) obtain larger improvements by creating an ensemble of SRL systems, each trained 6808
+on an 80% subsample of the corpus. The average prediction across this ensemble is more 6809
+robust than any individual model. 6810
+13.3 Abstract Meaning Representation 6811
+Semantic role labeling transforms the task of semantic parsing to a labeling task. Consider 6812
+the sentence, 6813
+14The successful application of convolutional neural networks to semantic role labeling by Collobert and
+Weston (2008) was an inﬂuential early result in the most recent wave of neural networks in natural language
+processing.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.3. ABSTRACT MEANING REPRESENTATION 323
+(w / want-01
+:ARG0 (b / boy)
+:ARG1 (g / go-02
+:ARG0 b))
+w / want-01
+b / boy g / go-02Arg0 Arg1
+Arg1
+Figure 13.3: Two views of the AMR representation for the sentence The boy wants to go.
+(13.22) The boy wants to go. 6814
+The PropBank semantic role labeling analysis is: 6815
+•(PREDICATE :wants,ARG0:the boy,ARG1:to go) 6816
+•(PREDICATE :go,ARG1:the boy ) 6817
+The Abstract Meaning Representation (AMR) uniﬁes this analysis into a graph struc- 6818
+ture, in which each node is a variable , and each edge indicates a concept (Banarescu 6819
+et al., 2013). This can be written in two ways, as shown in Figure 13.3. On the left is the 6820
+PENMAN notation (Matthiessen and Bateman, 1991), in which each set of parentheses 6821
+introduces a variable. Each variable is an instance of a concept, which is indicated with 6822
+the slash notation: for example, w / want-01 indicates that the variable wis an instance 6823
+of the concept want-01 , which in turn refers to the PropBank frame for the ﬁrst sense 6824
+of the verb want . Relations are introduced with colons: for example, :ARG0 (b / boy) 6825
+indicates a relation of type ARG 0 with the newly-introduced variable b. Variables can be 6826
+reused, so that when the variable bappears again as an argument to g, it is understood to 6827
+refer to the same boy in both cases. This arrangement is indicated compactly in the graph 6828
+structure on the right, with edges indicating concepts. 6829
+One way in which AMR differs from PropBank-style semantic role labeling is that it 6830
+reiﬁes each entity as a variable: for example, the boyin (13.22) is reiﬁed in the variable 6831
+b, which is reused as A RG0 in its relationship with w / want-01 , and as A RG1 in its 6832
+relationship with g / go-02 . Reifying entities as variables also makes it possible to 6833
+represent the substructure of noun phrases more explicitly. For example, Asha borrowed 6834
+the algebra book would be represented as: 6835
+(b / borrow-01 6836
+:ARG0 (p / person 6837
+:name (n / name 6838
+:op1 "Asha")) 6839
+:ARG1 (b2 / book 6840
+:topic (a / algebra))) 6841
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+324 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+This indicates that the variable pis a person, whose name is the variable n; that name 6842
+has one token, the string Asha . Similarly, the variable b2is a book, and the topic ofb2 6843
+is a variable awhose type is algebra . The relations name andtopic are examples of 6844
+non-core roles , which are similar to adjunct modiﬁers in PropBank. However, AMR’s 6845
+inventory is more extensive, including more than 70 non-core roles, such as negation, 6846
+time, manner, frequency, and location. Lists and sequences — such as the list of tokens in 6847
+a name — are described using the roles op1,op2, etc. 6848
+Another feature of AMR is that a semantic predicate can be introduced by any syntac- 6849
+tic element, as in the following examples from Banarescu et al. (2013): 6850
+(13.23) The boy destroyed the room. 6851
+(13.24) the destruction of the room by the boy . . . 6852
+(13.25) the boy’s destruction of the room . . . 6853
+All these examples have the same semantics in AMR, 6854
+(d / destroy-01 6855
+:ARG0 (b / boy) 6856
+:ARG1 (r / room)) 6857
+The noun destruction is linked to the verb destroy , which is captured by the PropBank 6858
+framedestroy-01 . This can happen with adjectives as well: in the phrase the attractive 6859
+spy, the adjective attractive is linked to the PropBank frame attract-01 : 6860
+(s / spy 6861
+:ARG0-of (a / attract-01)) 6862
+In this example, ARG0-of is an inverse relation , indicating that sis theARG0 of the 6863
+predicatea. Inverse relations make it possible for all AMR parses to have a single root 6864
+concept, which should be the focus of the utterance. 6865
+While AMR goes farther than semantic role labeling, it does not link semantically- 6866
+related frames such as buy/sell (as FrameNet does), does not handle quantiﬁcation (as 6867
+ﬁrst-order predicate calculus does), and makes no attempt to handle noun number and 6868
+verb tense (as PropBank does). A recent survey by Abend and Rappoport (2017) situ- 6869
+ates AMR with respect to several other semantic representation schemes. Other linguistic 6870
+features of AMR are summarized in the original paper (Banarescu et al., 2013) and the 6871
+tutorial slides by Schneider et al. (2015). 6872
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.3. ABSTRACT MEANING REPRESENTATION 325
+13.3.1 AMR Parsing 6873
+Abstract Meaning Representation is not a labeling of the original text — unlike PropBank 6874
+semantic role labeling, and most of the other tagging and parsing tasks that we have 6875
+encountered thus far. The AMR for a given sentence may include multiple concepts for 6876
+single words in the sentence: as we have seen, the sentence Asha likes algebra contains both 6877
+person andname concepts for the word Asha . Conversely, words in the sentence may not 6878
+appear in the AMR: in Boyang made a tour of campus , the light verb make would not appear 6879
+in the AMR, which would instead be rooted on the predicate tour . As a result, AMR 6880
+is difﬁcult to parse, and even evaluating AMR parsing involves considerable algorithmic 6881
+complexity (Cai and Yates, 2013). 6882
+A further complexity is that AMR labeled datasets do not explicitly show the align- 6883
+ment between the AMR annotation and the words in the sentence. For example, the link 6884
+between the word wants and the concept want-01 is not annotated. To acquire train- 6885
+ing data for learning-based parsers, it is therefore necessary to ﬁrst perform an alignment 6886
+between the training sentences and their AMR parses. Flanigan et al. (2014) introduce a 6887
+rule-based parser, which links text to concepts through a series of increasingly high-recall 6888
+steps. 6889
+Graph-based parsing One family of approaches to AMR parsing is similar to the graph- 6890
+based methods that we encountered in syntactic dependency parsing (chapter 11). For 6891
+these systems (Flanigan et al., 2014), parsing is a two-step process: 6892
+1.Concept identiﬁcation (Figure 13.4a). This involves constructing concept subgraphs 6893
+for individual words or spans of adjacent words. For example, in the sentence, 6894
+Asha likes algebra , we would hope to identify the minimal subtree including just the 6895
+conceptlike-01 for the word like, and the subtree (p / person :name (n / 6896
+name :op1 Asha)) for the word Asha . 6897
+2.Relation identiﬁcation (Figure 13.4b). This involves building a directed graph over 6898
+the concepts, where the edges are labeled by the relation type. AMR imposes a 6899
+number of constraints on the graph: all concepts must be included, the graph must 6900
+beconnected (there must be a path between every pair of nodes in the undirected 6901
+version of the graph), and every node must have at most one outgoing edge of each 6902
+type. 6903
+Both of these problems are solved by structure prediction. Concept identiﬁcation re- 6904
+quires simultaneously segmenting the text into spans, and labeling each span with a graph 6905
+fragment containing one or more concepts. This is done by computing a set of features 6906
+for each candidate span sand concept labeling c, and then returning the labeling with the 6907
+highest overall score. 6908
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+326 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+(a) Concept identiﬁcation
+ (b) Relation identiﬁcation
+Figure 13.4: Subtasks for Abstract Meaning Representation parsing, from Schneider et al.
+(2015). [todo: permission]
+Relation identiﬁcation can be formulated as search for the maximum spanning sub- 6909
+graph, under a set of constraints. Each labeled edge has a score, which is computed 6910
+from features of the concepts. We then search for the set of labeled edges that maximizes 6911
+the sum of these scores, under the constraint that the resulting graph is a well-formed 6912
+AMR (Flanigan et al., 2014). This constrained search can be performed by optimization 6913
+techniques such as integer linear programming, as described in §13.2.2. 6914
+Transition-based parsing In many cases, AMR parses are structurally similar to syn- 6915
+tactic dependency parses. Figure 13.5 shows one such example. This motivates an alter- 6916
+native approach to AMR parsing: modify the syntactic dependency parse until it looks 6917
+like a good AMR parse. Wang et al. (2015) propose a transition-based method, based on 6918
+incremental modiﬁcations to the syntactic dependency tree (transition-based dependency 6919
+parsing is discussed in §11.3). At each step, the parser performs an action: for example, 6920
+adding an AMR relation label to the current dependency edge, swapping the direction of 6921
+a syntactic dependency edge, or cutting an edge and reattaching the orphaned subtree to 6922
+a new parent. The overall system is trained as a classiﬁer, learning to choose the action as 6923
+would be given by an oracle that is capable of reproducing the ground-truth parse. 6924
+13.4 Applications of Predicate-Argument Semantics 6925
+Question answering Factoid questions have answers that are single words or phrases, 6926
+such as who discovered prions? ,where was Barack Obama born? , and in what year did the Knicks 6927
+last win the championship? Semantic role labeling can be used to answer such questions, 6928
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.4. APPLICATIONS OF PREDICATE-ARGUMENT SEMANTICS 327
+Figure 13.5: Syntactic dependency parse and AMR graph for the sentence The police want
+to arrest Michael Karras in Singapore (borrowed from Wang et al. (2015)) [todo: permission]
+by linking questions to sentences in a corpus of text. Shen and Lapata (2007) perform 6929
+FrameNet semantic role labeling on the query, and then construct a weighted bipartite 6930
+graph15between FrameNet semantic roles and the words and phrases in the sentence. 6931
+This is done by ﬁrst scoring all pairs of semantic roles and assignments, as shown in the 6932
+top half of Figure 13.6. They then ﬁnd the bipartite edge cover, which is the minimum 6933
+weighted subset of edges such that each vertex has at least one edge, as shown in the 6934
+bottom half of Figure 13.6. After analyzing the question in this manner, Shen and Lapata 6935
+then ﬁnd semantically-compatible sentences in the corpus, by performing graph matching 6936
+on the bipartite graphs for the question and candidate answer sentences. Finally, the 6937
+expected answer phrase in the question — typically the wh-word — is linked to a phrase in 6938
+the candidate answer source, and that phrase is returned as the answer. 6939
+Relation extraction The task of relation extraction involves identifying pairs of entities 6940
+for which a given semantic relation holds (see §17.2. For example, we might like to ﬁnd 6941
+all pairs (i,j)such thatiis the INVENTOR -OFj. PropBank semantic role labeling can 6942
+be applied to this task by identifying sentences whose verb signals the desired relation, 6943
+and then extracting A RG1 and A RG2 as arguments. (To fully solve this task, these argu- 6944
+ments must then be linked to entities, as described in chapter 17.) Christensen et al. (2010) 6945
+compare a semantic role labeling system against a simpler approach based on surface pat- 6946
+terns (Banko et al., 2007). They ﬁnd that the SRL system is considerably more accurate, 6947
+but that it is several orders of magnitude slower. Conversely, Barnickel et al. (2009) apply 6948
+SENNA, a convolutional neural network SRL system (Collobert and Weston, 2008) to the 6949
+task of identifying biomedical relations (e.g., which genes inhibit or activate each other). 6950
+15A bipartite graph is one in which the vertices can be divided into two disjoint sets, and every edge
+connect a vertex in one set to a vertex in the other.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+328 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+Figure 13.6: FrameNet semantic role labeling is used in factoid question answering, by
+aligning the semantic roles in the question (q) against those of sentences containing an-
+swer candidates (ac). “EAP” is the expected answer phrase, replacing the word who in the
+question. Figure reprinted from Shen and Lapata (2007) [todo: permission]
+Figure 13.7: Fragment of AMR knowledge network for entity linking. Figure reprinted
+from Pan et al. (2015) [todo: permission]
+In comparison with a strong baseline that applies a set of rules to syntactic dependency 6951
+structures (Fundel et al., 2007), the SRL system is faster but less accurate. One possible 6952
+explanation for these divergent results is that Fundel et al. compare against a baseline 6953
+which is carefully tuned for performance in a relatively narrow domain, while the system 6954
+of Banko et al. is designed to analyze text across the entire web. 6955
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.4. APPLICATIONS OF PREDICATE-ARGUMENT SEMANTICS 329
+Entity linking Another core task in information extraction is to link mentions of entities 6956
+(e.g., Republican candidates like Romney, Paul, and Johnson . . .) to entities in a knowledge 6957
+base (e.g., L YNDON JOHNSON or G ARY JOHNSON ). This task, which is described in §17.1, 6958
+is often performed by examining nearby “collaborator” mentions — in this case, Romney 6959
+and Paul . By jointly linking all such mentions, it is possible to arrive at a good overall 6960
+solution. Pan et al. (2015) apply AMR to this problem. For each entity, they construct a 6961
+knowledge network based on its semantic relations with other mentions within the same 6962
+sentence. They then rerank a set of candidate entities, based on the overlap between 6963
+the entity’s knowledge network and the semantic relations present in the sentence (Fig- 6964
+ure 13.7). 6965
+Exercises 6966
+1. Write out an event semantic representation for the following sentences. You may 6967
+make up your own predicates. 6968
+(13.26) Abigail shares with Max. 6969
+(13.27) Abigail reluctantly shares a toy with Max. 6970
+(13.28) Abigail hates to share with Max. 6971
+2. Find the PropBank framesets for share and hateathttp://verbs.colorado.edu/ 6972
+propbank/framesets-english-aliases/ , and rewrite your answers from the 6973
+previous question, using the thematic roles A RG0, A RG1, and A RG2. 6974
+3. Compute the syntactic path features for Abigail and Max in each of the example sen- 6975
+tences (13.26) and (13.28) in Question 1, with respect to the verb share . If you’re not 6976
+sure about the parse, you can try an online parser such as http://nlp.stanford. 6977
+edu:8080/parser/ . 6978
+4. Compute the dependency path features for Abigail and Max in each of the example 6979
+sentences (13.26) and (13.28) in Question 1, with respect to the verb share . Again, if 6980
+you’re not sure about the parse, you can try an online parser such as http://nlp. 6981
+stanford.edu:8080/parser/ . As a hint, the dependency relation between share 6982
+and Max isOBL according to the Universal Dependency treebank (version 2). 6983
+5. PropBank semantic role labeling includes reference arguments , such as, 6984
+(13.29) [AM-LOCThe bed ]on[R-A M-LOCwhich ]I slept broke.166985
+16Example from 2013 NAACL tutorial slides by Shumin Wu
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+330 CHAPTER 13. PREDICATE-ARGUMENT SEMANTICS
+The label R-A M-LOCindicates that word which is a reference to The bed , which ex- 6986
+presses the location of the event. Reference arguments must have referents: the tag 6987
+R-A M-LOCcan appear only when A M-LOCalso appears in the sentence. Show how 6988
+to express this as a linear constraint, speciﬁcally for the tag R-A M-LOC. Be sure to 6989
+correctly handle the case in which neither A M-LOCnor R-A M-LOCappear in the 6990
+sentence. 6991
+6. Explain how to express the constraints on semantic role labeling in Equation 13.8 6992
+and Equation 13.9 in the general form Az≥b. 6993
+7. Download the FrameNet sample data ( https://framenet.icsi.berkeley.edu/ 6994
+fndrupal/fulltextIndex ), and train a bag-of-words classiﬁer to predict the 6995
+frame that is evoked by each verb in each example. Your classiﬁer should build 6996
+a bag-of-words from the sentence in which the frame-evoking lexical unit appears. 6997
+[todo: Somehow limit to one or a few lexical units.] [todo: use NLTK if possible] 6998
+8. Download the PropBank sample data, using NLTK ( http://www.nltk.org/howto/ 6999
+propbank.html ). Use a deep learning toolkit such as PyTorch or DyNet to train an 7000
+LSTM to predict tags. You will have to convert the downloaded instances to a BIO 7001
+sequence labeling representation ﬁrst. 7002
+9. Produce the AMR annotations for the following examples: 7003
+(13.30) The girl likes the boy. 7004
+(13.31) The girl was liked by the boy. 7005
+(13.32) Abigail likes Maxwell Aristotle. 7006
+(13.33) The spy likes the attractive boy. 7007
+(13.34) The girl doesn’t like the boy. 7008
+(13.35) The girl likes her dog. 7009
+For (13.32), recall that multi-token names are created using op1,op2, etc. You will 7010
+need to consult Banarescu et al. (2013) for (13.34), and Schneider et al. (2015) for 7011
+(13.35). You may assume that herrefers to the girl in this example. 7012
+10. Using an off-the-shelf PropBank SRL system,17build a simpliﬁed question answer- 7013
+ing system in the style of Shen and Lapata (2007). Speciﬁcally, your system should 7014
+do the following: 7015
+17At the time of writing, the following systems are availabe: SENNA ( http://ronan.collobert.
+com/senna/ ), Illinois Semantic Role Labeler ( https://cogcomp.cs.illinois.edu/page/
+software_view/SRL ), and mate-tools ( https://code.google.com/archive/p/mate-tools/ ).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+13.4. APPLICATIONS OF PREDICATE-ARGUMENT SEMANTICS 331
+•For each document in a collection, it should apply the semantic role labeler, 7016
+and should store the output as a tuple. 7017
+•For a question, your system should again apply the semantic role labeler. If 7018
+any of the roles are ﬁlled by a wh-pronoun, you should mark that role as the 7019
+expected answer phrase (EAP). 7020
+•To answer the question, search for a stored tuple which matches the question as 7021
+well as possible (same predicate, no incompatible semantic roles, and as many 7022
+matching roles as possible). Align the EAP against its role ﬁller in the stored 7023
+tuple, and return this as the answer. 7024
+To evaluate your system, download a set of three news articles on the same topic, 7025
+and write down ﬁve factoid questions that should be answerable from the arti- 7026
+cles. See if your system can answer these questions correctly. (If this problem is 7027
+assigned to an entire class, you can build a large-scale test set and compare various 7028
+approaches.) 7029
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+
+

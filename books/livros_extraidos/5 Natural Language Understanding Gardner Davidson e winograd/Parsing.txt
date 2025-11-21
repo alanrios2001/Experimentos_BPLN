@@ -1,0 +1,526 @@
+—
+o ParsIng 26
+D. Parsing
+• Dl, Overview of Parsing Techni ques
+Parsing is the “delinearizat lon” of linguistic Input, that Is, the use of syntax and other
+sources of knowledge to determine the functions of the words in the input sentence in order
+to create a data structure , lIke a derivation tree, that can be used to get at the “meaning ” of
+the sentence. A parser can be viewed as a recursive pattern matcher seeking to map a strin g
+of words onto a set of meanin gful syntactIc patterns. For example , the sentence “John
+kissed Mary” could be matched to the pattern:
+SENTENCE
+SUBJE~’
+T )REDICATE
+VER~ ~BJECT
+The set of syntactic patterns used is determined by the grammar of the input language.
+(Several types of grammars are described in the articles in Section C.) In theory, by applying
+a comprehensive grammar , a parser can decide what is and what is not a grammatical
+sentence and can build up a data structure corresponding to the syntactic structure of any
+grammatical sentence It finds. All natural language processing computer systems contain a
+parsing component of some sort, but the practical application of grammars to natural
+language has proven difficult.
+The design of a parser is a complex problem , both in theory and Implementation. The
+first part of the design concerns the specIficatIon of the grammar to be used. The rest of
+the parsing system Is concerned with the method of use of the grammar , that is, the manner in
+which strings of words are matched against patterns of the grammar. These considerations
+run into many of the general questions of computer science and artificial intelligence
+concerning process control and manipulation of knowledge.
+General Issues of Parser Design
+The design considerations discussed below overlap; that is, a decision in one dimension
+affects other design decisions. Taken together they present a picture of the variety of
+Issues involved in natural language parsing.
+• Uniformity. Parsers may represent their knowledge about word meanings , grammar , etc.,
+with a single scheme or with specialized structures for specific tasks. The representation
+scheme affects the complexity of the system and the application of knowledge during
+parsing. If rules and processes are based on specialized knowledge of what the Input to the
+parser wiii contain , it is possible to do things more quickly and efficiently. On the other hand,
+if one has a simple uniform set of rules and a consistent algorithm for applying them, the job
+of writing and modifying the language understanding system is greatly simplified, since all the
+knowledge In the system Is uniformly explicated. In general , there is a trade-off between
+efficiency and uniformity; an algorithm specially designed for only one language can perform
+• more efficiently than one that could uniformly handle any language.
+--; - ~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+—~
+-- ______________ - — p ~~~~~~~~~~~~~~~~ —• -—- — --- -— -- - .— rn-- - --
+
+__________ ____ 
+~~~~~~~~ •-— •-~-- --- --~~~~— —.~~~~~—-— —~~~~.--~-
+28 Natural Language
+Multiple Sources of Knowledge. Parsing, as originally developed (and still used In
+programmIng language compilers), wee based purely on syntactic knowledge--knowledge
+about the form of sentences allowed in the language. However , it is possible to design
+systems In which syntax-based parsing Is intermixed with other levels of processing, such
+as word recognition and use of word meanings. Such methods can alleviate many of the
+problems of language complexity by bringing more information to bear. Present systems tend
+toward such Intermixed structures, both for effective performance and more psychologically
+valid modeling of human language understanding (see, for example , Article F4 on SHRO I.U and
+the extensive discussion of multiple sources of knowledge in Article Applications.C3 on the
+SOPHIE system and the blackboard model in the Speech Under.tan~ng section).
+Precision. Another major trade-off involved in parser design Is precision vs. flexibility.
+Humans are capable of understanding sentences that are not quite grammatical; even if a
+person knows that a sentence Is “wrong ” syntactically , he can often understand it and
+assign it a structure (and more importantly, a møaning). Some natural language processing
+systems , such as PARRY (Colby, Weber, & Hilt, 1971) and ELIZA (Article Fl) have been
+designed to incorporate this kind of flexibility. By looking for key words and using loose
+grammatical criteria , these systems can accept far more sentences than would a precise
+parser. However , these “knowledge-poor ” flexib le parsers lose many benefits of the more
+complete analysis possible with a precise system , since they rely on vaguer notions of
+sentence meanIng than a precise system. While they reject less often, flexible systems
+tend to misinterpret more often. Many systems attempt to use additional knowled ge sources ,
+especially domain-specific knowledge , to Increase flexibility while retaining precision.
+Type of structure returned. As mentioned , parsing is the process of assigning
+structures to sentences. The form of the structure can vary, from a representation that
+closely resembles the surface structure of the sentence to a deeper representation in which
+the surface structure has been extensively modified. Which form is chosen depends upon
+the use to which the parse structure will be put. Currently, most work in natural language
+favors the deep structure approach.
+These four issues--uniformity, multiple knowledge sources , precIsIon , and level of
+representation--are very general questions and are dealt with in different ways by different
+systems. in implementing a parser, after settling such general design questions , natural
+language programmers run up against another set of problems involving specific parsing
+strate gies.
+Parsing Strategies
+Backtrac .ing versus parallel processing. Unfortunately for computational linguists ,
+the elements of natural languages do not always possess unique meanings. For example , in
+going through a sentence the parser mIght find a word that could either be a noun or a verb,
+like “can,” or pick up a prepositional phrase that might be modifying any of a number of the
+other parts of the sentence. These and many other ambiguities In natural languages force
+the parser to make choices between multiple alternatives as it proceeds through a sentence.
+Alternatives may be dealt with all at the same time, via parallel processing, or one at a time
+using a form of backtrack ing--backIng up to a previous choice-point In the computation and
+tryIng again (see Article Al L.sngusgss.83 on control mechanisms in Al programming languages).
+Both of these methods requ ire a signifIcant amount of bookkeeping to keep track of the
+
+01 Overv iew of Parsing TechnIques 27
+multiple possibilitIes: all the ones being tried, in the case of paraNei processing; or all the
+ones not yet tried, in the case of backtracking. Neither strategy can be said to be innatel y
+superior , though the number of alternatives that are actually tried can be signif icantly
+reduced when backtracking is guided by “knowledge ” about which of the choices are more
+likely to be correct--called heuristic knowledge (see S&iii h.Ovurview ).
+Top-do wn versus bottom-up. In deriving a syntactic struct~a., a parser can operate
+from the goals, that Is, the set of possible sentence structures (top-dosnv processing), or from
+the words actually In the sentence (bottom-up processin g). A strictly top-down parser begins
+by looking at the rules for the desired to p-level struc ture (sentence , clause , etc.); it then
+looks up rules for the constituents of the top- level structure , and progresses until a
+complete sentence structure Is built up. If this sentence matches the input data, the parse
+Is successfully comp leted, otherwise , it starts back at the top again, generating another
+sentence structure. A bottom-up parser looks first for rules in the grammar to combine the
+words of the input sentence Into constituents of larger structures (phrases and clauses) ,
+and continues to try to recombine these to show how all the words In the input form a legal
+sentence in the grammar. Theoreticall y, both of these strategies arrive at the same final
+analysis , but the type of work required and the working structures used are quite different.
+The interaction of top-down and bottom- up process control Is a common problem In Al and is
+not restricted natural language programs (see, for example , the dIscussion in the Spesch.A).
+Choosing haw to expand or combine. With either a top-down or bottom-up technique,
+it is necessary to decide how words and constituents will be combined (bottom-up) or
+expanded (top-down). The two basic methods are to proceed systematically In one direction
+(normally left to right) or to start anywhe re and systematically loc?~ at neighboring chunks of
+Increas ing size (this method is sometimes celled Island driving). tioth these methods wili
+eventually look at all possibilities, but the choice of how to proceed at this level can have a
+significant effect on the efficiency of the parser. This particular feature is especially
+relevant to language processing In the presence of input uncertain ty, as occurs , for example ,
+in the speech understandin g systems.
+Multiple knowledge sources. As mentioned above, another important design decision
+that was especially apparent In the speech understanding systems was the effective use of
+multiple sources of knowledge. Given that there are a number of possibly relevant sets of
+facts to be used by the parser (phonemic , lexical, syntactic, semantic , etc.). which do you
+use when?
+The Issues discussed here under parsing strategies are all questions of efficiency. They
+will not In general affect the final result If computational resources are unlimited, but they
+will affect the amount of resources expended to reach It.
+Actual Parsing Systems
+Every natural language processing program deals with these seven Issues in its own
+fashion. Several types of parsers have developed as experience with natural language
+systems increses.
+Template matching. Most of the early NI programs (e.g., SIR, STUDENT , ELIZA)
+p•rformed “parsing ” by matching their input against a series of pr.d.fined templates--binding
+I 
+i~_~____~____~__ A
+
+-- -- -~-— 
+2$ Natural Language
+the variables of the template to corresponding pieces of the input string (see Article Fl).
+This approach was successful , up to a point--given a very limited topic of discussion , the
+form of many of the input sentences couid be anticipated by the system ’s designer who
+incorporated appropriate templates. However , these systems were ad hoc and somewhat
+inextens$bie. and the temp late matching was soon abandoned in favor of more sophisticated
+methods.
+Simple phrase-structure grammar parsers. These parsers make use of a type of
+context-free grammar with various combinations of the parsing techniques mentioned above.
+The advantage of a phrase-structure grammar Is that the structures derived correspond
+directly to the grammar rules; thus, the subsequent semantic processing is simplified. By
+using large grammars and skirting linguistic issues that are outside their limitatIons (such as
+some types of agreement), a phrase-structure grammar parser can deal with a moderately
+large subset of English. Phrae.e-structurs grammars are used primarily to produce systems
+(like SAD-SAM) with useful performance on a limited domain, rather than to explore more
+difficult language-processing issues.
+Transformational grammar parsers. These parsers attempt to extend the notions of
+transformational grammar into a parsing system. Transformational grammar Is a much more 
+*comprehensive system than phrase-structure grammar , but It loses phrase-structure ’s direct,
+rule-to-structure correspondence. Moreover , methods that have been tried, such as analysis
+by synthesis (building up all possible sentences until one matches the input) and inverse
+transformatIons (looking for transformation rules that might have produced the Input), have
+often failed because of combinatorial explosion--the prolIferation of alternatives the system
+must examine--and other difficulties wIth reversing transformations. One of the major
+attempts to implement a transformational parser was that by Patrick (1973).
+Extended grammar parsers. One of the most successful Al approaches to parsing yet
+developed has been to extend the concept of phrase-structure rules and derivations by
+addIng mechanisms for more complex representations and manipulations of sentences.
+Methods such as augmented transition net grammars (ATNs) and charts provide additional
+resources for the parser to draw on beyond the simple , phrase-structure approach (see
+Articles 02 and 03). Some of these mechanisms have validity with respect to some linguIstic
+theory, while others are merely computatlonally expedient. The very successful systems of
+Woods & Kaplan (1971), Winograd (1972), and Kaplan (1973), as described in the articles In
+Section F, use extended grammar parsers.
+Semantic grammar parsers . Another very successful modification to the traditional
+phrase structure grammar approach Is to change the conception of grammatical classes from
+the traditional (NOUN) , (VERB) , etc., to classes that are motivated by concepts In the
+domain being discussed. For instance , such a semantic grammar for a system which talk’
+about airline reservations might have grammatical classes like (OEST~NATION), (FUGHT ).
+(FLIGHT-TIME) , and so on. The rewrite rules used by the parser would descibe phrases and
+clauses in terms of these semantic categories (see Article Appiice ticns.C3 for a more
+complete dIscussion). The LIFER and SOPHiE systems (Articles F? and Apphc ations.C3) use
+semantic grammar parsers (liendrlx , 197 Ta, and Burton, 1976).
+Grammarless parsers . Some NI system designers have abandoned totally the
+traditional use of grammar s for linguistic analysis. Such systems are sometimes referred to
+as “ad hoc,” although they are typical ly based on some loose theory that happens to fall 
+~~J-—~-.~- ------ ~~.--~~--~~- - - - - --~~ 
+
+-~ —---~~~~~~- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -~~~--~~~~---,--
+~~-- 
+Dl Overview of Parsing Techniques 29
+outside the scope of standard linguistics. These “grammarless ” parsers opt for flexibility in
+the above-mentioned precIsion /flexIbIlity trade-off. They are based on special procedures
+(perhaps centered on Individual words rather than nyntactic elements) that use semantics-
+based techniques to buIld up structures relevant to meaning, and these structures bear little
+resemblance to the normal structures that result from syntactic parsing. A good example of
+this approach can be found In the work of Rlesbeck (1976).
+Concl usion
+Recent research In parsing has been directed primarily towards two kinds of
+simplifIcatIon: providing simplified systems for dealing with less than full English , and
+providing simplified underlying mechanisms that bring the computer parsing techniques closer
+to being a theory of syntax. Systems such as LIFER (Article F?) have been developed which
+use the basic mechanisms of augmented grammars in a clean and easily programmable way.
+Systems like these cannot deal with the more difficult problems of syntax , but they can be
+used quickly and easily to assemble specialized parsers and are likely to be the basis for
+natural language “front ends” for simple applications.
+At the same time, there has been a reevaluation of the fundamental notions of parsing
+and syntactic structure, viewed from the perspective of programs that understand n5tural
+language. Systems such as PARSIFA I. (Marcus , 1978) attempt to capture In their design the
+same kinds of generalizations that linguists and psycholinguists posit as theories of language
+structure and language use. Emphasis Is being directed toward the Interaction between the
+structural facts about syntax and the control structures for implementing the parsing
+process. The current trend Is away from simple methods of applying grammars (as with
+phrase-structure grammars), toward more “integrated” approaches. In particular , the
+grammar /strategy dualism mentioned earlier in this artIcle has been progressively weakened
+by the work of Wlnograd (1972) and Rlesbeck (1975). it appears that any successful
+attempt to parse natural language must be based upon some more powerful approach than
+traditional syntactic analysis. Also, parsers are being called upon to handle more “natural”
+text, IncludIng discourse , conversation , and sentence fragments. These involve aspects of
+language that cannot be easily described In the conventional , grammar-based models.
+References
+Again, much of this discussion is borrowed from Winograd (forthcoming). Other general
+surveys include Charniak & Wilks (1976), and Grishman (1978). For examples of recent
+work, the proceedings of the TINLAP conferences (TINLAP-1 , 1975 and TINIAP-2, 1978) are
+recommended.
+
+- -~ ----~~~~~~~ ~~~~~~~~--~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+30 Natural Language
+D2. Augmented Transition Nets
+Augmented transItion networks (ATNs) were first developed by William Woods (1970)
+as a versatile representation of grammars for natural languages. The concept of an AIN
+evolved from that of a finite-state transition diagram , with the addition of tests and “side-
+effect” actions to each arc, as described below. These additions resulted In the power
+needed for handling features of English like embedding and agreement that could not be
+conveniently captured by regular (or even context-free) grammars. An ATN can thus be
+viewed as either a grammar formalism or a machine.
+Many current language processors use an ATN-iike grammar; In some ways, it may be
+considered state-of-the-art , at least for actual working systems.
+Preliminary Theoretical Concepts
+A finite-state transiti on diagram (FSTD) is a simple theoretical device consisting of a
+set of states (nodes) with arcs leading from one state to another. One state is designated
+the START state. The arcs of the FSTD are labeled with the terminals of the 
+~. -ammar (I.e.,
+words of the language), indicating which words must be found in the Input to allow the
+specified transition. A subset of the states is identified as FINAL; the device Is said to accept
+a sequence of words if, starting from the START state at the beginning of the sentence , it
+can reach a FINAL state at the end of the Input.
+FSTDS can “recognize ” only regular or type-3 languages (see the discussion of formal
+languages In Article Cl). To recognIze a language, a machine must be able to tell whether an
+arbitrary sentence is part of the language or Is not. Regular grammars (thos e whose rewrite
+rules are restricted to the form V -> aX or Y -) a) are the simplest , and FSTDs are only
+powerful enough to recognize these languages. in other words, It is impossible to build an
+FSTD that can dependably distinguish the sentences in even a context-free language.
+Fbr example , the following FSTD, in which the start state is the left-most node and the
+final state i~ labeled ~~~~, will accept any sentence that begins with ~~~~~~, ends with a noun, and
+has an arbitrary number of adjectIves In between.
+<adjective)
+the (noun)
+Let’s follow through the net with the input sentence “the pretty picture.” We start in the
+START state and proceed along the arc labeled ~~~ because that is the left-most word in
+the Input string. This leaves us in the middle box, with “pretty picture ” left as our string to
+be parsed. After one loop around the adiective arc, we are again at middle node, but this
+time with the strIng “picture ” remaining. Since this word Is a noun, we proceed to the FINAL
+node, ~, and arrive there with no words remaining to be processed. Thus the parse Is
+successful; in other words, our example FSTD accepts this string.
+L.. .~I~:ii_~ ___ ____
+
+-- ~~~~~~~~~~~ --‘---- -—-- --..----~---—.~~- -- 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -- 
+~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~
+02 Augmented Transition Nets 31
+However , regular grammars are Inadequate for dealing with the complexIty of natural
+language , as dIscussed In Article C2. A natural extension to FSTOs, then, is to provide a
+recursion mechanism that increases their recognition power to handle the more inclusive set
+of context-free languages. These extended FSTDs are called recursive transition networks
+(RTNs). An RIN is a finite-state transition diagram in which labels of an arc may Include not
+only terminal symbols but also nonterm~nal symbols that denote the name of another
+subnetwork to be given temporary control of the parsIng process.
+An RTN operates similarly to an FSTD. if the label on an arc is a terminal (word or word
+class), the arc may be taken (as In FSTDs) If the word being scanned matches the label. For
+example , the word p~j would match an arc labeled <noun> but not one labeled (adjective>.
+Other wise, if the arc is labeled with a nonterm lnal symbol , representing a syntactic construct
+(e.g., PREPOSITIONAL PHRASE) that corresponds to the name of another network, the current
+state of the parse Is put on a stack and control Is transferred to the corresponding named
+subnetwork , which continues to process the sentence , returning control when it finishes or
+falls.
+Whenever an accepting state is reached , control is transferred to the node obtained
+by “popping the stack” (i.e., returning to the point from which the subnetwork was entered).
+If an attempt is made to pop an empty stack, and If the last input word was the cause of this
+attempt , the Input string is accepted by the RTN; otherwise , it Is rejected. The effect of
+arcs labeled with names of syntactic constructs Is that an arc is followed only if a
+construction of the corresponding type follows as a phrase In the Input string. Consider the
+following example of an RTN:
+5:
+NP <verb> NPC
+-- <adj> PP
+NP:~ ~ 1, )
+<det> <noun>C
+PP:
+<prep> NP
+Here NP denotes a noun phrase; ~~~~~, a prepositional phrase; ~~~~~~~, a determiner; 
+~~~~~~~~~~ a
+preposition ; and ~~j , an adjective. Accepting nodes are labeled ~~~. If the Input string is
+“The little boy In the swimsuit kicked the red ball,” the above network would parse it Into the
+following phrases: 
+— ~~~~~~~~~~~ , . - --— ~~~~~~~~~~~~ -~ 
+
+______________ - - —
+~--- —. .- ...—
+32 Natural Languag.
+NP: The little boy in the swimsuit
+PP: in the swimsuit
+NP: the swimsuit
+Verb: kicked
+• . NP: the red bafl
+• Notice that any subnetwork of an RTN may call any other subnetwOtk , Including Itself; in
+the above example , for Instance , the prepositional phrase contains a noun phrase. Also
+notice that an RTN may be nondeterministic In nature; that Is, there may be more than one
+possible arc to be followed at a given point In a parse. Parsing algorithms handle
+nondeterm lnism by parallel processin g of the various alternatives or by trying one and then
+backtracking If it fails. These general parsing issues are discussed In Article Dl.
+Context-tree grammars , however , are still Insufficient to handle natural language. The
+RTNs, then, must be extended , to provide even more parsing power.
+ATNs
+An augmented transition network (ATN) Is an RTN that has been extended in three
+ways:
+1. A set of registers has been added; these can be used to store informat ion,
+such as partially formed derivation trees, between jumps to different networks.
+2. Arcs, aside from being labeled by word classes or syntactic constructs , can
+have arbitr ary tests associated with them that must be satisfied before the arc
+is taken.
+3. Certain actions may be “attached” to an arc, to be executed whenever it is
+taken (usuall y to modify the data structure returned).
+This addition of registers , tests, and actions to the RTNs extends their power to that of
+Turing machines , thus making ATNs theoretically powerful enough to recogni ze any language
+that might be recognized by a computer. ATN5 offer a degree of expressiveness and
+naturalness not found in the Turing machine formalism , and are a useful tool to apply to the
+analysis of natural language.
+The operation of the ATN Is similar to that of the RTN except that if an arc has a test
+then the test Is performed first, and the arc Is taken only If the test is successful. Also, if
+an arc has actions associated with it, then these operations are perfor med after following the
+arc. In this way, by permitting the parsing to be guided by the parse history (via tests on
+the registers) and by allowing for a rearrangement of the structure of the sentence during
+the parse (via the actions on the registers), ATN5 are capable of buIlding deep structure
+descriptions of a sentence in an efficient manner. For a well-developed and clear example ,
+the reader is referred to Woods (1970).
+L _- -___ _
+
+~~~~~-~~~~- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+02 Augmented Transit ion Nets
+Evaluation of ATNs and Results
+ATNs serve as an computationally implementabie and efficient solution to some of theproblems of recognizing and generating natural language. Their computational power providesthe capability to embed different kinds of grammars , making them an effective testbed fornew ideas. Two of the features of ATPI5, the test and the actions on the arcs, make themespecially well suited to handling transformational grammar: . The ability to place arbitraryconditions on the arcs provides context sensItivity, equivalent to the preconditions forapplying transformationa l rules. The capability to rearrange the parse structure , by copying,adding, and deleting components , provides the full power of transformations (see Article C2).
+The ATN paradigm has been successfully applied to question answering in limited(closed) domains, such as the LUNAR program , which is described In Article F3. Also, ATNshave been used effect lveiy in a number of text generation systems. in addition , the BBN speech
+understanding system , SPEECHLIS , uses an ATN control structure (see Article Spssch.B3).
+• There are limitations to the ATN approach; In particular , the heavy dependence onsyntax restricts the ability to handle ungrammatical (although meaningful) utterances. Morerecent systems (see especially Riesbeck’ s work, Article F8 ) are ori ented toward meaningrather than structure and can thus accept mIldly deviant input.
+References
+The prIncipal references here are, of course , Woods (1970), Woods & Kaplan (1971) ,and Woods (1 973a). Also see Bobrow & Fraser (1969), Conway (1963), Matuzceck (1972) ,and Wlnograd (1976).
+
+---‘--•—~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -~~—~~--~~~~---
+34 Natural Language
+Da. The General Syntactic Processo r
+Ronald Kaplan ’s (1973) General Syntact ic Processor (GSP) is a versatile system for
+the parsing and generation of strings in natural language. Its data structures are intuitive
+and the control structures are conceptually straightforward and relativel y easy to implement.
+Yet, by adjusting certain control parameters , GSP can directly emulate several other
+syntactic processors , including Woods ’s ATN grammar (Article Do), Kay’s MIND parser (Kay,
+1973), and Friedman ’s text generation system (Article E).
+GSP represents an effort both to synthesize the formal characteristics of different
+parsing methods and to construct a unifying framework within which to compare them. In this
+respect , GSP is a “meta-system ”--lt is not In itself an approach to languag, processing, but
+rather it Is a system in which various approaches can be described.
+Data Structure : Charts
+GSP gains much of its power through the use of a single, basic data structure , the
+Mare, to represent both the grammar and the Input sentence. A chart can be described as a
+modified tree, which Is usually defined as a set of nodes that can be partitioned into a root
+and a set of disjoint subtrees. A tree encodes two sorts of relations between nodes:
+DOMINANCE , the relation between a parent and daughter node; and PRECEDENCE , the relation
+between a node and Its right-hand sister node. Figure 1 shows a tree representing a
+particular noun phrase.
+DE/AL \ N
+~L ti ll mm
+Figure 1. A tree for a noun phrase.
+A chart Is basically a tree that has been modified in two ways:
+1. The arcs of the tree have been rearranged to produce a binary tree, that Is, a
+tree in which each node has at most two dangling nodes (this rearrangement
+Is described by Knuth (1073, p. 333) as the “natural correspondence ”
+- between trees and binary trees).
+2. The nodes and arcs have been Interchanged; what were previously nodes are
+now arcs, and vice versa.
+For example , Figure 2 is the chart represe ntation for the tree of Figure 1:~ •
+
+- ‘-~ ~~~~~~
+D3 The Generci Syntactic Processor 36
+NP
+I DET ADJ N
+- I the JtallIm an $
+Figure 2. A chart for a noun phrase.
+The chart representation has a number of advantages , Including ease of access for certain
+• purposes. For example , In Figure 1 there Is no direct connection from Q~[ to ~~ in FIgure 2
+this connection has been made; that Is, the PRECEDENCE relationships have been made
+explicit , and the DOMINANCE ones have been removed. This explicit encoding of precedence
+can be helpful in language processing, where the concept of one element following another is
+a basic relation .
+Also, the chart can be used to represent a “string of trees” or “fo r.st ”--that is, a set
+of disjoint trees. For example , Figure 3a shows a string of two disjoint trees, headed by ~~and ~~. Note that these trees cannot be connected , except with a dummy parent node
+(labeled 2). In Figure 3b, the equivalent chart representation is shown.
+7 NP V
+DET’ NP( \ I DEl N 
+J I the man walked
+the man walked ‘o so
+Figure 3a. Two disjoint trees. Figure 3b. The equivalent chart.
+Finally, the chart provides a representation for multiple interpretations of a given word
+or phrase , through the use of multiple edges. The arcs in a chart are called edges and are
+labeled wIth the names of words or grammatical constructs . For example , Figure 4
+• represents the set of trees for “I saw the log,” including the two Interpretations for the word
+PRO V DEl N
+to —so so
+sawi ,- t—,~ the log
+o~~~- so see(past) p ,o—~~- s
+p
+Figure 4. A chart showing multiple interpretat ions.
+The chart allows explicit representation of ambiguous phrases and clauses , as well as of
+words.
+
+~ ~~~~~~ •~~~-
+- ~~— -~~~~~~~~~~-~~•-~~----- -- -- •-~~— ~~~~~~~ —-~~~~~~~~~ -~~— --
+36 Natural Language
+Note that ambiguity could also be represented by distinct trees, one for every possible
+interpretation of the sentence. However , this approach is inefficient , as It Ignores the
+possibIlity that certain subparts may have the same meaning in all cases. With the chart
+representation , these common subparts can be merged.
+As defined earlier, the arcs in a chart are called edges and are labeied with the names
+of words or grammatical constructs. The nodes are called vertexes . The chart can be
+accessed through various functions , which enable one to retrieve specific edges, sets of
+edges, or vertexes.
+At any given moment , the attention of the system is directed to a particular point in the
+chart called the CHART FOCUS. The focus Is described by a set of global variables: EDGE
+(the current edge), VERTEX (the name of the node from which EDGE leaves), and CHART (the
+current subchart b.ing considered by the processing strategy). GSP’s attention is
+redirected by changing th . values of these variables.
+When the chart is initialized , each word In the sentence is represented by an edge in
+the chart for each category of speech the word can take. Figure 4 is an example of an
+initial chart configuration , preparatory to parsing. Each analysis procedure that shares the
+chart is restricted to adding edges, which gives later analyses the ability to modify or Ignore
+earlier possibilities without constraining future interpretations. in this way, the indiv iduai
+syntactic programs remain relativel y Independent while building on each other’s work in a
+generally bottom-up way.
+It should be emphasized that the chart is just a data structure and is not directly
+related to the grammar. it merely serves as the global blackboard upon which the variou s
+pieces of the grammar operate. We still must specify the sorts of operations that use the
+chart--that Is, the form of the grammar itself.
+Data Str ucture: Grammatical Rules
+Grammars for syntactic processing of language can be understood in terms of a
+network model like Woods ’s ATN grammar. That is, a grammar is viewed as a series of states ,
+with transItions between the states accomplished by following arcs (see Article D2).
+The grammars encoded by GSP fit this description. What gives GSP its power, -
+however , Is the fact that a grammar can be represented in the same way as a chart. That is,
+we can use the chart manipulation mechanisms , already developed , to operate upon the -
+grammar Itself. There Is a difference , of course. The chart Is merely a passive data store;
+the grammar contains Instructions for: (a) acting on the chart--adding pieces and shifting
+attention ; and (b) acting on the grammar- shifting attention (i.e., moving from one grammar
+state to another).
+Control Structure
+To handle the full comple xity of grammars, GSP has some extra features. These
+Include:
+1. REGISTERS. As in ATN5, these are used as pointers to structures.
+-
+
+pr ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ • • --
+03 The General Syntactic Processor 37
+2. LEVELSTACK. This Is a stack used to implement recursion. The chart
+focus, grammar focus (state ) , and register list are saved before a
+recursive call.
+• 3. NDLIST (nondetermlnism list). This is a list of choice points In the
+grammar. Whenever a choice is made, the user can optionally save the
+current configuration on NOLIST, to allow for backtrackin g.
+4. PROCSTACK. This is a list of suspended processes. GSP allows a co-
+voutinin g facility, under which processes can be sus pended and resumed
+(ATNs have no equivalent to this).
+Features like recursion, backtracking, and movement of the pointer through the Input sentence
+must all be handled by the user within the general framework provided. This approach can
+be benefic ial , particulariy with features such as backtracking: automatic backtracking can be
+a lees-than-desIrable feature In a grammar (se. the discussion in the Al Prag sm n* ig
+Lsngusgs. Section).
+UsIng GSP
+Note one facet of the approach outlined: All operations on the grammar and chart must
+be explicit ly stated. Thus, GSP has placed much power in the hands of the grammar designer ,
+with a corresponding cost in complexity.
+GSP appears to be similar to an ATNI with three extsnsIons~
+1. The data struct ure used Is a chart, Instead of simply a string of words.
+2. The grammar is encoded In the same manner as the chart; thus it is
+accessible to the system.
+3. Processes can be suspended and resumed.
+ATNs do not ful ly demonstrate the power of GSP. Kaplan also used GSP to implement
+Kay’s MIND parser (a context-free , bottom-up system) and Friedman ’s transformational
+grammar text-generation system. The latter two made more extensive use of GSP’ a
+capabilitIes , in particular: (a) the possibilities of multiple levels in the chart; (b) the ability to
+suspend and restart processes; and (c) the ability to rearrange the chart, changing it as
+necessary . The Kay algorithm , in particular , made extensive use of the ability to modify the
+• chart 0on the fly,” adding sections as required.
+Conclusions and Observations
+• GSP provides a simple framework within which many language processing systems can
+be described. It is not Intended to be a high-level system that will do many things for the
+user; rather, it provides a Mmachine language ” for the user to specify whatever operations
+he wants. GSP’s small set of primitive opera tions seems to be sufficient for representing
+most desirable features of syntax-based parsing. The clean, uniform structure enables GSP
+to be used as a tool for comparison (and possibly evaluation) of different systems. 
+~~~---~ ii_III•~. -~~~~.---- ----~~--~ ---~~~~~~~~~~~~~~~~~~~~~~ ~ -
+
+• ~~~~~~•. -~~~-—~~~~~~~~- -~~~—— ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+• 3$ Natural language
+The chart seems to be an effective data structure for representing the syntax of
+natural language sentences. It provides convenient merging of common sub parts (i.e., to
+prevent re-scanni ng known components) while permitting representation of various forms of
+ambiguity. As Kay explained , the function of the chart Is to “record hypotheses about the
+phraseological status of parts of the sentence so that they will be available for use In
+constructing hypotheses about larger parts at some later time” (Kay, 1973, p. 157).
+The backtracking mechanism Is very general and thus can be inefficient If used too
+• enthusiastically. Kaplan points out that heuristic ordering of alternatives Is possible by
+altering the function that retrieves confi gurations from the NDLIST, though compilers should in
+any case attempt to minimize backtracking.
+References
+Kaplan (1973) is the principal reference. See also Friedman (1971), Kay (1973),
+Knuth (1973), and Woods (1970).
+_____
+

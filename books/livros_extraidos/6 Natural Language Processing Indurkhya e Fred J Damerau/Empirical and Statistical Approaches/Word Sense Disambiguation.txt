@@ -1,0 +1,1126 @@
+14
+Word Sense
+Disambiguation
+David Yarowsky
+JohnsHopkinsUniversity14.1 Introduction ..........................................................31514.2 WordSenseInventoriesandProblemCharacteristics...........316
+TreatmentofPartofSpeech •SourcesofSenseInventories •Granularity
+ofSensePartitions •Hierarchicalvs.FlatSensePartitions •Idiomsand
+SpecializedCollocationalMeanings •RegularPolysemy •Related
+Problems
+14.3 ApplicationsofWordSenseDisambiguation .....................320
+ApplicationsinInformationRetrieval •ApplicationsinMachine
+Translation •OtherApplications
+14.4 EarlyApproachestoSenseDisambiguation.......................321
+Bar-Hillel:AnEarlyPerspectiveonWSD •EarlyAISystems:Word
+Experts •Dictionary-BasedMethods •KellyandStone:AnEarly
+Corpus-BasedApproach
+14.5 SupervisedApproachestoSenseDisambiguation................323
+TrainingDataforSupervisedWSDAlgorithms •FeaturesforWSD
+Algorithms •SupervisedWSDAlgorithms
+14.6 LightlySupervisedApproachestoWSD...........................327
+WSDviaWord-ClassDisambiguation •WSDviaMonosemousRelatives •
+HierarchicalClassModelsUsingSelectionalRestriction •Graph-Based
+AlgorithmsforWSD •IterativeBootstrappingAlgorithms
+14.7 UnsupervisedWSDandSenseDiscovery .........................33114.8 Conclusion............................................................332References....................................................................332
+14.1 Introduction
+Wordsensedisambiguation(WSD)isessentiallyaclassiﬁcationproblem.Givenawordsuchas sentence
+and an inventory of possible semantic tags for that word, which tag is appropriate for each individualinstanceofthatwordincontext?Inmanyimplementations,theselabelsaremajorsensenumbersfromanonlinedictionary,buttheymayalsocorrespondtotopicorsubjectcodes,nodesinasemantichierarchy,a set of possible foreign language translations, or even assignment to an automatically induced sensepartition.Thenatureofthisgivensenseinventorysubstantiallydeterminesthenatureandcomplexityofthesensedisambiguationtask.
+Table 14.1 illustrates the task of sense disambiguation for three separate sense inventories: (a) the
+dictionary sense number in Collins
+COBUILDEnglish Dictionary (Sinclair et al., 1987), (b) a label corre-
+sponding to an appropriate translation into Spanish, and (c) a general topic, domain, or subject-classlabel. Typically, only one inventory of labels would be used at a time, and in the case below, each of
+315
+
+316 HandbookofNaturalLanguageProcessing
+TABLE14.1 SenseTags fortheWord SentencefromDiﬀerentSense
+Inventories
+COBUILD Spanish Subject
+Dictionary Translation Class InstanceofTargetWordinContext
+noun-2 sentencia LEGAL ...maximum sentenceforayoungoﬀender...
+noun-2 sentencia LEGAL ...minimum sentenceofsevenyearsinjail...
+noun-2 sentencia LEGAL ...underthe sentenceofdeathatthattime..
+noun-2 sentencia LEGAL ...criticizea sentencehandeddownbyany...
+noun-1 frase LING inthenext sentencetheysaytheirelectors
+noun-1 frase LING ...thesecond sentencebecauseitisjustas...
+noun-1 frase LING ...thenext sentenceisaveryimportant...
+noun-1 frase LING thesecond sentencewhichIthinkisat...
+noun-1 frase LING ...saidthis sentenceutteredbyaformer...
+thethreeinventorieshasroughlyequivalentdiscriminatingpower.Sensedisambiguationconstitutestheassignment of the most appropriate tag from one of these inventories corresponding to the semanticmeaningofthewordincontext.Section14.2discussestheimplicationsofthesenseinventorychoiceonthistask.
+The words in context surrounding each instance of sentencein Table 14.1 constitute the primary
+evidence sources with which each classiﬁcation can be made. Words immediately adjacent to the targetword typically exhibit the most predictive power. Other words in the same sentence, paragraph, andeven entire document typically contribute weaker evidence, with predictive power decreasing roughlyproportional to the distance from the target word. The nature of the syntactic relationship betweenpotentialevidencesourcesisalsoimportant.
+Section 14.5 discusses the extraction of these contextual evidence sources and their use in supervised
+learning algorithms for word sense classiﬁcation. Sections 14.6 and 14.7 discuss lightly supervised andunsupervised methods for sense classiﬁcation and discovery when costly hand-tagged training data isunavailable or is not available in suﬃcient quantities for supervised learning. As a motivating precursortothesealgorithm-focusedsections,Section14.3providesasurveyofapplicationsforWSDandSection14.8concludeswithadiscussionofcurrentresearchprioritiesinsensedisambiguation.
+14.2 Word Sense Inventories and Problem Characteristics
+Philosophers and lexicographers have long struggled with the nature of word sense and the numerousbases over which they can be deﬁned and delimited. Indeed Kilgarriﬀ (1997) has argued that word“senses” do not exist independent of the meaning distinctions required of a speciﬁc task or target use.Allsense“disambiguation”isrelativetoaparticularsenseinventory,andinventoriescandiﬀerbasedoncriteriaincludingtheirsource,granularity,hierarchicalstructure,andtreatmentofpart-of-speech(POS)diﬀerences.
+14.2.1 Treatment of Part of Speech
+AlthoughsenseambiguityspansPOS(e.g.,asenseinventoryfor bankmaycontain:1,river bank[noun];
+2, ﬁnancial bank[noun]; and 3, to bankan airplane [verb]), the large majority of sense disambiguation
+systems treat the resolution of POS distinctions as an initial and entirely separate tagging or parsingprocess (see Chapters 4, 10, and 11). The motivation for this approach is that POS ambiguity is bestresolved by a class of algorithms driven by local syntactic sequence optimization having a very diﬀerentcharacterfromtheprimarilysemanticwordassociationsthatresolvewithin-POSambiguities.
+Theremainderofthischapterfollowsthisconvention,assumingthataPOStaggerincludinglemmati-
+zationhasbeenrunoverthetextﬁrstandfocusingonremainingsenseambiguitieswithinthesamePOS.
+
+WordSenseDisambiguation 317
+In many cases, the POS tags for surrounding words will also be used as additional evidence sources forthewithin-POSsenseclassiﬁcations.
+14.2.2 Sources of Sense Inventories
+Thenatureofthesensedisambiguationtaskdependslargelyonthesourceofthesenseinventoryanditscharacteristics.
+•Dictionary-basedinventories: Muchoftheearliestworkinsensedisambiguation(e.g.,Lesk,1986;
+WalkerandAmsler,1986)involvedthelabelingofwordsincontextwithsensenumbersextractedfrom machine-readable dictionaries. Use of such a reference standard provides the automaticbeneﬁtofthe“free”classiﬁcationinformationandexamplesentencesinthenumbereddeﬁnitions,making it possible to do away with hand-tagged training data altogether. Dictionary-based senseinventoriestendtoencouragehierarchicalclassiﬁcationmethodsandsupportrelativelyﬁnelevelsofsensegranularity.
+•Concept hierarchies (e.g., WordNet): One of the most popular standard sense inventories in
+recentcorpus-basedwork,especiallyonverbs,istheWordNetsemanticconcepthierarchy(Miller,1990). Each “sense number” corresponds to a node in this hierarchy, with the
+BIRDsense of
+craneembedded in a concept-path from HERON-LIKE-BIRDS through BIRDto the concept LIVING-
+THINGandPHYSICAL-ENTITY . This inventory supports extensive use of class-based inheritance and
+selectionalrestriction(e.g.,Resnik,1993).Despiteconcernsregardingexcessivelyﬁne-grainedandoccasionallyredundantsensedistinctions,WordNet-basedsenseinventorieshaveformedthebasisofmostrecentWSDevaluationframeworks(seeSection14.5.1),andareutilizedinstate-of-the-artopen-sourcedisambiguationlibraries(Pedersen,2009).
+•Domain tags/subject codes (e.g.,
+LDOCE):The online version of the Longman Dictionary of
+Contemporary English (Procter et al., 1978) assigns general domain or subject codes (such as EC
+foreconomic/ﬁnancialusages, and EGforengineering usages)tomany, butnotall, word senses.
+Inthecaseswheresensediﬀerencescorrespondtodomaindiﬀerences,LDOCEsubjectcodescanserveassenselabels(e.g.,Guthrieetal.,1991;Cowieetal.,1992),althoughcoverageislimitedfornon-domain-speciﬁcsenses. Subjectcodesfromhierarchicallyorganizedthesaurisuchas Roget’s
+4th International (Chapman, 1977) can also serve as sense labels (as in Yarowsky (1992)), as can
+subjectﬁeldcodeslinkedtoWordNet(MagniniandCavaglia,2000).
+•Multilingual translation distinctions: Sense distinctions often correspond to translation dif-
+ferences in a foreign language, and as shown in the example of sentencein Table 14.1, these
+translations (such as the Spanish fraseandsentencia) can be used as eﬀective sense tags. Parallel
+polysemy across related languages may reduce the discriminating power of such sense labels (asdiscussed in Section 14.3.2), but this problem is reduced by using translation labels from a moredistantlyrelatedlanguagefamily.Theadvantagesofsuchasenseinventoryarethat(a)itsupportsrelativelydirectapplicationtomachinetranslation(MT),and(b)sense-taggedtrainingdatacanbeautomaticallyextractedforsuchasenseinventoryfromparallelbilingualcorpora(asinGaleetal.(1992a)). WSD systems trained on parallel corpora have achieved top performance in Sensevalall-wordstasks(Ngetal.,2003).
+•Ad hoc and specialized inventories: In many experimental studies with a small example set of
+polysemouswords, thesenseinventoriesareoftendeﬁnedbyhandtoreﬂectthesenseambiguitypresent in the data. In other cases, the sense inventory may be chosen to support a particularapplication(suchasaspecializedmeaningresolutionininformationextractionsystems).
+•Artiﬁcial sense ambiguities (“Pseudo-words”): Pseudo-words, proposed by Gale et al. (1992d),
+are artiﬁcial ambiguities created by replacing all occurrences of two monosemous words in acorpus(suchas guerillaandreptile)withonejointword(e.g., guerilla-reptile).Thetaskofdeciding
+which original word was intended for each occurrence of the joint word is largely equivalent to
+
+318 HandbookofNaturalLanguageProcessing
+determiningwhich“sense”wasintendedforeachoccurrenceofapolysemousword.Theproblemisnotentirelyunnatural,astherecouldwellexistalanguagewheretheconcepts guerillaandreptile
+areindeedrepresentedbythesamewordduetosomehistorical-linguisticphenomenon.Selectingbetween these two meanings would naturally constitute WSD in that language. This approachoﬀerstheimportantbeneﬁtthatpotentiallyunlimitedtrainingandtestdataareavailableandthatsenseambiguitiesofvaryingdegreesofsubtletycanbecreatedondemandbyusingwordpairsofthedesireddegreeofsemanticsimilarity,topicdistribution,andfrequency.
+•Automaticallyinducedsenseinventories: Finally,asdiscussedinSection14.7,workinunsuper-
+visedsensedisambiguationhasutilizedautomaticallyinducedsemanticclustersaseﬀectivesenselabels (e.g., Schütze, 1992, 1998; Pantel and Lin, 2002). Although these clusters may be alignedwithmoretraditionalinventoriessuchasdictionarysensenumbers,theycanalsofunctionwithoutsuch a mapping, especially if they are used for secondary applications like information retrievalwheretheeﬀectivesensepartition(ratherthanthechoiceoflabel)ismostimportant.
+14.2.3 Granularity of Sense Partitions
+Sense disambiguation can be performed at various levels of subtlety. Major meaning diﬀerences calledhomographs often correspond to diﬀerent historical derivations converging on the same orthographic
+representation.Forexample,thehomographs(inRomannumerals)fortheEnglishword bank,asshownin
+Table14.2,enteredEnglishthroughtheFrench banque,Anglo-Saxon bencandFrench banc,respectively.
+Moresubtledistinctionssuchasbetweenthe(I.1)ﬁnancialbankand(I.2)generalrepositorysenseofbanktypically evolved through later usage, and often correspond to quite clearly distinct meanings that arelikelytranslatedintodiﬀerentwordsinaforeignlanguage.Stillmoresubtledistinctions,suchasbetweenthe (1.1a) general institution and (1.1b) physical building senses of ﬁnancial bank, are often diﬃcult forhumanjudgestoresolvethroughcontext(e.g., Heownsthebankonthecorner ),andoftenexhibitparallel
+polysemyinotherlanguages.
+Thenecessarylevelofgranularityclearlydependsontheapplication.Frequently,thetargetgranularity
+comesdirectlyfromthesenseinventory(e.g.,whateverlevelofdistinctionisrepresentedinthesystem’sonline dictionary). In other cases, the chosen level of granularity derives from the needs of the targetapplication:thosemeaningdistinctionsthatcorrespondtotranslationdiﬀerencesareappropriateforMT,whileonlyhomographdistinctionsthatresultinpronunciationdiﬀerences(e.g., /baes/vs. /beIs/forthewordbass)maybeofrelevancetoatext-to-speechsynthesisapplication.
+Suchgranularityissuesoftenariseintheproblemofevaluatingsensedisambiguationsystems,andhow
+much penalty to assign to errors of varying subtlety. One reasonable approach is to generate a penaltymatrixformisclassiﬁcationsensitivetothefunctionalsemanticdistancebetweenanytwosense/subsensesofaword.Suchamatrixcanbederivedautomaticallyfromhierarchicaldistanceinasensetree,asshowninTable14.2.
+TABLE14.2 ExampleofPairwiseSemanticDistancebetweentheWordSensesof Bank,
+DerivedfromaSampleHierarchicalSenseInventory
+IBank—REPOSITORY
+I.1FinancialBank
+I.1a—aninstitutionI.1b—abuilding
+I.2GeneralSupply/Reserve
+IIBank—
+GEOGRAPHICAL
+II.1ShorelineII.2Ridge/Embankment
+IIIBank—
+ARRAY/GROUP/ROW→I.1a I.1b I.2 II.1 II.2 III
+I.1a 0 1 2 4 4 4I.1b 1 0 2 4 4 4I.2 2 2 0 4 4 4II.1 4 4 4 0 1 4II.2 4 4 4 1 0 4III 4 4 4 4 4 0
+
+WordSenseDisambiguation 319
+Such a penalty matrix can also be based on confusability or functional distance within an application
+(e.g.,inaspeech-synthesisapplication,onlythosesense-distinctionerrorscorrespondingtopronunciationdiﬀerences would be penalized). Such distances can also be based on psycholinguistic data, such asexperimentallyderivedestimatesofsimilarityorconfusability(MillerandCharles,1991;Resnik,1995).
+Inthisframework,ratherthancomputingsystemaccuracywithaBooleanmatch/no-matchweighting
+of classiﬁcation errors between subsenses (however subtle the diﬀerence), a more sensitive weightedaccuracymeasurecapturingtherelativeseriousnessofmisclassiﬁcationerrorscanbedeﬁnedasfollows:
+WeightedAccuracy =1
+NN∑
+i=1distance (csi,asi)
+wheredistance (csi,asi)isthenormalizedpairwisepenaltyorcostofmisclassiﬁcationbetweenanassigned
+sense(as i)andcorrectsense(cs i)overallNtestexamples(ResnikandYarowsky,1999).
+If the sense disambiguation system assigns a probability distribution to the diﬀerent sense/subsense
+options,ratherthanahardbooleanassignment,theweightedaccuracycanbedeﬁnedasfollows:
+WeightedAccuracy =1
+NN∑
+i=1Si∑
+j=1distance (csi,sj)×PA(sj|wi,context i)
+where for any test example iof wordwihaving senses si, the probability mass assigned by the classiﬁer
+to incorrect senses is weighted by the communicative distance or cost of that misclassiﬁcation. Similarcross-entropy-basedmeasurescanbeusedaswell.
+14.2.4 Hierarchical vs. Flat Sense Partitions
+Another issue in sense disambiguation is that many sense inventories only represent a ﬂat partition ofsenses,withnorepresentationofrelativesemanticsimilaritythroughhierarchicalstructure.Furthermore,ﬂat partitions oﬀer no natural label for underspeciﬁcation or generalization for use when full subsenseresolution cannot be made. When available, such hierarchical sense/subsense inventories can supporttop-down hierarchical sense classiﬁers such as in Section 14.7, and can contribute to the evaluation ofpartialcorrectnessinevaluation.
+14.2.5 Idioms and Specialized Collocational Meanings
+Aspecialcaseofﬁnegranularitysenseinventoriesistheneedtohandleidiomaticusagesorcaseswherea specialized sense of a word derives almost exclusively from a single collocation. Think tank andtank
+top(anarticleofclothing)areexamples.Althoughthesecaninmostcasesbetracedhistoricallytooneof
+the major senses (e.g.,
+CONTAINER tankin the two foregoing examples), these are often inadequate labels
+and the inclusion of these idiomatic examples in training data for the major sense can impede machinelearning.Thus,theinclusionofsuchspecialized,collocation-speciﬁcsensesintheinventoryisoftenwelljustiﬁed.
+14.2.6 Regular Polysemy
+The term regular polysemy refers to standard, relatively subtle variations of usage or aspect that apply
+systematically to classes of words, such as physical objects. For example, the word roomcan refer to a
+physicalentity(e.g.,“Theroomwaspaintedred.”)orthespaceitencloses(e.g.,“Astrongodorﬁlledtheroom.”). The nouns cupandboxexhibit similar ambiguities. This class of ambiguity is often treated as
+partofalargertheoryofcompositionalsemantics(asinPustejovsky(1995)).
+
+320 HandbookofNaturalLanguageProcessing
+14.2.7 Related Problems
+Severaladditionalclassesofmeaningdistinctionsmaypotentiallybeconsideredaswordsenseambiguities.These include named entity disambiguation (such as deciding whether Madison is a U.S. president, city
+in Wisconsin, or a corporation) and the expansion of ambiguous abbreviations and acronyms (such asdecidingwhether IRAistheIrishRepublicanArmyorIndividualRetirementAccount). Althoughthese
+share many properties and utilized approaches with traditional WSD, the ambiguity instances here areunbounded and dynamic in scope, and these tasks have their own distinct literature (e.g., Pakhomov,2002).
+14.3 Applications of Word Sense Disambiguation
+Sensedisambiguationtendsnottobeconsideredaprimaryapplicationinitsownright, butratherisanintermediateannotationstepthatisutilizedinseveralend-userapplications.
+14.3.1 Applications in Information Retrieval
+TheapplicationofWSDtoinformationretrieval(IR)hashadmixedsuccess.OneofthegoalsinIRistomap the words in a document or in a query to a set of termsthat capture the semantic content of the
+text. When multiple morphological variants of a word carry similar semantic content (e.g., computing/
+computer),stemmingisusedtomapthesewordstoasingleterm(e.g.,
+COMPUT).However,whenasingle
+wordconveystwoormorepossiblemeanings(e.g., tank),itmaybeusefultomapthatwordintoseparate
+distinctterms(e.g., TANK-1[“vehicle”]and TANK-2[“container”])basedoncontext.
+Theactualeﬀectivenessofhigh-accuracyWSDonbottom-lineIRperformanceisunclear.Krovetzand
+Croft (1992) and Krovetz (1997) argue that WSD doescontribute to the eﬀective separation of relevant
+andnonrelevantdocuments,andevenasmalldomain-speciﬁcdocumentcollectionexhibitsasigniﬁcantdegreeoflexicalambiguity(over40%ofthequerywordsinonecollection).
+In contrast, Sanderson (1994) and Voorhees (1993) present a more pessimistic perspective on the
+helpfulnessofWSDtoIR.TheirexperimentsindicatethatinfullIRapplications,WSDoﬀersverylimitedadditionalimprovementinperformance,andmuchofthiswasduetoresolvingPOSdistinctions( sink[a
+verb]vs.sink[abathroomobject]).AlthoughSchützeandPedersen(1995)concurthatdictionary-based
+sense labels have limited contribution to IR, they found that automatically induced sense clusters (seeSection14.7)areuseful,astheclustersdirectlycharacterizediﬀerentcontextualdistributions.
+A reasonable explanation of the above results is that the similar disambiguating clues used for sense
+tagging(e.g., Panzerandinfantrywithtankselectingforthemilitaryvehiclesenseof tank)arealsoused
+directlybyIRalgorithms(e.g., Panzer,tank,and infantrytogetherindicaterelevanceformilitaryqueries).
+The additional knowledge that tankis sense-1 is to a large extent simply echoing the same contextual
+information already available to the IR system in the remainder of the sentence. Thus, sense taggingshouldbemoreproductiveforIRinthecasesofambiguitiesresolvedthroughasinglecollocationratherthanthefullsentencecontext(e.g., thinktank ̸=
+CONTAINER ),andforaddeddiscriminatingpowerinshort
+queries(e.g., tank-1procurementpolicy vs.justtankprocurementpolicy ).
+14.3.2 Applications in Machine Translation
+ItshouldbeclearfromSection14.1thatlexicaltranslationchoiceinMTissimilartowordsensetagging.Therearesubstantialdivergences,however.
+In some cases (such as when all four major senses of the English word interesttranslate into French
+asintérêt), the target language exhibits parallel ambiguities with the source and full-sense resolution is
+not necessary for appropriate translation choice. In other cases, a given sense of a word in English may
+
+WordSenseDisambiguation 321
+correspond to multiple similar words in the target language that mean essentially the same thing, buthavediﬀerentpreferredorlicensedcollocationalcontextsinthetargetlanguage. Forexample, sentencia
+andcondenaarebothviableSpanishtranslationsforthe
+LEGAL(noun)senseoftheEnglishword sentence.
+However, condenarather than sentencia would be preferred when associated with a duration (e.g., life
+sentence).Selectionbetweensuchvariantsislargelyanoptimizationprobleminthetargetlanguage.
+Nevertheless, monolingual sense disambiguation algorithms may be utilized productively in MT
+systems once the mapping between source-language word senses and corresponding target-languagetranslations has been established. This is clearly the case in interlingual MT systems, where source-language sense disambiguation algorithms can help serve as the lexical semantic component in theanalysisphase.Brownetal.(1991)havealsoutilizedmonolingualsensedisambiguationintheirstatisticaltransfer-basedMTapproach,estimatingaprobabilitydistributionacrosscorrespondingtranslationvari-ants and using monolingual language models to select the optimal target word sequence given theseweightedoptions.
+Carpuat and Wu (2005) have raised doubts about the eﬃcacy of WSD for MT using monolingual
+lexicographically based sense inventories, but have shown (in Carpuat and Wu (2007)) that WSD usingasenseinventorybasedonactualtranslationambiguitiescanimproveend-to-endChinese–EnglishMT.Others (including Chan et al. (2007a)) have further shown the contribution of some form of sensedisambiguationtoMT.
+14.3.3 Other Applications
+Sense disambiguation procedures may also have commercial applications as intelligent dictionaries,thesauri, and grammar checkers. Students looking for deﬁnitions of or synonyms for unfamiliar wordsare often confused by or misuse the deﬁnitions/synonyms for contextually inappropriate senses. Oncethe correct sense has been identiﬁed for the currently highlighted word in context, an intelligentdictionary/thesauruswouldlistonlythedeﬁnition(s)andsynonym(s)appropriatefortheactualdocumentcontext.
+Somesearchengineshaveimprovedtheiruserexperiencebyclusteringtheiroutputbasedonthesenses
+oftheword(s)inthequery.Forexample,asearch-enginequeryof javabeneﬁtsfromhavingresultsabout
+theprogramminglanguagesegregatedfromthosereferringtothecoﬀeeandIndonesianislandsenses.
+A somewhat indirect application is that the algorithms developed for classical sense disambiguation
+may also be productively applied to related lexical ambiguity resolution problems exhibiting similarproblem characteristics. One such closely related application is accent and diacritic restoration (such ascote→côte inFrench),studiedusingasupervisedsense-taggingalgorithminYarowsky(1994).
+14.4 Early Approaches to Sense Disambiguation
+WSDisoneoftheoldestproblemsinnaturallanguageprocessing(NLP).Itwasrecognizedasadistincttask as early as 1955, in the work of Yngve (1955) and later Bar-Hillel (1960). The target application forthisworkwasMT,whichwasofstronginterestatthetime.
+14.4.1 Bar-Hillel: An Early Perspective on WSD
+To appreciate some of the complexity and potential of the sense disambiguation task, it is instructive toconsiderBar-Hillel’searlyassessmentoftheproblem.Bar-Hillelfeltthatsensedisambiguationwasakeybottleneck for progress in MT, one that ultimately led him and others to conclude that the problem ofgeneral MT was intractable given current, and even foreseeable, computational resources. He used thenowfamousexampleofthepolysemousword penasmotivationforthisconclusion:
+
+322 HandbookofNaturalLanguageProcessing
+LittleJohnwaslookingforhistoybox.Finallyhefoundit.Theboxwasinthe pen.Johnwasveryhappy.
+In his analysis of the feasibility of MT, Bar-Hillel (1960) argued that even this relatively simple sense
+ambiguitycouldnotberesolvedbyelectroniccomputer,eithercurrentorimaginable:
+Assume,forsimplicity’ssake,that peninEnglishhasonlythefollowingtwomeanings:(1)acertain
+writing utensil, (2) an enclosure where small children can play. I now claim that no existing orimaginableprogramwillenableanelectroniccomputertodeterminethattheword peninthegiven
+sentencewithinthegivencontexthasthesecondoftheabovemeanings,whereaseveryreaderwithasuﬃcientknowledgeofEnglishwilldothis“automatically.”(Bar-Hillel,1960)Such sentiments helped cause Bar-Hillel to abandon the NLP ﬁeld. Although one can appreciate
+Bar-Hillel’sargumentsgiventheirhistoricalcontext,thefollowingcounter-observationsarewarranted.
+Bar-Hillel’s example was chosen to illustrate where selectional restrictions fail to disambiguate: both
+an enclosure penand a writing penhave internal space and hence admit the use of the preposition in.
+Apparently more complex analysis regarding the relative size of toy boxes and writing pens is necessarytoruleoutthesecondinterpretation.
+WhatBar-Hilleldidnotseemtoappreciateatthetimewasthepowerofassociationalproclivitiesrather
+thanhardselectionalconstraints. Onealmostneverreferstowhatis inawritingpen(exceptinthecase
+ofink, which is a nearly unambiguous indicator of writing pens by itself), while it is very common to
+refertowhatis inanenclosurepen.Althoughthetrigram inthepen doesnotcategorically ruleouteither
+interpretation, probabilistically itisverystronglytheindicativeoftheenclosuresenseandwouldbevery
+eﬀectiveindisambiguatingthisexampleevenwithoutadditionalsupportingevidence.
+Thus, while this example does illustrate the limitations of selectional constraints and the infeasible
+complexityoffullpragmaticinference,itactuallyrepresentsareasonablygoodexampleofwheresimplecollocationalpatternsinaprobabilisticframeworkmaybesuccessful.
+14.4.2 Early AI Systems: Word Experts
+After a lull in NLP research following the 1966 ALPAC report, semantic analysis closely paralleled thedevelopmentofartiﬁcialintelligence(AI)techniquesandtendedtobeembeddedinlargersystemssuchas Winograd’s Blocks World (1972) and LUNAR (Woods et al., 1972). Word sense ambiguity was notgenerally considered as a separate problem, and indeed did not arise very frequently given the generalmonosemyofwordsinrestricteddomains.
+Wilks (1975) was one of the ﬁrst to focus extensively on the discrete problem of sense disambigua-
+tion. His model of preference semantics was based primarily on selectional restrictions in a Schankianframework, andwastargetedatthetaskofMT.Wilksdevelopedframe-basedsemantictemplatesoftheform
+policeman →((folk sour)((((notgood man)obje)pick)(subj man)))
+interrogates →((man subj)((man obje)(tell force)))
+crook →((((notgood act) obje)do)(subj man))
+crook →((((((this beast)obje)force)(subj man))poss)(line
+thing))
+which were used to analyze sentences such as “The policeman interrogates the crook” by ﬁnding themaximallyconsistentcombinationoftemplates.
+Small and Rieger (1982) proposed a radically lexicalized form of language processing using the
+complex interaction of “word experts” for parsing and semantic analysis. These experts included both
+
+WordSenseDisambiguation 323
+selectional constraints and hand-tailored procedural rules, and were focused on multiply ambiguoussentencessuchas“Themaneatingpeachesthrowsoutapit.”
+Hirst (1987) followed a more general word-expert-based approach, with rules based primarily on
+selectional constraints with backoﬀ to more general templates for increased coverage. Hirst’s approachalsofocusedonthedynamicinteractionoftheseexpertsinamarker-passingmechanismcalled“polaroidwords.”
+Cottrell(1989) addressedsimilarconcernsregardingmultiplyconﬂictingambiguities(e.g.,“Bobthrew
+aballforcharity”)inaconnectionistframework,addressingthepsycholinguisticcorrelatesofhissystem’sconvergencebehavior.
+14.4.3 Dictionary-Based Methods
+To overcome the daunting task of generating hand-built rules for the entire lexicon, many researchershave turned to information extracted from existing dictionaries. This work became practical in the late1980swiththeavailabilityofseverallargescaledictionariesinmachine-readableformat.
+Lesk(1986) wasoneoftheﬁrsttoimplementsuchanapproach,usingoverlapbetweendeﬁnitionsin
+Oxford’sAdvancedLearner’sDictionaryofCurrentEnglish toresolvewordsenses.Theword coneinpine
+conewasidentiﬁedasa“fruitofcertainevergreentrees”(sense3),byoverlapofboththewords“evergreen”
+and “tree” in one of the deﬁnitions of pine. Such models of strict overlap clearly suﬀer from sparse data
+problems,asdictionarydeﬁnitionstendtobebrief;withoutaugmentationorclass-basedgeneralizations,theydonotcapturenearlytherangeofcollocationalinformationnecessaryforbroadcoverage.
+Another fertile line of dictionary-based work used the semantic subject codes such as in the online
+versionofLongman’sLDOCE(seeSection14.2).Thesecodes,suchas ECforeconomic/ﬁnancialusages
+andAUfor automotive usages, label specialized, domain-speciﬁc senses of words. Walker and Amsler
+(1986) estimated the most appropriate subject code for words like bankhaving multiple specialized
+domains, by summing up dominant presence of subject codes for other words in context. Guthrie et al.(1991)enrichedthismodelbysearchingforthegloballyoptimumclassiﬁcationsinthecasesofmultiple-ambiguities,usingsimulatedannealingtofacilitatesearch.VeronisandIde(1990)pursuedaconnectionistapproachusingco-occurrencesofspecializedsubjectcodesfrom CollinsEnglishDictionary .
+14.4.4 Kelly and Stone: An Early Corpus-Based Approach
+Interestingly, perhaps the earliest corpus-based approach to WSD emerged in the 1975 work of Kellyand Stone, nearly 15 years before data-driven methods for WSD became popular in the 1990s. For eachmemberofatargetvocabularyof1815words,KellyandStonedevelopedaﬂowchartofsimplerulesbasedon a potential set of patterns in the target context. These included the morphology of the polysemousword and collocations within a ±4 word window, either for exact word matches, POS, or one of 16
+hand-labeledsemanticcategoriesfoundincontext.
+Kelly and Stone’s work was particularly remarkable for 1975 in that they based their disambiguation
+proceduresonempiricalevidencederivedfroma500,000wordtextcorpusratherthantheirownintuitions.Althoughtheydidnotusethiscorpusforautomaticruleinduction,theirhand-builtrulesetswereclearlysensitivetoanddirectlyinspiredbypatternsobservedinsortedKWIC(keywordincontext)concordances.Asanengineeringapproach,thisdata-drivenbuthand-tailoredmethodhasmuchtorecommenditeventoday.
+14.5 Supervised Approaches to Sense Disambiguation
+Corpus-based sense disambiguation algorithms can be viewed as falling on a spectrum between fullysupervised techniques and fully unsupervised techniques, often for the purposes of sense discovery.I n
+
+324 HandbookofNaturalLanguageProcessing
+general, supervisedWSDalgorithmsderivetheirclassiﬁcationrulesand/orstatisticalmodelsdirectlyorpredominantly from sense-labeled training examples of polysemous words in context. Often hundredsoflabeledtrainingexamplesperwordsensearenecessaryforadequateclassiﬁerlearning, andshortagesof training data are a primary bottleneck for supervised approaches. In contrast, unsupervised WSDalgorithms do not require this direct sense-tagged training data, and in their purest form induce sensepartitions from strictly untagged training examples. Many such approaches do make use of a secondaryknowledgesource,suchastheWordNetsemanticconcepthierarchytohelpbootstrapstructurefromrawdata. Suchmethodscanarguablybeconsideredunsupervisedastheyarebasedonexistingindependentknowledgesourceswithnodirectsupervisionofthephenomenontobelearned.Thisdistinctionwarrantsfurtherdiscussion,however,andtheterm minimallysupervised shallbeusedheretorefertothisclassof
+algorithms.
+14.5.1 Training Data for Supervised WSD Algorithms
+Several collections of hand-annotated data sets have been created with polysemous words in contextlabeled with the appropriate sense for each instance in both system training and evaluation. Earlysupervised work in WSD was trained on small sense-tagged data sets, including 2094 instances oflinein context (Leacock et al., 1993a,b) and 2269 instances of interestin context (Bruce and Wiebe,
+1994). Gale et al. (1992a) based their work on 17,138 instances of 6 polysemous English words ( duty,
+drug,land,language, position,a n d sentence), annotated by their corresponding French translation in
+bilingual text. The ﬁrst simultaneous multi-site evaluation, SenseEval-1 (Kilgarriﬀ and Palmer, 2000),expanded coverage to 36 trainable English polysemous words from the Oxford Hector inventory. ThiswasexpandedconsiderablyintheSenseval-2framework(EdmondsandKilgarriﬀ,2002),withevaluationdatafrom9languages,includinganEnglishlexicalsampletaskcontaining12,939instancesof73lemmasusing the WordNet sense inventory (Section 14.2). The WordNet sense inventory has also been used toannotate over 200,000 consecutive words in the SEMCOR semantic concordance (Miller et al., 1993).Vocabulary coverage is wide and balanced, while the number of examples per polysemous word issomewhatlimited.TheDSOcorpus(NgandLee,1996)hasaddressedthissparsityissuebyannotatingover1,000exampleseachfor191relativelyfrequentandpolysemousEnglishwords(121nounsand70verbs),withatotalof193,000annotatedwordinstancesinthe BrownCorpus andWallStreetJournal .Senseval-3
+(Mihalcea et al., 2004) expanded coverage to 14 tasks and 12,000 annotated examples from the OpenMind Word Expert corpus (Chklovski and Mihalcea, 2002), utilizing nonexpert volunteer annotatorsacrosstheWebatsigniﬁcantcosttointer-annotatoragreementrates(67%vs.85.5%inSenseval-2).Thefollow-on community-wide evaluation framework (SemEval, 2007) has further expanded to specializedtasks and associated data sets focusing on such specialized topics as WSD of prepositions, Web peopledisambiguation,newlanguages,andtargettasks,andusingbilingualparalleltextforannotatingevaluationdata. The OntoNotes project (Hovy et al., 2006), utilizing a coarser variant of the WordNet inventoryfor higher inter-annotator agreement rates, has released over 1 million words of continuously sense-annotated newswire, broadcast news, broadcast conversation, and Web data in English, Chinese, andArabic, some of which are parallel bilingual sources to facilitate MT research, with observed empiricalcontributions to WSD (Zhong et al., 2008). The OntoNotes corpus also has the advantage of beingannotatedwithafull-parseandpropositional(PropBank)structure,somanysensedistinctionsbasedonargumentstructurecanbederivedinpartfromtheseadditionalsyntacticannotations.
+Itisusefultovisualizesense-taggeddataasatableoftaggedwordsincontext(typicallythesurrounding
+sentenceor ±50words),fromwhichspecializedclassiﬁcationfeaturescanbeextracted.Forexample,the
+polysemousword plant,exhibitingamanufacturingplantandlivingplantsense,hascontextsillustrated
+inTable14.3.
+
+WordSenseDisambiguation 325
+TABLE14.3 ExampleoftheSense-TaggedWord
+PlantinContext
+SenseTag InstanceofPolysemousWordinContext
+MANUFACT ...fromtheToshiba plantlocatedin...
+MANUFACT ...unionthreatened plantclosures ...
+MANUFACT ...chloridemonomer plant,whichis ...
+LIVING ...withanimaland planttissuescanbe...
+LIVING ...Golgiapparatusof plantandanimalcell..
+LIVING ...themoleculesin planttissuefromthe...
+14.5.2 Features for WSD Algorithms
+Relevant features typically exploited by supervised WSD algorithms include, but are not limited to, thesurrounding raw words, lemmas (word roots), and POS tags, often itemized by relative position and/orsyntactic relationship, but in some models represented as a position-independent bag of words. AnexampleofsuchfeatureextractionfromtheforegoingdataisshowninTable14.4.
+Once these diﬀerent features are extracted from the data, it is possible to compute the frequency
+distribution of the sense tags for each feature pattern. Table 14.5 illustrates this for several diﬀerentfeature types, with f(M)indicating the frequency of the feature pattern as the manufacturing sense of
+plant,and f(L)givesthefrequencyofthelivingsenseof plantforthisfeaturepattern.Theserawstatistics
+willdrivealmostalloftheclassiﬁcationalgorithmsdiscussedbelow.
+Notethatwordorderandsyntacticrelationshipcanbeofcrucialimportanceforthepredictivepower
+of word associations. The word openoccurs within ±kwords of plantwith almost equal likelihood of
+both senses, but when plantis the direct object of openit exclusively means the manufacturing sense.
+The word pesticideimmediately to the left of plantindicates the manufacturing sense, but in any other
+position the distribution in the data is 6 to 0 in favor of the living sense. This would suggest that therearestrongadvantagesforalgorithmsthatmodelcollocationsandsyntacticrelationshipscarefully,ratherthantreatingcontextsstrictlyasunorderedbagsofwords.
+Several studies have been conducted assessing the relative contributions of diverse features for WSD.
+Gale et al. (1992c) and Yarowsky (1993) have empirically observed, for example, that wide-context,unorderedbag-of-wordortopic-indicatingfeaturescontributemosttonoundisambiguation, especiallyforcoarsersenses,whileverbandadjectivedisambiguationrelymoreheavilyonlocalsyntacticandcollo-cationalfeaturesandselectionalpreferencefeatures.Optimalcontextwindowsizesarealsoquitesensitivetotarget-wordPOS,withwordsincontextupto10,000wordsawaystillabletoprovidemarginallyuse-ful information to the sense classiﬁcation of polysemous nouns. Polysemous verbs depend much moreexclusively on features in their current sentence. Stevenson and Wilks (2001), Lee and Ng (2002), andAgirre and Stevenson (2007) provide a very detailed cross-study analysis of the relative contribution ofdiverse knowledge sources, ranging from subcategorization and argument structure to LDOCE topical
+TABLE14.4 ExampleofBasicFeatureExtractionfortheExampleInstancesof Plant
+inTable14.3
+RelativePosition-2 RelativePosition-1 0 +1
+SenseTag Class Word POS Class Lemma POS Word Word
+MANUFCT the DET CORP Toshiba NPplant located
+MANUFCT BUSN union NN threaten VBDplant closures
+MANUFCT CHEM chloride NN CHEM monomer NNplant ,
+LIVING ZOOL animal NN and CONplant tissues
+LIVING apparatus NN of PREPplant and
+LIVING CHEM molecules NNS in PREPplant tissue
+
+326 HandbookofNaturalLanguageProcessing
+TABLE14.5 FrequencyDistributionofVariousFeaturesUsedto
+DistinguishtheTwoSensesof Plant
+FeatureType FeaturePattern f(M)f(L)MajoritySense
+WORD +1p l a n t growth 0 244 LIVING
+WORD +1p l a n t height 0 183 LIVING
+LEMMA +1p l a n t size/N 73 2 LIVING
+LEMMA +1p l a n t closure/N 27 0 MANUFACT
+WORD −1assembly plant 161 0 MANUFACT
+WORD −1nuclearplant 144 0 MANUFACT
+WORD −1pesticideplant 9 0 MANUFACT
+WORD −1tropicalplant 0 6 LIVING
+POS+1p l a n t <NOUN > 561 2491 LIVING
+POS−1 <NOUN >plant 896 419 MANUFACT
+WORD ±kc a r within ±kwords 86 0 MANUFACT
+WORD ±ku n i o n within ±kwords 87 0 MANUFACT
+WORD ±kj o b within ±kwords 47 0 MANUFACT
+WORD ±k pesticide ±kwords 9 6 MANUFACT
+WORD ±ko p e n within ±kwords 20 21 LIVING
+WORD ±kﬂ o w e r within ±kwords 0 42 LIVING
+Verb/Obj close/V,Obj=plant 45 0 MANUFACT
+Verb/Obj open/V,Obj=plant 10 0 MANUFACT
+Verb/Obj water/V,Obj=plant 0 7 LIVING
+domain codes. The former performs best in isolation on verbs while the latter on nouns, and all testedfeaturesyieldmarginallyproductiveimprovementsonallPOS.WSDisalsosensitivetothemorphologyofthetargetpolysemousword,withsensedistributionsforawordsuchas interestdiﬀeringsubstantially
+between the word’s singular and plural form. Ng and Lee (1996), Stevenson (2003), Wu and Palmer(1994),McCarthyetal.(2002),ChenandPalmer(2005),andothershavefurtherdemonstratedtheeﬀec-tivenessofcombiningrichknowledgesources,especiallyincludingverbframeandselectionalpreferencefeatures.
+14.5.3 Supervised WSD Algorithms
+Once WSD has been reduced to a classiﬁcation task based on a rich set of discrete features per wordinstance,asdescribedinSection14.5.1,essentiallyallgenericmachinelearningclassiﬁcationalgorithmsareapplicable. MostsupervisedWSDresearchhasbeeneitheranapplicationofexistingmachinelearn-ing algorithms to WSD, or in rare cases broadly applicable algorithmic innovations/reﬁnements whichhappened to use WSD as their ﬁrst target case. Progress (and relative comparative performance gains)insupervisedWSDtendstomirrorthoseinmachinelearningingeneral.Earlysupervisedworkfocusedon decision trees (Brown et al., 1991), naive Bayes models (Gale et al., 1992a), cosine-similiarity-basedvectormodels(Leacocketal.,1993a,b),anddecisionlists(Yarowsky,1994),withBruceandWiebe(1994)andPedersenandBruce(1997)employingearlygraphicalmodels.NgandLee(1996)achievedempiricalsuccesswith k-nearest-neighboralgorithms.Morerecently,approachesusingAdaBoost(Escuderoetal.,
+2000)andsupportvectormachines(SVMs)(LeeandNg,2002)haveachievedtopperformanceinrecentcomparative evaluations. Although the utilized feature spaces have varied considerably, for the mostpart,thesearegenericmachinelearningimplementationsandthusthereaderisreferredtotheoverviewof machine learning methods by Zhang in Chapter 10 for descriptions of these general algorithms andbackgroundreferences.
+Several comparative studies of relative machine learning algorithm performance on WSD have been
+insightful,includingLeacocketal.(1993a,b)andMooney(1996).Mostcomprehensively,Márquezetal.
+
+WordSenseDisambiguation 327
+(2007) have performed a rigorous comparative evaluation of supervised algorithms on the DSO corpus.TheyobservedthatgenericdecisionlistsweresimilarinoverallperformancetonaiveBayes,althoughwithquite diﬀerent per-instance behavior, suggesting the merit of including both in classiﬁer combination.Ak-NN algorithm outperformed both, with SVMs and AdaBoost yielding similar overall performance
+on top. SVMs perform best with relatively few ( <60) training exemplars per sense while AdaBoost
+performsbestontrainingdatawithmorethan60exemplarspersense.Allalgorithmstendedtoperformpoorly when ported between distinct corpora. Yarowsky and Florian (2002) studied relative systemperformanceacrossadiversespaceoftraininganddataconditionsonfourlanguagesusingSenseval-2data.With respect to use of features, they observed that aggregative algorithms (such as naive Bayes) tend toperform well using large sets of wide context or bag-of-words features, while discriminative algorithms(e.g., decision trees and decision lists) tend to perform well using smaller sets of highly descriminativefeatures,suchaslocalcollocationsorsyntacticconstraints.Theyalsoobservedthatdiscriminativemodelsperformwellwhenthemajority-sensepriorprobabilityishigh,whensenseentropyishigh,andincasesofincreasedtraining-testdatadivergence.Agglomerativemodelstendtodobetterinthespaceofsparsertraining data, increased number of senses, and increased noise in training data. As had been observedpreviously by Martínez et al. (2002), decision lists perform particularly well relative to other algorithmson the high-precision subset of data on which they are most conﬁdent. Finally, it was observed thatperformance variation due to the training set sizes and the inclusion and exclusion of a rich diversity offeaturetypestendstoexceedthatduetoalgorithmvariation,suggestingthattheﬁeldmaybebetterservedby research into improved feature spaces and the more eﬃcient acquisition of training data rather thanineﬀortstoﬁnetunetheunderlyingclassiﬁcationalgorithms.
+Given the substantial observed variation in algorithm behavior and accuracy on diﬀerent individual
+words, ambiguity types, and data conditions, it is not surprising that classiﬁer combination (such asweighted voting or score and rank combinations) over the output of numerous diverse algorithms hasbeenshowntobeanempiricalwin(e.g.,Brodyetal.,2006).Thetop-performingsystemsontheSenseval-2and Senseval-3 lexical sample tasks (Yarowsky et al. (2001) and Agirre et al. (2005), respectively) bothhaveemployedextensiveclassiﬁercombination.
+14.6 Lightly Supervised Approaches to WSD
+Although there have been recent improvements in the availability of sense-tagged training data,insuﬃcient quantities exist for many words and ﬁner grained sense distinctions. Little or no anno-tated sense-tagged training data exists for most languages on the planet. Fortunately, a wide range oftechniques in “lightly,” “weakly,” or “minimally” supervised learning have been developed, oﬀering thepotentialtoovercometheknowledgeacquisitionbottleneckslowingprogressinthisﬁeld.
+14.6.1 WSD via Word-Class Disambiguation
+One way to limit the amount of necessary training data is to recast WSD as word-class disambiguation,
+signiﬁcantlyreducingmodeldimensionality.Considerthedisambiguationoftheword crane,whichcan
+beaBIRDorMACHINE.Ifweareabletobuildadetectorforthesewordclassesincontext,asinTable14.6,
+thenitissuﬃcienttoaskwhichofthepossiblevalidwordclassesof craneismostlikelyinagivencontext,
+ormoregenerally:
+P(Sensei|Context )=N∑
+j=1P(Sensei|Classj)×P(Classj|Context )
+
+328 HandbookofNaturalLanguageProcessing
+TABLE14.6 ExampleofClass-BasedContextDetectorsfor birdand
+machine
+theengineofthe cranewasdamaged flocksof cranesnestedintheswamp
+P(MACHINE |context )=.650 P(MACHINE |context )=.002
+P(BIRD|context ) =.007 P(BIRD|context ) =.370
+P(MINERAL |context )=.005 P(MINERAL |context )=.004
+Bestsense/classlabel: MACHINE Bestsense/classlabel: BIRD
+Itisnotevennecessarytohavemanuallyannotatedtrainingdataofthesewordclassesincontext,only
+alistofpotentialclassmembers.Becausethemajorityofwordsonaclasslisttendtobemonosemous,itissuﬃcienttoassumethatalllistedinstancesoftheclassbelongtotheclass,evenforthecaseofsecondarysenses of polysemous words. For example, given a list of
+BIRDs including heron, grebe, pelican, hawk,
+seagull, etc. and MACHINEs including jackhammer, drill, tractor, bulldozer, etc., it is possible to build a
+Bayesian classiﬁer (or other wide-context, redundant-feature classiﬁer) by training on allinstances of
+these classes in an unannotated corpus, without removing or annotating the polysemous words such ashawkoreagle. Although non-bird examples such as congressional hawksand golﬁng eaglesare part of
+the training data for the aggregate context models and thus are introduced into the aggregate contextmodels, this noise is tolerable because (a) their numbers are modest, (b) secondary senses tend to bedistributed uniformly across many diﬀerent topic areas, while (c) the common contextual propertiesof the class (e.g., eggs/nests/feeding/migration, etc.) are focused and exhibit adequate signal-to-noiseratio.
+Because word class labels can serve as word sense labels, and because word class detectors can
+be trained eﬀectively on somewhat noisy polysemous data, as long as a class inventory is availablewhere class members are primarily monosemous and share common properties, accurate sense disam-biguation can be achieved without sense-tagged training data. This algorithm, developed in Yarowsky(1992), achieved 92% mean accuracy on a test set of 12 polysemous words using Roget’s thesaurusas the primary sense inventory and topic-sensitive Bayesian classiﬁers as the primary class detectionalgorithm.
+14.6.2 WSD via Monosemous Relatives
+AvariantoftheprecedingYarowsky(1992)algorithmusesonlythesingleclosestmonosemousmemberof a word’s class (ideally a near synonym) as training proxy for a polysemous word. For example, thewordsheronandderrickalonemayserveasclosemonosemousstand-insforthe
+BIRDandMACHINEsenses
+ofcrane,respectively.Aclassiﬁertrainedontheinstancesof heronandderrickinanunannotatedcorpus
+will likely capture many of the contextual indicators for the two senses of crane, as in the class-based
+algorithm,butwiththeadvantagethattheyareamoreﬁnelytailoredmatchforthesensesof cranethan
+thegenericcentroidofall BIRDsandMACHINEs,atthecostofsubstantiallyshrinkingtheavailabletraining
+set size and requiring one disambiguation model for every sense of every word rather than one modelfor every O(1000) word classes. This monosemous relative model was developed by Mihalcea (2002)and Agirre and Martínez (2004), and works best when reasonably close monosemous relatives or nearsynonyms are available. It also requires that the closest relatives be somehow identiﬁable, either via thesense inventory structure or via empirically observed context similarity. Further reﬁnements, such asproposed by Martínez et al. (2008), use larger nearby sets of potentially polysemous relatives, with theirmodel contribution weighted by their distance from the target senses and perhaps iteratively ﬁltered oftheirfalsesecondarysenses.
+
+WordSenseDisambiguation 329
+14.6.3 Hierarchical Class Models Using Selectional Restriction
+Similar class-based models can be applied to the problem of resolving noun and verb senses throughselectionalrestrictionandselectionalpreference.Resnik(1993,1997)hasdeﬁnedselectionalpreferenceasanprobabilisticdistributionoveraconcepthierarchy,suchasWordNet.Considertheparent(hypernym)classesforthefollowingwordsinWordNet:
+gin →<BEVERAGE,DEVICE,GAME >
+vodka →<BEVERAGE >
+coﬀee →<BEVERAGE,TREE,SEED,COLOR >
+pint →<VOLUME_UNIT >
+cup →<VOLUME_UNIT,VESSEL,TROPHY >
+Resnikhasextractedalargesetofverb–objectpairsfromaparsedcorpus(e.g.,drink(vodka),drink(gin),
+drink(pint), play(gin), etc.). He then computed statistics on the common objects of the verb drink, theWordNet classes of these objects, their parent classes, and so forth. At any level of generality, he canexpressthelikelihoodof P(
+WORDNET_CLASS |drink),where P(BEVERAGE |drink)isbasedonthefrequencyof
+membersoftheclass BEVERAGE asobjectsoftheword drink.Inthecaseofpolysemouswords,suchas gin,
+partialcreditisuniformlyassignedtoeachoftheclassoptions(e.g., P(BEVERAGE |drink),P(DEVICE |drink),
+andP(GAME|drink)). As in the case of Yarowsky’s class models in Section 14.6.1, the noise introduced
+bythisspuriouspolysemywillbetolerable,and P(BEVERAGE |drink)andP(VOLUME_UNIT |drink)willbethe
+twomostlikelyobjectclassesobservedinacorpus,evenunderthepartialweightingschemeforspurioussecondary senses. Thus, like in Section 14.4.3, the class label of any individual verb–object pair (e.g.,drink(gin))canberesolvedasthemostlikelyof gin’sWordNetclasstobedrunk, giventheprobabilistic
+model of selectional preference. Similarly, as P(
+VOLUME_UNIT |drink)is higher than P(TROPHY |drink),t h e
+correctsenseof drink(cup )isalsoselected.
+Similarly,verbsensesinResnik’sframeworkcanbedeﬁnedasthemostlikelyWordNetclassoftheverb’s
+object.Drink(cup)isalsocorrectlyassignedthesensecorrespondingtodrink( VOLUME_UNIT )ratherthan
+drink(TROPHY).Collectively,Resnik’sworkclearlydemonstratestheabilityforrawcorpusco-occurrence
+statistics combined with an existing hierarchical class-based lexicon to identify the underlying semantic“signal”inthenoiseofpolysemy.
+14.6.4 Graph-Based Algorithms for WSD
+Graph-basedalgorithmsutilizingtechniquessuchasrandomwalksoverdictionarynetworkshavesoughttoidentifyadditionallexicalindicatorsofaword’ssensedirectlyfromtransitiveassociationsinthegraphtopology,withouttheneedforannotatedcorpora(e.g.,Navigli(2006);AgirreandSoroa(2008);NavigliandLapata(2007)andKlapaftisandManandhar(2008))byusingvariantsofalgorithmssuchasPageRank(Mihalceaetal.,2004).Whileeﬃcientforextractingprobabilisticmodelsfromunweightedlexicalgraphstructures,thesemodelsaretosomeextentconstrainedbythesizeandavailabilityofexploitableWordNetsorotherlexicalknowledgebasesintheirtargetlanguage.
+14.6.5 Iterative Bootstrapping Algorithms
+Hearst(1991)proposedanearlyapplicationofbootstrappingbasedonrelativelysmallhand-taggeddatasetsusedinsupervisedsensetagging. LikeSchütze(1992)andZernik(1991), Hearstusedaterm-vectorrepresentation of contexts and cosine similarity measure to assign new test contexts to the most similarvectorcentroidcomputedfromhertaggedtrainingexamples.Shelateraugmentedtheexistingcentroidswith additional untagged vectors, assigned to their closest labeled centroid, with the goal of alleviatingsomeofthesparsedataproblems intheoriginaltaggedtrainingdata. Classiﬁersusingtheseaugmented
+
+330 HandbookofNaturalLanguageProcessing
+training sets performed nearly the same as those using the purely hand-tagged data, and in some cases
+thepresenceoftheadditionalsentenceshurtperformance.
+Yarowsky(1995)proposedanalgorithmformulti-passiterativebootstrappingfromdiﬀerenttypesof
+small seed data for each target word sense. These seed conﬁgurations included information as basic as
+justthetwosenselabels(e.g., MANUFACTURING andLIVINGfortheword plant),aswellasotherexperiments
+using dictionary deﬁnitions and a small set of hand-labeled collocations as minimal seed data. A key
+component of this work was the process by which this very small seed data was reliably and robustly
+expandedtoeventuallytagallinstancesofthewordinacorpus.
+Thedrivingengineforthisprocedureweretwoempiricallystudiedproperties: (a)polysemouswords
+strongly tend to exhibit only one sense per collocation (Yarowsky, 1993) and (b) polysemous words
+stronglytendtoexhibitonlyonesensewithinagivendiscourse(Galeetal.,1992b).
+Inthesestudies, collocation wasdeﬁnedasanarbitraryassociationorjuxtapositionofwords,withthe
+eﬀectsmeasuredsensitivetosyntacticrelationshipanddistancebetweenthetwowords,aswellasfactors
+suchasthepartofspeechofthewords.Yarowsky(1993)observedthatforcollocationswithapolysemous
+word(suchas plant)wheninadjacentcollocationwithanothernoun(e.g., plantclosure ),onaverage98%
+oftheinstancesofagivencollocationrefertothesamewordsense.Ascollocationaldistanceincreasesto
+20words(e.g., ﬂoweroccurringwithin20wordsof plant),over80%oftheinstancesofagivencollocation
+refertothesamesense.Verbsandadjectivestendtohavemorelocalizedcollocationalpredictivereliability,
+whilenouncollocationseven100wordsdistantstillstronglytendtoselectthesamesense.
+Inaseparatestudy(Yarowsky,1995),itwasobservedthatforasamplesetof12polysemousnounsand
+verbs, on average 50.1%of the instances of each polysemous word occurred in a discourse with another
+instance of the same word. Of those discourses with two or more occurrences of the polysemous word,
+the probability that any randomly chosen instance of the polysemous word would have the same sense
+as another randomly chosen instance of the same word was measured at 99.8% for the sample set of
+words.Clearly,theone-sense-per-discoursetendencyholdswithhighaccuracy,andcanbeexploitedfor
+approximatelyhalfoftheinstancesofpolysemouswordsinthecorpus.
+Together,thestrongone-sense-per-discourseandone-sense-per-collocationtendenciescanbejointly
+exploited in an iterative bootstrapping framework. This is illustrated graphically in Figure 14.1. The
+algorithmbeginswithasfewastwoseedcollocationsthatareindicativeofthetargetsenses.Examplesof
+thewordplantthatcontaintheseedcollocationsareinitiallylabeledasA= lifeandB=manufacturing for
+AAAAAALife ????? ?
+???? ??
+???
+?????
+??????
+?????
+??
+????
+???? ???
+????
+?
+?
+???
+??
+???? ?????
+???
+?
+??
+???????????
+???
+????????????
+??
+?????
+?
+?????????? ??????????
+????
+??
+???
+????
+?
+????
+?
+??? ????????
+?????
+??????
+??
+?
+????????
+???
+?
+???????
+????
+???
+???
+???????
+???
+?
+??????????
+??
+??
+???????
+??????????????
+?
+???????? ???
+???
+?
+?????
+??
+???????
+?????
+????????????????
+????
+??? ???
+???? ??????? ?????? ?????
+? ??
+??
+???? ????????? ???
+??
+?
+???
+? ??
+?
+?????????
+?
+???
+????
+???
+??
+??????????BBB
+BBBBBBBBBBB
+BBBB
+B
+B
+BBBB
+B
+BBBBBBBBBBBBB
+B
+BB
+BB
+BB
+???
+??
+??????
+??????
+?
+???????????????
+?
+? ??
+??
+???????????
+Manufacturing
+Initial configuration Intermediate configuration????????
+????????
+?
+?
+?
+???
+???????
+??????
+????
+?
+???
+???
+???
+???? ???????
+???
+?? ?
+?????????
+??????
+??
+??
+???????
+?
+??
+?????
+????
+???
+?
+?? ???
+????
+???
+???
+??
+??
+??
+??????
+?
+??
+???????????? ??
+Life
+AA
+348
+A A A
+AAAAAAAAAAAAAA
+AAAA
+AAA
+AAA
+AAAAAAA
+AAAAAAAA AAAAAAAAAAA
+AAAAAAAAAAA AA
+AA
+AAAAAAA
+AAAAAAA
+A AAA
+AAA
+AAAAAA
+A
+AAA
+AAAA
+AAAAA
+Cell????????
+?????????
+??
+???
+??
+?????
+?
+????
+?
+??
+????
+??
+?
+??
+?
+?
+???
+?
+??
+???????????
+?
+??? ??????
+?
+?
+?
+? ????
+?????
+???
+???
+?
+????????????????
+????
+????????????
+?
+??
+?????????
+??
+?
+???
+???
+???
+????????
+?
+???
+?????
+???
+??? ? ? ??
+??????
+?
+?????
+??
+? ??????????????
+?????????????????????
+??
+?
+?????????
+??
+????
+????
+?
+?????????????
+??????
+?
+??
+????????????
+??
+?
+??????
+?? ?
+Employee
+Equipment
+ManufacturingAutomate
+BBBBB
+BBBBB
+BBB
+BBB
+BBBB
+BB
+BBB
+B
+BBBBBBBB
+BBBBBB
+BBBBBBB
+BBBBBB
+BBBBBB
+BBBB
+BBBBBBB BBBB BBBBBBBBBBBBB
+BBBB
+BBBBB
+BB
+BBB
+BBB
+BBBBBBB BB
+BBBB
+B?????
+????
+???
+?
+??????????
+??????????
+???
+?
+?????
+???
+?
+??????
+???????
+?
+???????
+?????
+??
+????????
+?? ? ?
+? ?????????
+???? ???????
+???????????????????????
+????? ???????
+??????????
+?????? ?????
+?
+?????
+??
+??????
+??
+???????????
+????????
+??????????
+???
+??????
+???
+Microscopic
+Species
+Animal??
+????
+????
+?? ?
+?
+???
+??
+???
+?
+?
+??
+??
+????????????
+??
+?????
+???????
+?
+?????
+??????
+???
+??
+???
+????? ?
+??
+????
+???
+AAAAAA
+A
+AAAAA
+AAAAA
+AAAAAAA
+AA
+AAAA
+AAA
+FIGURE14.1 Iterativebootstrappingfromtwoseedwordsfor plant.
+
+WordSenseDisambiguation 331
+the two major senses of the polysemous word plant. The remainder of the examples of the polysemous
+word are initially untagged, represented graphically in Figure 14.1 as “ ?”. A supervised classiﬁer (based
+on decision lists in this case) is then trained on the seed sets, and applied to the residual untagged data.New collocations indicative of either sense are learned, and those classiﬁcations with conﬁdence abovea threshold are added to the next round’s training set. Simulated annealing applied to this conﬁdencethreshold to help avoid overtraining. The one-sense-per-discourse tendency is also exploited as both abridgetoaddnewcollocationalexamplestothetrainingmodelandaseﬀectiveﬁlterortodecrementtheprobability of initially misclassiﬁed examples given strong evidence for the competing sense from otherexamplesofthepolysemouswordinthediscourse.Aftermultipleiterationsofthebootstrappingsteps,thealgorithminthisexampleconvergesatapartitionoftheexamplespacecorrespondingcloselytothetruepartition (dotted line). Mean accuracy of this algorithm starting from only two seed words was 90.6%.Starting from words in an online dictionary deﬁnition when fully using the one-sense-per-discoursemodelachieves96.5%. Thisslightlyoutperformsabaseline(decisionlist)supervisedlearningalgorithmnotusingdiscourseco-occurrenceinformation(96.1%accuracy),indicatingthepoweroftheone-sense-
+per-discourse tendency to eﬀectively guide and constrain incremental bootstrapping. Abney (2004)explores the algorithmic foundations of this algorithm in detail, while Eisner and Karakos (2005) havedemonstratedsubstantialimprovementswithouttheneedforinitialseeds.Krovetz(1998)andMartínezand Agirre (2000) have provided further empirical investigations into the one-sense-per-discourse andone-sense-per-collocationproperties.
+14.7 Unsupervised WSD and Sense Discovery
+The classic approach to “unsupervised” WSD is to automatically cluster the instances of a polysemouswordincontext,usingsomeformofcontextorfeaturerepresentationasdiscussedinSection14.5.
+OneoftheearliestsuchalgorithmswasintroducedbyZernik(1991)andSchütze(1992),utilizingthe
+framework of IR-style content vectors noted in Section 14.5.3. Just as documents can be represented asvectors <W
+1,W2,W3,W4,...,WV>inV-dimensional space (where Vis the vocabulary size, and Wiis
+a weighted function of word frequency in that document), the context surrounding a polysemous wordcanbesimilarlyrepresentedasifitwereaseparatedocument.Givenavectorsimilarityfunction,contextvectors may be clustered hierarchically into partitions of the vector set of high relative within-clustersimilarity.Thegoalofunsupervisedlearninginthiscaseisthattheinducedclusterswillalsocorrespondtowordcontextsexhibitingthesamesense.Totheextentthatsimilarworddistributionsinsurroundingcontexts correlate with similar word sense, such a partitioning algorithm is likely to yield clusters ofvectorswithprimarilythesamesense(Figure14.2).
+Many diﬀerent clustering algorithms and similarity functions may be used in this general frame-
+work.Zernik(1991)utilizedbottom-uphierarchicalagglomerativeclusteringbasedoncosine-similarity.Schütze(1992)utilizedatop-downBayesianalgorithmAutoclass(Cheesmanetal.,1988)andapartiallyrandomized algorithm Buckshot (Cutting et al., 1992). Schütze also used singular value decomposition(Deerwester et al., 1990) to reduce the dimensionality of the vector space, using canonical discrimi-nant analysis to optimize the weighting of dimensions in the space for maximal cluster separation. Thisreduceddimensionality,calledwordspacebySchütze,helpedovercomesomeofthesparsedataproblemsassociatedwithsimilaritymeasuressuchascosinedistance.
+One signiﬁcant problem with these approaches is that without at least some sense-labeled context
+vectors, it is diﬃcult to map the induced clusters to a sense number in an established sense inventorythat would be useful for a secondary task (such as MT). Both Zernik and Schütze used manual post-hoc alignment of clusters to word senses in their sense disambiguation experiments. Because top-levelclusterpartitionsbasedpurelyondistributionalinformationdonotnecessarilyalignwithstandardsensedistinctions, Zernik and Schütze generated partitions of up to 10 separate sense clusters and manuallyassigned each to a ﬁxed sense label (based on the hand-inspection of 10–20 sentences per cluster).
+
+332 HandbookofNaturalLanguageProcessing
+ABC DEF G HDerived distances
+and possible singular 
+value decomposition,
+then clusteringDerived clusters
+(and possible cuts)D
+F
+HAB
+C
+E
+G
+Instances of polysemous
+words in context (vectors)D A
+BA
+C
+D1 31 1 9 0 2
+EE
+031 11 4
+1220
+43 9 1 2
+20 14 171713 4 2 0C B
+FIGURE14.2 Illustrationofvectorclusteringandsensepartitioning.
+Semi-automated post-hoc alignments are possible, if at least some information on the reference senses
+such as a dictionary deﬁnition is available. Without such a mapping, one cannot evaluate sense-tagging
+accuracy relative to an inventory, only cluster purity. Section 14.3.1 describes an application, IR, where
+such alignment is not necessary (only the unlabeled sense partitions are needed). It is also possible to
+treatthistaskasunsupervised senseinduction orsensediscovery ,andusealistofdistinctivewordsineach
+clustertolabelthecluster.Nevertheless,formostapplications,sensetaggingiscruciallyadisambiguation
+taskwithrespecttoanestablishedsenseinventorytiedtotheapplication.
+14.8 Conclusion
+Corpus-based, statistical algorithms for sense disambiguation have demonstrated the ability to achieve
+respectable accuracy resolving major sense distinctions when adequate training data is available. Given
+the high cost and relatively limited supply of such data, current research eﬀorts are focusing on the
+problemsof
+•Exploiting other potential sources of automatically sense-tagged training data for supervised
+learning,suchasparallelbilingualcorpora
+•Improvingthespeedandeﬃciencyofhumanannotationthroughactivelearningalgorithmsthat
+dynamicallyguideinteractivetaggingsessionsbasedoncurrentlyunsatisﬁedinformationneed
+•Developing algorithms that can better bootstrap from the lexical and ontological knowledge
+presentinexistingreferencessourcessuchasonlinedictionaries,WordNet,thesauri,etc.driving
+minimallysupervisedalgorithmsonunannotatedcorpora
+•Using unsupervised clustering and sense induction for applications (e.g., IR) that do not require
+alignmentoftheinducedsensepartitionstoanexistingsenseinventory.
+Another major open challenge is the broad coverage resolution of ﬁner-grained sense and subsense
+distinctionsthathavebeenunderaddressed inpastresearch. Richerfeaturerepresentationsthatcapture
+morereﬁnedlexical,syntactic,pragmatic,anddiscourse-leveldependenciesmaybenecessary,demanding
+improvedalgorithmsforextractingsuchinformationfromcorporaandotheravailableknowledgesources.
+Thus, future progress in sense disambiguation depends heavily on parallel progress in the other text-
+analysistasksdescribedinthishandbook.
+References
+Abney,S.(2004).UnderstandingtheYarowskyalgorithm. ComputationalLinguistics ,30(3):365–395.
+Agirre, E. and P. Edmonds, eds. (2007). Word sense disambuguation: Algorithms and applications .
+Springer,NewYork,NY.
+
+WordSenseDisambiguation 333
+Agirre, E. and D. Martínez (2004). Unsupervised WSD based on automatically retrieved examples: The
+importanceofbias.In ProceedingsofEMNLP2004 ,pp.25–32,Barcelona,Spain.
+Agirre, E. and G. Rigau (1996). Word sense disambiguation using conceptual density. In Proceedings of
+COLING1996 ,pp.16–22,Copenhagen,Denmark.
+Agirre, E. and A. Soroa (2008). Using the multilingual central repository for graph-based word sense
+disambiguation.In ProceedingsofLREC,pp.1388–1392,Marrakesh,Morocco.
+Agirre, E. and M. Stevenson (2007). Knowledge sources for word sense disambiguation. In E. Agirre
+and P. Edmonds (eds.), Word Sense Disambiguation: Algorithms and Applications , Springer,
+NewYork.
+Agirre, E., O. Lopez de Lacalle, and D. Martínez (2005). Exploring feature spaces with SVD and
+unlabeled data for word sense disambiguation. In Proceedings of RANLP, pp. 32–38, Borovets,
+Bulgaria.
+Bar-Hillel,Y.(1960).Automatictranslationoflanguages.InD.BoothandR.E.Meagher(eds.), Advances
+inComputers,AcademicPress,NewYork.
+Basili, R., M. T. Pazienza, and P. Velardi (1992). Combining NLP and statistical techniques for lexical
+acquisition. In Proceedings of the AAAI Fall Symposium on Probabilistic Approaches to Natural
+Language,pp.82–87,Cambridge,MA.
+Basili,R.,M.T.Pazienza,andP.Velardi(1994).Thenoisychannelandthebrayingdonkey.In Proceedings
+oftheACLBalancingActWorkshoponCombiningSymbolicandStatisticalApproachestoLanguage ,
+pp.21–28,LasCruces,NM.
+Black,E.(1988).AnexperimentincomputationaldiscriminationofEnglishwordsenses. IBMJournalof
+ResearchandDevelopment,232:185–194.
+Brody,S.,R.NavigliandM.Lapata(2006).EnsemblemethodsforunsupervisedWSD.In Proceedingsof
+COLING-ACL06 ,pp.97–104,Sydney,Australia.
+Brown, P., S. Della Pietra, V. Della Pietra, and R. Mercer (1991). Word sense disambiguation using
+statisticalmethods.In ProceedingsofACL1991,pp.264–270,Berkeley,CA.
+Bruce, R. and L. Guthrie (1992). Genus disambiguation: A study in weighted preference. In Proceedings
+ofCOLING-92 ,pp.1187–1191,Nantes,France.
+Bruce, R. and J. Wiebe (1994). Word-sense disambiguation using decomposable models. In Proceedings
+ofACL1994,pp.139–146,LasCruces,NM.
+Carpuat, M. and D. Wu (2005). Word sense disambiguation vs. statistical machine translation. In
+ProceedingsofACL2005,pp.387–394,Morristown,NJ.
+Carpuat, M. and D. Wu (2007). Improving statistical machine translation using word sense
+disambiguation.In ProceedingsofEMNLP-CoNLL07 ,pp.61–72,Prague,CzechRepublic.
+Chan, Y. S., H. T. Ng, and D. Chiang (2007a). Word sense disambiguation improves statisticalmachine
+translation.In ProceedingsofACL07 ,pp.33–40,Prague,CzechRepublic.
+Chan, Y. S., H. T. Ng, and Z. Zhong (2007b). NUS-PT: Exploiting parallel texts for word sense disam-
+biguation in the English all-words tasks. In Proceedings of SemEval-2007 , pp. 253–256, Prague,
+CzechRepublic.
+Chang, J., Y. Luo, and K. Su (1992). GPSM: A generalized probabilistic semantic model for ambiguity
+resolution.In ProceedingsofACL1992,pp.177–184,Newark,DE.
+Chapman,R.(1977). Roget’sInternationalThesaurus(FourthEdition) ,HarperandRow,NewYork.
+Cheeseman, P., M. Self, J. Kelly, W. Taylor, D. Freeman, and J. Stutz (1988). Bayesian classiﬁcation. In
+ProceedingsofAAAI88,pp.607–611,St.Paul,MN.
+Chen,J.andM.Palmer(2005).TowardsrobusthighperformancewordsensedisambiguationofEnglish
+verbs using rich linguistic features. In Proceedings of the 2nd International Joint Conference on
+NaturalLanguageProcessing ,pp.933–944,JejuIsland,Korea.
+Chklovski,T.andR.Mihalcea(2002).BuildingasensetaggedcorpuswithOpenMindWordExpert.In
+ProceedingsoftheACL2002WorkshoponWordSenseDisambiguation:RecentSuccessesandFutureDirections,pp.116–122,Philadelphia,PA.
+
+334 HandbookofNaturalLanguageProcessing
+Choueka,Y.andS.Lusignam(1985).Disambiguationbyshortcontexts. ComputersandtheHumanities,
+19:147–158.
+Cottrell,G.(1989). AConnectionistApproachestoWordSenseDisambiguation ,Pitman,London.
+Cowie, J., J. Guthrie, and L. Guthrie (1992). Lexical disambiguation using simulated annealing. In
+Proceedings,DARPASpeechandNaturalLanguageWorkshop ,pp.238–242,Harriman,NY.
+Cutting, D., D. Larger, J. Pedersen, and J. Tukey (1992). Scatter/gather: A cluster-based approach to
+browsingdocumentcollections.In ProceedingsofSIGIR92,pp.318–329,Copenhagen,Denmark.
+Dagan, I. and A. Itai (1994). Word sense disambiguation using a second language monolingual corpus.
+ComputationalLinguistics ,20:563–596.
+Dagan, I., A. Itai, and U. Schwall (1991). Two languages are more informative than one. In Proceedings
+ofACL1991,pp.130–137,Berkeley,CA.
+Dang,H.T.,K.Kipper,M.Palmer,andJ.Rosenzweig(1998).Investigatingregularsenseextensionsbased
+onintersectiveLevinclasses.In ProceedingsofColing/ACL-98 ,pp.293–300,Montreal,CA.
+Deerwester,S.,S.Dumais,G.Furnas,T.Landauer,andR.Harshman(1990).Indexingbylatentsemantic
+analysis.JournaloftheAmericanSocietyforInformationScience,41(6):391–407.
+Dempster, A., N. Laird, and D. Rubin (1977). Maximum likelihood from incomplete data via the EM
+algorithm. JournaloftheRoyalStatisticalSociety ,39:1–38.
+Diab,M.(2003).Wordsensedisambiguationwithinamultilingualframework,PhDthesis,Universityof
+Maryland,CollegePark,MD.
+Diab, M. and P. Resnik (2002). An unsupervised method for word sense tagging using parallel corpora.
+InProceedingsofACL2002,pp.255–262,Philadelphia,PA.
+Edmonds, P. and A. Kilgarriﬀ (2002). Introduction to the special issue on evaluating word sense
+disambiguationsystems. JournalofNaturalLanguageEngineering,8(4):279–291.
+Eisner, J and D. Karakos (2005). Bootstrapping without the boot. In Proceedings of HLT-EMNLP05 ,
+pp.395–402,Vancouver,BC.
+Eizirik, L., V. Barbosa, and S. Mendes (1993). A Bayesian-network approach to lexical disambiguation.
+CognitiveScience,17:257–283.
+Escudero, G., L. Marquez, and G. Riagu (2000). An empirical study of the domain dependence of
+supervised word sense disambiguation systems. In Proceedings of EMNLP/VLC00 , pp. 172–180,
+HongKong,China.
+Firth,J.(1968).Asynopsisoflinguistictheory.InF.R.Palmer(ed.), SelectedPapersofJ.R.Firth1952–59 ,
+IndianaUniversityPress,Bloomington,IN.
+Gale, W., K. Church, and D. Yarowsky (1992a). A method for disambiguating word senses in a large
+corpus.ComputersandtheHumanities ,26:415–439.
+Gale,W.,K.Church,andD.Yarowsky(1992b).Onesenseperdiscourse.In Proceedingsofthe4thDARPA
+SpeechandNaturalLanguageWorkshop ,pp.233–237,Harriman,NY.
+Gale, W., K.Church, andD.Yarowsky(1992c). Usingbilingualmaterialstodevelopwordsensedisam-
+biguationmethods.In Proceedings,4thInternationalConferenceonTheoreticalandMethodological
+IssuesinMachineTranslation ,pp.101–112,Montreal,CA.
+Gale,W.,K.Church,andD.Yarowsky(1992d).Onevaluationofword-sensedisambiguationsystems.In
+ProceedingsofACL1992,pp.249–256,Columbus,OH.
+Gale,W.,K.Church,andD.Yarowsky(1994).Discriminationdecisionsfor100,000-dimensionalspaces.
+In A. Zampoli, N. Calzolari, and M. Palmer (eds.), Current Issues in Computational Linguistics: In
+HonourofDonWalker,KluwerAcademicPublishers,pp.429–450,Dordrecht,theNetherlands.
+Guthrie, J., L. Guthrie, Y. Wilks, and H. Aidinejad (1991). Subject dependent co-occurrence and word
+sensedisambiguation.In ProceedingsofACL1991,pp.146–152,Berkeley,CA.
+Hearst, M. (1991). Noun homograph disambiguation using local context in large text corpora. In Using
+Corpora,UniversityofWaterloo,Waterloo,ON.
+Hirst, G. (1987). Semantic Interpretation and the Resolution of Ambiguity , Cambridge University Press,
+Cambridge,U.K.
+
+WordSenseDisambiguation 335
+Hovy,E.,M.Marcus,M.Palmer,L.Ramshaw,andR.Weischedel(2006).OntoNotes:The90%solution.
+InProceedingsofHLT-NAACL06 ,pp.57–60,NewYork.
+Ide, N. (2000). Cross-lingual sense determination: Can it work? Computers and the Humanities ,
+34(1-2):223–234.
+Jorgensen, J. (1990). The psychological reality of word senses. Journal of Psycholinguistic Research ,
+19:167–190.
+Kelly,E.andP.Stone(1975). ComputerRecognitionofEnglishWordSenses,North-Holland,Amsterdam,
+theNetherlands.
+Kilgarriﬀ,A.(1992).Dictionarywordsensedistinctions:Anenquiryintotheirnature. Computersandthe
+Humanities,26:365–387.
+Kilgarriﬀ,A.(1997).Idon’tbelieveinwordsenses. ComputersandtheHumanities,31(2):91–113.
+Kilgarriﬀ, A. (2001). English lexical sample task description. In Proceedings of the 2nd International
+WorkshoponEvaluatingWordSenseDisambiguationSystems ,pp.17–20,Toulouse,France.
+Kilgarriﬀ, A. and M. Palmer (2000). Introduction to the special issue on Senseval. Computers and the
+Humanities,34(1–2):1–13.
+Klapaftis,I.andS.Manandhar(2008).Wordsenseinductionusinggraphsofcollocations.In Proceedings
+ofECAI08 ,pp.298–302,Patras,Greece.
+Kohomban, U. S. and W. S. Lee (2005). Learning semantic classes for word sense disambiguation. In
+ProceedingsofACL2005,pp.34–41,AnnArbor,MI.
+Krovetz,R.(1990).Lexicalacquisitionandinformationretrieval.InP.S.Jacobs(ed.), Text-BasedIntelligent
+Systems:CurrentResearchinTextAnalysis,InformationExtractionandRetrieval ,GEResearchand
+DevelopmentCenter,Schenectady,NY,pp.45–64.
+Krovetz, R. (1997). Homonymy and polysemy in information retrieval. In Proceedings of ACL 1997,
+pp.72–79,Madrid,Spain.
+Krovetz,R.(1998).Morethanonesenseperdiscourse.In ProceedingsofSenseval-1,Sussex,U.K.
+Krovetz, R. and W. Croft (1989). Word sense disambiguation using machine-readable dictionaries. In
+Proceedingsofthe12thAnnualInternationalACMSIGIRConferenceonResearchandDevelopmentinInformationRetrieval ,pp.127–136,Cambridge,MA.
+Krovetz, R. and B. Croft (1992). Lexical ambiguity and information retrieval. ACM Trans. Information
+Systems,10(2):115–141.
+Lapata, M. and F. Keller (2007). An information retrieval approach to sense ranking. In Proceedings of
+HLT-NAACL07 ,pp.348–355,Rochester,NY.
+Leacock,C.,G.Towell,andE.Voorhees(1993).Corpus-basedstatisticalsenseresolution.In Proceedings,
+ARPAHumanLanguageTechnologyWorkshop ,pp.260–265,Plainsboro,NJ.
+Lee, Y. K. and H. T. Ng (2002). An empirical evaluation of knowledge sources and learning algorithms
+forwordsensedisambiguation.In ProceedingsofofEMNLP02,pp.41–48,Philadelphia,PA.
+Lesk, M. (1986). Automatic sense disambiguation: How to tell a pine cone from an ice cream cone. In
+Proceeding of the 1986 SIGDOC Conference , pp. 24–26, Toronto, ON. Association for Computing
+Machinery,NewYork.
+Luk,A.(1995).Statisticalsensedisambiguationwithrelativelysmallcorporausingdictionarydeﬁnitions
+InProceedingsofACL1995,pp.181–188,Cambridge,MA.
+Magnini, B. and G. Cavaglia (2000). Integrating Subject Field Codes into WordNet. In Proceedings of
+LREC00,pp.1413–1418,Athens,Greece.
+Márquez, G. Escudero, D. Martinez, and G. Rigau (2007). Supervised corpus-based methods for WSD.
+In E. Agirre and P. Edmonds (eds.), Word Sense Disambiguation: Algorithms and Applications ,
+Springer,NewYork.
+Martínez, D. and E. Agirre (2000). One sense per collocation and genre/topic variations. In Proceedings
+ofEMNLP/VLC,pp.207–215,HongKong,China.
+Martínez, D., E. Agirre, and L. Màrquez (2002). Syntactic features for high precision word sense
+disambiguation.In ProceedingsofCOLING2002 ,pp.1–7,Taipei,Taiwan.
+
+336 HandbookofNaturalLanguageProcessing
+Martínez, D., E. Agirre, and O. Lopez de Lacalle (2008). On the use of automatically acquired examples
+forall-nounsWSD JournalofArtiﬁcialIntelligenceResearch,33:79–107.
+Martínez, D., E. Agirre, and X. Wang (2006). Word relatives in context for word sense disambiguation.
+InProceedingsoftheAustralasianLanguageTechnologyWorkshop ,pp.42–50,Sydney,Australia.
+McCarthy, D., J. Carroll, and J. Preiss (2002). Disambiguating noun and verb senses using automat-
+ically acquired selectional preferences. In Proceedings of SENSEVAL-2 , pp. 119–122, Toulouse,
+France.
+McCarthy,D.,R.Koeling,J.Weeds,andJ.Carroll(2004).Findingpredominantwordsensesinuntagged
+text.InProceedingsofACL2004,pp.279–287,Barcelona,Spain.
+McKeown, K. and V. Hatzivassiloglou (1993). Augmenting lexicons automatically: Clustering seman-
+tically related adjectives. In Proceedings, ARPA Workshop on Human Language Technology ,p p .
+272–277,Plainsboro,NJ.
+McRoy, S. (1992). Using multiple knowledge sources for word sense disambiguation. Computational
+Linguistics ,18(1):1–30.
+Mihalcea, R. (2002). Bootstrapping large sense tagged corpora. In Proceedings of LREC 2002, pp. 1407–
+1411,CanaryIslands,Spain.
+Mihalcea, R. (2005). Unsupervised large-vocabulary word sense disambiguation with graph-based
+algorithmsforsequencedatalabeling.In ProceedingsofHLT05,pp.411–418,Morristown,NJ.
+Mihalcea, R. and D. Moldovan (2001). Pattern learning and active feature selection for word sense
+disambiguation.In ProceedingsofSENSEVAL-2 ,pp.127–130,Toulouse,France.
+Mihalcea, R., T. Chklovski, and A. Killgariﬀ (2004). The Senseval-3 English lexical sample task. In
+ProceedingsofACL/SIGLEXSenseval-3 ,pp.25–28,Barcelona,Spain.
+Mihalcea,R.,P.Tarau,andE.Figa(2004).Pagerankonsemanticnetworkswithapplicationtowordsense
+disambiguation.In ProceedingsofCOLING04,pp.1126–1132,Geneva,Switzerland.
+Miller, G. (1990). WordNet: An on-line lexical database. International Journal of Lexicography, 3(4):
+235–312.
+Miller, G. and W. Charles (1991). Contextual correlates of semantic similarity. Language and Cognitive
+Processes,6(1):1–28.
+Miller, G., C. Leacock, R. Tengi, and R.Bunker (1993). A semantic concordance. In Proceedings of the
+ARPAWorkshoponHumanLanguageTechnology ,pp.303–308,Plainsboro,NJ.
+Mooney,R.(1996).Comparativeexperimentsondisambiguatingwordsenses:Anillustrationoftherole
+ofbiasinmachinelearning.In ProceedingsofEMNLP ,pp.82–91,Philadelphia,PA.
+Navigli, R. (2006). Consistent validation of manual and automatic sense annotations with the aid of
+semanticgraphs. ComputatationalLinguisitics ,32(2):273–281.
+Navigli, R. and M. Lapata (2007). Graph connectivity measures for unsupervised word sense
+disambiguation.In ProceedingsofIJCAI,pp.1683–1688,Hyderabad,India.
+Ng, H. T. and H. Lee (1996). Integrating multiple knowledge sources to disambiguate word sense: An
+exemplar-basedapproach.In ProceedingsofACL1996,pp.40–47,SantaCruz,CA.
+Ng, H. T., B. Wang and Y. Chan (2003). Exploiting parallel texts for word sense disambiguation: an
+empiricalstudy.In ProceedingsofACL03 ,pp.455–462,Sapporo,Japan.
+Pakhomov,S.(2002).Semi-supervisedmaximumentropybasedapproachtoacronymandabbreviation
+normalizationinmedicaltexts.In ProceedingsofACL2002,pp.160–167,Philadelphia,PA.
+Palmer,M.,H.DangandC.Fellbaum(2007).Makingﬁne-grainedandcoarse-grainedsensedistinctions,
+bothmanuallyandautomatically. JournalofNaturalLanguageEngineering,13(2):137–163.
+Pantel, P. and D. Lin (2002). Discovering word senses from text. In Proceedings of SIGKDD’02 ,
+pp.613–619,Edmonton,Canada.
+Pedersen, T. (2009). WordNet::SenseRelate::AllWords - A broad coverage word sense tagger that
+maximimizessemanticrelatedness.In ProceedingsofNAACL09,pp.17–20,Boulder,CO.
+Pedersen, T. and R. Bruce (1997). A new supervised learning algorithm for word sense disambiguation.
+InProceedingsofAAAI ,pp.604–609,Providence,RI.
+
+WordSenseDisambiguation 337
+Pereira, F., N. Tishby, and L. Lee (1993). Distributional clustering of English words. In Proceedings of
+ACL1993,pp.183–190,Columbus,OH.
+Procter, P., ed. (1978). Longman Dictionary of Contemporary English , Longman Group Ltd., Harlow,
+U.K.
+Pustejovsky,J.(1995). TheGenerativeLexicon,MITPress,Cambridge,MA.
+Resnik,P.(1993).Selectionandinformation:Aclass-basedapproachtolexicalrelationships,PhDthesis,
+UniversityofPennsylvania,Philadelphia,PA.
+Resnik,P.(1995).Usinginformationcontexttoevaluatesematicsimilarityinataxonomy.In Proceedings
+ofIJCAI95 ,pp448–453,Montreal,Canada.
+Resnik,P.(1997).Selectionalpreferenceandsensedisambiguation.In ProceedingsoftheACLWorkshop
+onTaggingTextwithLexicalSemantics ,pp.52–57,Washington.
+Resnik, P. and D. Yarowsky (1999). Distinguishing systems and distinguishing senses: new evaluation
+methods for word sense disambiguation systems. Journal of Natural Language Engineering 5(2):
+113–133.
+Sanderson,M.(1994).Wordsensedisambiguationandinformationretrieval. ProceedingsofSIGIR1994 ,
+pp.142–151,Dublin,Ireland.
+Schütze, H. (1992). Dimensions of meaning. In Proceedings of Supercomputing ’92 , pp. 787–796,
+Minneapolis,MN.
+Schütze,H.(1998).Automaticwordsensediscrimination. ComputationalLinguistics ,24(1):97–123.
+Schütze,H.andJ.Pedersen(1995).Informationretrievalbasedonwordsenses.In 4thAnnualSymposium
+onDocumentAnalysisandInformationRetrieval ,pp.161–175,LasVegas,NV.
+Sinclair, J., ed. (1987). Collins COBUILD English Language Dictionary , Collins, London and Glasgow,
+U.K.
+Sinha,R.andR.Mihalcea(2007).Unsupervisedgraphbasedwordsensedisambiguationusingmeasures
+of word semantic similarity. In Proceedings of the IEEE International Conference on Semantic
+Computing ,pp.363–369,Irvine,CA.
+Small,S.andC.Rieger(1982).Parsingandcomprehendingwithwordexperts(atheoryanditsrealization).
+InW.LehnertandM.Ringle(eds.), StrategiesforNaturalLanguageProcessing,LawrenceErlbaum
+Associates,Hillsdale,NJ.
+Stevenson, M. (2003). Word Sense Disambiguation: The Case for Combinations of Knowledge Sources .
+CSLIPublications,Stanford,CA.
+Stevenson,M.andY.Wilks(2001).Theinteractionofknowledgesourcesinwordsensedisambiguation.
+ComputationalLinguistics ,27(3):321–349.
+Veronis,J.andN.Ide(1990).Wordsensedisambiguationwithverylargeneuralnetworksextractedfrom
+machinereadabledictionaries.In Proceedings,COLING-90,pp.389–394,Helsinki,Finland.
+Voorhees, E. (1993). Using WordNet to disambiguate word senses for text retrieval. In Proceedings of
+SIGIR’93,pp.171–180,Pittsburgh,PA.
+Walker, D. and R. Amsler (1986). The use of machine-readable dictionaries in sublanguage analysis.
+In R. Grishman and R. Kittredge (eds.), Analyzing Language in Restricted Domains: Sublanguage
+DescriptionandProcessing ,LawrenceErlbaum,Hillsdale,NJ,pp.69–84.
+Wang,X.andJ.Carroll(2005).Wordsensedisambiguationusingsenseexamplesautomaticallyacquired
+fromasecondlanguage.In ProceedingsofHLT/EMNLP2005,pp.547–554,Vancouver,BC,Canada.
+Wilks, Y. (1975). A preferential, pattern-seeking semantics for natural language inference. Artiﬁcial
+Intelligence ,6:53–74.
+Winograd,T.(1972). UnderstandingNaturalLanguage.AcademicPress,NewYork.
+Woods, W., R. Kaplan, and B. Nash-Webber (1972). The lunar sciences natural language information
+system:Finalreport. BBNTechnicalReportNo.2378 ,Cambridge,MA.
+Wu, Z. and M. Palmer (1994). Verb semantics and lexical selection. In Proceedings of ACL 1994,p p .
+133–138,LasCruces,NM.
+
+338 HandbookofNaturalLanguageProcessing
+Yarowsky, D. (1992). Word-Sense disambiguation using statistical models of Roget’s categories trained
+onlargecorpora.In Proceedings,COLING-92,pp.454–460,Nantes,France.
+Yarowsky, D. (1993). One sense per collocation. In Proceedings, ARPA Human Language Technology
+Workshop,pp.266–271,Princeton,NJ.
+Yarowsky,D.(1994).Decisionlistsforlexicalambiguityresolution:Applicationtoaccentrestorationin
+SpanishandFrench.In ProceedingsofACL1994,pp.88–97,LasCruces,NM.
+Yarowsky, D. (1995). Unsupervised word sense disambiguation rivaling supervised methods. In
+ProceedingsofACL1995,pp.189–196,Cambridge,MA.
+Yarowsky, D. (2000). Hierarchical decision lists for word sense disambiguation. Computers and the
+Humanities,34(2):179–186.
+Yarowsky, D. and R. Florian (2002). Evaluating sense disambiguation performance across diverse
+parameterspaces. NaturalLanguageEngineering,8(4):293–310.
+Yarowsky, D., R. Florian, S. Cucerzan, and C. Schafer (2001). The Johns Hopkins Senseval-2 system
+description.In ProceedingsoftheSenseval-2Workshop ,pp.163–166,Toulouse,France.
+Yngve,V.(1955).Syntaxandtheproblemofmultiplemeaning.InW.LockeandD.Booth(eds.), Machine
+TranslationofLanguages,Wiley,NewYork.
+Zernik, U. (1991). Train1 vs. train2: Tagging word senses in a corpus. In U. Zernik (ed.), Lexical
+Acquisition: Exploiting On-Line Resources to Build a Lexicon , Lawrence Erlbaum, Hillsdale, NJ,
+pp.91–112.
+Zhong,Z.,H.T.Ng.,andY.S.Chan(2008).WordsensedisambiguationusingOntoNotes:Anemprical
+study.In ProceedingsofEMNLP2008 ,pp.1002–1010,Honolulu,HI.
+Zhu,J.B.andE.Hovy(2007).Activelearningforwordsensedisambiguationwithmethodsforaddressing
+the class imbalance problem. In Proceedings of EMNLP/CoNLL07, pp. 783–790, Prague, Czech
+Republic.
+

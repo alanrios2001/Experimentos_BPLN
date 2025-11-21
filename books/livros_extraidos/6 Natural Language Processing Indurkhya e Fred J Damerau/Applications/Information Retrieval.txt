@@ -1,0 +1,840 @@
+19
+Information Retrieval
+Jacques Savoy
+UniversityofNeuchatel
+Eric Gaussier
+UniversitéJosephFourier19.1 Introduction ..........................................................45519.2 Indexing...............................................................456
+IndexingDimensions •IndexingProcess
+19.3 IRModels .............................................................460
+ClassicalBooleanModel •Vector-SpaceModels •ProbabilisticModels •
+QueryExpansionandRelevanceFeedback •AdvancedModels
+19.4 EvaluationandFailureAnalysis ....................................469
+EvaluationCampaigns •EvaluationMeasures •FailureAnalysis
+19.5 NaturalLanguageProcessingandInformationRetrieval........474
+Morphology •OrthographicVariationandSpellingErrors •Syntax •
+Semantics •RelatedApplications
+19.6 Conclusion............................................................480Acknowledgments ..........................................................481References....................................................................481
+19.1 Introduction
+The Information Retrieval (IR) (Manning et al., 2008) domain can be viewed, to a certain extent, as asuccessfulapplieddomainofNLP.ThespeedandscaleofWebtake-uparoundtheworldhavebeenmadepossible by freely available and eﬀective search engines. These tools are used by around 85% of Websurferswhenlookingforsomespeciﬁcinformation(Wolframetal.,2001).
+But what precisely is IR? We can deﬁne it in the following way: “IR deals with the representation,
+storage, organization of, and access to information items. These information items could be referencesto real documents, documents themselves, or even single paragraphs, as well as Web pages, spokendocuments,images,pictures,music,video,etc.”(Baeza-YatesandRibeiro-Neto,1999).
+As for information items, we will focus mainly on documents written in the English language, but
+the ideas and concepts we introduce can also be applied, with some adaptations, however, to othermedia (music, image, picture, video) and other languages (e.g., German, Spanish, Russian, Chinese,Japanese,etc.).
+One of the ﬁrst and most important characteristics of IR is the fact that an IR system has to deal
+with imprecise and incomplete descriptions of both user needs and documents queried: in most cases,it is impossible to compute a precise and unambiguous representation for queries and documents. Thiscontrastswiththesituationfordatabases.Inarelationaltable,forexample,Johnhasawageof$1198.5andnot“almost$1200.”IfSQLqueriescannotbeambiguous,userssendingqueriestoWebsearchenginestendtowriteveryshortandambiguousdescriptionsoftheirinformationneeds(“Canadianrecipes,”“iPhone,”or “Britney Spears”). Clearly, users do not describe their information needs with all the needed details,preferring the system to suggest some answers, and selecting, from these answers, the most appropriateitems.Thesearchprocessshouldbeviewedmoreasa“trial-and-error”problem-solvingapproachthana
+455
+
+456 HandbookofNaturalLanguageProcessing
+direct“query-response”paradigm.Finally,andcontrarytoSQL-basedsearch,thematchingbetweenthequeryandtheinformationitemisnotdeterministic: thesystemprovidesthebestpossibleanswers(bestmatches)byestimatingtheirunderlyingprobabilityofrelevancetothesubmittedquery.
+Theunderlyingdiﬃcultyinretrievingdocumentsrelevanttoaqueryresidesinthethreeaspectsofall
+naturallanguages,namely,polysemy,synonymy,and,toalesserextent,spellingerrorsandvariations.Inallnaturallanguages,agivenwordmayhavemorethanoneprecisemeaning(polysemy).Someofthesesenses could be related, but in other cases, the underlying meaning could vary greatly. For example, theword“bank”couldbeusedtodesignateaﬁnancialinstitution,itsbuilding, asynonymof“relyupon”intheexpression“I’myourfriend,youcanbankonme,”orthebordersofariver.Thelastsenseisofcoursenot related to the previous three. With the word “Java,” the possible meanings are even less related (anisland,coﬀee,adance,adomesticfowl,acomputerprogramminglanguage).Ifthiswordwassubmittedas a query, we can understand why the search system may provide “incorrect” answers. Acronyms arealso subject of such ambiguity problems as, for example, BSE (Bovine Spongiform Encephalopathy,Bombay Stock Exchange (or Boston, Beirut, Bahrain), Breast Self-Examination, Bachelor of Science inEngineering,BasicServiceElement,etc.).
+Polysemycorrespondstoonefaceofacoin.Synonymy,i.e.,thefactthatdiﬀerentwordsorexpressions
+canbeusedtorefertothesameobject,isthesecond.Forexample,torefertoagivencaraccident,wecanusethefollowingterms:“accident,”“event,”“incident,”“situation,”“problem,”“diﬃculty,”“unfortunatesituation,”“thesubjectofyourlastletter,”“whathappenedlastmonth,”....Whenﬁxingarendezvous,wecan meet in a restaurant, hotel, pizzeria, coﬀee shop, snack bar, café, tearoom, tea house, public house,cafeteria, inn, tavern, or simply at our favorite Starbucks. In the example below, the expressions writtenin italics refer to the same person. It is also interesting to note that the string “Major” does not alwaysrefertothesameperson.
+“Mr Major arrived in France today. The Prime Minister will meet the President tomorrow. The
+Conservativeleader willthentraveltoMoscowwhere hewillmeetMrGorbachev.MrsMajorwilljoin her
+husbandinRussia,where thissonofacircusartist isarelativelyunknownﬁgure.”(Galetal.,1991).
+As a result of these two main problems, and as demonstrated empirically in (Furnas et al., 1987), the
+probabilitythattwopeopleusethesametermtodescribethesameobjectisbelow0.20.Thequestionthatthenarisesistounderstandhowasearchsystemmayoperateatareasonableperformancelevelwithsuchvariability, a question we will address by considering the diﬀerent components that make up a searchsystem.
+All search systems assume that similar words tend to correspond to similar meanings. Thus, when
+a query shares many terms with a document, this document is seen as an appropriate answer to thecorrespondingquery.Searchsystemsarethusbasedonasimpleapproach:extractwordsfromdocumentsand queries, compare the two sets of words, and rank the document according to this comparison(potentially using additional elements, such as PageRank [PR]). As shown by Hawking and Robertson,(2003),asthecollectionsizeincreases,theachievedperformanceofsuchaprocesstendstoincrease.
+Ofcourse,diﬀerentcomponentsmustbedescribedinmoredetail;therestofthischapterisorganizedas
+follows:Section19.2outlinesthemainaspectsoftheindexingprocessusedtobuilddocumentsorqueryrepresentations while Section 19.3 discusses various IR models. Section 19.4 describes the evaluationmethodology used in the IR ﬁeld in order to compare objectively two (or more) indexing and searchstrategies.Failureanalysisisalsodescribedinthissection.Finally,Section19.5presentsvariousaspectsofNLPapproachesthatcanbeusedtoanswersomeofthetopicdiﬃcultiesthateachIRsystemencounters.
+19.2 Indexing
+Eﬀective search systems do not work directly with the documents (or the queries). They use diﬀerenttechniques and strategies to represent the main semantic aspects of the documents and queries. Thisprocessiscalledindexing.Itisdescribedinthefollowingtwosections.
+
+InformationRetrieval 457
+19.2.1 Indexing Dimensions
+Wefocushereontherepresentationofthesemanticcontentofthedocuments. Externalcharacteristics,such as the publication date, the author name, the number of pages, the book price, the edition, thepublisher,thelanguage,canbemanagedwithoutrealproblembyarelationaldatabasesystem.Ofcourse,wecanusesuchfeaturestoconductasearch(e.g.,“returnalldocumentswrittenbySalton”).Theytend,however,tobeusedasﬁlterstocomplementthesearchcriteria(e.g.,“bestpictureOscarlaterthan2002”or“airplanehijacking,informationinEnglishorGerman”).
+Theindexingprocessaimsatrepresentingthesemanticcontentofdocuments(orqueries)byasetof
+indexingfeatures.Inthemostcommoncase,theseindexingunitsarewordsfordocuments,musicalnotesfor music, color values for pictures, etc. If we limit ourselves to written documents, we can consider asindexingunitsnotonlysinglewords(e.g.,“language,”“natural”)butcompoundconstructions(“naturallanguageprocessing”)orthesaurusclassnumbers.Intheoppositedirection,wecansometimesconsiderdecompounding compound words (e.g., from “handgun,” we may extract the terms “hand” and “gun,”a useful feature when searching with the German language (Savoy, 2004)). Furthermore, sentences orwords may be subdivided into continuous segments of ncharacters (n-gram indexing (McNamee and
+Mayﬁeld, 2004)). Fixing n=4, the phrase “white house” is represented by the following four-gram
+sequence: “whit,” “hite,” “ite h,” “te ho,” ..., and “ouse.” Such a language-independent indexing schemecanbeusefulwhenfacedwithalanguageforwhichnomorphologicalanalyzers(beittraditionalanalyzersorstemmingprocedures)arereadilyavailable(e.g.,theKoreanlanguage(Savoy,2005))orwhendealingwithtextscontainingmanyspellingerrors(e.g.,OCR-eddocuments(VoorheesandGarofolo,2005)).
+Afterdeﬁningourindexingunits,wehavetoanswerdiﬀerentquestionstodeﬁneacompleteindexing
+strategy.Whendescribingadocument,doweneedtoconsiderallitsdetailsoronlythemainaspects?Indeﬁning this exhaustivity level (completeness of the representation), one can also take into account thedocument importance with respect to some objectives (e.g., an in-house document may have a deepercoverage). Inaddition, onemustﬁxthespeciﬁcitylevelorthedegreeofaccuracyappliedtotheselectedindexing units: choose general indexing terms (e.g., “drink”), or impose the use of more speciﬁc terms(“soft drink”), or even very speciﬁc terms (“iced tea,” “herbal iced tea,” “Nestea”). In some cases, theindexing policy relies on a controlled vocabulary (e.g., Library of Congress Subject Headings, MeSH inthebiomedicalliterature,orthehierarchicalthesaurusassociatedwithDMOZ
+∗).Insuchcases,indexing
+unitscannotbefreelychosen,butmustbepresentinthegivenauthoritativelist.
+Traditionally, librarians have adopted a manual indexing strategy in the hope of creating a better
+representation of their searchable objects. Such manual indexing (Anderson and Pérez-Carballo, 2001)usuallyreliesontheuseofcontrolledvocabulariesinordertoachievegreaterconsistencyandtoimprovemanual indexing quality. The advantage of these authority lists is that they prescribe a uniform andinvariablechoiceofindexingdescriptorsandthushelpnormalizeorthographicvariations(e.g.,“Beijing”or“Peking”),lexicalvariants(e.g.,“analyzing,”“analysis”)orexamineequivalenttermsthataresynony-mousinmeaning.Thelevelofgeneralitymayberepresentedbyhierarchicalrelationships(e.g.,“Ford”isa“car”), andrelated-termrelationships(e.g., “seealso”). However, whilecontrolledvocabulariesshouldincrease consistency among indexers, various experiments demonstrate that diﬀerent indexers tend tousediﬀerentkeywordswhenclassifyingthesamedocument(ZundeandDexter,1969;Cleverdon,1984).This illustrates, through yet another example, the variety of wordings human beings have at their dis-posal to describe the same content. It is thus important to have a certain degree of consistency betweendocumentandqueryrepresentationsinordertoincreasethechancethatsearcherswillbeabletolocatetheinformationtheyrequire(Cooper,1969).
+∗www.dmoz.org
+
+458 HandbookofNaturalLanguageProcessing
+19.2.2 Indexing Process
+MostexistingIRsystemsnowadaysrelyonanautomaticindexingofdocumentsandqueries.Developedfromthebeginningofthe1960s(Salton1971),suchanapproachallowsonetoprocessthehugeamountsofinformationavailableonline.Asimpleautomaticindexingalgorithmiscomposedoffoursteps:
+1. Structureanalysisandtokenization2. Stopwordremoval3. Morphologicalnormalization4. Weighting
+19.2.2.1 Structure Analysis and TokenizationIn this ﬁrst step, documents are parsed so as to recognize their structure (title, abstract, section, para-graphs).Foreachrelevantlogicalstructure,thesystemthensegmentssentencesintowordtokens(hencethetermtokenization).Thisprocedureseemsrelativelyeasybut(a)theuseofabbreviationsmayprompt
+thesystemtodetectasentenceboundarywherethereisnone,and(b)decisionsmustbemaderegardingnumbers, special characters, hyphenation, and capitalization. In the expressions “don’t,” “I’d,” “John’s”do we have one, two or three tokens? In tokenizing the expression “Afro-American,” do we include thehyphen, or do we consider this expression as one or two tokens? For numbers, no deﬁnite rule can befound. We can simply ignore them or include them as indexing units. An alternative is to index suchentitiesbytheirtype, i.e., tousethetags“date,” “currency,” etc. inlieuofaparticulardateoramountofmoney.Finally,uppercaselettersarelowercased.Thus,thetitle“ExportofcarsfromFrance”isviewedasthewordsequence“export,”“of,”“cars,”“from,”and“france.”19.2.2.2 Stopword RemovalInasecondstep,veryfrequentwordforms(suchasdeterminers“the”,prepositions“from”,conjunctions“and”,pronouns“you”andsomeverbalforms“is”,etc.)appearinginastopwordlistareusuallyremoved.This removal is usually motivated by two considerations. Firstly because it allows one to base thematching between queries and documents on content bearing words only. Retrieving a document justbecauseitcontainsthequerywords“be,”“in,”and“the”doesnotconstituteanintelligentsearchstrategy.Stopwords, also called empty words as they usually do not bear much meaning, represent noise in the
+retrieval process and actually damage retrieval performance, since they do not discriminate betweenrelevant and nonrelevant documents. Secondly because removing stopwords allows one to reduce thestoragesizeoftheindexedcollection,hopefullywithintherangeof30%to50%.
+Althoughtheobjectivesseemclear,thereisnoclearandcompletemethodologytodevelopastopword
+list (Fox, 1989). For example, the SMART system (Salton, 1971) has 571 words in its stopword list,whiletheDIALOGinformationservicesproposeusingonlynineterms(namely,“an,”“and,”“by,”“for,”“from,” “of,” “the,” “to,” and“with”). Furthermore, someexpressions, as“TheWho,” “and-orgates,” or“vitaminA,”basedonwordsusuallyfoundinstopwordlist, areveryusefulinspecifyingmorepreciselywhattheuserwants.
+Similarly, after converting all characters into lowercase letters, some ambiguity can be introduced as,
+forexample, withtheexpressions“UScitizen”viewedas“uscitizen”or“ITscientist”as“itscientist,” asbothusanditareusuallyconsideredstopwords.Thestrategyregardingthetreatmentofstopwordsmay
+thusbereﬁnedbyidentifyingthat“US”and“IT”arenotpronounsintheaboveexamples,e.g.,throughapart-of-speechtaggingstep.Commercialsearchenginestendtouse,ifany,averyshortstopwordlist.19.2.2.3 Morphological NormalizationAs a third step, an indexing procedure uses some type of morphological normalization in an attempt toconﬂatewordvariantsintothesamestemorroot.Stemmingprocedures,whichaimtoidentifythe stem
+
+InformationRetrieval 459
+ofawordanduseitinlieuoftheworditself,arebyfarthemostcommonmorphologicalnormalizationprocedures used in IR. Grouping words having the same root under the same stem (or indexing term)may increase the success rate when matching documents to a query. Such an automatic procedure maythereforebeavaluabletoolinenhancingretrievaleﬀectiveness,assumingthatwordswiththesamestemrefer to the same idea or concept, and must be therefore indexed under the same form. We will comebacktostemmingproceduresandmorphologicalanalyzersinSection19.5.1.19.2.2.4 WeightingAsdescribedpreviously,anIRsystemautomaticallysegmentsagivensentenceintowords,removingthemost frequent ones and stripping the suﬃxes to produce a set of indexing units. For example, from thesentence“In1969,theIBM-360computerwasoneoftheﬁrstthirdgenerationcomputers,”wecanobtainthefollowingindexingunits:“IBM-360,”“ﬁrst,”“third,”“generat,”“comput.”Thisresultcorrespondstoa binary indexing scheme within which each document is represented by a set of (stemmed) keywordswithout any weight assigned. Of course we may consider additional indexing rules as, for example, toconsider only the main aspects of each document (low degree of exhaustivity). To achieve this, we canconsiderasindexingunitsonlytermsappearingmoreoftenthanagiventhreshold.
+Binary logical restrictions may often be too restrictive for a document and query indexing. It is not
+always clear whether or not a document should be indexed by a given term. Often, a more appropriateanswerisneither“yes”nor“no,”butrathersomethinginbetween. Termweightingcreatesadistinctionamongtermsandincreasesindexingﬂexibility.Thusweneedtoassignhigherweighttomore“important”featuresandlowerweighttomarginalones.Toweightappropriatelyeachindexingunit,wemayconsiderthree components, namely, the term frequency, the document frequency, and the document length(SaltonandBuckley,1988).
+First, one can assume that an indexing unit appearing more often in a document must have a higher
+importance in describing its semantic content. We can measure this inﬂuence by counting its termfrequency(i.e.,itsnumberofoccurrenceswithinadocument),avaluedenoted tf.Thus,ifatermoccurs
+three times in a document, its tfwill be 3. Of course, one can consider other simple variants, especially
+whenconsideringthattheoccurrenceofagiventerminadocumentisarareevent.Thus,itmaybegoodpractice to give more importance to the ﬁrst occurrence than to the others. To do so, the tfcomponent
+issometimescomputedaslog (tf+1)oras0.5 +0.5·[tf/max(tf)].Inthislattercase,thenormalization
+procedureisobtainedbydividing tfbythemaximum tfvalueforanyterminthatdocument.
+As a second weighting component, one may consider that those terms occurring very frequently in
+the collection do not help us discriminate between relevant and nonrelevant documents. For example,the query “computer database” is likely to yield a very large number of articles from a collection aboutcomputer science. We meet here the notion of term frequency in the collection (i.e., the number ofdocumentsinwhichatermappears),avaluedenoted df,andcalled“documentfrequency.”
+More precisely, we will use the logarithm of the inverse document frequency (denoted by idf=
+log(n/df ), withnindicating the number of documents in the collection), resulting in more weight for
+rarewordsandlessweightformorefrequentones(SparckJones, 1972). Withthiscomponent, ifatermoccurs in every document (df =n), its weight will be log (n/n) =0, and thus will be ignored. On the
+otherhand,whenatermappearsinonlyonedocument( df=1),itsweightwillreachthemaximumfor
+thecollection,namely,log (n/1) =log(n).
+Tointegratebothcomponents( tfandidf),
+wecanmultiplytheweightcorrespondingtotheimportance
+of the indexing term within the document (tf ) by its importance considering the whole collection (idf ).
+Wethusobtainthewell-known tf·idfformula.
+Lastly, one usually considers that the presence of a term in a shorter document provides stronger
+evidence than it does in a longer document. This phenomenon can be accounted for by taking intoaccountthedocumentlengthintheweightingofaterm, whichisusuallydonebycomparingthelengthof a document to the average document length (denoted avdl). Diﬀerent weighting schemes include the
+
+460 HandbookofNaturalLanguageProcessing
+document length within their weighting formula, leading to more complex schemes as described in thenextsections.
+19.3 IR Models
+To deﬁne an IR model, we must explain precisely how information items (documents) and queries arerepresentedandhowtheserepresentationsarecomparedtoproduceasetorrankedlistofretrieveditems.Inthissection, we will startour presentation withtheBoolean model, theoldest paradigm andone thatis still used for some specialized applications. Section 19.3.2 describe the vector-space paradigm whilediﬀerentprobabilisticmodelswillbeintroducedinSection19.3.3,bothmodelscorrespondingtomodernIRapproaches,andusuallyachievingbetterretrievaleﬀectivenessthantheBooleanmodels.
+TofurtherimprovetheretrievalperformanceasshowninSection19.3.4,wemayconsideranautomatic
+queryexpansionstrategythattakesdiﬀerentterm-termrelationshipsintoaccountinordertoexpandtheoriginal query. Finally, in Section 19.3.5 we brieﬂy introduce more advanced IR models as well as somesearchstrategies,suchasPR,basedondocumentrelationships.
+19.3.1 Classical Boolean Model
+TheBooleanmodelwastheﬁrstIRmodeldevelopedandhasalongtraditioninlibraryscience(Cleverdon,1984).Documentsarerepresentedbyasetofkeywords,usuallyobtainedbymanualindexing(Andersonand Pérez-Carballo, 2001) based on a controlled vocabulary. Some additional indexing terms can beprovided by authors, usually by selecting some terms from an authoritative list and adding free ones.Table 19.1 shows a very small example with ﬁve indexing terms and four documents. To write a query,the user must transform his or her information need into a logical expression using the indexing termsandtheBooleanoperatorsAND,OR,andANDNOT.Inordertoberetrieved,adocumentmuststrictlyrespect the logical constraint imposed by the query. Based on our example, the query “document ANDretrieval” will return the documents D
+2andD3, while the query “search OR retrieval” will extract the
+documents D2,D3,andD 4.
+Transforming an information need into a Boolean query is not always a simple task. If you are
+interested in cats and dogs, you may formulate the query “cat AND dog.” But this logical expressionimposes the presence of both terms in a document in order to be retrieved. A better formulation is “catOR dog” allowing documents with only one of these two terms to be retrieved. The conjunctions “and”and“or”innaturallanguagesarethusnotequivalenttothecorrespondinglogicaloperators.ThissemanticdiﬀerencemustbetakenintoaccountwhenformulatingBooleanqueries.Withinthisparadigm,however,userscanformulatestructuredqueriestoexpresstheirinformationneedswithgreatprecision.Thequery“document AND retrieval” is clearly more speciﬁc than writing a broad query such as “document ORretrieval.”
+Inordertoreturnananswerveryfast,theindexinginformationisnotinternallystoredasinamatrixas
+depictedinTable19.1.Infact,asthecollectiongrows,thenumberofindexingtermsalsotendstoincrease
+TABLE19.1 BinaryIndexing
+IndexingTerms
+Document Linguistic Document Search Compute Retrieval
+D1 10 0 0 0
+D2 11 0 1 1
+D3 01 1 0 1
+D4 10 1 0 1
+
+InformationRetrieval 461
+TABLE19.2 InvertedFile
+IndexingTerm SequenceofDocumentIdentiﬁers
+Linguistic D1,D2,D4
+Document D2,D3
+Search D3,D4
+Compute D2
+Retrieval D2,D3,D4
+rapidly. Therefore, it is usual to have more than tens of millions of terms for the collection containingseveralmilliondocuments.Toverifyifthedocumentsrespectthelogicalconstraintimposedbythequery,weonlyneedtohaveafastaccesstothedocumentidentiﬁersindexedunderthesearchedkeywords. Toachievethis,thesystemstoresinan“invertedﬁle”thedocumentnumbersinwhichindexingtermsoccurs.For example, Table 19.2 shows the inverted ﬁle corresponding to Table 19.1. For the sake of clarity, wehavedenotedinTable19.2thedocumentnumberwiththepreﬁx Dwhich,ofcourse,doesnotappearin
+reality.Varioustechniqueshavebeensuggested(ZobelandMoﬀat,2006)toreducestoragerequirements,tospeedupprocessing,ortoallowtheuseofphrasesinqueries(e.g.,“NewYorkCity”)aswellastheuseofproximityoperators(e.g.,throughtheuseoftheadjacencyoperatorasin“NewYork”ADJ“city”).
+There are however major drawbacks in the Boolean model. First of all, the retrieved documents do
+not form a ranked list. To rank retrieved documents, a Boolean-based system has to rely on externalattributes,suchasthepublicationdate,thetitle,etc.Inprinciple,therankingoftheretrieveddocumentsshould reﬂect their degree of relevance to the submitted query. For example, considering our previousquery“searchORretrieval,”itseemsreasonabletopresentﬁrstthedocumenthavingbothindexingterms(D
+3,D4) before items indexed only under one of them (e.g., D2). Secondly, binary logical restrictions
+are often too limiting for document and query indexing. Within this model, it is not possible to specifywhether a given term is essential in a user’s query or just marginal. Thirdly, a Boolean search system isunable to return documents that partially match the query. As an answer to the query “document ANDsearch,” the system cannot extract document D
+2, even if it is indexed under the term “document” and
+“retrieval,” a synonym of “search”. Fourthly, making the right choice of the search keywords has a realimpact on the quality of the returned list. If certain terms appear in the query, the system may return alargenumberofdocuments(outputoverload)fromwhichitisdiﬃculttodetectrelevantones.
+In order to solve some of these problems, various attempts have been proposed to include the
+possibilitytoassignweightsduringtheindexingofdocumentsand/orqueries(hybridBooleanmodels).Moreover, this information can be used to rank retrieved documents in a sequence most likely to fulﬁlluserintent(Savoy, 1997). However, alltheseapproachessuﬀerfromsomelogicaldeﬁciencies, andtheiroverallperformance(seeSection19.4)islowerthanthatofmorerecentIRapproaches.
+19.3.2 Vector-Space Models
+Within this IR model (Salton, 1971; Salton and Buckley, 1988), documents and queries are indexedaccording to the strategies described in Section 19.2. The resulting representation is a set of weightedindexing terms. Thus, the user does not need to express his or her information needs using logicaloperators;asimpleexpressioninnaturallanguage,suchas“freespeechontheInternet,”or“Italianroyalfamily”isenough.Thismodelclearlyprovidesmoreuser-friendlyaccesstotheinformation.
+Within the vector-space model, documents and queries are represented by vectors in a high-
+dimensional space in which each indexing term corresponds to one dimension. Elements of the vectorsmaybebinary,indicatingthepresenceorabsenceoftheterm,orfractionalweightsindicatingtherelativeimportance of the term in the document or query. The set of indexing terms forms an orthogonal basis(linearlyindependentbasisvectors).Weassumethereforethattheindexingtermsareindependentofoneanother. For example, if the term “computer” appears in a document, this information implies nothing
+
+462 HandbookofNaturalLanguageProcessing
+aboutthepresence(orabsence)ofothertermssuchas“algorithm”or“horse.”Thisrepresents,ofcourse,asimpliﬁedassumption.
+Based on a geometric intuition, the vector-space model does not have a solid and precise theory that
+is able to clearly justify some of its aspects. For example, to compute the degree of similarity betweenthe document representations and the query, we can choose diﬀerent formulas. If we denote by w
+ijthe
+weight of the indexing term tjin the document Di, and bywqjthe weight of the same term in the query
+Q,thesimilarlybetweenthisdocumentandthequerycouldbecomputedaccordingtotheinnerproductasfollows:
+Sim(D
+i,Q)=p∑
+j=1wij·wqj (19.1)
+in which pindicates the number of indexing terms included in query Q. Of course, the vector
+representing Diis composed of tvalues with trepresenting the number of distinct indexing terms.
+However, when a term is not present in the query, its contribution to the inner product is null, and hasnoimpactonthesimilarlylevel.Wecanthusrestrictthecomputationtothe pqueryterms.
+As an alternative similarity measure, we may compute the cosine of the angle between the vectors
+representing D
+iandQasfollows:
+Sim(Di,Q)=∑pj=1wij·wqj√∑tk=1w2
+ik·√∑pk=1w2
+qk(19.2)
+Inordertoavoidcomputingallelementsexpressedinthepreviousformulaatretrievaltime,wemaystoretheweightsassociatedwitheachelementof D
+iintheinvertedﬁle.Ifweapplythewell-knownweighting
+schemetf·idf(seeSection19.3.1),wecancomputeandstoretheweight wijofeachindexingterm tjfor
+thedocument Diduringtheindexingasfollows:
+wij=tfij·idfj√∑tk=1(tfik·idfk)2(19.3)
+Advanced weighting formulas have been proposed within the vector-space model leading to diﬀerentformulas(Buckleyetal.,1996),somebeingmoreeﬀectivethanothers.Moreover,variousattemptshavebeensuggestedtoaccountfortermdependencies(Wongetal.,1987).Mostoftheseattemptscanbeseenastransformationsaimingatexpandingdocumentrepresentationthroughalineartransformation T:the
+vectorD
+ibecomes T·Di. Often, the matrix Trepresents a term–term similarity matrix, which can be
+deﬁnedby“compiling”someapriorigiventhesaurus,orbyautomaticallybuildingasemanticsimilaritymatrix. In particular, the Generalized Vector-Space Model (GVSM) (Wong et al., 1987) corresponds tosettingTto the term-document matrix (i.e., the transpose of the document-term matrix, an example
+is given in Table 19.1). In this case, the transformation projects the document from a term space to adualdocumentspace.Thisapproachcanbegeneralizedbyusinggroupsofsimilardocumentsinsteadofisolateddocuments.TheSimilarityThesaurus(QiuandFrei,1993)isavariantofthisapproachthatreliesonaparticularweightingscheme.AnotherinterestingattempttotakeintoaccounttermdependenciesistheapproachknownasLatentSemanticAnalysis(LSA).
+LSA (Deerwester et al., 1990) allows the automatic derivation of semantic information (in this case a
+certain form of synonymy and polysemy) from a document collection through co-occurrence analysis.In particular, two terms that are synonyms of each other are likely to have the same proﬁle (i.e., similarrows) in the term-document matrix. Such correlations are unveiled in LSA by a decomposition of theterm-document matrix into singular values. More precisely, let Crepresent the term-document matrix.
+
+InformationRetrieval 463
+Then,thesingularvaluedecomposition(SVD)of Caimsatidentifyingtwoorthogonalmatrices UandV
+andadiagonalmatrix /Sigma1suchthat
+C=U/Sigma1Vt(19.4)
+wheretdenotesthetranspose. Assumingtheeigenvaluesin /Sigma1areorganizedindecreasingvaluesorder,
+one can reduce the dimensionality by retaining only the ﬁrst kcolumns of U(Uk), the ﬁrst krows of
+V(Vk), and the ﬁrst kdiagonal elements of /Sigma1(/Sigma1k). The matrix Uk/Sigma1kVtkcan be shown to be the closest
+approximation(wrttheFrobeniusnorm)of Cofrankk.Documentsandqueriescanthenbeprojectedon
+theobtainedlatentspace(via UtkD)anddirectlycompared, forexamplewiththecosineformula, inthis
+space. LSA has been showed to provide improvements over the standard vector-space model on severalcollections, however not on all. The required computing resources represent the main drawback of theLSAapproach.
+19.3.3 Probabilistic Models
+Withintheprobabilisticfamilyofmodels,theretrievalisviewedasaclassiﬁcationprocess.Foreachquery,the system must form two classes: relevant and nonrelevant. Thus, for a given document D
+i,o n eh a st o
+estimate the probability that it belongs to the relevant class (class denoted R) or to the nonrelevant one(denoted ¯R).Withtwoclasses,thedecisionruleisrathersimple:retrieve D
+iifProb[R|D i]>Prob[¯R|Di].
+Themaintheoreticalfoundationofthismodelisgivenbythefollowingprinciple(Robertson,1977):
+“The probability ranking principle (PRP): if a reference retrieval system’s response to each request is
+a ranking of the documents in the collection in order of decreasing probability of usefulness to the userwho submitted the request, where the probabilities are estimated as accurately as possible on the basisof whatever data has been made available to the system for this purpose, the overall eﬀectiveness of thesystemtoitsuserswillbethebestthatisobtainableonthebasisofthatdata.”
+Of course, this principle does not indicate precisely what data must be used and how to estimate the
+underlying probabilities. To estimate them, we need to make some assumptions. First, we assume thattherelevanceofadocumentisindependentoftheotherdocumentspresentinthecollection.Second,weassumethatthenumberofrelevantdocumentsdoesnotaﬀecttherelevancejudgment.Bothassumptionsrepresent simpliﬁcation as (a) a particular document may be a good complement to another document,relevant to the query, without being relevant alone, and (b) relevance judgments are aﬀected by thedocumentsalreadyjudged.
+Inaddition,weassumeforthemomentthatthedocument D
+iisrepresentedbyasetofbinaryindexing
+terms.ItisimportanttonotethatwedonotneedtocomputeaprecisevaluefortheunderlyingprobabilitiesProb[R|D
+i]. What is required is to produce a ranked list of documents reﬂecting these values. Using the
+Bayes rule, we can estimate the probability that Dibelongs to the relevant class and the nonrelevant
+oneas
+Prob[R|Di]=Prob[Di|R]·Prob [R]
+Prob[Di](19.5)
+Prob[¯R|Di]=Prob[Di|¯R]·Prob [¯R]
+Prob[Di](19.6)
+whereProb [R](Prob[¯R])indicatesthepriorprobabilityofrelevance(andofnonrelevance)ofarandom
+document (with Prob [R]+Prob[ ¯R]=1). Prob[D i]is the probability of selecting Di. From this, we can
+seethattherankingorderdependsonlyonProb[D i|R]andProb [Di|¯R](theotherfactorsbeingconstant).
+As described in van Rijsbergen (1979), we can assume conditional independence between terms, and
+thus write Prob [Di|R]as the product of the probabilities for its components (binary indexing). For a
+given document, we denote by pjthe probability that the document is indexed by term tjgiven that the
+
+464 HandbookofNaturalLanguageProcessing
+documentbelongstotherelevantset.Similarly, qjistheprobabilitythatthedocumentisindexedbyterm
+tjgiventhatthedocumentbelongstothenonrelevantset.Thusweneedtoestimate,foreachterm tj,the
+followingtwoprobabilities:
+pj=Prob[dj=1|R] (19.7)
+qj=Prob[dj=1|¯R] (19.8)
+fromwhichwecanthencomputetheprobabilityofrelevance(andnonrelevance)ofdocument Dias
+Prob[Di|R]=t∏
+j=1pdj
+j·(1−pj)1−dj (19.9)
+Prob[D i|¯R]=t∏
+j=1qdj
+j·(1−qj)1−dj (19.10)
+wheredjis either 1 or 0, depending on the fact that the term tjappears or not in the representation of
+document Di.
+Onewaytoestimatetheunderlyingprobabilities pjandqjistomodelthedistributionoftermsaccording
+toaprobabilitydistributionsuchasthe2-Poissonmodel(Harter,1975).Inthiscase,wemodelthetermdistribution in the relevance class by a Poisson distribution, while the distribution over the nonrelevantclass follows another Poisson distribution. These estimates can be reﬁned based on the a set of knownrelevant and nonrelevant items (Robertson and Sparck Jones, 1976) for the current query (relevancefeedback).Forexample,wecanestimatetherequiredprobabilitiesasfollows:
+p
+j=rj
+randqj=dfj−rj
+n−r(19.11)
+where
+rindicatesthenumberofrelevantdocuments
+rjthenumberofrelevantdocumentsindexedwiththeterm tj
+nthenumberofdocumentsinthecollection
+dfjthenumberofdocumentsinwhichtheterm tjoccurs
+Modern probabilistic IR models take into account new variables such as term frequency, document
+frequency,anddocumentlengthtoprovideusefulinsightsregardingtheprobabilitythatagivendocumentisrelevanttoaqueryornot(e.g.,theOkapiorBM25model(Robertsonetal.,2002)).Amongmorerecentproposals, a very interesting one is DFR ( Divergence from Randomness ), proposed by Amati and van
+Rijsbergen(2002),whichrepresentsageneralprobabilisticframeworkwithinwhichtheindexingweightsw
+ijattachedtoterm tjindocument Dicombinetwoinformationmeasuresasfollows:
+wij=Inf1
+ij·Inf2
+ij=−log2[
+Prob1ij(tf)]
+·(1−Prob2ij(tf)) (19.12)
+The ﬁrst component measures the informative content (denoted by Inf1
+ij) based on the observation that
+in the document Diwe found tfoccurrences of the term tj. The second one measures the risk (denoted
+by1−Prob2ij(tf))ofacceptingtheterm tjasagooddescriptor,knowingthatindocument Ditherearetf
+occurrencesofterm tj.
+In the ﬁrst information factor, Prob1ij(tf)is the probability of observing tfoccurrences of the term tj
+in document Diby pure chance. If this probability is high, term tjmay correspond to a non content-
+bearingwordinthecontextoftheentirecollection(Harter,1975).FortheEnglishlanguage,thesewords
+
+InformationRetrieval 465
+generally correspond to determiners, such as “the,” prepositions like “with,” or verb forms like “is” or“have,” considered as being of little or not use in describing a document’s semantic content. Variousnouns can also appear in numerous documents within a particular corpus (for example “computer”and “algorithm” for a computer science collection). On the other hand, if Prob
+1ij(tf)is small (or if
+−log2[
+Prob1ij(tf)]
+is high), term tjwould provide important information regarding the content of the
+document Di. Several stochastic distributions can be chosen for Prob1(see Amati and van Rijsbergen,
+2002;ClinchantandGaussier,2008),forexample,thegeometricdistribution
+Prob1ij(tf)=[1
+(1+λj)]
+·[λj
+(1+λj)]tf
+with λj=tcj/n (19.13)
+where
+tcjindicatesthenumberoftheoccurrencesoftheterm tjinthecollection
+nisthenumberofdocumentsinthecollection
+ThetermProb2ij(tf)representstheprobabilityofhaving tf+1occurrencesoftheterm tj,knowingthat
+tfoccurrences of this term have already been found in document Di. This probability can be evaluated
+usingLaplace’slawofsuccessionasProb2(tf)=(tf+1)/(tf +2)≈tf/(tf+1),whichleads,bytaking
+intoaccountthedocumentlengthto
+Prob2ij(tf)=tfnij
+(tfnij+1)withtfnij=tfij·log2[1+(c·avdl)
+li]
+(19.14)
+where
+avdlisthemeanlengthofadocument
+lithelengthofdocument Di
+caconstantwhosevaluedependsonthecollection
+The work presented in Clinchant and Gaussier (2008) relates Laplace’s law of succession to a well-
+known phenomenon in text modeling, namely, the one of burstiness, which refers to the behavior of
+wordsthattendtoappearinbursts:oncetheyappearinadocument,theyaremuchmorelikelytoappearagain.ThisworkalsoshowsthatasingledistributioncanbeusedasthebasisforProb
+1andProb2.
+Another interesting approach is the one known as nonparametric probabilistic modeling ,∗which is
+based on a statistical language model (LM) (Hiemstra, 2000). As such, probability estimates are basedon the number of occurrences in document D
+iand the collection C. Within this LM paradigm, various
+implementations and smoothing methods (Zhai and Laﬀerty, 2004) can be considered. We will limitourselvesheretoasimplemodelproposedbyHiemstra(2000),anddescribedinEquation19.15(Jelinek–Mercer smoothing), combining an estimate based on the document (P [t
+j|Di]) and one based on the
+collection(P [tj|C]):
+Prob[D i|Q]=Prob[Di]·∏
+tj∈Q[λj·Prob[tj|Di]+(1 −λj)·Prob[tj|C]] (19.15)
+Prob[tj|Di]=tfij/liand Prob [tj|C]=dfj/lcwithlc=∑
+kdfk (19.16)
+where λjis a smoothing factor (constant for all indexing terms tj, and usually ﬁxed at 0.35) and lcan
+estimateofthesizeofthecollection C.Bothprobabilityestimates P[tj|Di]andP[tj|C]arebasedonaratio,
+∗The term nonparametric is misleading here, as one can view this model as being based on a multinomial distribution.
+Nonparametric refers here to the fact that the number of parameters grows with the size of the collection, but this is alsothecasewiththepreviousmodelswepresented.
+
+466 HandbookofNaturalLanguageProcessing
+betweentfijandthedocumentsizeontheonehand,andthenumberofdocumentsindexedwiththeterm
+tjandthesizeofthewholecollectionontheotherhand.
+Lastly, we would like to mention the risk minimization framework developed in Zhai and Laﬀerty
+(2006),whichconstitutesanattempttounifyseveralIRmodelsintoasingleframework.
+19.3.4 Query Expansion and Relevance Feedback
+To provide better matching between user information needs and documents, various query expansiontechniques have been suggested. The general principle is to expand the query using words or phraseshavingmeaningssimilarorrelatedtothoseappearingintheoriginalquery,eitherbyusinginformationfrom a thesaurus (see, e.g., Voorhees, 1993; Maisonnasse et al., 2008 and Section 19.5.4), or by derivingthisinformationfromthecollection.Toachievethis,queryexpansionapproachesrelyon(a)relationshipsbetweenwords,(b)termselectionmechanisms,and(c)termweightingschemes.Thespeciﬁcanswerstothesethreequestionsmayvary,leadingtoavarietyofqueryexpansionapproaches(Efthimiadis,1996).
+In the ﬁrst attempt to ﬁnd related search terms, we might ask the user to select additional terms to
+be included in an expanded query. This can be handled interactively through displaying a ranked list ofretrieveditemsreturnedbytheﬁrstquery.
+As a second strategy, Rocchio (1971) proposed taking the relevance or non-relevance of top-ranked
+documentsintoaccount,asindicatedmanuallybytheuser.Inthiscase,anewquerywouldthenbebuiltautomatically in the form of a linear combination of the terms included in the previous query and theterms automatically extracted from both relevant (with a positive weight) and non-relevant documents(with a negative weight). More precisely, each new query term was derived by applying the followingformula:
+w
+′
+qi=α·wqi+β·r∑
+j=1wij−γ·nr∑
+j=1wij (19.17)
+in which w′
+qidenotes the weight attached to the ith query term, based on the weight of this term in the
+previous query (denoted by wqi), and on wijthe indexing term weight attached to this term in both the
+relevantandnonrelevantdocumentsappearinginthetop kranks.Thevalue r(respectively nr)indicates
+the number of relevant (respectively nonrelevant) documents appearing in the ﬁrst kpositions. The
+positive constants α,β,a n d γare ﬁxed empirically, usually with α≥β,a n d β=γ. Empirical studies
+havedemonstratedthatsuchanapproachisusuallyquiteeﬀective.
+Asathirdtechnique,Buckleyetal.(1996)suggestedthatevenwithoutlookingatthem,onecanassume
+that the top kranked documents are relevant. Using this approach, we simply set r=kandγ=0i n
+Equation 19.17. This method, denoted pseudo-relevance feedback or blind-query expansion, is usuallyeﬀective(atleastwhenhandlingrelativelylargetextcollections).
+Relevancefeedbackcanbeveryeﬀectivewhentheresultsoftheoriginalqueryaresomehowcorrect.In
+othercases,theretrievalperformancemaydecrease.PeatandWillett(1991)provideoneexplanationforsuchpoorperformance.Intheirstudytheyshowthatquerytermshaveagreateroccurrencefrequencythando other terms. Query expansion approaches based on term co-occurrence data will include additionalterms that also have a greater occurrence frequency in the documents. In such cases, these additionalsearchterms will not prove eﬀectivein discriminating between relevant and nonrelevant documents. Insuchcircumstances,theﬁnaleﬀectonretrievalperformancecouldbenegative.
+There are several works focusing on (pseudo-)relevance feedback and the best way to derive related
+termsfromsearchkeywords. Forexample, wemightuselargetextcorporatoderivevariousterm–termrelationships and apply statistical or information-based measures. For example, Qiu and Frei (1993)suggested that terms extracted from a similarity thesaurus that had been automatically built throughcalculating co-occurrence frequencies in the search collection could be added to a new query. Theunderlyingeﬀectwastoaddidiosyncratictermstothosefoundinunderlyingdocumentcollections,and
+
+InformationRetrieval 467
+related to query terms in accordance to the language being used. Kwok et al. (2005) suggested buildinganimprovedrequestbyusingtheWebtoﬁndtermsrelatedtosearchkeywords.AdditionalinformationaboutrelevancefeedbackapproachescanbefoundinManningetal.(2008)andinEfthimiadis(1996).
+19.3.5 Advanced Models
+Aswealreadymentioned,documentandqueryrepresentationsareimpreciseanduncertain.Ithasbeenshown that diﬀerent document representations or search strategies tend to have similar overall retrievalperformance, although based on diﬀerent retrieved items (Turtle and Croft, 1991). This observationpromptedinvestigationsofpossibleenhancementstooverallretrievalperformancebycombiningdiﬀerentdocumentrepresentations(Savoy,2004)(e.g.,singleterms, n-grams,phrases)ordiﬀerentsearchstrategies
+(diﬀerentvector-spaceand/orprobabilisticimplementations)(VogtandCottrell,1999).
+Such merging strategies, known as data fusion, tend to improve the overall performance for three
+reasons. First, there is a skimming process in which only the mtop-ranked retrieved items from each
+rankedlistareconsidered.Inthiscase,onecancombinethebestanswersobtainedfromvariousdocumentrepresentations (which retrieve various relevant items). Second, one can count on the chorus eﬀect, bywhich diﬀerent retrieval schemes retrieve the same item, and as such provide stronger evidence thatthe corresponding document is indeed relevant. Third, an opposite or dark horse eﬀect may also playa role. A given retrieval model may provide unusually high (low) and accurate estimates regarding therelevance of a document. In this case, a combined system can return more relevant items by betteraccountingfor thosedocuments havingarelativelyhigh(low) scoreor whenarelativelyshort(orlong)resultlistsoccurs.Suchdatafusionapproacheshoweverrequiremorestoragespaceandprocessingtime.Weighingadvantagesanddisadvantagesofdatafusion,itisunclearifitisworthdeployinginacommercialsystem.
+A second interesting research area is to propose a better estimate for prior probabilities. In the
+probabilistic models, we have denoted by Prob [D
+i]the prior probability of document Diwhich appears
+in diﬀerent implementations (see Equation 19.5, or in the LM paradigm, see Equation 19.15). Usually,without any additional information we assume that this value is the same for all documents. On theother hand, we know that all documents are not equally important. The “80-20 rule” may apply inlarge document collections or IR databases, meaning that around 20% of the documents present in thecollectionprovidetheexpectedanswerto80%ofinformationneeds.Insuchsituations,itmaybeusefultorelyonuserfeedbacktodynamicallyadaptthepriorprobabilityforeachdocument.
+In the Web, it is known that users have a preference for the home page of a site, a page from which
+they can directly buy or obtain the needed service or information (e.g., ﬂight ticket, consult a timetable,obtain an address, reserve an hotel). If we look at the corresponding URL describing such pages (e.g.,“www.apple.com,” “www.easyjet.co.uk”), one immediately sees that it is composed only of the rootelement (sometimes with a standard ﬁle name such as “index.html” or “default.htm”). As described inKraaij et al. (2002), we can consider this information to assign higher probability to entry pages. Suchpractice(usedbycommercialsearchengines)cansigniﬁcantlyimproveretrievalperformance.
+Inaddition,Websearchenginesusuallytakeintoaccounttheanchortexts,i.e.,thesequenceofwords
+used to indicate the presence of a hyperlink and describing, in a compact manner, the target Web page.Thus, to refer to Microsoft home page, we can collect all anchor texts written by various authors andpointing to “www.microsoft.com.” All these expressions can be viewed as forming a set, manually built,ofterminologicalvariantsindexingthetargetpage(e.g.,“seeMicrosoft,”“MicroSoft,”“Micro$oft,”“BillGates’Empire,”or“The$$Empire”).
+Lastly, to improve existing IR models on some collections, one can consider various relationships
+between documents. Bibliographic references are such an example and can be viewed as a set of rela-tionshipsbetweendocuments,undertheassumptionthatthemainpurposeofcitingearlierarticlesistogivecredittoworks(concepts,facts,models,results,methodology,etc.)thesubjectsofwhicharerelatedto the present document (at least in the author’s mind). A main advantage of bibliographic references
+
+468 HandbookofNaturalLanguageProcessing
+(Garﬁeld,1983)isthattheyareindependentofaparticularuseofwords,andevenlanguages.Thustheydonotsuﬀer(a)fromtheunderlyingambiguityofallnaturallanguages,(b)fromthefactthatthemajorityofsubjectindexersarespecializedinagivendomain,whereasdocumentsmaycontaininformationper-tainingtomorethanonespeciﬁcdomainofknowledge,and(c)fromthefactthattermsusedtodescribethecontentofadocumentmaybecomeobsoleteine.g.,thescientiﬁcandtechnologicalliterature.
+One of the bibliographic measures is bibliographic coupling (Kessler, 1963), which measures subject
+similarity on the basis of referenced documents. To deﬁne the bibliographic coupling measure betweentwoarticles,onesimplycountsthenumberofdocumentscitedbythetwopapers.Anothermeasureistheco-citationmeasure,usedby(Small,1973)tobuildanetworkofdocuments:foreachpairofdocuments,one counts the number of papers that cite both. To be strongly co-cited, two documents must be citedtogetherbyalargenumberofpapers.Inthiscase,theunderlyinghypothesisisthatco-citationmeasuresthesubjectsimilarityestablishedbyanauthorgroup.
+On the Web, each page typically includes hypertext links to other pages, and such links are clearly
+notcreatedbychance. Basedonthepreviousbibliographicmeasures, onecanestablishandmeasureanassociationstrengthbetweenWebpages.Inasimilarperspective,GoogleusesPR(BrinandPage,1998)asone(amongothers)sourceofinformationtorankretrievedWebpages.Inthislink-basedsearchmodel,theimportanceassignedtoeachWebpageispartlybasedonitscitationpattern. Moreprecisely, aWebpage will have a higher score if many Web pages point to it. This value increases if there are documentswith high scores pointing to it. The PR value of a given Web page D
+i(value noted as PR (Di)), having
+D1,D2,...,Dmpagespointingtoit,iscomputedaccordingtothefollowingformula:
+PRc+1(Di)=(1−d)·1
+n+d·[PRc(D1)
+C(D1)+···+PRc(Dm)
+C(Dm)]
+(19.18)
+wheredis a parameter (usually set to 0.85 (Brin and Page, 1998)) and C(Dj)is the number of outgoing
+links for Web page Dj. The computation of the PR value can be done using an iterative procedure (few
+iterationsareneededbeforeconvergence).Aftereachiteration,eachPRvalueisdividedbythesumofallPRvalues.Asinitialvalues,onecansetPR (D
+i)to1/n,where nindicatesthenumberofdocumentsinthe
+collection.
+Athirdlink-basedapproachconsistsofHITS(Kleinberg,1999).Inthisscheme,aWebpagepointing
+to many other information sources must be viewed as a “good” hub, while a document with many Webpages pointing to it is a “good” authority. Likewise, a Web page that points to many “good” authoritiesis an even better hub, while a Web page pointed to by many “good” hubs is an even better authority.ForWebpage D
+i,formulasforhubandauthorityscores( Hc+1(Di)andAc+1(Di))aregiven,atiteration
+c+1,by
+Ac+1(Di)=∑
+Dj∈parent (Di)Hc(Dj) (19.19)
+Hc+1(Di)=∑
+Dj∈child(D i)Ac(Dj) (19.20)
+Such scores are computed for the ktop-ranked documents (typical value of kisk=200) retrieved by a
+classical search model, together with their children and parents (as given by the citation network). Hubandauthorityscoresareupdatedforafewiterations,andanormalizationprocedure(e.g.,dividingeachscorebythesumofallsquaredvalues)isappliedaftereachstep.
+Basedonthesetwomainhyperlink-basedalgorithms,diﬀerentvariantshavebeensuggested(Borodin
+et al., 2005). It is important to note, however, that using such algorithms alone to retrieve documentsdoesnotyieldveryinterestingresults,asshowninvariousTRECevaluationcampaigns(Hawking,2001).
+
+InformationRetrieval 469
+Thisbeing said, their integration in a general search engine provides new, interesting functionalities (asthedetectionofspamWebpages,ortheimprovementoftherankofwell-knownWebpages).
+More recently, several researchers have investigated the possibility of using machine learning
+approachesinIR.Letusassumethatwehavealargecollectionofdocuments,alargenumberofqueriesand relevance judgements (see Section 19.4) for these queries on the collection. We can see such judge-ments as a set of annotated (query, document) pairs, where the annotation takes, e.g., the value 1 if thedocumentisrelevanttothequery,and −1ifitisnot.Next,onecantransformagiven(query,document)
+pair into a vector that represents an example. Such a transformation needs to abstract away from theparticular terms present in the query, and usually relies on a variety of features based on characteristics(Nallapati,2004),suchas
+1. Numberofcommontermsbetweenthequeryandthedocument2. Averageinversedocumentfrequencyofthequerytermspresentinthedocument3. Widthofthewindowinwhichquerytermsappearinthedocument4. Cosinesimilaritybetweenthequeryandthedocument5. Probabilisticmeasureofrelevanceofthedocument6. And,whenavailable,
+– PRvalueofthedocument– numberofincoming(outgoing)links
+Once (query, document) pairs are seen as vectors, we end up with a standard binary classiﬁcation
+problem, the aim of which is building a classiﬁer that discriminates well between positive and negativeexamples.Oncesuchaclassiﬁerisbuilt,documentsrelevanttoanewqueryarethosedocumentsclassiﬁedinthepositiveclass(eachdocumentofthecollectionis,ofcourse,ﬁrstpairedtothequery,thepairbeingthen transformed, as above, into a vector which will be the input of the classiﬁer). Many diﬀerentclassiﬁerscanbeusedhere. Becauseoftheirsuccessindiﬀerentsettings, SupportVectorMachines(see,e.g.,Manningetal.,2008)arequiteoftenchosenforthetask.
+Nallapati (2004) shows that the approach based on machine learning outperforms standard IR
+approaches when both the number of features used in the vector representation and the number ofrelevance judgements are suﬃciently large. It is also possible to go beyond the framework of binaryclassiﬁcation,andtrytodirectlylearnarankingfunction,throughpairwisepreferences(Caoetal.,2006)orlistwisepreferences(Caoetal.,2007).Theselasttwoapproachesoutperformtheonebasedonadirectclassiﬁcationofdocuments.
+As one may have noted, the basic building block of machine learning approaches to IR is a set of
+relevance judgements. If some collections (as the one found in TREC for example) do have a set ofassociatedrelevantjudgements,mostcollectionsdonot.ThesituationissomewhatdiﬀerentfortheWebandWebsearchengines, asWebsearchcompanieshaveaccesstoclickthroughdata(datarecordingthefact that, for a given query, a user has clicked on particular documents proposed by the search engine),which can partly be used as annotated data to develop machine learning tools (see, e.g., Joachims et al.,2007) and more recently (Scholler et al., 2008). Furthermore, it is probable that such companies try tomanually develop relevance judgements in order to deploy accurate machine learning techniques. TheﬁeldofresearchonmachinelearningforIRisthusveryactiveatthetimeofwritingthischapter,andwillcertainlygivebirthtonew,interestingapproachestoIR.
+19.4 Evaluation and Failure Analysis
+In order to know whether one search model is better than another, an evaluation methodology mustbe adopted. In the IR domain, this must be applied to the search process as a whole (user-in-the-loopparadigm),whichmeansevaluationbyrealuserswiththeirrealinformationneeds.Itwouldbeofinteresttoanalyzearangeofcharacteristicssuchastheanswerspeed,itsquality,theuser’seﬀortneededtowritea
+
+470 HandbookofNaturalLanguageProcessing
+query,theinterfaceofthesearchsystem,thecoverageofthecollection,etc.Alltheseaspectsarecertainlyimportant but (a) user studies are costly, and (b) some features are hard to measure objectively. ThustraditionalIRevaluationapproachesareusuallylimitedtosystemperformance,andmoreparticularlytothequalityoftheanswer(retrievaleﬀectiveness).
+In this vein, to measure the retrieval performance (Buckley and Voorhees, 2005), we ﬁrst need a
+test collection containing a set of information units (e.g., documents), and a set of topic (or query)formulations together with their relevance assessments. As described in Section 19.4.1, these corporaare usually the result of an international cooperative eﬀort. Having such a benchmark, we can evaluateseveral IR models or search strategies by comparing their relative retrieval performance (measured byprecision-recallvalues).
+As shown in Section 19.4.3, even after decades of research in this ﬁeld, we still need a better under-
+standing of the reasons explaining why some topics are still hard. The analysis of some diﬃcult querieswillgiveussomeinsightsonthis,aswellasonthewaysexistingIRmodelscanbeimprovedordesignedmoreeﬀectively.
+19.4.1 Evaluation Campaigns
+Modern IR evaluations are based on rather large test collections built during diﬀerent evaluation cam-paigns. The oldest and best known of these campaigns is TREC
+∗(Voorhees and Harman, 2005) (Text
+REtrieval Conference) established in 1992 in order to evaluate large-scale IR, to speed the transfer oftechnology from research labs into products and to increase the availability of appropriate evaluationmethodologies. Held each year, TREC conferences have investigated retrieval techniques in diﬀerentmedium (written documents, Web pages, spoken documents, OCR, image, video) as well as diﬀerentsearch tasks ( ad hoc, interactive, routing, ﬁltering, categorization, question/answering) or languages
+(English,Arabic,Chinese,Spanish,etc.).
+Around the world, three other evaluation campaign series have been launched. Beginning in 1999,
+the NTCIR
+†conference is held every 18 months in Japan and is more oriented to problems related to
+Far-East languages (e.g., Japanese, traditional or simpliﬁed Chinese, Korean) used in conjunction withseveralsearchtasks(patentretrieval,Web, adhoc,question/answering,summarization).
+In Europe, CLEF
+‡(Peters et al., 2008) (Cross-Language Evaluation Forum) was founded to promote,
+study, and evaluate information access technologies using various European languages. Held each yearsince2000,theCLEFcampaignshaveproducedtestcollectionsinmorethan12languagesrelatedtodif-ferenttasks(adhoc ,bilingual,multilingualandcross-lingualretrieval,imagesearch,question/answering,
+domain-speciﬁcretrieval,etc.).
+Lastly,andmorerecently,acampaign,calledINEX,
+§waslaunchedinordertoevaluateretrievalsystems
+in(semi-)structuredcollections.
+Eachyear,theseevaluationcampaignsproposeadditionalchallengingtrackssuchasnovelty(retrieval
+of new and unseen information items), robust (improving the performance of hard topics), spam ﬁl-tering, IR on blog corpus, question/answering using Wikipedia, cross-language retrieval on audio data,multilingualWebIR,geographic-basedIR(searchinvolvingspatialaspects),multimodalsummarizationfortrendinformation,etc.
+Theuserisnotabsentinallevaluationstudies.Forexample,theinteractivetrackatTREC(Dumaisand
+Belkin, 2005)presentedaninterestingsetofstudiesonvariousaspectsofhuman–machineinteractions.More speciﬁc experiments pertaining to cross-lingual IR systems were presented during various CLEFevaluationcampaigns(GonzaloandOard,2003).
+∗trec.nist.gov
+†research.nii.ac.jp/ntcir
+‡www.clef-campaign.org
+§inex.is.informatik.uni-duisburg.de
+
+InformationRetrieval 471
+One of the main objectives of these evaluation campaigns is to produce reliable test collections. To
+achieve this, corpora are extracted from various newspapers, news agencies, from the Web, or fromotherprivatesources(e.g.,libraries, privatecompanies). Thesedataarepreprocessedtoguaranteesomestandardization(sameencoding,homogenizationofthetags,segmentationintoinformationitems).
+Besides the creation and clean-up of the corpora themselves, the organizers prepare a set of topic
+formulations(usually50peryear).Eachofthemisusuallystructuredintothreelogicalsectionscomprisinga brief title (T), a one-sentence description (D) and a narrative (N) specifying the relevance assessmentcriteria.Forexample,wecanﬁndthefollowingtopicdescription:<title>OilPrices </title><desc>Whatisthecurrentpriceofoil? </desc><narr> Only documents giving the current oil price are relevant, i.e., the price when the document waswritten.Referencestooilpricesinthepastorpredictionsforpricechangesinthefuturearenotrelevant.</narr>
+Theavailabletopicscovervarioussubjects(e.g.,“PesticidesinBabyFood,”“WhaleReserve,”“Renew-
+ablePower,”or“FrenchNuclearTests”)andmayincludebothregional(“SwissInitiativefortheAlps”)andinternationalcoverage(“ShipCollisions”). Dependingonthecampaigns, topicsaremanuallytranslatedintoseverallanguages.
+After receiving the topic set, the participants have around one month to send back their answers as
+computedbytheirownsearchsystem.Foreachtask,guidelinesspecifyexactlythetaskconditions(usuallybyimposingthatrunsmustbefullyautomaticandbasedonlyonthetitleanddescription(TD)partsofthe topic formulation). After this step, the organizers may form a pool of retrieved documents for eachtopic.Aseachparticipantisusuallyallowedtosend1000answersforeachtopic,theorganizerstakeonlythe topndocuments (e.g., n=100) from each run. These documents are then presented to a human
+assessor who decides whether each item is relevant or not. This process is blind in the sense that theassessoronlyhasaccesstoaqueryandasetofdocuments.
+Thisprocedurehasbeenappliedovermanyyearsandwemustrecognizethattheresultingjudgments
+are a subset of true relevant set because not all documents belonging to the underlying collection werejudged.However,asdemonstratedbyvariousstudies,thediﬀerenceisnotlarge(BuckleyandVoorhees,2005). It is worth to note that having a large number of very diﬀerent IR systems is necessary (howevernot suﬃcient) to ensure the reliability of the evaluation process. If a test collection is built with a fewparticipantshavingsimilarsearchstrategies,theresultsarequestionable.Finally,theretrievalperformancethatcanbedrawnfromanytestcollectionisneverabsolutebutonlyrelativetothetestcollectioninuse.
+19.4.2 Evaluation Measures
+Tomeasureretrievalperformance(BuckleyandVoorhees,2005),wemayconsiderthattheonlyimportantaspect is to retrieve one pertinent answer. In some contexts, the answer could really be unique, or atleastthenumberofcorrectanswersisratherlimitedas,forexample,whensearchingforahomepageonthe Web. In this case, the evaluation measure will be based only on the rank of the ﬁrst correct answerretrieved.
+For any given query, if ris the rank of the ﬁrst relevant document retrieved, the query performance
+iscomputedas1/r . Thisvalue, calledthereciprocalrank(RR),variesbetween1(theﬁrstretrieveditem
+is relevant) and 0 (no correct response returned). It should be noted here that ranking the ﬁrst relevantiteminsecondplaceinsteadofﬁrstwouldseriouslyreducetheRRvalue,makingit0.5insteadof1.
+To measure the retrieval performance resulting from a set of queries, we simply compute the mean
+over all the queries. This value known as the mean reciprocal rank (MRR), serves as a measure of anygiven search engine’s ability to extract one correct answer and list it among the top-ranked items. WethusbelievethatMRRvaluecloselyreﬂectstheexpectationofthoseInternetsurferswhoarelookingforasinglegoodresponsetotheirqueries.
+
+472 HandbookofNaturalLanguageProcessing
+TABLE19.3 Precision–Recall
+Computation
+Rank SystemA SystemB
+1N R R1/1
+2 R1/2 R2/2
+3 R2/3N R
+... NR NR30 R3/30 NR
+... NR NR100 NR R3/100
+AP 0.422 0.676In IR, we usually do not want to measure a search system’s ability
+to rank one relevant item, but to extract all relevant information fromthe collection. In such contexts, we assume that users want both highprecision (fraction of retrieved items that are relevant) and high recall(fraction of relevant items that have been retrieved). In other wordstheywant“thetruth,thewholetruth(recall),andnothingbutthetruth(precision).”Inordertogetasyntheticmeasurefrombothprecisionandrecall,theharmonicmeanbetweenthetwo(knownasF1orFscore(vanRijsbergen,1979))issometimesused(speciallyinNLPtasks).Denotingtheprecisionby Pandtherecallby R,theFscoreisdeﬁnedas
+F1=2·P·R
+P+R(19.21)
+ItishowevermorecommoninIRtocomputetheaverageprecision(AP)foreachquerybymeasuring
+theprecisionachievedateachrelevantitemextractedandthencomputinganoverallaverage.Thenforagivensetofquerieswecalculatethemeanaverageprecision(MAP),whichvariesbetween0.0(norelevantitemsfound)and1.0(allrelevantitemsalwaysappearatthetopoftherankedlist).
+However, between these two values it is diﬃcult for a user to have a meaningful and direct
+interpretation of a MAP value. Moreover, from a user’s point of view, the value of the diﬀerence inAP achieved by two rankings is sometimes diﬃcult to interpret. For example, in Table 19.3 we havereported the AP for a topic with three relevant items. With System A, the relevant documents appearin rank 2, 3, and 30. If we computed the AP for this query, we have a precision of 1 /2 after the second
+document, 2/3 after the third document, and 3/30 after the 30th retrieved item given an AP of 0.422.Computing the AP for System B, we found 0.676, showing a relative improvement of 60% over rankingproducedbySystemA.
+As an alternative, we may consider that the evaluation should focus on the capability of the search
+system to retrieve many relevant items on the one hand, and to present them in the top- nposition
+of the returned list. In this case, we do not attach a great importance to extracting allrelevant items,
+assuming that there are too many. To evaluate the retrieval performance in such circumstances, we cancomputetheprecisionachievedafterretrieving nitems.OntheWeb,wemaysetthisthresholdto n=10,
+correspondingtotheﬁrstscreenreturnedbyacommercialsearchengineandthencomputetheprecisionatthispoint, avaluedenotedP@10orPrec@10. Inourpreviousexample(seeTable19.3), bothsystemsachievedaperformanceofP@10=0.2.
+More recently, Järvelin and Kekäläinen introduced (Järvelin and Kekäläinen, 2002) a new evaluation
+measure called Normalized Discounted Cumulative Gain (NDCG), which is well adapted to situationswhererelevancejudgementsaregraded,i.e.,whentheytakemorethanjusttwovalues(relevantornot).The assumption behind NDCG is that highly relevant documents are (a) more useful when appearingearlierinthelistofretrieveddocumentsand(b)moreusefulthanmarginallyrelevantdocuments,whichinturnaremoreusefulthanirrelevantdocuments.NDCGcomputesarelevancescoreforalistofdocumentsthroughthegainbroughtbyeachdocumentinthelistdiscountedbythepositionatwhichthedocumentappears. Thisscoreisthennormalizedrelativetotheoptimalgainthatcanbeachieved, yieldingascorebetween0and1(providedthelowestvaluefortherelevanceisgreaterthan1).TheNDCGscoreforthelistconsistingoftheﬁrst kdocumentsretrievedbyanIRsystemisthus
+N(k)=normalization
+Z
+kk∑
+j=1
+cumulativegain
+(2p(j)−1)/log2(j+1)
+positiondiscount(19.22)
+
+InformationRetrieval 473
+wherep(j)correspondstotherelevancevalueofthedocumentappearingatposition j.Withthisformula,
+SystemBinTable19.3getsahigherscorethanSystemAontheﬁrst10documentsas,eventhoughtheybothretrieveonlytwodocuments,thepositiondiscountsforSystemBarelowerthantheonesforSystemAsincetherelevantdocumentsarerankedhigherinthelistbySystemB.
+Finally, in an eﬀort to statistically determine whether or not a given search strategy would be better
+than another, we may apply diﬀerent statistical tests (Conover, 1999) (Sign test, Wilcoxon signed rankstest,t-test,orusingthebootstrapmethodology(Savoy,1997)).Withintheseteststhenullhypothesis H
+0
+statesthatthetworetrievalschemesproducesimilarMAP(orMRR)performance. Thisnullhypothesisis accepted if the two retrieval schemes are statistically similar (i.e., yield more or less the same retrievalperformance),andisrejectedotherwise.
+For example, the Sign test does not take the amount of diﬀerence into account, but only the fact that
+a search system performs better than the other. In a set of 50 topics, imagine that System A producedbetterMAPfor32queries(or32“+”),SystemBwasbetterfor16(or16“–”),andforthetworemainingqueriesbothsystemsshowedthesameperformance.Ifthenullhypothesisweretrue,wewouldexpecttoobtain roughly the same number of “+” or “–” signs. In the current case involving 48 experiments (thetwotiesareignored),wehave32“+”andonly16“–”signs.Acceptingthenullhypothesis,theprobabilityofobservinga“+”wouldbeequaltotheprobabilityofobservinga“–”(namely, 0.5).Thus,for48trials,theprobabilityofobserving16orfeweroccurrencesofthesamesign(“+”or“–,”foratwo-tailedtest)isonly 0.0293 (see tables in Conover, 1999). With a signiﬁcance level ﬁxed at α=5%, we must reject H
+0,
+andacceptthealternativehypothesisstatingthatthereisadiﬀerencebetweenSystemAandB.Insuchacase,thediﬀerenceissaidtobe statisticallysigniﬁcantatthelevel α=0.05.
+19.4.3 Failure Analysis
+Giventhesoundproceduresdescribedpreviouslyforbothindexing(seeSection19.2)andsearchmodels(see Section 19.3), it seems ap r i o r ithat search engines should not fail to retrieve documents queried by
+users, especially when those documents share many words with the query. However, unexpected andincorrectanswershappenfromtimetotime.
+FromacommercialIRperspective,itisimportanttounderstandthereasonswhyasearchsystemfails,
+whycustomers encounter problems whensearchingfor information. Intheacademicworld, thisaspecthas been studied within several robust tracks (Voorhees, 2006). During previous evaluation campaigns,numerous topic descriptions have been created by humans and submitted to diﬀerent search engines.Someofthem(around5%to10%)havebeenfoundtobehardforalmosteverysearchparadigm,withoutbeingabletodetect, apriori,whenaquerywouldbehardornot.Onlyafewstudies(e.g.,Buckley,2004)
+tendtoinvestigatesearchsystemfailures.
+To illustrate our purpose, we have extracted some topics from our participation in past evaluation
+campaigns.Thesehardqueriesaredeﬁnedastopicshavingzeroprecisionafter10retrieveditems(P@10).InaneﬀorttoexplaintheIRmodel’sfailuretolistatleastonepertinentitemamongthetop10,wemightclassify the causes into two main groups: ﬁrst, system ﬂaws (Category #1 to #3) where some advancedprocessingtechniquesmayimprovetheperformance;Second,topicintrinsicdiﬃculties(Category#4to#6)whereadeeperunderstandingofuser’sintentandsemanticanalysisseemstoberequired.
+Category1: Stopwordlist .Thewaylettersarenormalized(ornot)aswellastheuseofastopwordlistmay
+prevent one from ﬁnding correct answers. From the topic “Who and whom,” the query representationwas simply empty because the forms “who,” “and,” and “whom” were included in the stopword list.Asimilarproblemmightbeencounteredwithphrasessuchas“ITengineer,” “UScitizen,” or“languageC.” In the ﬁrst two cases, the search system might fail to recognize the acronyms, treating them as thepronouns“it”or“us,”whichareusuallyincludedinastopwordlist,alongwiththeletter“c.”ThisexampleexplainswhycommercialIRsystemsmayhaveaparticularstrategyfordealingwithemptywords.
+Category 2: Stemming . The stemming procedure cannot always conﬂate all word variants into the
+sameformorstem,asillustratedbythetopic“PrehistoricalArt.”Inthiscase,alightstemmingapproach
+
+474 HandbookofNaturalLanguageProcessing
+leftunchangedthesearchterm“prehistorical.” Thistermhoweverdoesnotoccurinthecorpusandthesubmittedquerywasthereforelimitedto“art.” Usingamoreaggressivestemmerisnotalwaysthemostappropriate solution. Of course, using Porter’s stemmer (Porter, 1980), the IR system is able to conﬂatethe forms “prehistorical” and “prehistoric” under the same root and to retrieve a relevant item in thetop 10. However, a more aggressive stemmer may lead to overstemming with a negative impact on thesearchresults.
+Category3: Spellingerrors.Whenbuildingtopicdescriptions,theorganizersoftheevaluationcampaign
+usually check the spelling of each topic so that only a few, if any, of them appear in queries. They dohowever exist as “tartin” (instead of “tartan”) or “nativityscenes” (for “nativity scenes”). The presenceof proper nouns may also generate this problem (e.g., “Solzhenitsyn”). A related problem is the factthat spelling may vary across countries (e.g., “color” vs. “colour”) or that several variants are acceptable(“fetus” and “foetus”). In all these cases, search systems are often unable to retrieve any pertinent itemsinthetopoftheirrankedlistormayignorenumerouspertinentitemswrittenusinganalternatespelling.Inacommercialenvironment,spellcheckingandsuggestionisanessentialfeatureforallman–machineinterfaces.
+Category 4: Synonymy and language use. The topic “Les risques du téléphone portable” (“Risks with
+mobile phones”) illustrates how vocabulary can change across countries. For this query, the relevantdocumentsusedsynonymsthatarecountrydependent. InSwitzerland, amobilephoneisusuallycalled“natel,” in Belgium “téléphone mobile,” “cellulaire” in Quebec, and “portable” in France (the sameproblemoccursintheChineselanguagewithtwodiﬀerentexpressionsused,oneinTaiwanandanotherin mainland China). All IR systems included in their top 10 results certain documents covering the useof mobile phones in the mountains (and the risk of being in the mountains). Other retrieved articlessimplypresentedcertainaspectsrelatedtomobilephones(newjointventures,newproducts,etc.).OtherwordsorEnglishexpressionspresentsimilardiﬃculties(e.g.,“ﬁlm”and“movie”inthequery“Filmssetin Scotland,” or “car” and “automobile” in the query “European car industry”). In such cases, the querymayincludeoneform,andrelevantdocumentsanother.
+Category5: Missingspeciﬁcity.Aﬁfthfailureexplanationisfoundforexampleintopic“Tradeunionsin
+Europe.”Thespeciﬁcordesiredmeaningisnotclearlyspeciﬁedoristoobroad.Thissamediﬃcultyoccurswiththetopics“EdouardBalladur,”“Peace-keepingforcesinBosnia,”“Worldsoccerchampionship,”or“Computersecurity.”Withallthesequeries,theIRsystemlistedtop-rankedarticleshavingnotonebutatleasttwoorthreetermsincommonwiththequery.Placedatthetopoftheoutputlistwereshortarticleshavingallquerytermsintheirtitle(orthreeoutoffourtermsfortopic“Peace-keeping”).Theunspeciﬁedmain purpose of the topic was clearly missing; for example, for the topic “World soccer championship”therequiredinformationwasmostprobablythe“resultoftheﬁnal.”
+Category 6: Discrimination ability . For example, in the topic “Chinese currency devaluation” the
+pertinent set must contain information about the eﬀects of devaluation. In this case, the three relevantarticleshadonlyoneortwotermsincommonwiththequery.Theterms“Chinese”(alsoappearingin1090otherarticles)and“currency”(occurringin2475documents)appearedintheﬁrstrelevantdocument.Inthesecond,onlytheterm“Chinese”appearstobeincommonwiththetopic’stitle,andinthelastonlytheterm “devaluation” (occurring also in other 552 articles). The IR system therefore found it very diﬃculttodiscriminatebetweenrelevantandnonrelevantdocuments,duetothefactthatalotofthelatterhadatleasttwotermsincommonwiththequery.Thesamediﬃcultyarosewiththetopic“Wondersofancientworld” for which relevant documents describe one wonder without using explicitly the term “wonder,”“ancient,”or“world.”
+19.5 Natural Language Processing and Information Retrieval
+The basic building blocks of most natural languages are words. However, the term “words” is ambigu-ous and we must be more precise in order to distinguish between the surface form (e.g., “horses”)
+
+InformationRetrieval 475
+correspondingtotokens, andwordtypeorlemma(entryinthedictionary, suchas“horse”inourcase).Moreover,thespeciﬁcmeaningoftheterm“horse”isnotalwaysananimalwithfourlegsasintheterm“horse-ﬂy” or in expressions as “Trojan horse,” “light horse,” “to work like a horse,” “from the horse’smouth,”or“horseabout.”
+InthedesignofeﬀectiveIRsystems,themorphological(Sproat,1992)componentplaysanimportant
+role.Formostsearchsystems,andalsoformosthumanlanguages,thewordsformthebasicunitstobuildthephrases,expressions,andsentencesusedtotransmitaprecisemeaning.Anappropriateprocessingofthese entities is therefore important for enhancing retrieval performance by promoting pertinent word-sense matching. In addition, the way words combine and the meanings words convey are crucial forunderstandingthecontentofadocumentandforrepresentingthiscontentaccurately.
+In this section, we will review some of the major relations between IR and NLP. We will do so by
+examining the traditional layers of Natural Language Text Processing (morphology, syntax, semantics)andseetheroletheyplayorcanplayinIR.Finally,wewillbrieﬂymentionvariousapplicationsthathavedirectconnectionswithbothIRandNLP.
+19.5.1 Morphology
+As mentioned previously, the goal of the morphological step in IR is to conﬂate morphological variantsintothesameform.Insomecases,onlyaninﬂectionalanalysisisperformed,soastogettoalemmatizedversionoftheoriginaltext.Thisstepcanbefollowedbyaderivationalanalysis,usuallyrelyingonsuﬃxesonly, as preﬁxes tend to radically modify the meaning of a word (indexing the two forms “decompose”and“recompose”asthesametokendoesnotmakesensefromanIRpointofview).
+In most cases however, these two steps (inﬂectional and derivational analysis) are not separated, but
+performedinconjunction.Eventhoughinﬂectionalanalyzers,basedonelectroniclexicons,existinmanylanguages, this is not the case for derivational analyzers, and the IR community has relied on tools thataimatidentifyingwordstemswithoutnecessarilyrelyingonprecisemorphologicalprocesses.Suchtoolsarecalled stemmers (asmentionedinSection19.2.2)andaredescribedbelow.OnecanﬁndinHull(1996),
+a comparison of the use of a stemmer and a derivational lexicon for conﬂating words in the frameworkofIR.
+When deﬁning a stemming algorithm, a ﬁrst approach will only remove inﬂectional suﬃxes. For
+English,suchaprocedureconﬂatessingularandpluralwordforms(“car”and“cars”)aswellasremovingthepastparticipleending“-ed”andthegerundorpresentparticipleending“-ing”(“eating”and“eat”).
+Stemming schemes that remove only morphological inﬂections are termed as “light” suﬃx-stripping
+algorithms,whilemoresophisticatedapproacheshavealsobeenproposedtoremovederivationalsuﬃxes(e.g., “-ment,” “-ably,” “-ship” in the English language). For example, Lovins (1968) is based on a list ofover260suﬃxes,whilePorter’salgorithm(Porter,1980)looksforabout60suﬃxes.Insuchcases,suﬃxremovalisalsocontrolledthroughtheadjunctofquantitativerestrictions(e.g.,“-ing”wouldberemovediftheresultingstemhadmorethanthreelettersasin“running,”butnotin“king”)orqualitativerestrictions(e.g.,“-ize”wouldberemovediftheresultingstemdidnotendwith“e”asin“seize”).Moreover,certainad hocspellingcorrectionrulesareusedtoimprovetheconﬂationaccuracy(e.g., “running”gives“run”
+andnot“runn”),duetocertainirregulargrammarrulesusuallyappliedtofacilitateeasierpronunciation.Of course, one should not stem proper nouns such as “Collins” or “Hawking,” at least when the systemcanrecognizethem.
+Stemming schemes are usually designed to work with general text in any given language. Certain
+stemming procedures may also be especially designed for a speciﬁc domain (e.g., in medicine) or agiven document collection, such as that of Xu and Croft (1998) who suggest developing stemmingprocedures usingacorpus-based approachwhichmore closelyreﬂectsthelanguage used(including theword frequencies and other co-occurrence statistics), instead of using a set of morphological rules inwhichthefrequencyofeachrule(andthereforeitsunderlyingimportance)isnotpreciselyknown.
+
+476 HandbookofNaturalLanguageProcessing
+As we mentioned above, stemming procedures ignore word meanings, and thus tend to make errors.
+Sucherrorsmaybeduetoover-stemming(e.g.,“general”becomes“gener,”and“organization”isreducedto “organ”) or under-stemming (e.g., with Porter’s stemmer, the words “create” and “creation” do notconﬂate to the same root). Not surprisingly, the use of an online dictionary has been suggested in ordertoproducebetterconﬂations(KrovetzandCroft,1992;Savoy,1993).
+Thedevelopmentofamorphologicalanalyzer(beitastemmeroramorereﬁnedtool)dependslargely
+on the language considered. The English inﬂectional morphology is relatively simple. The plural formis usually denoted by adding an ’-s’ (with some exceptions like “foot” and “feet”). The feminine form isbuiltusingsomesuﬃxes(e.g.,“actor”and“actress”)andwedonothavetomarktheagreementbetweennounandadjective(“tallman,” “tallwomen”). Tobuildnewwords(derivationalconstruction), wemayaddpreﬁxes(“pay,”“prepay”)and/orsuﬃxes(“bank,”“banking,”“banker,”“bankless,”“bankrupt”).
+ForotherEuropeanlanguages,themorphologicalconstructioncanberelativelysimilar.IntheFrench
+language, the plural is denoted as in English (“face,” “faces”), while the feminine form can simply bedenotedbyaﬁnal‘-e’(“employé,”“employée”)orbyasuﬃx(“acteur
+,”“actrice ”).AsinEnglish,various
+suﬃxesareavailabletoformnewwords.
+For some other languages, the inﬂectional morphological possibilities are more numerous. In the
+Germanlanguage,forexample,weﬁndfourgrammaticalcaseendings(e.g.,thegenitivecasebyemployingan ’-s’ or ’-es’ as in “Staates
+” (of the state), “Mannes ” (of the man)). The plural form is denoted using a
+varietyofendingssuchas‘-en’(e.g.,“Motor”and“Motoren”(engine)),’-er’,’-e’(e.g.,“Jahr”and“Jahre ”
+(year)) or ’-n’ (e.g., “Name” and “Namen ” (name)). Plural forms may also use diacritic characters (e.g.,
+“Apfel” (apple) becomes “Ä pfel”) or in conjunction with a suﬃx (e.g., “Haus” and “Hä user” (house)).
+Also frequently used are the suﬃxes ’-en’ or ’-n’ to indicate grammatical cases or for adjectives (e.g., “...einen
+gutenMann”(agoodman)intheaccusativesingularform).
+The Hungarian language makes use of a greater number of grammatical cases (23 in total, although
+somearelimitedtoasetofnounsorappearonlyinﬁxedandpredeﬁnedforms)thandoesGerman.Eachcase has its own unambiguous suﬃx however; e.g., the noun “house” (“ház” in nominative) may appearas“házat
+”(accusativecase),“házakat ”(accusativepluralcase),“házamat ”(“...myhouse”)or“házamait ”
+(“...myhouses”).Inthislanguagethegeneralconstructionusedfornounsisasfollows:‘stem’‘possessivemarker’‘case’asin‘ház’+‘am’+‘at’(inwhichtheletter‘a’isintroducedtofacilitatebetterpronunciationbecause “házmt
+” could be diﬃcult to pronounce). Similar agglutinative aspects may be found in other
+languages such as Turkish, where the noun “ev” (house) may take on the form “evler ” (the houses),
+“evlerim” (my houses), and “evlerimde ” (in my houses). For these two languages at least, the automatic
+removingofsuﬃxesdoesnotpresentarealandcomplextask(Savoy,2008;Canetal.,2008).
+For the Finnish language however, it seems that the design and development of an eﬀective stem-
+ming procedure requires a more complex morphological analysis, usually based on a dictionary. Thereal stemming problem with the Finnish language is that stems are often modiﬁed when suﬃxes areadded.Forexample,“matto”(carpetinthenominativesingularform)becomes“maton
+”(inthegenitive
+singular form, with ‘-n’ as suﬃx) or “mattoja ” (in the partitive plural form, with ‘-a’ as suﬃx). Once we
+remove the corresponding suﬃxes, we are left with three distinct stems, namely, “matto,” “mato,” and“matoj.”Ofcourseirregularitiessuchasthesealsooccurinotherlanguages,usuallyhelpingtomakethespoken language ﬂow better, such as “submit” and “submission” in English. In Finnish however, theseirregularitiesaremorecommon,andthustheyrendertheconﬂationofvariouswordformsintothesamestemmoreproblematic.
+Compoundconstructions(concatenationoftwoormorelexemestoformanotherword,e.g.,handgun,
+worldwide) also appear in other European languages. In Italian, the plural form may alter letters withinaword,forexample,“capo
+uﬃcio”(chiefsecretary)becomes“capi uﬃcio”initspluralform.Yet,inother
+constructions,thestem“capo”isleftunchanged(e.g.,“capo giro”gives“capo giri”(dizziness)initsplural
+form).
+
+InformationRetrieval 477
+In German and in most Germanic languages, compound words are widely used and are a source of
+additionaldiﬃculties.Forexample,alifeinsurancecompanyemployeewouldbe“Lebensversicherungs-gesellschaftsangestellter” (“Leben” + ‘s’ + “Versicherung” + ‘s’ + “Gesellschaft” + ‘s’ + “Angestellter” forlife+insurance+company+employee).Theaugment(i.e.,theletter“s”inourpreviousexample)isnotalways present (e.g., “Bankangestelltenlohn” built as “Bank” + “Angestellten” + “Lohn” (salary)). Sincecompoundconstructionissowidelyusedandcanbewrittenindiﬀerentforms,itisalmostimpossibletobuildaGermandictionaryprovidingcompletecoverageofthelanguage,andanautomaticdecompound-ingprocedureisrequiredinordertoobtainaneﬀectiveIRsystemintheGermanlanguage(Savoy,2004;BraschlerandRipplinger,2004).
+Severaltoolsareavailableforidentifyingmorphologicalvariantsindiﬀerentlanguages.Theyareeither
+basedononlinedictionariesandstandardmorphologicalanalysis(see,e.g.,http://www.xrce.xerox.com)or on stemming procedures dedicated to diﬀerent languages (e.g., http://www.unine.ch/info/clef/ orhttp://snowball.tartarus.org).
+19.5.2 Orthographic Variation and Spelling Errors
+Thestandardizationofspellingwasmainlythefruitofthenineteenthcentury.Workingwithdocumentswrittenpreviously,oneencountersdiﬀerentspellingsforagiventermorpropername(e.g.,Shakespeare’snameappearsas“Shakper,”“Shakspe,”“Shaksper,”“Shakspere,”or“Shakspeare”inhisownworks).
+The spelling problem can be domain-speciﬁc. In the biomedical literature, it is known that several
+orthographic variants (Yu and Agichtein, 2003) can be found to represent a given name, generallyintroduced for a variety of reasons. Firstly, there are of course typographic errors and misspellings(performance errors as in “retreival” and “retrieval” or competence errors as in “ecstasy,” “extasy,” or“ecstacy”). Secondly, punctuation and tokenization may produce variants, mainly due to the lack of anamingconvention(e.g.,“Nurr77,”“Nurr-77,”or“Nurr77”).Thirdly,regionalvariationsalsointroducevariants (e.g., the diﬀerence between British and American English for “colour” and “color” or “grey”or “gray”). Fourthly, the transliteration of foreign names produces some diﬀerences (e.g., “Crohn” and“Krohn”or“Creutzfeld-Jakob”and“Creutzfeldt-Jacob”).
+Thestandardstrategytoreducethenegativeimpactcausedbyspellingerrorsororthographicvariation
+istorelatesimilar(howevernotidentical)formsinonewayoranother.Twomainstrategiescanbeusedhere: (a) compute an edit-distance between diﬀerent forms (e.g., present in a dynamic dictionary) andnormalizethevariantswithaparticularform,(b)adoptan n-gramindexingstrategy( nistypicallysetto
+ﬁveacrossarangeofstudies).The n-grammethodhastheadvantageofbeingfast(ﬁltershavetobeusedto
+avoidcomparingunrelatedformsintheﬁrstapproach).Moreover,thismethoddoesnotrequireanypriorlinguisticknowledgeandisrobusttotypographicalerrors,bothinthesubmittedqueriesanddocumentsretrieved(McNameeandMayﬁeld,2004).Forinstance,theterm“alzheimer”wouldbedecomposed,withanoverlappingﬁve-gramapproach,as:“alzhe,”“lzhei,”“zheim,”“heime,”and“eimer.”
+19.5.3 Syntax
+Most IR systems index documents on the basis of the simple words they contain. However, there havebeen many attempts to make use of more complex index terms, comprising several terms, in order toget a more precise description of the content of documents. One of the ﬁrst attempts, referred to asadjacentpairs (e.g.,describedinSaltonetal.,1975),consideredcomplextermsmadeupoftwoadjacent
+content words. Even though simple, this approach is appropriate e.g., for the English language, as itallows one to capture terminological elements consisting of Adjective Noun orNoun Noun sequences
+(andtheircombination).Forotherlanguages,suchastheonesbasedonacompositionofRomancetype,
+
+478 HandbookofNaturalLanguageProcessing
+i.e., in which compounds are formed through prepositions, simpleregular expressions canbe used overpart-of-speechtagstoidentifyterminologicalelementsandaddthemtotheindexterms.
+More generally, a syntactic analyzer can be used to identify long-distance dependencies between
+words, so as to improve the indexing of documents. The ﬁrst works in this direction were based on“traditional” grammars, in which a complete analysis/representation of a sentence or a phrase wassearched for. (Fagan, 1989) investigates, for example, the impact of a syntactic parser for noun phraseson IR performance. However, the lack of large-coverage grammars, and the diﬃculty of obtainingunambiguousandcorrectparsesformanysentenceseﬀectivelyputastoptothistypeofresearchatthattime.
+Advances in shallow (or light) parsing in the mid-1990s led to a resurgence of this type of work, as
+such parsers were partly deﬁned to be general and robust. Hull et al. (1997) proposes, for example, touse a shallow parser to identify relations within and between complex noun and verb phrases. Pairs ofterms thus extracted (as Subject Verb pairs orAdjective Noun pairs) are then added to simple words
+to provide a richer index of documents. Experiments conducted on the vector-space model showed aslightimprovementontheTREC-5collection.SimilarexperimentsconductedonFrenchcanbefoundinGaussier et al. (2000). More recently, Gao et al. (2004) proposed an extension of the language modelingapproach to IR that can take into account the syntactic dependencies provided by a probabilistic parserdeployedonthequeriedcollection.
+One of the major problems with the use of syntactic information is that the improvements in IR
+performancehavebeenlimited,andhighlydependentonthequeriedcollection.Complextermsacquiredthrough syntactic analysis can be seen as additional information that can help reﬁne query results andthus lead to an increase in the precision at the top of the list of retrieved documents. However, in manycases,havingconstituentsofacompoundtakenindependentlyofeachotherorasawholedoesnotchangetheretrievalresultssubstantially.Forexample,adocumentindexedwiththetwoterms information and
+retrievalis very likely to deal with information retrieval , so that the addition of this last compound does
+notreallyaddanynewinformation:alldocumentscontainingboth information andretrievalwillalmost
+certainlyalsobeindexedby informationretrieval afterasyntacticanalysisphase,andtherankingwillnot
+change.
+In essence, syntactic analysis provides additional indexing dimensions, but does not address the
+problem of the vocabulary mismatch between queries and documents. A direct way to address thisproblemistoresorttoasemanticanalysisinordertoreplaceindextermswithconceptsandperformthematchingbetweenqueriesanddocumentsatamoreabstractlevel.
+19.5.4 Semantics
+In the absence of robust systems providing a complete semantic analysis of sentences, most work in IRandsemanticshavefocusedonlexicalsemantics,andthepossibilitytoreplacestandardindextermswithconceptsorwordsenses.Whilesomestudieshaveshownthatwordsensedisambiguationprocedurescanbebeneﬁcialinsomecases(Sanderson,1994;SchützeandPedersen,1995),themajorityhavetriedtorelyon existing semantic resources in order to index both documents and queries at the concept level. Suchworkshaveusedexistingsemanticresources,eithergenericones,asVoorhees(1993),orspecializedonesforspeciﬁccollections(e.g.,UMLS—seebelow).
+The usefulness of concept indexing in speciﬁc domains has been shown in several studies, mainly in
+the medical domain for which large-coverage thesauri and semantic networks exist. For example, thebest-performing systems on text in the ImageCLEFmed task of CLEF (Maisonnasse et al., 2008; Lacosteet al., 2007) use conceptual indexing methods based on vector-space models or LMs. In the TRECgenomics track, Zhou et al. (2007) used the MeSH (Medical Subject Headings) thesaurus and Entrez
+databases to select terms from medical publications. Terms in documents and queries were expandedwiththeirvariantsfound intheseresourcestoachievebetterindexing. Theyfound thatthisstrategyledtoasigniﬁcantimprovementoverstandardindexingmethods.
+
+InformationRetrieval 479
+Other researchers have tried to go beyond the use of concepts by exploiting relations between them.
+Vintar et al. (2003) evaluates the usefulness of UMLS concepts and semantic relations in medical IR.They ﬁrst extract concepts and relations from documents and queries. To select relations in a sentence,they rely on two assumptions: (1) interesting relations occur between interesting concepts; (2) relationsare expressed by typical lexical markers such as verbs. However, their experiments with a vector-spacemodelshowthatusingbothconceptsandrelationslowertheperformanceobtainedwithconceptsalone.AsimilarlineofdevelopmenthasbeentakenonthebasisofthelanguagemodelingapproachtoIR.ThelanguagemodelingapproachtoIRwasﬁrstproposedinPonteandCroft(1998),andextendedinHiemstra(2000) (see Section 19.3.3). Even though smoothed unigram models have yielded good performance inIR,severalstudieshaveinvestigatedtheuseofmoreadvancedrepresentations.Studieslike(e.g.,Srikanthand Srikanth (2000) or (Song and Croft, 1999)) proposed the combination of unigram models withbigram models. Others studies, e.g., Lee et al. (2006) or Gao et al. (2004), have extended the model todealwithsyntacticdependencies.Morerecently,Maisonnasseetal.(2008)andMaisonnasseetal.(2007)haveproposedageneralizationoftheseworksthatcandealwithsemanticnetworksaswell. Infact, anydirectedacyclicgraphcanbeusedtorepresentdocumentsandqueries.
+Thislatterapproachwasappliedtothemedicaldomain,wheredocumentsareindexedattheconcept
+level with UMLS, and where relations between concepts are added by checking whether two conceptsco-occurringinthesamesentencearepresentinthe SemanticNetwork associatedwithUMLS.Theresults
+showthatconceptindexingyieldsasigniﬁcantimprovementoverstandardindexinginIRperformance.Theuse of semantic relations further improves the precision of the system, namely, at the top of the listofretrieveddocuments,eventhoughslightly.
+Whattheseresultsshowisthat,providedonehasathisorherdisposalsemanticresourcesadaptedto
+thecollection(asisUMLSforthemedicaldomain),thensigniﬁcantgainscanbeachievedwithsemanticindexing.
+19.5.5 Related Applications
+There are a number of applications that directly borrow models and methods from both IR and NLP.Adetailedpresentationoftheseapplicationsisbeyondthescopeofthischapter,andwewilljustmentionwhatwebelievearethemostimportantones.
+1. Textcategorizationisagoodexampleofanapplicationwhereresearchhasbeenconductedinthe
+two communities, IR and NLP (to which we should add the Machine Learning and Data Miningones). Text categorization aims at automatically assigning new documents to existing categories.Most approaches are currently based on machine learning, where already classiﬁed documentsare used to automatically learn a decision function. The way documents are represented directlyderivesfrom thevector-spacemodel (sometimeswithadditionalprocessingsteps, suchasnamedentityandtermextraction)andthediﬀerentweightingschemesofSection19.3.2.
+2. AsecondapplicationwheremethodsfrombothIRandNLPareusedisdocumentsummarization,
+whichaimsatproviding asummary, inafewsentences, ofa documentora documentcollection.Current approaches focus on extracting key sentences (sometimes parts of sentences) from thedocumentordocumentcollectionandondisplayingtheminanappropriateway.
+3. AthirdapplicationisBioNLP,whichfocusesontheprocessingoftextdocumentsinthebiological
+domain.Asforthemedicaldomain,thereexistseveralknowledgebasesinthebiologicaldomain,which can be used to get a more accurate representation of documents. However, the kind ofinformation searched for by biologists is complex, and one needs to deploy a whole range oftechnologiestobeabletomatchtheneedsofbiologists.
+Forexample,whentryingtoﬁndarticlesrelevanttoaninteractionbetweentwoproteins( BRCA1
+andp53on PubMed), simply searching for the two terms results in 733 abstracts of which a high
+proportion do not describe any relationship between the proteins. More precise queries, which
+
+480 HandbookofNaturalLanguageProcessing
+includeverbsdescribinginteractions,suchas‘interact’and‘regulate,’areoftenusedtosigniﬁcantlyreducethesearchspace.Unfortunatelytheinformationlossisunknownandtheretrievedabstractsstilldocumentotherrelationships,forexample,between E6andp53.
+∗Inthiscase,atightcoupling
+between the indexing engine, the search engine, and the natural language processing engine isneeded.InterestedreadersarereferredtoChapter25foradetailedpresentationofthemodelsandmethodsdeployedinthisdomain.
+4. The last application we would like to mention is Question/Answering, which aims at providing
+precise answers (as opposed to whole documents or paragraphs as is traditionally the case in IR)to questions. Most Question/Answering systems rely on a tightly coupled combination of IR andNLP techniques, leading to systems that integrate many of the existing technologies of these twodomains.Hereagain,wereferinterestedreaderstoChapter20foradetailedpresentationofsuchsystems.
+19.6 Conclusion
+As described in this chapter, the IR ﬁeld is an extensive applied NLP domain that is able to copesuccessfully with search and retrieval in the huge volume of information stored on the Web—users are,on average, able to ﬁnd what they are looking for. This success may however hide other challengingproblems. Commercial search engines want to know more about the users and their needs to have abetterknowledgeoftherealquestionbehindthesubmittedquery(whattheuserisreallylookingfor).Forexample, a user living in Canberra who submits the query “movie tonight” is not likely to be interestedinﬁlmsdisplayedinNewYorkCityorinWashingtonD.C.Informationaboutuserpreferences,e.g.,formusic, can also be exploited to re-rank retrieved items, e.g., by moving musical comedies to the top ofthe list. This information can play an important role in commercial advertising. From this perspective,thesearchsystemwilltrytocomplementitsanswerpagewithadvertisingbannersthatareappropriatetoboththeuserqueryandpreferences.
+ProposingnewIRmodels,suggestingnewimplementations,oraddingnewfunctionalitiestoexisting
+IR models is an important and active domain in IR. There are many collections that are diﬀerent fromthe Web. To a certain extent, commercial Web search engines provide only access to the surface Web:the deep Web is largely ignored (private collections, court decisions, patents, etc.). Within a given Website,orasiteinsideanenterprise,thesearchfunctionmustprovideaneﬀectiveaccesstotheinformationrequired(e.g.,inordertoallowcustomerstoﬁndwhattheywantorhaveeasyaccesstopaste-mails).
+Campaignsinvolvingthedesign,implementation,andevaluationofIRsystemsfordiﬀerentlanguages,
+includingbothEuropean(CLEF),andpopularAsian(NTCIR)languageshavealreadybeenrunningforafewyears.Recently,theFIREevaluationforumhasbeenlaunchedtostudyIRspecialtiesrelatedtothelanguagesbelongingtotheIndiansubcontinent.Someoftheselanguagesseemtobemorediﬃcultfroman IR perspective, having, for example, a less strict spelling convention. The automatic segmentation ofChineseorJapanesesentences,theautomaticdecompoundingofGermanwords,ortheautomaticquerytranslationrepresentexamplesofNLPproblemsencounteredbymodernIRsystems.
+Finally, the relationship between the IR and NLP domains tends to be strong on one hand, and
+multifaceted on the other. As presented in this chapter, morphology, spelling error correction, syntax,andsemanticsareimportantaspectsforgeneralordomain-speciﬁcIRsystems.Moreover,IRcanalsobeoneofthestepsinacomplexprocessingchainoftextualcorpora.Inthisvein,wecanmentionthedesignandimplementation of Question/Answering systemsor theelaboration of opinionatedIRwithinwhichthe retrieved items are not related to a given topic but to personal opinions about the target. In suchcases,theretrievaloftextualitemsmustbethenpost-processedbycomplexNLPsystemtoextractshortandpreciseanswerstoaquestion,ortodeﬁnewhetherornottheretrieveditemcontainsanopinionon
+∗WethankD.HawkingandT.E.McIntoshwhoprovideduswiththisexample.
+
+InformationRetrieval 481
+the subject. As indicated in this chapter, the use of machine learning techniques is currently an activeresearchareaindevelopingIRsystemswithasigniﬁcantNLPcomponent.
+Acknowledgments
+The authors would like to thank the two reviewers of this chapter, namely, Ellen Voorhees (NIST,Washington, DC) and David Hawking (Funnelback, Canberra, Australia), for their helpful suggestionsandremarks.
+References
+Amati, G., van Rijsbergen, C.J.: Probabilistic models of information retrieval based on measuring the
+divergencefromrandomness. ACM—TransactionsonInformationSystems,20(2002)357–389.
+Anderson,J.D.,Pérez-Carballo,J.:Thenatureofindexing:Howhumansandmachinesanalyzemessages
+andtextsforretrieval. InformationProcessing&Management ,37(2001)231–254.
+Baeza-Yates,R.,Ribeiro-Neto,B.: ModernInformationRetrieval .Addison-Wesley,Reading,MA,1999.
+Borodin, A., Roberts, G.O., Rosenthal, J.S., Tsaparas, P.: Link analysis ranking: Algorithms, theory, and
+experiments. ACM—TransactionsonInternetTechnology ,5(2005)231–297.
+Braschler,M.,Ripplinger,B.:HoweﬀectiveisstemminganddecompoundingforGermantextretrieval?
+IRJournal ,7(2004)291–316.
+Brin, S., Page, L.: The anatomy of a large-scale hypertextual web search engine. In Proceedings of the
+WWW’7,Amsterdam,theNetherlands,pp.107–117,1998.
+Buckley,C.:WhycurrentIRenginesfail.In ProceedingsofACM-SIGIR’2004,Sheﬃeld,U.K.,pp.584–585,
+2004.
+Buckley,C.,Voorhees,E.M.:Retrievalsystemevaluation.InE.M.Voorhees,D.K.Harman(Eds): TREC.
+ExperimentandEvaluationinInformationRetrieval .MITPress,Cambridge,MA,pp.53–75,2005.
+Buckley,C.,Singhal,A.,Mitra,M.,Salton,G.:NewretrievalapproachesusingSMART.In Proceedingsof
+TREC-4,NISTpublication#500-236,Gaithersburg,MD,pp.25–48,1996.
+Can, F., Kocberber, S., Balcik, E., Kaynak, C., Ocalan, H.C.: Information retrieval on Turkish texts.
+JournaloftheAmericanSocietyforInformationScienceandTechnology ,59(2008)407–421.
+Cao,Y.,Xu,J.,Liu,T.-Y.,Li,H.,Huang,Y.,Hon,H.-W.:AdaptingrankingSVMtodocumentretrieval.
+InProceedingsofACM-SIGIR’2006,Seattle,WA,pp.186–193,2006.
+Cao, Z., Qin, T., Liu, T.-Y., Tsai, M.-F., Li, H. Learning to rank: From pairwise approach to listwise
+approach.In ProceedingsofICML’2007 ,Corvalis,OR,pp.129–136,2007.
+Cleverdon,C.W.:Optimizingconvenienton-lineaccesstobibliographicdatabases. InformationService&
+Use,4(1984)37–47.
+Clinchant,S.,Gaussier,E.:TheBNBdistributionfortextmodeling.In ProceedingsofECIR’2008,Glasgow,
+U.K.,pp.150–161,2008.
+Conover,W.J.: PracticalNonparametricStatistics .3rdedn.,JohnWiley&Sons,NewYork,1999.
+Cooper,W.S.:Isinterindexerconsistencyahobgoblin? AmericanDocumentation ,20(1969)268–278.
+Deerwester, S., Dumais, S.T., Furnas, G.W., Landauer, T.K., Harshman, R.: Indexing by latent semantic
+analysis.JournaloftheAmericanSocietyforInformationScience,41(1990)391–407.
+Dumais, S.T., Belkin, N.J.: TheTREC interactivetracks: Puttingtheuserinto search. InE.M.Voorhees,
+D.K. Harman (Eds): TREC. Experiment and Evaluation in Information Retrieval . MIT Press,
+Cambridge,MA,pp.123–152,2005.
+Efthimiadis, E.N.: Query expansion. Annual Review of Information Science and Technology , 31 (1996)
+121–187.
+
+482 HandbookofNaturalLanguageProcessing
+Fagan, J.L.: The eﬀectiveness of a nonsyntactic approach to automatic phrase indexing for document
+retrieval. JournaloftheAmericanSocietyforInformationScience,40(1989)115–132.
+Fox,C.:Astoplistforgeneraltext. ACM—SIGIRForum,24(1989)19–21.
+Furnas, G., Landauer, T.K., Gomez, L.M., Dumais, S.T.: The vocabulary problem in human-system
+communication. CommunicationsoftheACM ,30(1987)964–971.
+Gal, A., Lapalme, G., Saint-Dizier, P., Somers, H.: Prolog for Natural Language Processing . Addsion-
+Wesley,Reading,MA,1991.
+Gao,J.,Nie,J.-Y.,Wu,G.,Cao,G.:Dependencelanguagemodelforinformationretrieval.In Proceedings
+ofACM-SIGIR’2004,Sheﬃeld,U.K.,pp.170–177,2004.
+Garﬁeld, E.: Citation Indexing: Its Theory and Application in Science, Technology and Humanities .I S I
+Press,Philadelphia,PA,1983.
+Gaussier, E., Grefenstette, G., Hull, D., Roux, C.: Recherche d’information en français et traitement
+automatiquedeslangues. TraitementAutomatiquedesLangues(TAL),41,473–493,2000.
+Gonzalo, J., Oard, D.W.: The CLEF 2002 interactive track. In C. Peters, M. Braschler, J. Gonzalo,
+M.Kluck, (Eds): Advances in Cross-Language Information Retrieval . LNCS 2785. Springer-Verlag,
+Berlin,Germany,pp.372–382,2003.
+Harter,S.P.:Aprobabilisticapproachtoautomatickeywordindexing. JournaloftheAmericanSocietyfor
+InformationScience,26(1975)197–206.
+Hawking,D.:OverviewoftheTREC-9webtrack.In ProceedingsofTREC-9 ,NISTPublication#500-249,
+Gaithersburg,MD,pp.87–102,2001.
+Hawking,D.,Robertson,S.:Oncollectionsizeandretreivaleﬀectiveness. IRJournal ,6(2003)99–150.
+Hiemstra, D.: Using language models for information retrieval. PhD thesis, University of Twente, the
+Netherlands,2000.
+Hull,D.:Stemmingalgorithms—Acasestudyfordetailedevaluation. JournaloftheAmericanSocietyfor
+InformationScience,47(1996)70–84.
+Hull, D.A., Grefenstette, G., Schültze, B.M., Gaussier, E., Schütze, H., Pedersen, J.O.: Xerox TREC-5
+sitereport:Routing,ﬁltering,NLP,andSpanishtrack.In ProceedingsofTREC-5 ,NISTpublication
+500-238,Gaithersburg,MD,pp.167–180,1997.
+Järvelin,K.,Kekäläinen,J.:Cumulatedgain-basedevaluationofIRtechniques. TransactiononInformation
+Systems,20(2002)422–446.
+Joachims, T., Granka, L., Pan, B., Hembrooke, H., Gay, G.: Evaluatingtheaccuracyofimplicitfeedback
+from clicksandquery reformulations inweb search. ACM—Transactions on Information Systems,
+25(2007)1–26.
+Kessler, M.M.: Bibliographic coupling between scientiﬁc papers. American Documentation , 14 (1963)
+10–25.
+Kleinberg,J.:Authoritativesourcesinahyperlinkedenvironment. JournaloftheACM,46(1999)604–632.
+Kraaij,W., Westerveld,T.,Hiemstra,D.:Theimportanceofpriorprobabilitiesforentrypagesearch.In
+ProceedingsofACM-SIGIR’2002,Tempere,Finland,pp.27–34,2002.
+Krovetz,R.,Croft,B.W.:Lexicalambiguityandinformationretrieval. ACM—TransactionsonInformation
+Systems,10(1992)115–141.
+Kwok, K.L., Grunﬁeld, L., Sun, H.L., Deng, P.: TREC2004 robust track experiments using PIRCS.
+InProceedingsofTREC2004,NISTpublication#500-261,Gaithersburg,MD,2005.
+Lacoste, C., Chevallet, J.P., Lim, J.-H., Wei, X., Raccoceanu, D., Le, T.H.D., Teodorescu, R.,
+Vuillenemot,N.: Inter-media concept-based medical image indexing and retrieval with UMLSat IPAL. In C. Peters, P. Clough, F.C. Gey, J. Karlgren, B. Magnini, D.W. Oard, M. de Rijke, M.Stempfhuber(Eds): EvaluationofMultilingualandMulti-modalInformationRetrieval.LNCS 4730.
+Springer-Verlag,Berlin,Germany,pp.694–701,2007.
+Lee, C., Lee, G.G., Jang, M.G.: Dependency structure applied to language modeling for information
+retrieval. ETRIJournal,28(2006)337–346.
+
+InformationRetrieval 483
+Lovins, J.B.: Development of a stemming algorithm. Mechanical Translation and Computational
+Linguistics ,11(1968)22–31.
+Maisonnasse,L.,Gaussier,E.,Chevallet,J.P.:Revisitingthedependencelanguagemodelforinformation
+retrieval.In ProceedingsofACM-SIGIR’2007,Amsterdam,theNetherlands,pp.695–696,2007.
+Maisonnasse,L.,Gaussier,E.,Chevallet,J.P.:Multiplyingconceptsourcesforgraphmodeling.InC.Peters,
+V. Jijkoun, T. Mandl, H. Müller, D.W. Oard, A. Peñas, V. Petras, D. Santos, (Eds): Advances in
+MultilingualandMultimodalInformationRetrieval.LNCS 5152.Springer-Verlag,Berlin,Germany,
+pp.585–592,2008.
+Manning, C.D., Raghavan, P., Schütze, H.: Introduction to Information Retrieval . Cambridge University
+Press,Cambridge,U.K.,2008.
+McNamee, P., Mayﬁeld, J.: Character n-gram tokenization for European language text retrieval. IR
+Journal,7(2004)73–97.
+Nallapati, R.: Discriminative models for information retrieval. In Proceedings of ACM-SIGIR’2004,
+Sheﬃeld,U.K.,pp.64–71,2004.
+Peat, H.J., Willett, P.: The limitations of term co-occurrence data for query expansion in document
+retrievalsystems. JournaloftheAmericanSocietyforInformationScience,42(1991)378–383.
+Peters, C., Jijkoun, V., Mandl, T., Müller, H., Oard, D.W., Peñas, A., Petras, V., Santos, D. (Eds):
+Advances in Multilingual and Multimodal Information Retrieval . LNCS 5152. Springer-Verlag,
+Berlin,Germany,2008.
+Ponte, J.M., Croft, W.B.: A language modeling approach to information retrieval. In Proceedings of
+ACM-SIGIR’98 ,Melbourne,VIC,pp.275–281,1998.
+Porter,M.F.:Analgorithmforsuﬃxstripping. Program,14(1980)130–137.
+Qiu, Y., Frei, H.P.: Concept based query expansion. In Proceedings of ACM-SIGIR’93, Pittsburgh, PA,
+pp.160–169,1993.
+Robertson,S.E.:TheprobabilityrankingprincipleinIR. JournalofDocumentation,38(1977)294–304.
+Robertson, S.E., Sparck Jones, K.: Relevance weighting of search terms. Journal of the American Society
+forInformationScience ,27(1976)129–146.
+Robertson, S.E., Walker, S., Beaulieu, M.: Experimentationasawayoflife: OkapiatTREC. Information
+Processing&Management ,36(2002)95–108.
+Rocchio, J.J.Jr.: Relevance feedback in information retrieval. In G. Salton (Ed): The SMART Retrieval
+System.Prentice-HallInc.,EnglewoodCliﬀs,NJ,pp.313–323,1971.
+Salton,G.(Ed): TheSMARTRetrievalSystem.ExperimentsinAutomaticDocumentProcessing.Prentice-
+Hall,EnglewoodCliﬀs,NJ,1971.
+Salton,G.,Buckley,C.:Termweightingapproachesinautomatictextretrieval. InformationProcessing&
+Management,24(1988)513–523.
+Salton, G., Yang, C.S., Yu, C.T.: A theory of term importance in automatic text analysis. Journal of the
+AmericanSocietyforInformationScience,26(1975)33–44.
+Sanderson,M.:Wordsensedisambiguationandinformationretrieval.In ProceedingsofACM-SIGIR’94,
+Dublin,Ireland,pp.142–151,1994.
+Savoy,J.:StemmingofFrenchwordsbasedongrammaticalcategory. JournaloftheAmericanSocietyfor
+InformationScience,44(1993)1–9.
+Savoy,J.:RankingschemesinhybridBooleansystems:Anewapproach. JournaloftheAmericanSociety
+forInformationScience ,48(1997)235–253.
+Savoy,J.:Statisticalinferenceinretrievaleﬀectivenessevaluation. InformationProcessing&Management ,
+33(1997)495–512.
+Savoy,J.:Combiningmultiplestrategiesforeﬀectivemonolingualandcross-lingualretrieval. IRJournal ,
+7(2004)121–148.
+Savoy,J.:ComparativestudyofmonolingualandmultilingualsearchmodelsforusewithAsianlanguages.
+ACM—TransactionsonAsianLanguagesInformationProcessing,4(2005)163–189.
+
+484 HandbookofNaturalLanguageProcessing
+Savoy, J.: Searching strategies for the Hungarian language. Information Processing & Management ,4 4
+(2008)310–324.
+Scholler, F., Shokouni, M., Billerbeck, B., Turpin, A.: Using clicks as implicit judgements: Expectations
+versusobservations.In ProceedingsofECIR’2008,Glasgow,U.K.,pp.28–39,2008.
+Schütze,H.,Pedersen,J.O.:Informationretrievalbasedonwordsenses.In Proceedingsofthe4thAnnual
+SymposiumonDocumentAnalysisandInformationRetrieval ,LasVegas,NV,pp.161–175,1995.
+Small, H.: Co-Citation in the scientiﬁc literature: A new measure of the relationship between two
+documents. JournaloftheAmericanSocietyforInformationScience,24(1973)265–269.
+Song, F., Croft, W.B.: A general language model for information retrieval. In Proceedings of ACM-
+CIKM’99,KensasCity,MI,pp.316–321,1999.
+SparckJones,K.:Astatisticalinterpretationoftermspeciﬁcityanditsapplicationinretrieval. Journalof
+Documentation,28(1972)11–21.
+Sproat,R.: MorphologyandComputation.MITPress,Cambridge,MA,1992.
+Srikanth, M., Srikanth, R.: Biterm language models for document retrieval. In Proceedings of ACM-
+SIGIR’2002 ,Tempere,Finland,pp.425–426,2000.
+Turtle, H., Croft, W.B.: Evaluation of an inference network-based retrieval model. ACM - Transactions
+onInformationSystems ,9(1991)187–222.
+vanRijsbergen,C.J.: InformationRetrieval .2ndedn.,Butterworths,London,U.K.,1979.
+Vintar, S., Buitelaar, P., Volk, M.: Semantic relations in concept-based cross-language medical infor-
+mation retrieval. In Proceedings of the ECML/PKDD Workshop on Adaptive Text Extraction and
+Mining(ATEM),Catvat–Dubrovnik,Croatia,2003.
+Vogt,C.C.,Cottrell,G.W.:Fusionviaalinearcombinationofscores. IRJournal ,1(1999)151–173.
+Voorhees, E.M.: Using WordNetTMto disambiguate word senses for text retrieval. In Proceedings of
+ACM-SIGIR’93 ,Pittsburgh,PA,pp.171–180,1993.
+Voorhees,E.M.:TheTREC2005robusttrack. ACMSIGIRForum ,40(2006)41–48.
+Voorhees, E.M., Garofolo, J.S.: Retrieving noisy text. In E.M. Voorhees, D.K. Harman (Eds): TREC.
+Experiment and Evaluation in Information Retrieval . MIT Press, Cambridge, MA, pp. 183–198,
+2005.
+Voorhees, E.M., Harman, D.K. (Eds): TREC. Experiment and Evaluation in Information Retrieval .M I T
+Press,Cambridge,MA,2005.
+Wolfram, D., Spink, A., Jansen, B.J., Saracevic, T.: Voxpopuli: Thepublicsearchingof theweb. Journal
+oftheAmericanSocietyforInformationScienceandTechnology ,52(2001)1073–1074.
+Wong, S.K.M., Ziarko, W., Raghavan, V.V.: On modelling of information retrieval concepts in vector
+spaces.ACM—TransactionsonDatabaseSystems,12(1987)723–730.
+Xu, J., Croft, B.W.: Corpus-based stemming using cooccurrence of word variants. ACM—Transactions
+onInformationSystems ,16(1998)61–81.
+Yu, H., Agichtein, E.: Extracting synonymous gene and protein terms from biological literature.
+Bioinformatics ,19(2003)i340–i349.
+Zhai,C.,Laﬀerty,J.:Astudyofsmoothingmethodsforlanguagemodelsappliedtoinformationretrieval.
+ACM—TransactionsonInformationSystems,22(2004)179–214.
+Zhai,C.,Laﬀerty,J.:Ariskminimizationframeworkforinformationretrieval. InformationProcessing&
+Management,42(2006)31–55.
+Zhou, W., Yu, C., Smalheiser, N., Torvik, V., Hong, J.: Knowledge-intensive conceptual retrieval and
+passage extraction of biomedical literature. In Proceedings of ACM-SIGIR’2007,A m s t e r d a m ,t h e
+Netherlands,pp.655–662,2007.
+Zobel,J.,Moﬀat,A.:Invertedﬁlefortextsearchengines. ACMComputingSurveys,38(2006)1–56.
+Zunde,P.,Dexter,M.E.:Indexingconsistencyandquality. AmericanDocumentation ,20(1969)259–267.
+

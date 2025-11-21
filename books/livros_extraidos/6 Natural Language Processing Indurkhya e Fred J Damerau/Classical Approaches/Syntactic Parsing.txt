@@ -1,0 +1,1186 @@
+4
+Syntactic Parsing
+Peter Ljunglöf
+UniversityofGothenburg
+Mats Wirén
+StockholmUniversity4.1 Introduction ........................................................... 594.2 Background............................................................61
+Context-FreeGrammars •ExampleGrammar •SyntaxTrees •Other
+GrammarFormalisms •BasicConceptsinParsing
+4.3 TheCocke–Kasami–YoungerAlgorithm...........................65
+HandlingUnaryRules •ExampleSession •HandlingLongRight-Hand
+Sides
+4.4 ParsingasDeduction .................................................67
+DeductionSystems •TheCKYAlgorithm •ChartParsing •Bottom-Up
+Left-CornerParsing •Top-DownEarley-StyleParsing •ExampleSession •
+DynamicFiltering
+4.5 ImplementingDeductiveParsing ................................... 72
+Agenda-DrivenChartParsing •StoringandRetrievingParseResults
+4.6 LRParsing..............................................................73
+TheLR(0)Table •DeterministicLRParsing •GeneralizedLRParsing •
+OptimizedGLRParsing
+4.7 Constraint-BasedGrammars ........................................77
+Overview •Uniﬁcation •TabularParsingwithUniﬁcation
+4.8 IssuesinParsing.......................................................79
+Robustness •Disambiguation •Eﬃciency
+4.9 HistoricalNotesandOutlook........................................83Acknowledgments ...........................................................84References.....................................................................84
+4.1 Introduction
+This chapter presents basic techniques for grammar-driven natural language parsing, that is, analyzinga string of words (typically a sentence) to determine its structural description according to a formalgrammar.Inmostcircumstances,thisisnotagoalinitselfbutratheranintermediarystepforthepurposeof further processing, such as the assignment of a meaning to the sentence. To this end, the desiredoutput of grammar-driven parsing is typically a hierarchical, syntactic structure suitable for semanticinterpretation(thetopicofChapter5).Thestringofwordsconstitutingtheinputwillusuallyhavebeenprocessedinseparatephasesoftokenization(Chapter2)andlexicalanalysis(Chapter3),whichishencenotpartofparsingproper.
+Togetagraspofthefundamentalproblemsdiscussedhere,itisinstructivetoconsiderthewaysinwhich
+parsers for natural languages diﬀer from parsers for computer languages (for a related discussion, seeSteedman 1983, Karttunen and Zwicky 1985). One such diﬀerence concerns the power of the grammarformalisms used—the generative capacity. Computer languages are usually designed so as to permit
+encoding by unambiguous grammars and parsing in linear time of the length of the input. To this end,
+59
+
+60 HandbookofNaturalLanguageProcessing
+carefully restricted subclasses of context-free grammar (CFG) are used, with the syntactic speciﬁcationof ALGOL 60 (Backus et al. 1963) as a historical exemplar. In contrast, natural languages are typicallytaken to require more powerful devices, as ﬁrst argued by Chomsky (1956).
+∗One of the strongest cases
+forexpressivepowerhasbeentheoccurrenceoflong-distancedependencies,asinEnglish wh-questions:
+Whodidyousellthecarto__? (4.1)
+Whodoyouthinkthatyousoldthecarto__? (4.2)
+Whodoyouthinkthathesuspectsthatyousoldthecarto__? (4.3)
+In (4.1) through (4.3) it is held that the noun phrase “who” is displaced from its canonical position(indicated by “__”) as indirect object of “sell.” Since there is no clear limit as to how much materialmay be embedded between the two ends, as suggested by (4.2) and (4.3), linguists generally take thepositionthatthesedependenciesmightholdatunboundeddistance.Althoughphenomenalikethishaveattimesprovidedmotivationtomovefarbeyondcontext-freepower, severalformalismshavealsobeendeveloped with the intent of making minimal increases to expressive power (see Section 4.2.4). A keyreason for this is to try to retain eﬃcient parsability, that is, parsing in polynomial time of the lengthof the input. Additionally, for the purpose of determining the expressive power needed for linguisticformalisms, strong generative capacity (the structural descriptions assigned by the grammar) is usually
+consideredmorerelevantthan weakgenerativecapacity (thesetsofstringsgenerated);compareChomsky
+(1965,pp.60–61)andJoshi(1997).
+A second diﬀerence concerns the extreme structural ambiguity of natural language. At any point in a
+passthroughasentence,therewilltypicallybeseveralgrammarrulesthatmightapply.Aclassicexampleisthefollowing:
+Puttheblockintheboxonthetable (4.4)
+Assumingthat“put”subcategorizesfortwoobjects,therearetwopossibleanalysesof(4.4):
+Puttheblock[intheboxonthetable] (4.5)
+Put[theblockinthebox]onthetable (4.6)
+Ifweaddanotherprepositionalphrase(“inthekitchen”), wegetﬁveanalyses; ifweaddyetanother, weget14,andsoon.Otherexamplesofthesamephenomenonareconjunctsandnominalcompounding.AsdiscussedindetailbyChurchandPatil(1982),“every-wayambiguous”constructionsofthiskindhaveanumber of analyses that grows exponentially with the number of added components. Even though onlyoneofthemmaybeappropriateinagivencontext,thepurposeofageneralgrammarmightbetocapturewhat is possible in anycontext. As a result of this, even the process of just returning all the possible
+analyses would lead to a combinatorial explosion. Thus, much of the work on parsing—hence, much ofthefollowingexposition—dealssomehowortheotherwithwaysinwhichthepotentiallyenormoussearchspacescanbeeﬃcientlyhandled,andhowthemostappropriateanalysiscanbeselected( disambiguation).
+Thelatterproblemalsoleadsnaturallytoextensionsofgrammar-drivenparsingwithstatisticalinference,asdealtwithinChapter11.
+Athirddiﬀerencestemsfromthefactthatnaturallanguagedataareinherently noisy,bothbecauseof
+errors (under some conception of “error”) and because of the ever persisting incompleteness of lexiconand grammar relative to the unlimited number of possible utterances which constitute the language. Incontrast, a computer language has a complete syntax speciﬁcation, which means that by deﬁnition allcorrect input strings are parsable. In natural language parsing, it is notoriously diﬃcult to distinguish
+∗Forabackgroundonformalgrammarsandformal-languagetheory,seeHopcroftetal.(2006).
+
+SyntacticParsing 61
+whether a failure to produce a parsing result is due to an error in the input or to the lack of coverage ofthe grammar, also because a natural language by its nature has no precise delimitation. Thus, input notlicensed by the grammar may well be perfectly adequate according to native speakers of the language.Moreover, input containing errors may still carry useful bits of information that might be desirable totry to recover. Robustness refers to the ability of always producing someresult in response to such input
+(Menzel1995).
+Therestofthischapterisorganizedasfollows.Section4.2givesabackgroundongrammarformalisms
+andbasicconceptsinnaturallanguageparsing,andalsointroducesasmallCFGthatisusedinexamplesthroughout. Section 4.3 presents a basic tabular algorithm for parsing with CFG, the Cocke–Kasami–Youngeralgorithm.Section4.4thendescribesthemainapproachestotabularparsinginanabstractway,in the form of “parsing as deduction,” again using CFG. Section 4.5 discusses some implementationalissues in relation to this abstract framework. Section 4.6 then goes on to describing LR parsing, and itsnondeterministic generalization GLR parsing. Section 4.7 introduces a simple form of constraint-basedgrammar and describes tabular parsing using this kind of grammar formalism. Section 4.8 discusses insomefurtherdepththethreemainchallengesinnaturallanguageparsingthathavebeentoucheduponinthisintroductorysection—robustness,disambiguation,andeﬃciency.Finally,Section4.9providessomebriefhistoricalnotesonparsingrelativetowherewestandtoday.
+4.2 Background
+Thissectionintroducesgrammarformalisms,primarilyCFGs,andbasicparsingconcepts,whichwillbeusedintherestofthischapter.
+4.2.1 Context-Free Grammars
+Ever since its introduction by Chomsky (1956), CFG has been the most inﬂuential grammar formalismfordescribinglanguagesyntax.ThisisnotbecauseCFGhasbeengenerallyadoptedassuchforlinguisticdescription, but rather because most grammar formalisms are derived from or can somehow be relatedtoCFG.Forthisreason,CFGisoftenusedasabaseformalismwhenparsingalgorithmsaredescribed.
+The standard way of deﬁning a CFG is as a tuple G=⟨/Sigma1,N,S,R⟩,w h e r e /Sigma1andNare disjoint ﬁnite
+setsofterminalandnonterminal symbols, respectively, and S∈Nisthestartsymbol . Thenonterminals
+arealsocalled categories ,andthesetV =N∪/Sigma1containsthesymbolsofthegrammar. Risaﬁnitesetof
+productionrules oftheform A→α,whereA∈Nisanonterminaland α∈V
+∗isasequenceofsymbols.
+Weusecapitalletters A,B,C,... fornonterminals,lower-caseletters s,t,w,... forterminalsymbols,
+anduppercase X,Y,Z,... forgeneralsymbols(elementsin V).Greekletters α,β,γ,... willbeusedfor
+sequencesofsymbols,andwewrite ϵfortheemptysequence.
+The rewriting relation ⇒is deﬁned by αBγ⇒αβγif and only if B→β.Aphraseis a sequence
+of terminals β∈/Sigma1∗such that A⇒ ··· ⇒ βfor some A∈N. Accordingly, the term phrase-
+structuregrammar issometimesusedforgrammarswithatleastcontext-freepower.Thesequenceofrule
+expansions is called a derivation ofβfromA.A(grammatical )sentenceis a phrase that can be derived
+fromthestartsymbol S.ThestringlanguageL (G)acceptedby Gisthesetofsentencesof G.
+Somealgorithmsonlyworkforparticular normalforms ofCFGs:
+•InSection4.3wewillusegrammarsin Chomskynormalform (CNF).AgrammarisinCNFwhen
+each rule is either (i) a unary terminal rule of the form A→w,o r(ii) a binary nonterminal rule
+oftheform A→BC. ItisalwayspossibletotransformagrammarintoCNFsuchthatitaccepts
+
+62 HandbookofNaturalLanguageProcessing
+S a|an|the
+NP old
+NBar man |men |ship |ships
+NBarDet
+Adj
+Noun
+Verb man |mans
+NBar
+VP
+VPNP
+Det
+Adj
+Noun
+Adj
+Verb
+VerbVP
+NBar
+Noun
+NP
+FIGURE4.1 Examplegrammar.
+thesamelanguage.∗However,thetransformationcanchangethestructureofthegrammarquite
+radically; e.g., if theoriginal grammar has nrules, thetransformed versionmayin theworst case
+haveO(n2)rules(Hopcroftetal.2006).
+•Wecanrelaxthisnormalformbyallowing( iii)unarynonterminalrulesoftheform A→B.The
+transformationtothisformismuchsimpler,andthetransformedgrammarisstructurallycloser;
+e.g.,thetransformedgrammarwillhaveonly O(n)rules.ThisrelaxedvariantofCNFisalsoused
+inSection4.3.
+•In Section 4.4 we relax the normal form even further, such that each rule is either ( i)au n a r y
+terminalruleoftheform A→w,or(ii)anonemptynonterminalruleoftheform A→B1···Bd
+(d>0).
+•InSection4.6,theonlyrestrictionisthattherulesarenonempty.
+Wewillnotdescribehowtransformationsarecarriedouthere, butrefertoanystandardtextbookon
+formallanguages,suchasHopcroftetal.(2006).
+4.2.2 Example Grammar
+Throughout this chapter we will make use of a single (toy) grammar in our running examples. The
+grammarisshowninFigure4.1,andisonCNFrelaxedaccordingtotheﬁrstrelaxationconditionabove.
+Thus it only contains unary and binary nonterminal rules, and unary terminal rules. The right-hand
+sides of the terminal rules correspond to lexical items , whereas the left-hand sides are preterminal (or
+part-of-speech ) symbols. In practice, lexical analysis is often carried out in a phase distinct from parsing
+(asdescribedinChapter3);thepreterminalsthentaketheroleofterminalsduringparsing.Theexample
+grammarislexicallyambiguous,sincetheword“man”canbeanounaswellasaverb.Hence,the garden
+pathsentence “the old man a ship,” as well as the more intuitive “the old men man a ship,” can be
+S
+NP
+Det
+theNBar
+Adj
+oldVP
+Verb
+manNP
+Det
+aNBar
+Noun
+ship
+FIGURE 4.2 Syntax tree of the
+sentence“theoldmanaship.”recognizedusingthisgrammar.
+4.2.3 Syntax Trees
+Thestandardwaytorepresentthesyntacticstructureofagrammatical
+sentenceisasa syntaxtree ,oraparsetree,whichisarepresentationof
+allthestepsinthederivationofthesentencefromtherootnode.This
+meansthateachinternalnodeinthetreerepresentsanapplicationofa
+grammarrule.Thesyntaxtreeoftheexamplesentence“theoldmana
+ship”isshowninFigure4.2.Notethatthetreeisdrawnupside-down,
+withtherootofthetreeatthetopandtheleavesatthebottom.
+∗Formally, onlygrammarsthatdonotaccepttheemptystringcanbetransformedintoCNF,butfromapracticalpointof
+viewwecandisregardthis,aswearenotinterestedinemptystringlanguages.
+
+SyntacticParsing 63
+Anotherrepresentation,whichiscommonlyusedinrunningtext,isasa bracketed sentence,wherethe
+bracketsarelabeledwithnonterminals:
+[S[NP[Detthe][NBar[Adjold]]][ VP[Verbman][NP[Deta][NBar[Nounship]]]]]
+4.2.4 Other Grammar Formalisms
+In practice, pure CFG is not widely used for developing natural language grammars (though grammar-based language modeling in speech recognition is one such case; see Chapter 15). One reason for this isthat CFG is not expressive enough—it cannot describe all peculiarities of natural language, e.g., Swiss–GermanorDutchscrambling(Shieber1985a),orScandinavianlong-distancedependencies(KaplanandZaenen 1995). But the main practical reason is that it is diﬃcult to use; e.g., agreement, inﬂection, andothercommonphenomenaarecomplicatedtodescribeusingCFG.
+TheexamplegrammarinFigure4.1isovergenerating—itrecognizesboththenounphrases“amen”and
+“an man,” as well as the sentence “the men mans a ship.” However, to make the grammar syntacticallycorrect, we must duplicate the categories Noun,Det,a n d NPinto singular and plural versions. All
+grammar rules involving these categories must be duplicated too. And if the language is, e.g., German,then Detand Nounhave to be inﬂected on number (
+SING/PLUR), gender ( FEM/NEUTR/MASC )a n d ,c a s e
+(NOM/ACC/DAT/GEN ).
+Ever since the late 1970s, a number of extensions to CFGs have emerged, with diﬀerent properties.
+Some of these formalisms, for example, Regulus and Generalized Phrase-Structure Grammar (GPSG),are context-free-equivalent, meaning that grammars can be compiled to an equivalent CFG which thencanbeusedforparsing.Otherformalisms,suchasHead-drivenPhrase-StructureGrammar(HPSG)andLexical-FunctionalGrammar(LFG),havemoreexpressivepower,buttheirsimilaritieswithCFGcanstillbeexploitedwhendesigningtailor-madeparsingalgorithms.
+There are also several grammar formalisms (e.g., categorial grammar, TAG, dependency grammar)
+thathavenotbeendesignedasextensionsofCFG,buthaveotherpedigrees.However,mostofthemhavebeenshownlatertobeequivalenttoCFGorsomeCFGextension.Thisequivalencecanthenbeexploitedwhendesigningparsingalgorithmsfortheseformalisms.MildlyContext-SensitiveGrammarsAccording to Chomsky’s hierarchy of grammar formalisms (Chomsky 1959), the next major step aftercontext-free grammar is context-sensitive grammar . Unfortunately, this step is substantial; arguably,
+context-sensitivegrammarscanexpressanunnecessarilylargeclassoflanguages,withthedrawbackthatparsing is no longer polynomial in the length of the input. Joshi (1985) suggested the notion of mild
+context-sensitivity to capture the precise formal power needed for deﬁning natural languages. Roughly,
+a grammar formalism is regarded as mildly context-sensitive (MCS) if it can express some linguisticallymotivated non-context-free constructs (multiple agreement, crossed agreement, and duplication), andcanbeparsedinpolynomialtimewithrespecttothelengthoftheinput.
+Among the most restricted MCS formalisms are Tree-Adjoining Grammar (TAG; Joshi et al. 1975,
+Joshi and Schabes 1997) and Combinatory Categorial Grammar (CCG; Steedman 1985, 1986), whichare equivalent to each other (Vijay-Shanker and Weir 1994). Extending these formalisms we obtaina hierarchy of MCS grammar formalisms, with an upper bound in the form of Linear Context-FreeRewriting Systems (LCFRS; Vijay-Shanker et al. 1987), Multiple Context-Free Grammar (MCFG; Sekietal.1991),andRangeConcatenationGrammar(RCG;Boullier2004),amongothers.Constraint-BasedFormalismsAkeycharacteristicofconstraint-basedgrammarsistheuseoffeatureterms(setsofattribute–valuepairs)for thedescription of linguistic units, rather thanatomic categories as in CFG. Feature terms are partial(underspeciﬁed) in the sense that new information may be added as long as it is compatible with old
+
+64 HandbookofNaturalLanguageProcessing
+information.Regulus(Rayneretal.2006)andGPSG(Gazdaretal.1985)areexamplesofconstraint-basedformalisms that are context-free-equivalent, whereas HPSG (Pollard and Sag 1994) and LFG (Bresnan2001) are strict extensions of CFG. Not only CFG can be augmented with feature terms—constraint-basedvariantsof,e.g.,TAGanddependencygrammarsalsoexist.Constraint-basedgrammarsarefurtherdiscussedinSection4.7.ImmediateDominance/LinearPrecedenceWhen describing languages with a relatively free word order, such as Latin, Finnish, or Russian, it canbe fruitful to separate immediate dominance (ID; the parent–child relation) from linear precedence (LP;
+the linear order between the children) within phrases. The ﬁrst formalism to make use of the ID/LPdistinctionwasGPSG(Gazdaretal.1985),andithasalsobeenusedinHPSGandotherrecentgrammarformalisms.ThemainproblemwithID/LPformalismsisthatparsingcanbecomeveryexpensive.SomeworkhasthereforebeendonetodeviseID/LPformalizationsthatareeasiertoparse(NederhofandSatta2004a;DanielsandMeurers2004).HeadGrammarsSome linguistic theories make use of the notion of the syntactic headof a phrase; e.g., the head of a
+verb phrase could be argued to be the main verb, whereas the head of a noun phrase could be the mainnoun.Thesimplestheadgrammarformalismisobtainedbymarkingoneright-handsidesymbolineachcontext-freerule;moreadvancedformalismsincludeHPSG.Theheadinformationcan,e.g.,beusedfordrivingtheparserbytryingtoﬁndtheheadﬁrstandthenitsarguments(Kay1989).LexicalizedGrammarsThe nonterminals in a CFG do not depend on the lexical words at the surface level. This is a standardproblemfor PPattachment —whichnounphraseorverbphraseconstituentaspeciﬁcprepositionalphrase
+shouldbeattachedto.Forexample,consideringasentencebeginningwith“Iboughtabook...,”itisclearthatafollowingPP“...withmycreditcard”shouldbeattachedtotheverb“bought,”whereasthePP “...with an interesting title” should attach to the noun “book.” To be able to express such lexicalsyntacticpreferences,CFGsandotherformalismscanbelexicalizedindiﬀerentways(JoshiandSchabes1997,EisnerandSatta1999,Eisner2000).DependencyGrammarsIn contrast to constituent-based formalisms, dependency grammar lacks phrasal nodes; instead the
+structureconsistsoflexicalelementslinkedbybinarydependencyrelations(Tesnière1959,Nivre2006).A dependency structure is a directed acyclic graph between the words in the surface sentence, wherethe edges are labeled with syntactic functions (such as
+SUBJ, OBJ, MOD , etc.). Apart from this basic idea,
+the dependency grammar tradition constitutes a diverse family of diﬀerent formalisms that can imposediﬀerent constraints on the dependency relation (such as allowing or disallowing crossing edges), andincorporatediﬀerentextensions(suchasfeatureterms).Type-TheoreticalGrammarsSomeformalismsarebasedondependenttypetheoryutilizingtheCurry–Howardisomorphismbetweenpropositionsandtypes.TheseformalismsincludeALE(Carpenter1992),GrammaticalFramework(Ranta1994,2004,Ljunglöf2004),andAbstractCategorialGrammar(deGroote2001).
+4.2.5 Basic Concepts in Parsing
+Arecognizer isaprocedurethatdetermineswhetherornotaninputsentenceisgrammaticalaccordingto
+thegrammar(includingthelexicon).A parserisarecognizerthatproducesassociatedstructuralanalyses
+
+SyntacticParsing 65
+accordingtothegrammar(inourcase,parsetreesorfeatureterms).A robustparser attemptstoproduce
+usefuloutput,suchasapartialanalysis,eveniftheinputisnotcoveredbythegrammar(seeSection4.8.1).
+Wecanthinkofagrammarasinducingasearchspaceconsistingofasetofstatesrepresentingstages
+of successive grammar-rule rewritings and a set of transitions between these states. When analyzinga sentence, the parser (recognizer) must rewrite the grammar rules in some sequence. A sequence thatconnectsthestate S,thestringconsistingofjustthestartcategoryofthegrammar,andastateconsistingof
+exactlythestringofinputwords,iscalleda derivation.Eachstateinthesequencethenconsistsofastring
+overV
+∗a n di sc a l l e dasentential form .I fs u c has e q u e n c ee x i s t s ,t h es e n t e n c ei ss a i dt ob eg r a m m a t i c a l
+accordingtothegrammar.
+Parsers can be classiﬁed along several dimensions according to the ways in which they carry out
+derivations. One such dimension concerns rule invocation: In a top-down derivation, each sentential
+form is produced from its predecessor by replacing one nonterminal symbol Aby a string of terminal
+or nonterminal symbols X1···Xd,w h e r eA→X1···Xdis a grammar rule. Conversely, in a bottom-up
+derivation,eachsententialformisproducedbyreplacing X1···XdwithAgiventhesamegrammarrule,
+thussuccessivelyapplyingrulesinthereversedirection.
+Anotherdimensionconcernsthewayinwhichtheparserdealswithambiguity,inparticular,whether
+theprocessis deterministic ornondeterministic .Intheformercase,onlyasingle,irrevocablechoicemay
+be made when the parser is faced with local ambiguity. This choice is typically based on some form oflookaheadorsystematicpreference.
+A third dimension concerns whether parsing proceeds from left to right (strictly speaking front to
+back)throughtheinputorinsomeotherorder,forexample,inside-outfromtheright-hand-sideheads.
+4.3 The Cocke–Kasami–Younger Algorithm
+The Cocke–Kasami–Younger (CKY, sometimes written CYK) algorithm, ﬁrst described in the 1960s(Kasami 1965, Younger 1967), is one of the simplest context-free parsing algorithms. A reason for itssimplicityisthatitonlyworksforgrammarsinCNF.
+The CKY algorithm builds an upper triangular matrix
+T, where each cell Ti,j(0≤i<j≤n) is a set
+of nonterminals. The meaning of the statement A∈Ti,jis thatAspans the input words wi+1···wj,o r
+writtenmoreformally, A⇒∗wi+1···wj.
+CKYisapurelybottom-upalgorithmconsistingoftwoparts. Firstwebuildthelexicalcells Ti−1,ifor
+theinputword wibyapplyingthelexicalgrammarrules,thenthenonlexicalcells Ti,k(i<k−1)areﬁlled
+byapplyingthebinarygrammarrules:
+Ti−1,i={A|A→wi}
+Ti,k={
+A|A→BC,i<j<k,B∈Ti,j,C∈Tj,k}
+Thesentenceisrecognizedbythealgorithmif S∈T0,n,whereSisthestartsymbolofthegrammar.
+To make the algorithm less abstract, we note that all cells Ti,jandTj,k(i<j<k) must already be
+knownwhenbuildingthecell Ti,k.Thismeansthatwehavetobecarefulwhendesigningthe iandkloops,
+sothatsmallerspansarecalculatedbeforelargerspans.
+Onesolutionistostartbyloopingovertheendnode k,andthenloopoverthestartnode iinthereverse
+direction.Thepseudo-codeisasfollows:
+procedure CKY(T,w1···wn)
+Ti,j:=∅forall0≤i,j≤n
+fori:=1tondo
+foralllexicalrules A→wdo
+ifw=withenaddAtoTi−1,i
+
+66 HandbookofNaturalLanguageProcessing
+fork:=2tondo
+fori:=k−2downto0do
+forj:=i+1tok−1do
+forallbinaryrules A→BCdo
+ifB∈Ti,jandC∈Tj,kthenaddAtoTi,k
+ButtherearealsoseveralalternativepossibilitiesforhowtoencodetheloopsintheCKYalgorithm;e.g.,instead of letting the outer kloop range over end positions, we could equally well let it range over span
+lengths.Wehavetokeepinmind,however,thatsmallerspansmustbecalculatedbeforelargerspans.
+Asalreadymentioned,theCKYalgorithmcanonlyhandlegrammarsinCNF.Furthermore,converting
+agrammartoCNFisabitcomplicated,andcanmaketheresultinggrammarmuchlarger,asmentionedinSection4.2.1.InsteadwewillshowhowtomodifytheCKYalgorithmdirectlytohandleunarygrammarrulesandlongerright-handsides.
+4.3.1 Handling Unary Rules
+The CKY algorithm can only handle grammars with rules of the form A→wiandA→BC. Unfortu-
+natelymostpracticalgrammarsalsocontainlotsofunaryrulesoftheform A→B.Therearetwopossible
+waystosolvethisproblem.EitherwetransformthegrammarintoCNF,orwemodifytheCKYalgorithm.
+IfB∈Ti,kandthereisaunaryrule A→B,thenweshouldalsoadd AtoTi,k.Furthermore,theunary
+rulescanbeappliedafterthebinaryrules,sincebinaryrulesonlyapplytosmallerphrases.Unfortunately,we cannot simply loop over each unary rule A→Bto test ifB∈
+Ti,k. The reason for this is that we
+cannotpossiblyknowinwhichordertheunaryruleswillbeapplied,whichmeansthatwecannotknowin which order we have to select the unary rules A→B. Instead we need to add the reﬂexive, transitive
+closure
+UNARY-CLOSURE (B)={A|A⇒∗B}for eachB∈Ti,k. Since there are only a ﬁnite number of
+nonterminals, UNARY-CLOSURE ()canbeprecompiledfromthegrammarintoaneﬃcientlookuptable.
+N o w ,t h eo n l yt h i n gw eh a v et od oi st om a p UNARY-CLOSURE ()onto Ti,kwithin the kandiloops, and
+afterthejloop(aswellasonto Ti−1,iafterthelexicalruleshavebeenapplied).Theﬁnalpseudo-codefor
+theextendedCKYalgorithmisasfollows:
+procedure UNARY-CKY (T,w1···wn)
+Ti,j:=∅forall0≤i,j≤n
+fori:=1tondo
+foralllexicalrules A→wdo
+ifw=withenaddAtoTi−1,i
+forallB∈Ti−1,ido
+addUNARY-CLOSURE (B)toTi−1,i
+fork:=2tondo
+fori:=k−2downto0do
+forj:=i+1tok−1do
+forallbinaryrules A→BCdo
+ifB∈Ti,jandC∈Tj,kthenaddAtoTi,k
+forallB∈Ti,kdo
+addUNARY-CLOSURE (B)toTi,k
+4.3.2 Example Session
+TheﬁnalCKYmatrixafterparsingtheexamplesentence“theoldmanaship”isshowninFigure4.3.Inthe initial lexical pass, the cells in the ﬁrst diagonal are ﬁlled. For example, the cell
+T2,3is initialized to
+{Noun ,Verb},afterwhich UNARY-CLOSURE ()adds NBarandVPtoit.
+
+SyntacticParsing 67
+12345
+0 Det NP S
+1theAdj, NBar NBar
+2oldVP
+3manDet NP
+4aNoun , NBar
+shipNP, S
+Noun , Verb ,
+NBar , VP
+FIGURE4.3 CKYmatrixafterparsingthesentence“theoldmanaship.”
+Thenothercellsareﬁlledfromlefttoright,bottomup.Forexample,whenﬁllingthecell T0,3,wehave
+already ﬁlled T0,2andT1,3. Now, since Det∈T0,1andNBar∈T1,3,a n dt h e r ei sar u l e NP→Det NBar,
+NPisaddedto T0,3.Andsince NP∈T0,2,VP∈T2,3,and S→NP VP,thealgorithmadds StoT0,3.
+4.3.3 Handling Long Right-Hand Sides
+To handle longer right-hand sides (RHS), thereare several possibilities. A straightforward solution is to
+add a new inner loop for each RHS length. This means that, e.g., ternary rules will be handled by the
+followingloopinsidethe k,i,andjnestedloops:
+fork,i,j:=...do
+forallbinaryrules... do...
+forj′:=j+1tok−1do
+forallternaryrules A→BCDdo
+ifB∈Ti,jandC∈Tj,j′andD∈Tj′,kthen
+addAtoTi,k
+Tohandleevenlongerrulesweneedtoaddnewinnerloopsinsidethe j′loop.Andforeachnestedloop,
+the parsing time increases. In fact, the worst case complexity is O(nd+1),w h e r edis the length of the
+longestright-handside.ThisisdiscussedfurtherinSection4.8.3.
+A more general solution is to replace each long rule A→B1···Bd(d>2) by the d−1b i n a r yr u l e s
+A→B1X2,X2→B2X3,...,Xd−1→Bd−1Bd,w h e r ee a c h Xi=⟨Bi···Bn⟩is a new nonterminal.
+After this transformation the grammar only contains unary and binary rules, which can be handled by
+theextendedCKYalgorithm.
+Another variant of the binary transform is to do the RHS transformations implicitly during parsing.
+Thisgivesrisetothewell-knownchartparsingalgorithmsthatweintroduceinSection4.4.
+4.4 Parsing as Deduction
+Inthissectionwewilluseageneralframeworkfordescribingparsingalgorithmsinahigh-levelmanner.
+The framework is called deductive parsing , and was introduced by Pereira and Warren (1983); a related
+framework introduced later was the parsing schemata of Sikkel (1998). Parsing in this sense can be seen
+as “a deductive process in which rules of inference are used to derive statements about the grammatical
+statusofstringsfromothersuchstatements”(Shieberetal.1995).
+
+68 HandbookofNaturalLanguageProcessing
+4.4.1 Deduction Systems
+The statements in a deduction system are called items, and are represented by formulae in some formal
+language. The inference rules and axioms are written in natural deduction style and can have sideconditions mentioning, e.g., grammar rules. The inference rules and axioms are rule schemata; in otherwords,theycontainmetavariablestobeinstantiatedbyappropriatetermswhentheruleisinvoked.Thesetofitemsbuiltinthedeductiveprocessissometimescalleda chart.
+Thegeneralformofaninferenceruleis
+e
+1···en
+eφ
+wheree,e1,...,enareitemsand φisasidecondition.Iftherearenoantecedents(i.e., n=0),theruleis
+calledan axiom.Themeaningofaninferenceruleisthatwheneverwehavederivedtheitems e1,...,en,
+and the condition φholds, we can also derive the item e. The inference rules are applied until no more
+itemscanbeadded.Itdoesnotmakeanydiﬀerenceinwhichordertherulesareapplied—theﬁnalchartis the reﬂexive, transitive closure of the inference rules. However, one important constraint is that thesystemisterminating,whichisthecaseifthenumberofpossibleitemsisﬁnite.
+4.4.2 The CKY Algorithm
+As a ﬁrst example, we describe the extended CKY algorithm from Section 4.3.1 as a deduction system.Theitemsareoftheform [i,k:A],correspondingtoanonterminalsymbol Aspanningtheinputwords
+w
+i+1···wk.Thisisequivalenttothestatement A∈Ti,kinSection4.3.Weneedthreeinferencerules, of
+whichoneisanaxiom.Combine
+[
+i,j:B][
+j,k:C]
+[i,k:A]A→BC (4.7)
+Ifthereisa Bspanningtheinputpositions i−j,andaC spanning j−k,andthereisabinaryrule
+A→BC,weknowthatA willspantheinputpositions i−k.
+UnaryClosure
+[i,k:B]
+[i,k:A]A→B (4.8)
+If we have a Bspanning i−k,a n dt h e r ei sar u l e A→B, then we also know that there is an A
+spanning i−k.
+Scan
+[i−1,i:A]A→wi (4.9)
+Finallyweneedanaxiomaddinganitemforeachmatchinglexicalrule.
+Notethatwedonothavetosayanythingabouttheorderinwhichtheinferencerulesshouldbeapplied,aswasthecasewhenwepresentedtheCKYalgorithminSection4.3.
+4.4.3 Chart Parsing
+The CKY algorithm uses a bottom-up parsing strategy, which means that it starts by recognizing thelexical nonterminals, i.e., the nonterminals that occur as left-hand sides in unary terminal rules. Then
+
+SyntacticParsing 69
+the algorithm recognizes the parents of the lexical nonterminals, and so on until it reaches the startingsymbol.
+AdisadvantageofCKYisthatitonlyworksonrestrictedgrammars.GeneralCFGshavetobeconverted,
+which is not a diﬃcult problem, but can be awkward. The parse results: also have to be back-translatedintotheoriginalform.Becauseofthis,oneoftenimplementsmoregeneralparsingstrategiesinstead.
+Inthefollowingwegiveexamplesofsomewell-knownparsingalgorithmsforCFGs.Firstwegiveavery
+simple algorithm, and then two reﬁnements; Kilbury’s bottom-up algorithm (Leiss 1990), and Earley’stop-downalgorithm(Earley1970).Thealgorithmsareslightlymodiﬁedforpresentationalpurposes,buttheiressenceisstillthesame.Parse ItemsParse items are of the form[
+i,j:A→α
+•β]
+whereA→αβis a context-free rule, and 0 ≤i≤j≤n
+are positions in the input string. The meaning is that αhas been recognized spanning i−j; i.e.,α⇒∗
+wi+1···wj.I fβis empty, the item is called passive. Apart from the logical meaning, the item also states
+that it is searching for βto span the positions jandk(for some k). The goal of the parsing process is to
+deduceanitemrepresentingthatthestartingcategoryisfoundspanningthewholeinputstring;suchanitemcanbewritten [0,n:S→α
+•]inournotation.
+To simplify presentation, we will assume that all grammars are of the relaxed normal form presented
+in Section 4.2.1, where each rule is either lexical A→wor nonempty A→B1···Bd.T oe x t e n dt h e
+algorithmstocopewithgeneralgrammarsconstitutesnoseriousproblem.The Simplest Chart Parsing AlgorithmOur ﬁrst context-free chart parsing algorithm consists of three inference rules. The ﬁrst two, Combineand Scan, remain the same in all our chart parsing variants; while the third, Predict, is very simple andwill be improved upon later. The algorithm is also presented by Sikkel and Nijholt (1997), who call itbottom-upEarley parsing.
+Combine
+[
+i,j:A→α
+•Bβ][
+j,k:B→γ•]
+[i,k:A→αB•β](4.10)
+The basis for all chart parsing algorithms is the fundamental rule; saying that if there is an active
+itemlookingforacategory Bspanning i−j,andthereisapassiveitemfor Bspanning j−k,then
+thedotintheactiveitemcanbemovedforward,andthenewitemwillspanthepositions i−k.
+Scan
+[i−1,i:A→wi•]A→wi (4.11)
+ThisissimilartothescanningaxiomoftheCKYalgorithm.
+Predict
+[i,i:A→•β]A→β (4.12)
+Thisaxiom takescareof introducing activeitems; eachrule in thegrammar isadded asanactiveitemspanning i−iforanypossibleinputposition0 ≤i≤n.
+Themainproblemwiththisalgorithmisthatpredictionis“blind”;activeitemsareintroducedforeveryrule in the grammar, at all possible input positions. Only very few of these items will be used in later
+
+70 HandbookofNaturalLanguageProcessing
+inferences, which means that prediction infers a lot of useless items. The solution is to make predictionaninferenceruleinsteadofanaxiom,sothatanitemisonlypredictedifitispotentiallyusefulforalreadyexistingitems.
+Intherestofthissectionweintroducetwobasicpredictionstrategies, bottom-up andtop-down .
+4.4.4 Bottom-Up Left-Corner Parsing
+The basic idea with bottom-up parsing is that we predict a grammar rule only when its ﬁrst symbol hasalready been found. Kilbury’s variant of bottom-up parsing (Leiss 1990) moves the dot in the new itemforward one step. Since the ﬁrst symbol in the right-hand side is called the left corner, the algorithm issometimescalled bottom-upleft-cornerparsing (Sikkel1998).
+Bottom-UpPredict
+[i,k:B→γ
+•]
+[i,k:A→B•β]A→Bβ (4.13)
+Bottom-up prediction is like Combine for the ﬁrst symbol on the right-hand side in a rule. If wehave found a Bspanning i−k,a n dt h e r ei sar u l e A→Bβ, we can draw the conclusion that
+A→B
+•βwillspan i−k.
+Note that this algorithm does not work for grammars with ϵ-rules; there is no way an empty rule can
+be predicted. There are two possible ways ϵ-rules can be handled: (1) either convert the grammar to an
+equivalent ϵ-freegrammar;or(2)addextrainferencerulestohandle ϵ-rules.
+4.4.5 Top-Down Earley-Style Parsing
+Earley prediction (Earley 1970) works in a top-down fashion; meaning that we start by stating that wewanttoﬁndan Sstartinginposition0,andthenmovedownwardinthepresumptivesyntacticstructure
+untilwereachthelexicaltokens.Top-DownPredict
+[i,k:B→γ
+•Aα]
+[k,k:A→•β]A→β (4.14)
+Ifthereisanitemlookingforan Abeginninginposition k,andthereisagrammarrulefor A,we
+canaddthatruleasanemptyactiveitemstartingandendingin k.
+InitialPredict
+[0,0 :S→•β]S→β (4.15)
+Top-down prediction needs an active item to be triggered, so we need some way of starting theinference process. This is done by adding an active item for each rule of the starting category S,
+startingandendingin0.
+4.4.6 Example Session
+Theﬁnalchartsafterbottom-upandtop-downparsingoftheexamplesentence“theoldmanaship”areshowninFigures4.4and4.5.Thisisastandardwayofvisualizingachart,asagraphwheretheitemsaredrawn as edges between the input positions. In the ﬁgures, the dotted and grayed-out edges correspond
+
+SyntacticParsing 71
+0 the 1 old 2 man 3 a 4 ship 5Det Adj Noun ,VerbDet NounNP Det NBar NBar AdjNBar Adj Noun
+NBar NounVP VerbVP Verb NP
+NP Det NBarNBar NounNP Det NBarS NP VP NBar Adj Noun
+NP Det NBarNP Det NBarS NP VPS NP VP
+VP Verb NPS NP VP
+FIGURE4.4 Finalchartafterbottom-upparsingofthesentence“theoldmanaship.”Thedottededgesareinferred
+butuseless.
+0 the 1 old 2 man 3 a 4 ship 5
+S NP VP
+NP Det NBarNBar Adj Noun
+NBar Noun
+NBar AdjVP Verb
+VP Verb NPVP Verb
+VP Verb NP
+NP Det NBarNBar Adj Noun
+NBar Noun
+NBar AdjDet Adj Noun , VerbDet NounNP Det NBar NBar AdjNBar Adj Noun
+VP VerbVP Verb NP
+NP Det NBarNBar NounNP Det NBarS NP VPNBar Adj Noun
+NP Det NBarNP Det NBarS NP VPS NP VP
+VP Verb NPS NP VP
+FIGURE4.5 Finalchartaftertop-downparsingofthesentence“theoldmanaship.”Thedottededgesareinferred
+butuseless.
+to useless items, i.e., items that are not used in any derivation of the ﬁnal Sitem spanning the whole
+sentence.
+Thebottom-upchartcontainstheuselessitem [2,3 : NBar→Noun•],whichthetop-downchartdoes
+not contain. One the other hand, the top-down chart contains a lot of useless cyclic predictions. This
+suggests that both bottom-up and top-down parsing have their advantages and disadvantages, and that
+combiningthestrategiescouldbethewaytogo.Thisleadsusdirectlyintothenextsectionaboutdynamic
+ﬁltering.
+4.4.7 Dynamic Filtering
+Boththebottom-upandthetop-downalgorithmshavedisadvantages.Bottom-uppredictionhasnoidea
+of what the ﬁnal goal of parsing is, which means that it predicts items which will not be used in any
+derivation from the top node. Top-down prediction on the other hand never looks at the input words,
+whichmeansthatitpredictsitemsthatcanneverstartwiththenextinputword.
+Note that these useless items do not make the algorithms incorrect in any way; they only decrease
+parsing eﬃciency. There are several ways the basic algorithms can be optimized; the standard
+optimizationsarebyaddingtop-downand/orbottom-up dynamicﬁltering tothepredictionrules.
+
+72 HandbookofNaturalLanguageProcessing
+Bottom-upﬁltering adds a side condition stating that a prediction is only allowed if the resulting
+item can start with the next input token. For this we make use of a function FIRST()that returns
+thesetofterminalsthancanstartagivensymbolsequence.Theonlythingwehavetodoistoadda side condition w
+k∈FIRST(β)to top-down prediction (4.14), and bottom-up prediction (4.13),
+respectively.∗Possibledeﬁntionsofthefunction FIRST()canbefoundinstandardtextbooks(Aho
+etal.2006,Hopcroftetal.2006).
+Top-downﬁltering Inasimilarway,wecanaddconstraintsfortop-downﬁlteringofthebottom-up
+strategy.Thismeansthatweonlyhavetoaddaconstrainttobottom-upprediction(4.13)thatthereisanitemlookingfora C,whereC⇒
+∗Aδforsome δ.Thisleft-corner relationcanbeprecompiled
+fromthegrammar,andtheresultingparsingstrategyisoftencalledleft-cornerparsing(SikkelandNijholt1997,Moore2004).
+Furthermore, both bottom-up and top-down ﬁlterings can be added as side-conditions to bottom-upprediction (4.13). Further optimizations in this direction, such as introducing special predict items andrealizingtheparserasanincrementalalgorithm,arediscussedbyMoore(2004).
+4.5 Implementing Deductive Parsing
+Thissectionbrieﬂydiscusseshowtoimplementthedeductiveparsingframework,includinghowtostoreandretrieveparseresults.
+4.5.1 Agenda-Driven Chart Parsing
+A deduction engine should infer all consequences of theinference rules. As mentioned above, theset ofallresultingitemsiscalleda chart,andcanbecalculatedusingaforward-chainingdeductionprocedure.
+Wheneveranitemisaddedtothechart, itsconsequencesarecalculatedandadded. However, sinceoneitemcangiverisetoseveralnewitems,weneedtokeeptrackoftheitemsthatarewaitingtobeprocessed.Newitemsarethusaddedtoaseparateagendathatisusedforbookkeeping.
+The idea is as follows: First we add all possible consequences of the axioms to the agenda. Then we
+removeoneitem efromtheagenda,addittothechart,andaddallpossibleinferencesthataretriggedby
+etotheagenda.Thissecondstepisrepeateduntiltheagendaisempty.
+Regarding eﬃciency, the bottleneck of the algorithm is searching the chart for items matching the
+inference rule. Because of this, the chart needs to be indexed for eﬃcient antecedent lookup. Exactlywhat indexes are needed depend on the inference rules and will not be discussed here. For a thoroughdiscussionaboutimplementationissues,seeShieberetal.(1995).
+4.5.2 Storing and Retrieving Parse Results
+Thesetofsyntacticanalyses(or parsetrees)foragivenstringiscalleda parseforest.Thesizeofthissetcan
+beexponentialinthelengthofthestring,asmentionedintheintroductionsection.AclassicalexampleisagrammarforPPattachmentcontainingtherules NP→NP PPandPP→Prep NP.Insomepathological
+cases(i.e.,whenthegrammariscyclic),theremightevenbeaninﬁnitenumberoftrees.Thepolynomialparse time complexity stems from the fact that the parse forest can be compactly stored in polynomialspace.
+AparseforestcanberepresentedasaCFGrecognizingthelanguageconsistingofonlytheinputstring
+(Bar-Hillel et al. 1964). The forest can then be further investigated to remove useless nodes, increasesharing,andreducespacecomplexity(BillotandLang1989).
+∗There is nothing that prevents us from adding a bottom-up ﬁlter to the combine rule (4.10) either. However, this ﬁlter is
+seldomusedinpractice.
+
+SyntacticParsing 73
+Retrievingasingleparsetreefroma(suitablyreduced)forestiseﬃcient, buttheproblemistodecide
+which tree is the best one. We do not want to examine exponentially many trees, but instead we wanta clever procedure for directly ﬁnding the best tree. This is the problem of disambiguation, which isdiscussedinSection4.8.2andinChapter11.
+4.6 LR Parsing
+Insteadofusingthegrammardirectly,wecanprecompileitintoaformthatmakesparsingmoreeﬃcient.One of the most common strategies is LR parsing, which was introduced by Knuth (1965). It is mostlyusedfordeterministicparsingofformallanguagessuchasprogramminglanguages,butwasextendedtonondeterministiclanguagesbyLang(1974)andTomita(1985,1987).
+One of the main ideas of LR parsing is to handle a number of grammar rules simultaneously by
+merging common subparts of their right-hand sides, rather than attempting one rule at a time. AnLR parser compiles the grammar into a ﬁnite automaton, augmented with reductions for capturing the
+nestingofnonterminalsinasyntacticstructure, makingitakindof push-downautomaton(PDA).TheautomatoniscalledanLRautomaton,oranLRtable.
+4.6.1 The LR(0) Table
+LR automata can be constructed in several diﬀerent ways. The simplest construction is the LR(0) table,which uses no lookahead when it constructs its states. In practice, most LR algorithms use SLR(1) or
+LALR(1)tables,whichutilizealookaheadofoneinputsymbol.Detailsofhowtoconstructtheseautomataare, e.g., given by Aho et al. (2006). Our LR(0) construction is similar to the one by Nederhof and Satta(2004b).StatesThestatesinanLRtablearesetsofdottedrules A→α
+•β.Themeaningofbeinginastateisthatanyof
+thedottedrulesinthestatecanbethecorrectone,butwehavenotdecidedyet.
+Tobuild an LR(0)tablewe do thefollowing. Firstwe haveto deﬁne thefunction PREDICT-CLOSURE (q),
+whichisthesmallestsetsuchthat:
+•q⊆PREDICT-CLOSURE (q),and
+•if(A→α•Bβ)∈PREDICT-CLOSURE (q),
+then(B→•γ)∈PREDICT-CLOSURE (q)forallB→γ
+TransitionsTransitionsbetweenstatesaredeﬁnedbythefunction
+GOTO,takingagrammarsymbolasargument.The
+functionisdeﬁnedas
+GOTO(q,X)=PREDICT-CLOSURE ({A→αX•β|A→α•Xβ∈q})
+The idea is that all dotted rules A→α•Xβwill survive to the next state, with the dot moved forward
+one step. To this the closure of all top-down predictions are added. The initial state qinitof the LR table
+containspredictionsofall Srules:
+qinit=PREDICT-CLOSURE ({S→•γ|S→γ})
+We also need a special ﬁnal state qﬁnalthat is reachable from the initial state by the dummy transition
+GOTO(qﬁnal,S). Figure 4.6 contains the resulting LR(0) table of the example grammar in Figure 4.1. The
+reduciblestates,markedwithathickerborderintheﬁgure,arethestatesthatcontainpassivedottedrules,i.e.,rulesoftheform A→α
+•.ForsimplicitywehavenotincludedthelexicalrulesintheLRtable.
+
+74 HandbookofNaturalLanguageProcessing
+Noun
+S –> • NP VP
+NP –> • Det NBarFinal state
+S
+NP –> Det • NBar
+NBar –> • Adj Noun
+NBar –> • Noun
+NBar –> • AdjDet
+S –> NP • VP
+VP –> • Verb
+ VP –> • Verb NPNPNP –> Det NBar •
+NBar
+NBar –> Adj • Noun
+NBar –> Adj • Adj
+NBar –> Noun •Noun
+VP –> Verb • 
+VP –> Verb • NP
+NP –> • Det NBarVerb
+S –> NP VP •VPDet
+VP –> Verb NP •NPNBar –> Adj Noun •
+FIGURE4.6 ExampleLR(0)tableforthegrammarinFigure4.1.
+4.6.2 Deterministic LR Parsing
+An LR parser is a shift-reduce parser (Aho et al. 2006) that uses the transitions of the LR table to push
+statesontoastack.Whentheparserisinareduciblestate,containingarule B→β•,itpops |β|statesoﬀ
+thestackandshiftstoanewstatebythesymbol B.
+InoursettingwedonotuseLRstatesdirectly,butinsteadLRstatesindexedbyinputposition,which
+wewriteas σ=q@i.AnLRstack ω=σ1···σnisasequenceofindexedLRstates.Therearethreebasic
+operations:∗
+TOP(ω)=σ(where ω=ω′σ)
+POP(ω)=ω′(where ω=ω′σ)
+PUSH(ω,σ)=ωσ
+The parser starts with a stack containing only the initial state in position 0. Then it shifts the next input
+symbol, andpushesthenewstateontothestack. Notethediﬀerencewithtraversingaﬁniteautomaton;
+wedonotforgetthepreviousstate, butinsteadpushthenewstateontop. Thiswayweknowhowtogo
+backwardintheautomaton,whichwecannotdoinaﬁniteautomaton.
+After shifting, we try to reduce the stack as often as possible, and then we shift the next input token,
+reduce and continue until the input is exhausted. The parsing has succeeded if we end up with qﬁnalas
+thetopstateinthestack.
+function LR(w1···wn)
+ω:=(qinit@0)
+fori:=1tondo
+ω:=REDUCE (SHIFT(ω,wi@i))
+ifTOP(ω)=qﬁnal@nthensuccesselsefailure
+Shifting a Symbol
+T os h i f tas y m b o l Xonto the stack ω, we follow the edge labeled Xfrom the current state TOP(ω),a n d
+pushthenewstateontothestack:
+∗We will abuse the function TOP(ω)by sometimes letting it denote the indexed state q@iand sometimes the LR state q.
+Furthermorewewillwrite POPnfornapplicationsof POP.
+
+SyntacticParsing 75
+function SHIFT(ω,X@i)
+σnext:=GOTO(TOP(ω),X)@i
+return PUSH(ω,σnext)
+Reducing the StackWhenthetopstateofthestackcontainsarule A→B
+1···Bd•, thenonterminal Ahasbeenrecognized.
+The only way to reach that state is from a state containing the rule A→B1···Bd−1•Bd, which in turn
+is reached from a state containing A→B1···Bd−2•Bd−1Bd,a n ds oo n dsteps back in the stack. This
+state,dstepsback, containsthepredictedrule A→•B1···Bd. Butthereisonlyonewaythisrulecould
+havebeenaddedtothestate—asapredictionfromarule C→α•Aβ.So,ifweremove dstatesfromthe
+stack (getting the popped stack ωred), we reach a state that has an Atransition.∗And since we started
+this paragraph by knowing that Awas just recognized, we can shift the popped stack ωred. This whole
+sequence(poppingthestackandthenshifting)iscalleda reduction .
+However, it is not guaranteed that we can stop here. It is possible that we, after shifting Aonto the
+popped stack, enter anewreducible state, and wecando thewholethingagain. Thisisdone until therearenomorepossiblereductions:
+function
+REDUCE (ω)
+qtop@i:=TOP(ω)
+if(A→B1···Bd•)∈qtopthen
+ωred:=POPd(ω)
+return REDUCE (SHIFT(ωred,A@i))
+else
+return ω
+Ungrammaticality and AmbiguitiesTheLRautomatoncanonlyhandlegrammaticallycorrectinput.Iftheinputisungrammatical,wemightendupinastatewherewecanneitherreducenorshift.Inthiscasewehavetostopparsingandreportanerror.
+The automaton could also contain nondeterministic choices, even on unambiguous grammars. Thus
+we might enter a state where it is possible to both shift and reduce at the same time (or reduce in twodiﬀerentways).IndeterministicLRparsingthisiscalledashift/reduce(orreduce/reduce)conﬂict,whichisconsideredtobeaprobleminthegrammar.However,sincenaturallanguagegrammarsareinherentlyambiguous,wehavetochangethealgorithmtohandlethesecases.
+4.6.3 Generalized LR Parsing
+To handle nondeterminism, the top-level LR algorithm does not have to be changed much, and onlysmallchangeshavetobemadeontheshiftandreducefunctions.Conceptually,wecanthinkofa“stack”for nondeterministic LR parsing as a set /Omega1of ordinary stacks ω, which we reduce and shift in parallel.
+When reducing the stack set, we perform all possible reductions on the elements and take the union ofthe results. This means that the number of stacks increases, but (hopefully) some of these stacks will belostwhenshifting.
+The top-level parsing function
+LRremains as before, with the slight modiﬁcation that the initial stack
+set is the singleton set {(qinit)}, and that the ﬁnal stack set should contain some stack whose top state is
+qﬁnal@n.
+∗Note that if Ais the starting symbol S,a n dTOP(ωred)is the initial state qinit@0, then there will in fact notbe any rule
+C→α•Sβinthatstate.Butinthiscasethereisadummytransitiontotheﬁnalstate qﬁnal,sowecanstillshiftover S.
+
+76 HandbookofNaturalLanguageProcessing
+Using a Set of StacksThebasicstackoperations
+POPandPUSHarestraightforwardtogeneralizetosets:
+POP(/Omega1)={ω|ωσ∈/Omega1}
+PUSH(/Omega1,σ)={ωσ|ω∈/Omega1}
+However, there is one problem when trying to obtain the TOPstate—since there are several stacks,
+there can be several diﬀerent top states. And the TOPoperation cannot simply return an unstructured
+set of states, since we have to know which stacks correspond to which top state. Our solution is tointroduce an operation
+TOP-PARTITION that returns a partition of the set of stacks, where all stacks in
+each part have the same unique top state. The simplest deﬁnition is to just make each stack a partof its own,
+TOP-PARTITION (/Omega1)={{ω}|ω∈/Omega1}, but there are several other possible deﬁnitions. Now
+we can deﬁne the TOPoperation to simply return the top state of any stack in the set, since it will be
+unique.
+TOP(/Omega1)=σ(where ωσ∈/Omega1)
+ShiftingThe diﬀerence compared to deterministic shift is that we loop over the stack partitions, and shift eachpartitioninparallel,returningtheunionoftheresults:
+function
+SHIFT(/Omega1,X@i)
+/Omega1′:=∅
+forall ωpart∈TOP-PARTITION (/Omega1)do
+σnext:=GOTO(TOP(ωpart),X)@i
+addPUSH(ωpart,σnext)to/Omega1′
+return /Omega1′
+ReductionNondeterministic reduction also loops over the partition, and does reduction on each part separately,taking the union of the results. Also note that the original set of stacks is included in the ﬁnal reductionresult,sinceitisalwayspossiblethatsomestackhasﬁnishedreducingandshouldshiftnext.
+function
+REDUCE (/Omega1)
+forall ωpart∈TOP-PARTITION (/Omega1)do
+qtop@i:=TOP(ωpart)
+forall (A→B1···Bd•)∈qtopdo
+ωred:=POPd(ωpart)
+addREDUCE (SHIFT(ωred,A@i))to/Omega1
+return /Omega1
+Grammars with Empty ProductionsThe GLR algorithm as it is described in this chapter cannot correctly handle all grammars with ϵ-rules.
+This is a well-known problem for GLR parsers, and there are two main solutions. One possibility isof course to transform the grammar into ϵ-free form (Hopcroft et al. 2006). Another possibility is to
+modifytheGLRalgorithm,possiblytogetherwithamodiﬁedLRtable(Nozohoor-Farshi1991,Nederhofand Sarbo 1996, Aycock et al. 2001, Aycock and Horspool 2002, Scott and Johnstone 2006, Scott et al.2007).
+
+SyntacticParsing 77
+4.6.4 Optimized GLR Parsing
+Eachstackthatsurvivesinthepreviousset-basedalgorithmcorrespondstoapossibleparsetree.Butsincetherecanbeexponentiallymanyparsetrees,thismeansthatthealgorithmisexponentialinthelengthoftheinput.
+Theproblemisthedatastructure—asetofstacksdoesnottakeintoaccountthatparallelstacksoften
+haveseveralpartsincommon.Tomita(1985,1988)suggestedtostoreasetofstacksasadirectedacyclicgraph (calling it a graph-structured stack ), which together with suitable algorithms make GLR parsing
+polynomialinthelengthoftheinput.
+Theonlythingswehavetodoistoreimplementtheﬁveoperations
+POP,PUSH,TOP-PARTITION ,TOP,and
+(∪);thefunctions LR,SHIFT,andREDUCEallstaythesame.Werepresentagraph-structuredstackasapair
+G:T,whereGisadirectedgraphoverindexedstates,and Tisasubsetofthenodesin Gthatconstitute
+the current stack tops. Assuming that the graph is represented by a set of directed edges σ′↦→σ,t h e
+operationscanbeimplementedasfollows:
+POP(G:T)=G:{
+σ′|σ∈T,σ′↦→σ∈G}
+PUSH(G:T,σ)=(
+G∪{
+σ′↦→σ|σ′∈T})
+:{σ}
+TOP-PARTITION (G:T)={G:{σ}|σ∈T}
+TOP(G:{σ})=σ
+(G1:T1)∪(G2:T2)=(G1∪G2):(T1∪T2)
+The initial stack in the top-level LRfunction is still conceptually a singleton set, but will be encoded as a
+graph-structuredstack ∅:{qinit@0}.Notethatforthegraph-structuredversiontobecorrect,weneedthe
+LRstatestobeindexed.OtherwisethegraphwillmergeallnodeshavingthesameLRstate,regardlessofwhereintheinputitisrecognized.
+Thegraph-structuredstackoperationsneverremoveedgesfromthegraph, onlyaddnewedges. This
+means that it is possible to implement GLR parsing using a global graph, where the only thing that ispassedaroundistheset Tofstacktops.
+Tabular GLR ParsingThe astute reader might have noticed the similarity between the graph-structured stack and the chartin Section 4.5: The graph (chart) is a global set of edges (items), to which edges (items) are addedduring parsing, but never removed. It should therefore be possible to reformulate GLR parsing as atabular algorithm. For this we need two inference rules, corresponding to
+SHIFTandREDUCE,a n do n e
+axiomcorrespondingtotheinitialstack.ThistabularGLRalgorithmisdescribedbyNederhofandSatta(2004b).
+4.7 Constraint-Based Grammars
+This section introduces a simple form of constraint-based grammar, or uniﬁcation grammar, which formorethantwodecadeshasconstitutedawidelyadoptedclassofformalismsincomputationallinguistics.
+4.7.1 Overview
+A key characteristic of constraint-based formalisms is the use of feature terms (sets of attribute–valuepairs) for the description of linguistic units, rather than atomic categories as in CFGs. Feature termscan be nested: their values can be either atomic symbols or feature terms. Furthermore, they are partial(underspeciﬁed) in the sense that new information may be added as long as it is compatible with old
+
+78 HandbookofNaturalLanguageProcessing
+information. The operation for merging and checking compatibility of feature constraints is usuallyformalizedas uniﬁcation.Someformalisms,suchasPATR(Shieberetal.1983,Shieber1986)andRegulus
+(Rayner et al. 2006), are restricted to simple uniﬁcation (of conjunctive terms), while others such asLFG (Kaplan and Bresnan 1982) and HPSG (Pollard and Sag 1994) allow disjunctive terms, sets, typehierarchies, or other extensions. In sum, feature terms have proved to be an extremely versatile andpowerful device for linguistic description. One example of this is unbounded dependency, as illustratedby examples (4.1)–(4.3) in Section 4.1, which can be handled entirely within the feature system by thetechniqueofgapthreading(Karttunen1986).
+Severalconstraint-basedformalismsarephrase-structure-basedinthesensethateachruleisfactored
+in a phrase-structure backbone and a set of constraints that specify conditions on the feature termsassociatedwiththerule(e.g.,PATR,Regulus,CLE,HPSG,LFG,andTAG,thoughthelatterusescertaintree-building operations instead of rules). Analogously, when parsers for constraint-based formalismsarebuilt, thestarting-pointisoftenaphrase-structureparserthatisaugmentedtohandlefeatureterms.Thisisalsotheapproachweshallfollowhere.
+4.7.2 Uniﬁcation
+We make use of a constraint-based formalism with a context-free backbone and restricted to simpleuniﬁcation (of conjunctive terms), thus corresponding to PATR (Shieber et al. 1983, Shieber 1986).A grammar rule in this formalism can be seen as an ordered pair of a production X
+0→X1···Xdand
+a set of equational constraints over the feature terms of types X0,...,Xd. A simple example of a rule,
+encodingagreementbetweenthedeterminerandthenouninanounphrase,isthefollowing:
+X0→X1X2
+⟨
+X0category⟩
+=NP
+⟨
+X1category⟩
+=Det
+⟨
+X2category⟩
+=Noun
+⟨
+X1agreement⟩
+=⟨
+X2agreement⟩
+Any such rule description can be represented as a phrase-structure rule where the symbols consist of
+featureterms.Belowisafeaturetermrulecorrespondingtothepreviousrule(where 1indicatesidentity
+betweentheassociatedelements):
+[
+category:NP]
+→[category:Det
+agreement :1][category:Noun
+agreement :1]
+The basic operation on feature terms is uniﬁcation, which determines if two terms are compatible by
+merging them to the most general term compatible with both. As an example, the uniﬁcation A⊔Bof
+theterms A=[
+agreement :[
+number:plural]]
+andB=[
+agreement :[
+gender:neutr]]
+succeedswiththe
+result:
+A⊔B=[
+agreement :[gender:neutr
+number:plural]]
+However,neither AnorA⊔Bcanbeuniﬁedwith
+C=[
+agreement :[
+number:singular]]
+since the atomic values pluraland singularare distinct. The semantics of feature terms including the
+uniﬁcationalgorithmisdescribedbyPereiraandShieber(1984),KasperandRounds(1986),andShieber
+
+SyntacticParsing 79
+(1992). The uniﬁcation of feature terms is an extension of Robinson’s uniﬁcation algorithm for ﬁrst-order terms (Robinson 1965). More advanced grammar formalisms such as HPSG and LFG use furtherextensionsoffeatureterms,suchastypehierarchiesanddisjunction.
+4.7.3 Tabular Parsing with Uniﬁcation
+Basically, the tabular parsers in Section 4.4 as well as the GLR parsers in Section 4.6 can be adapted toconstraint-basedgrammarbylettingthesymbolsinthegrammarrulesbefeaturetermsinsteadofatomicnonterminalsymbols(Shieber1985b,Tomita1987,Nakazawa1991,Samuelsson1994).Forexample,anitem in tabular parsing then still has the form[
+i,j:A→α
+•β]
+,w h e r eAis a feature term and α,βare
+sequencesoffeatureterms.
+A problem in tabular parsing with constraint-based grammar as opposed to CFG is that the item-
+redundancytestinvolvescomparingcomplexfeaturetermsinsteadoftestingforequalitybetweenatomicsymbols. For this reason, we need to make sure that no previously added item subsumes a new item to
+be added (Shieber 1985a, Pereiraand Shieber 1987). Informally, an item esubsumes another item e
+′ife
+contains a subset of the information in e′. Since the input positions i,jare always fully instantiated, this
+amountstocheckingifthefeaturetermsinthedottedruleof esubsumesthecorrespondingfeatureterms
+ine′. The rationale for using this test is that we are only interested in adding edges that are less speciﬁc
+than the old ones, since everything we could do with a more speciﬁc edge, we can also do with a moregeneralone.
+The algorithm for implementing the deduction engine, presented in Section 4.5.1, only needs minor
+modiﬁcations to work on uniﬁcation-based grammars: (1) instead of checking that the new item eis
+contained in the chart, we check that there is an item in the chart that subsumes e, and (2) instead of
+testingwhethertwoitems e
+jande′jmatches,wetrytoperformtheuniﬁcation ej⊔e′j.
+However, subsumption testing is not always suﬃcient for correct and eﬃcient tabular parsing, since
+tabularCFG-basedparsersarenotfullyspeciﬁedintheorderinwhichambiguitiesarediscovered(LavieandRosé2004).Uniﬁcationgrammarsmaycontainrulesthatleadtothepredictionofevermorespeciﬁcfeature terms that do not subsume each other, thereby resulting in inﬁnite sequences of predictions.This kind of problem occurs in natural language grammars when keeping lists of, say, subcategorizedconstituents or gaps to be found. In logic programming, the occurs check is used for circumventing a
+correspondingcircularityproblem.Inconstraint-basedgrammar,Shieber(1985b)introducedthenotionofrestriction for the same purpose. A restrictor removes those portions of a feature term that could
+potentiallyleadtonon-termination.Thisisingeneraldonebyreplacingthoseportionswithfree(newlyinstantiated)variables,whichtypicallyremovessomecoreference.Thepurposeofrestrictionistoensurethattermstobepredictedareonlyinstantiatedtoacertaindepth,suchthattermswilleventuallysubsumeeachother.
+4.8 Issues in Parsing
+Inthelightofthepreviousexposition,thissectionreexaminesthethreefundamentalchallengesofparsingdiscussedinSection4.1.
+4.8.1 Robustness
+Robustness can be seen as the ability to deal with input that somehow does not conform to what isnormally expected (Menzel 1995). In grammar-driven parsing, it is natural to take “expected” input tocorrespondtothosestringsthatareintheformallanguage L(G)generatedbythegrammar G.However,
+as discussed in Section 4.1, a natural language parser will always be exposed to some amount of inputthatisnotin L(G).Onesourceofthisproblemis undergeneration,whichiscausedbyalackofcoverage
+
+80 HandbookofNaturalLanguageProcessing
+ofGrelative to the natural language L. Another problem is that the input may contain errors; in other
+words, that it may be ill-formed (though the distinction between well-formed and ill-formed input is by
+nomeansclear-cut).Butregardlessofwhytheinputisnotin L(G),itisusuallydesirabletotrytorecover
+as much meaningful information from it as possible, rather than returning no result at all. This is theproblem of robustness, whose basic notion is to always return someanalysis of the input. In a stronger
+sense,robustnessmeansthatsmalldeviationsfromtheexpectedinputwillonlycausesmallimpairmentsof the parse result, whereas large deviations may cause large impairments. Hence, robustness in thisstrongersenseamountsto gracefuldegradation .
+Clearly, robustnessrequiresmethodsthatsacriﬁcesomethingfromthetraditionalidealofrecovering
+complete and exact parses using a linguistically motivated grammar. To avoid the situation where theparser can only stop and report failure in analyzing the input, one option is to relaxsome of the
+grammatical constraints in such a way that a (potentially) ungrammatical sentence obtains a completeanalysis(JensenandHeidorn1983,Mellish1989).Putdiﬀerently,byrelaxingsomeconstraints,acertainamountof overgeneration isachievedrelativetotheoriginalgrammar,andthisisthenhopefullysuﬃcient
+to account for the input. The key problem of this approach is that, as the number of errors grows, thenumberofrelaxationalternativesthatarecompatiblewithanalysesofthewholeinputmayexplode,andthatthesearchforabestsolutionisthereforeverydiﬃculttocontrol.
+One can then instead focus on the design of the grammar, making it less rich in the hope that this
+will allow for processing that is less brittle. The amount of information contained in the structuralrepresentations yielded by the parser is usually referred to as a distinction between deep parsing and
+shallowparsing (somewhatmisleadingly,asthisdistinctiondoesnotnecessarilyrefertodiﬀerentparsing
+methodsperse,butrathertothesyntacticrepresentationsused).Deepparsingsystemstypicallycapturelong-distancedependenciesorpredicate–argumentrelationsdirectly,asinLFG,HPSG,orCCG(compareSection4.2.4).Incontrast,shallowparsingmakesuseofmoreskeletalrepresentations.Anexampleofthisis Constraint Grammar (Karlsson et al. 1995). This works by ﬁrst assigning all possible part-of-speechandsyntacticlabelstoallwords.Itthenappliespattern-matchingrules(constraints)todisambiguatethelabels,therebyreducingthenumberofparses.Theresultconstitutesadependencystructureinthesensethatitonlyprovidesrelationsbetweenwords,andmaybeambiguousinthattheidentitiesofdependentsarenotfullyspeciﬁed.
+Adistinctionwhichissometimesusedmoreorlesssynonymouslywithdeepandshallowparsingisthat
+betweenfull parsing andpartial parsing . Strictly speaking, however, this distinction refers to the degree
+ofcompletenessoftheanalysiswithrespecttoagiventargetrepresentation.Thus,partialparsingisoftenusedtodenoteaninitial,surface-orientedanalysis(“almostparsing”),inwhichcertaindecisions,suchasattachments,areleftforsubsequentprocessing.Aradicalformofpartialparsingis chunkparsing (Abney
+1991,1997),whichamountstoﬁndingboundariesbetweenbasicelements,suchasnon-recursiveclausesor low-level phrases, and analyzing each of these elements using a ﬁnite-state grammar. Higher-levelanalysis is then left for processing by other means. One of the earliest approaches to partial parsing wasFidditch(Hindle 1989, 1994). A key idea of this approach is to leave constituents whose roles cannot be
+determined unattached, thereby always providing exactly one analysis for any given sentence. Anotherapproachis supertagging ,introducedbyBangaloreandJoshi(1999)fortheLTAGformalismasameans
+to reduce ambiguity by associating lexical items with rich descriptions (supertags) that impose complexconstraintsinalocalcontext,butagainwithoutitselfderivingasyntacticanalysis.SupertagginghasalsobeensuccessfullyappliedwithintheCCGformalism(ClarkandCurran2004).
+Asecondoptionistosacriﬁcecompletenesswithrespecttocoveringtheentire input,byparsingonly
+fragmentsthatarewell-formedaccordingtothegrammar. Thisissometimesreferredtoas skipparsing.
+Partial parsing is a means to achieve this, since leaving a fragment unattached may just as well be seenasawayofskippingthatfragment. Aparticularlyimportantcaseforskipparsingisnoisyinput, suchaswritten textcontaining errors or output from a speech recognizer. (A word error rate around 20%–40%isbynomeansunusualinrecognitionofspontaneousspeech;seeChapter15.)Fortheparsingofspokenlanguage in conversational systems, it has long been commonplace to use pattern-matching rules that
+
+SyntacticParsing 81
+triggerondomain-dependentsubsetsoftheinput(Ward1989,Jacksonetal.1991,BoyeandWirén2008).Other approaches have attempted to render deep parsing methods robust, usually by trying to connectthemaximalsubsetoftheoriginalinputthatiscoveredbythegrammar.Forexample,GLR
+∗(Lavie1996,
+Lavie and Tomita 1996), an extension of GLR (Section 4.6.3), can parse all subsets of the input that arelicensedbythegrammarbybeingabletoskipoveranywords.Sincemanyparsablesubsetsoftheoriginalinputmustthenbeanalyzed,theamountofambiguityisgreatlyexacerbated.Tocontrolthesearchspace,GLR
+∗makesuseofstatisticaldisambiguationsimilartoamethodproposedbyCarroll(1993)andBriscoe
+and Carroll (1993), where probabilities are associated directly with the actions in the pre-compiled LRparsing table (a method that in turn is an instance of the conditional history-based models discussed inChapter 11). Other approaches in which subsets of the input can be parsed are Rosé and Lavie (2001),vanNoordetal.(1999),andKasperetal.(1999).
+Athirdoptionistosacriﬁcethetraditionalnotionof constructiveparsing ,thatis,analyzingsentences
+bybuildingsyntacticrepresentationsimposedbytherulesofagrammar.Insteadonecanuse eliminative
+parsing, which works by initially setting up a maximal set of conditions, and then gradually reducinganalyses that are illegal according to a given set of constraints, until only legal analyses remain. Thus,parsing is here viewed as a constraint satisfaction problem (or, put diﬀerently, as disambiguation),in which the set of constraints guiding the process corresponds to the grammar. Examples of thiskind of approach are Constraint Grammar (Karlsson et al. 1995) and the system of Foth and Menzel(2005).
+4.8.2 Disambiguation
+The dual problem of undergeneration is that the parser produces superﬂuous analyses, for example, inthe form of massive ambiguity, as illustrated in Section 4.1. Ultimately, we would like not just some
+analysis (robustness), but rather exactly one (disambiguation). Although not all information needed for
+disambiguation (such as contextual constraints) may be available during parsing, some pruning of thesearchspaceisusuallypossibleanddesirable.Theparsermaythenpassonth enbestanalyses,ifnotasingle
+one, to the next level of processing. A related problem, and yet another source of superﬂuous analyses,isthatthegrammarmightbeincompletenotonlyinthesenseofundergeneration, butalsobylicensingconstructions that do not belong to the natural language L. This problem is known as overgeneration or
+leakage,byreferencetoSapir’sfamousstatementthat“[a]llgrammarsleak”(Sapir1921,p.39).
+Abasicobservationisthat,althoughageneralgrammarwillallowalargenumberofanalysesofalmost
+anynontrivialsentence,mostoftheseanalyseswillbeextremelyimplausibleinthecontextofaparticulardomain. A simple approach that was pursued early on was then to code a new, specialized semantic
+grammar foreachdomainBurton1976,Hendrixetal.1978).
+∗Amoreadvancedalternativeistotunethe
+parser and/or grammar for each new domain. Grishman et al. (1984), Samuelsson and Rayner (1991),andRayneretal.(2000)makeuseofamethodknownas grammarspecialization,whichtakesadvantage
+of actual rule usage in a particular domain. This method is based on the observation that, in a givendomain, certain groups of grammar rules tend to combine frequently in some ways but not in others.On the basis of a suﬃciently large corpus parsed by the original grammar, it is then possible to identifycommoncombinationsofrulesofa(uniﬁcation)grammarandtocollapsethemintosingle“macro”rules.The result is a specialized grammar, which, compared to the original grammar, has a larger number ofrules but a simpler structure, reducing ambiguity and allowing very fast processing using an LR parser.Another possibility is to use a hybrid method to rank a set of analyses according to their likelihood inthedomain, basedondatafromsupervisedtraining(Rayneretal. 2000, Toutanovaetal. 2002). Clearly,disambiguation leads naturally in one way or another to the application of statistical inference; for asystematicexpositionofthis,werefertoChapter11.
+∗Note that this early approach can be seen as a text-oriented and less robust variant of the domain-dependent pattern-
+matchingsystemsofWard(1989)andothersaimedatspokenlanguage,referredtoinSection4.8.1.
+
+82 HandbookofNaturalLanguageProcessing
+4.8.3 Efﬁciency
+Theoretical Time ComplexityTheworst-casetimecomplexityforparsingwithCFGiscubic, O(n
+3),inthelengthoftheinputsentence.
+Thiscanmosteasilybeseenforthealgorithm CKY()inSection4.3.Themainpartconsistsofthreenested
+loops, all ranging over O(n)input positions, giving cubic time complexity. This is not changed by the
+UNARY-CKY ()algorithm. However, ifweaddinnerloopsforhandlinglongright-handsides, asdiscussed
+inSection4.3.3,thecomplexityincreasesto O(nd+1),wheredisthelengthofthelongestright-handside
+inthegrammar.
+The time complexities of the tabular algorithms in Section 4.4 are also cubic, since using dotted rules
+constitutes an implicit transformation of the grammar into binary form. In general, assuming that wehave a decent implementation of the deduction engine, the time complexity of a deductive algorithm isthe complexity of the most complex inference rule. In our case this is the combine rule (4.10), whichcontainsthreevariables i,j,krangingover O(n)inputpositions.
+The worst-case time complexity of the optimized GLR algorithm, as formulated in Section 4.6.4, is
+O(n
+d+1). This is because reduction pops the stack dtimes, for a rule with right-hand side length d.B y
+binarizingthestackreductionsitispossibletoobtaincubictimecomplexityforGLRparsing(Kipps1991,NederhofandSatta1996,Scottetal.2007).
+IftheCFGislexicalized,asmentionedinSection4.2.4,thetimecomplexityofparsingbecomes O(n
+5)
+ratherthancubic.Thereasonforthisisthatthecubicparsingcomplexityalsodependsonthegrammarsize, which for a bilexical CFG depends quadratically on the size of the lexicon. And after ﬁltering outthegrammarrulesthatdonothavearealizationintheinputsentence, weobtainacomplexityof O(n
+2)
+(forthegrammarsize)multipliedby O(n3)(forcontext-freeparsing).EisnerandSatta(1999)andEisner
+(2000) provide an O(n4)algorithm for bilexical CFG, and an O(n3)algorithm for a common restricted
+classoflexicalizedgrammars.
+Valiant(1975)showedthatitispossibletotransformtheCKYalgorithmintotheproblemofBoolean
+matrix multiplication (BMM), for which there are sub-cubic algorithms. Currently, the best BMMalgorithm is approximately O(n
+2.376)(Coppersmith and Winograd 1990). However, these sub-cubic
+algorithms all involve large constants making them ineﬃcient in practice. Furthermore, since BMMcan be reduced to context-free parsing (Lee 2002), there is not much hope in ﬁnding practical parsingalgorithmswithsub-cubictimecomplexity.
+AsmentionedinSection4.2.4,MCSgrammarformalismsallhavepolynomialparsetimecomplexity.
+More speciﬁcally, TAG and CCG have O(n
+6)time complexity (Vijay-Shanker and Weir 1993), whereas
+forLCFRS,MCFG,andRCGtheexponentdependsonthecomplexityofthegrammar(Satta1992).
+In general, adding feature terms and uniﬁcation to a phrase-structure backbone makes the resulting
+formalism undecidable. In practice, however, conditions are often placed on the phrase-structure back-boneand/orpossiblefeaturetermstoreducecomplexity(KaplanandBresnan1982, p.266; PereiraandWarren 1983, p.142), sometimes even totheeﬀectof retainingpolynomial parsability(Joshi1997). Forageneralexpositionofcomputationalcomplexityinconnectionwithlinguistictheories,seeBartonetal.(1987).Practical EfﬁciencyThe complexity results above represent theoretical worst cases, which in actual practice may occur onlyunderveryspecialcircumstances.Hence,toassessthepracticalbehaviorofparsingalgorithms,empiricalevaluations are more informative. As an illustration of this, in a comparison of three uniﬁcation-basedparsers using a wide-coverage grammar of English, Carroll (1993) found parsing times for exponential-timealgorithmstobeapproximatelyquadraticinthelengthoftheinputforsentencelengthsof1–30words.
+Earlyworkonempiricalparserevaluation,suchasPratt(1975),Slocum(1981),Tomita(1985),Wirén
+(1987) and Billot and Lang (1989), focused on the behavior of speciﬁc algorithms. However, reliable
+
+SyntacticParsing 83
+comparisonsrequirethatthesamegrammarsandtestdataareusedacrossdiﬀerentevaluations.Increas-ingly, the availability of common infrastructure in the form of grammars, treebanks, and test suites hasfacilitatedthis,asillustratedbyCarroll(1994),vanNoord(1997),Oepenetal.(2000),OepenandCarroll(2002),andKaplanetal.(2004),amongothers.Amorediﬃcultproblemisthatreliablecomparisonsalsorequirethatparsingtimescanbenormalizedacrossdiﬀerentimplementationsandcomputingplatforms.One way of trying to handle this complication would be to have standard implementations of referencealgorithmsinallimplementationlanguagesofinterest,assuggestedbyMoore(2000).
+4.9 Historical Notes and Outlook
+With the exception of machine translation, parsing is probably the area with the longest history innaturallanguageprocessing.VictorYngvehasbeencreditedwithdescribingtheﬁrstmethodforparsing,conceived of as one component of a system for machine translation, and proceeding bottom-up (Yngve1955).Subsequently,top-downalgorithmswereprovidedby,amongothers,KunoandOettinger(1962).AnotherearlyapproachwastheTransformationandDiscourseAnalysisProject(TDAP)ofZelligHarris1958–1959, which in eﬀect used cascades of ﬁnite-state automata for parsing (Harris 1962; Joshi andHopely1996).
+Duringthenextdecade,thefocusshiftedtoparsingalgorithmsforcontext-freegrammar.In1960,John
+Cockeinventedthecoredynamic-programmingparserthatwasindependentlygeneralizedandformalizedbyKasami(1965)andYounger(1967),thusevolvingintotheCKYalgorithm.ThisallowedforparsingincubictimewithgrammarsinCNF.AlthoughCocke’soriginalalgorithmwasneverpublished,itremainsa highly signiﬁcant achievement in the history of parsing (for sources to this, see Hays 1966 and Kay1999). In1968, Earleythenpresented theﬁrstalgorithmfor parsingwithgeneralCFG innoworse thancubic time (Earley 1970). In independent work, Kay (1967, 1973, 1986) and Kaplan (1973) generalizedCocke’s algorithm into what they coined chart parsing. A key idea of this is to view tabular parsingalgorithms as instances of a general algorithm schema, with speciﬁc parsing algorithms arising fromdiﬀerentinstantiationsofinferencerulesandtheagenda(seealsoThompson1981,1983,Wirén1987).
+However, with the growing dominance of Transformational Grammar, particularly with the Aspects
+(“Standard Theory”) model introduced by Chomsky (1965), there was a diminished interest in context-freephrase-structuregrammar.Ontheotherhand,TransformationalGrammarwasnotitselfamenableto parsing in any straightforward way. The main reason for this was the inherent directionality of thetransformationalcomponent,inthesensethatitmapsfromdeepstructuretosurfacewordstring.
+A solution to this problem was the development of Augmented Transition Networks (ATNs), which
+started in the late 1960s and which became the dominating framework for natural language processingduring the 1970s (Woods et al. 1972, Woods 1970, 1973). Basically, the appeal of the ATN was that itconstituted a formalism of the same power as Transformational Grammar, but one whose operationalclaimscouldbeclearlystated,andwhichprovidedanelegant(albeitprocedural)wayoflinkingthesurfacestructureencodedbythenetworkpathwiththedeepstructurebuiltupinregisters.
+Beginning around 1975, there was a revival of interest in phrase-structure grammars (Joshi et al.
+1975, Joshi 1985), later augmented with complex features whose values were typically matched usinguniﬁcation (Shieber 1986). One reason for this revival was that some of the earlier arguments againstthe use of CFG had been refuted, resulting in several systematically restricted formalisms (see Section4.2.4). Another reason was a movement toward declarative (constraint-based) grammar formalismsthat typically used a phrase-structure backbone, and whose parsability and formal properties could berigorouslyanalyzed.Thisallowedparsingtobeformulatedinwaysthatabstractedfromimplementationaldetail,asdemonstratedmostelegantlyintheparsing-as-deductionparadigm(PereiraandWarren1983).
+Another development during this time was the generalization of Knuth’s deterministic LR parsing
+algorithm (Knuth 1965) to handling nondeterminism (ambiguous CFGs), leading to the notion of GLRparsing (Lang 1974, Tomita 1985). Eventually, the relation of this framework to tabular (chart) parsing
+
+84 HandbookofNaturalLanguageProcessing
+wasalsoilluminated(NederhofandSatta1996,2004b).Finally,incontrasttotheworkbasedonphrase-structure grammar, there was a renewed interest in more restricted and performance-oriented notionsof parsing, such as ﬁnite-state parsing (Church 1980, Ejerhed 1988) and deterministic parsing (Marcus1980,Shieber1983).
+In the late 1980s and during the 1990s, two interrelated developments were particularly apparent: on
+theonehand,aninterestinrobustparsing,motivatedbyanincreasedinvolvementwithunrestrictedtextand spontaneous speech (see Section 4.8.1), and on the other hand the revival of empiricism, leading tostatistics-based methods being applied both on their own and in combination with grammar-drivenparsing (see Chapter 11). These developments have continued during the ﬁrst decade in the newmillenium, along with a gradual closing of the divide between grammar-driven and statistical methods(Nivre2002,Baldwinetal.2007).
+Insum,grammar-drivenparsingisoneoftheoldestareaswithinnaturallanguageprocessing,andone
+whose methods continue to be a key component of much of what is carried out in the ﬁeld. Grammar-driven approaches are essential when the goal is to achieve the precision and rigor of deep parsing, orwhen annotated corpora for supervised statistical approaches are unavailable. The latter situation holdsboth for the majority of the world’s languages and frequently when systems are to be engineered fornew application domains. But also in shallow and partial parsing, some of the most successful systemsintermsofaccuracyandeﬃciencyarerulebased.However,thebestperformingbroad-coverageparsersfor theoretical frameworks such as CCG, HPSG, LFG, TAG, and dependency grammar increasingly usestatistical components for preprocessing (e.g., tagging) and/or postprocessing (by ranking competinganalysesforthepurposeofdisambiguation).Thus,althoughgrammar-drivenapproachesremainabasicframework for syntactic parsing, it appears that we can continue to look forward to an increasinglysymbioticrelationshipbetweengrammar-drivenandstatisticalmethods.
+Acknowledgments
+We want to thank the reviewers, Alon Lavie and Mark-Jan Nederhof, for detailed and constructivecommentsonanearlierversionofthischapter.WealsowanttothankJoakimNivreforhelpfulcommentsandfordiscussionsabouttheorganizationofthetwoparsingchapters(Chapters4and11).
+References
+Abney, S. (1991). Parsing by chunks. In R. Berwick, S. Abney, and C. Tenny (Eds.), Principle-Based
+Parsing,pp.257–278.KluwerAcademicPublishers,Dordrecht,theNetherlands.
+Abney,S.(1997).Part-of-speechtaggingandpartialparsing.InS.YoungandG.Bloothooft(Eds.), Corpus-
+Based Methods in Language and Speech Processing , pp. 118–136. Kluwer Academic Publishers,
+Dordrecht,theNetherlands.
+Aho, A., M.Lam, R.Sethi, andJ.Ullman(2006). Compilers: Principles, Techniques, and Tools (2nded.).
+Addison-Wesley,Reading,MA.
+Aycock,J.andN.Horspool(2002).PracticalEarleyparsing. TheComputerJournal45 (6),620–630.
+Aycock, J., N. Horspool, J. Janoušek, and B. Melichar (2001). Even faster generalized LR parsing. Acta
+Informatica37 (9),633–651.
+Backus, J. W., F. L. Bauer, J. Green, C. Katz, J. Mccarthy, A. J. Perlis, H. Rutishauser, K. Samelson,
+B. Vauquois, J. H. Wegstein, A. van Wijngaarden, and M. Woodger (1963). Revised report on thealgorithmlanguageALGOL60. CommunicationsoftheACM 6 (1),1–17.
+Baldwin,T.,M.Dras,J.Hockenmaier,T.H.King,andG.vanNoord(2007).Theimpactofdeeplinguistic
+processing on parsing technology. In Proceedings of the 10th International Conference on Parsing
+Technologies,IWPT’07,Prague,CzechRepublic,pp.36–38.
+
+SyntacticParsing 85
+Bangalore, S. and A. K. Joshi (1999). Supertagging: An approach to almost parsing. Computational
+Linguistics25(2),237–265.
+Bar-Hillel,Y.,M.Perles,andE.Shamir(1964).Onformalpropertiesofsimplephrasestructuregrammars.
+InY.Bar-Hillel(Ed.), LanguageandInformation:SelectedEssaysonTheirTheoryandApplication ,
+Chapter9,pp.116–150.Addison-Wesley,Reading,MA.
+Barton, G. E., R. C. Berwick, and E. S. Ristad (1987). Computational Complexity and Natural Language .
+MITPress,Cambridge,MA.
+Billot,S.andB.Lang(1989).Thestructureofsharedforestsinambiguousparsing. In Proceedingsofthe
+27thAnnualMeetingoftheAssociationforComputationalLinguistics,ACL’89 ,Vancouver,Canada,
+pp.143–151.
+Boullier, P. (2004). Range concatenation grammars. In H. Bunt, J. Carroll, and G. Satta (Eds.), New
+Developments in Parsing Technology, pp. 269–289. Kluwer Academic Publishers, Dordrecht, theNetherlands.
+Boye, J. and M. Wirén (2008). Robust parsing and spoken negotiative dialogue with databases. Natural
+LanguageEngineering 14(3),289–312.
+Bresnan,J.(2001). Lexical-FunctionalSyntax.Blackwell,Oxford,U.K.
+Briscoe,T.andJ.Carroll(1993).GeneralizedprobabilisticLRparsingofnaturallanguage(corpora)with
+uniﬁcation-basedgrammars. ComputationalLinguistics19 (1),25–59.
+Burton, R. R. (1976). Semantic grammar: An engineering technique for constructing natural language
+understandingsystems.BBNReport3453,Bolt,Beranek,andNewman,Inc.,Cambridge,MA.
+Carpenter,B.(1992). TheLogicofTypedFeatureStructures .CambridgeUniversityPress,NewYork.
+Carroll, J. (1993). Practical uniﬁcation-based parsing of natural language. PhD thesis, University of
+Cambridge,Cambridge,U.K.ComputerLaboratoryTechnicalReport314.
+Carroll, J. (1994). Relating complexity to practical performance in parsing with wide-coverage uniﬁca-
+tion grammars. In Proceedings of the 32nd Annual Meeting of the Association for Computational
+Linguistics,ACL’94 ,LasCruces,NM,pp.287–294.
+Chomsky, N. (1956). Three models for the description of language. IRE Transactions on Information
+Theory2(3),113–124.
+Chomsky, N. (1959). On certain formal properties of grammars. Information and Control 2 (2),
+137–167.
+Chomsky,N.(1965). AspectsoftheTheoryofSyntax.MITPress,Cambridge,MA.
+Church,K.W.(1980).Onmemorylimitationsinnaturallanguageprocessing.ReportMIT/LCS/TM-216,
+MassachusettsInstituteofTechnology,Cambridge,MA.
+Church, K. W. and R. Patil (1982). Coping with syntactic ambiguity or how to put the block in the box
+onthetable. ComputationalLinguistics8(3–4),139–149.
+Clark, S. and J. R. Curran (2004). The importance of supertagging for wide-coverage CCG parsing. In
+Proceedingsofthe20thInternationalConferenceonComputationalLinguistics,COLING’04 ,Geneva,
+Switzerland.
+Coppersmith, D. and S. Winograd (1990). Matrix multiplication via arithmetic progressions. Journal of
+SymbolicComputation9 (3),251–280.
+Daniels,M.W.andD.Meurers(2004).Agrammarformalismandparserforlinearization-basedHPSG.
+InProceedings of the 20th International Conference on Computational Linguistics, COLING’04 ,
+Geneva,Switzerland,pp.169–175.
+de Groote, P. (2001). Towards abstract categorial grammars. In Proceedings of the 39th Annual Meeting
+oftheAssociationforComputationalLinguistics,ACL’01 ,Toulouse,France.
+Earley, J. (1970). An eﬃcient context-free parsing algorithm. Communications of the ACM 13 (2),
+94–102.
+Eisner,J.(2000).Bilexicalgrammarsandtheircubic-timeparsingalgorithms.InH.BuntandA.Nijholt
+(Eds.),New Developments in Natural Language Parsing. Kluwer Academic Publishers, Dordrecht,
+theNetherlands.
+
+86 HandbookofNaturalLanguageProcessing
+Eisner, J. and G. Satta (1999). Eﬃcient parsing for bilexical context-free grammars and head automa-
+ton grammars. In Proceedings of the 37th Annual Meeting of the Association for Computational
+Linguistics,ACL’99 ,pp.457–464.
+Ejerhed,E.(1988).Findingclausesinunrestrictedtextbyﬁnitaryandstochasticmethods.In Proceedings
+oftheSecondConferenceonAppliedNaturalLanguageProcessing ,Austin,TX,pp.219–227.
+Foth, K. and W. Menzel (2005). Robust parsing with weighted constraints. Natural Language
+Engineering 11(1),1–25.
+Gazdar,G.,E.Klein,G.Pullum,andI.Sag(1985). GeneralizedPhraseStructureGrammar .BasilBlackwell,
+Oxford,U.K.
+Grishman,R.,N.T.Nhan,E.Marsh,andL.Hirschman(1984).Automateddeterminationofsublanguage
+syntacticusage.In Proceedingsofthe10thInternationalConferenceonComputationalLinguisticsand
+22ndAnnualMeetingoftheAssociationforComputationalLinguistics,COLING-ACL’84 ,Stanford,
+CA,pp.96–100.
+Harris,Z.S.(1962). StringAnalysisofSentenceStructure.Mouton,Hague,theNetherlands.
+Hays,D.G.(1966).Parsing.InD.G.Hays(Ed.), ReadingsinAutomaticLanguageProcessing ,pp.73–82.
+AmericanElsevierPublishingCompany,NewYork.
+Hendrix, G. G., E. D. Sacerdoti, and D. Sagalowicz (1978). Developing a natural language interface to
+complexdata. ACMTransactionsonDatabaseSystems3 (2),105–147.
+Hindle,D.(1989).Acquiringdisambiguationrulesfromtext.In Proceedingsofthe27thAnnualMeeting
+oftheAssociationforComputationalLinguistics,ACL’89 ,Vancouver,Canada,pp.118–125.
+Hindle, D. (1994). A parser for text corpora. In A. Zampolli (Ed.), Computational Approaches to the
+Lexicon.OxfordUniversityPress,NewYork.
+Hopcroft, J., R. Motwani, and J. Ullman (2006). Introduction to Automata Theory, Languages, and
+Computation (3rded.).Addison-Wesley,Boston,MA.
+Jackson, E., D. Appelt, J. Bear, R. Moore, and A. Podlozny (1991). A template matcher for robust NL
+interpretation. In Proceedings of the Workshop on Speech and Natural Language, HLT’91 ,P a c i ﬁ c
+Grove,CA,pp.190–194.
+Jensen, K. and G. E. Heidorn (1983). The ﬁtted parse: 100% parsing capability in a syntactic grammar
+of English. In Proceedings of the First Conference on Applied Natural Language Processing ,S a n t a
+Monica,CA,pp.93–98.
+Joshi,A.K.(1997).Parsingtechniques.InR.Cole,J.Mariani,H.Uszkoreit,A.Zaenen,andV.Zue(Eds.),
+SurveyoftheStateoftheArtinHumanLanguageTechnology, pp.351–356. CambridgeUniversityPress,Cambridge,MA.
+Joshi,A.K.(1985).Howmuchcontext-sensitivityisnecessaryforcharacterizingstructuraldescriptions–
+tree adjoining grammars. In D. Dowty, L. Karttunen, and A. Zwicky (Eds.), Natural Language
+Processing: Psycholinguistic, Computational and Theoretical Perspectives , pp. 206–250. Cambridge
+UniversityPress,NewYork.
+Joshi,A.K.andP.Hopely(1996).Aparserfromantiquity:Anearlyapplicationofﬁnitestatetransducers
+tonaturallanguageparsing. NaturalLanguageEngineering 2(4),291–294.
+Joshi,A.K.,L.S.Levy,andM.Takahashi(1975).Treeadjunctgrammars. JournalofComputerandSystem
+Sciences10 (1),136–163.
+Joshi, A. K. and Y. Schabes (1997). Tree-adjoining grammars. In G. Rozenberg and A. Salomaa (Eds.),
+Handbook of Formal Languages. Vol 3: Beyond Words, Chapter 2, pp. 69–123. Springer-Verlag,Berlin.
+Kaplan, R. and J. Bresnan (1982). Lexical-functional grammar: A formal system for grammatical repre-
+sentation. In J. Bresnan (Ed.), The Mental Representation of Grammatical Relations , pp. 173–281.
+MITPress,Cambridge,MA.
+Kaplan, R. M. (1973). A general syntactic processor. In R. Rustin (Ed.), Natural Language Processing ,
+pp.193–241.AlgorithmicsPress,NewYork.
+
+SyntacticParsing 87
+Kaplan,R.M.,S.Riezler,T.H.King,J.T.MaxwellIII,A.Vasserman,andR.S.Crouch(2004).Speedand
+accuracy in shallow and deep stochastic parsing. In Proceedings of Human Language Technology
+Conference of the North American Chapter of the Association for Computational Linguistics, HLT-NAACL’04,Boston,MA,pp.97–104.
+Kaplan, R.M.andA.Zaenen(1995). Long-distancedependencies, constituentstructure, andfunctional
+uncertainty.InR.M.Kaplan,M.Dalrymple,J.T.Maxwell,andA.Zaenen(Eds.), FormalIssuesin
+Lexical-FunctionalGrammar ,Chapter3,pp.137–165.CSLIPublications,Stanford,CA.
+Karlsson,F.,A.Voutilainen,J.Heikkilä,andA.Anttila(Eds.)(1995). ConstraintGrammar.ALanguage-
+IndependentSystemforParsingUnrestrictedText .MoutondeGruyter,Berlin,Germany.
+Karttunen, L. (1986). D-PATR: A development environment for uniﬁcation-based grammars. In
+Proceedings of 11th International Conference on Computational Linguistics, COLING’86 , Bonn,
+Germany.
+Karttunen, L. and A. M. Zwicky (1985). Introduction. In D. Dowty, L. Karttunen, and A. Zwicky
+(Eds.),Natural Language Processing: Psycholinguistic, Computational and Theoretical Perspectives ,
+pp.1–25.CambridgeUniversityPress,NewYork.
+Kasami, T. (1965). An eﬃcient recognition and syntax algorithm for context-free languages. Technical
+ReportAFCLR-65-758,AirForceCambridgeResearchLaboratory,Bedford,MA.
+Kasper, R. T. and W. C. Rounds (1986). A logical semantics for feature structures. In Proceedings of
+the 24th Annual Meeting of the Association for Computational Linguistics, ACL’86 , New York,
+pp.257–266.
+Kasper, W., B. Kiefer, H. U. Krieger, C. J. Rupp, and K. L. Worm (1999). Charting the depths of robust
+speech parsing. In Proceedings of the 37th Annual Meeting of the Association for Computational
+Linguistics,ACL’99 ,CollegePark,MD,pp.405–412.
+Kay,M.(1967).Experimentswithapowerfulparser.In ProceedingsoftheSecondInternationalConference
+on Computational Linguistics [2ème conférence internationale sur le traitement automatique des
+langues],COLING’67,Grenoble,France.
+Kay, M. (1973). The MIND system. In R. Rustin (Ed.), Natural Language Processing , pp. 155–188.
+AlgorithmicsPress,NewYork.
+Kay,M.(1986).Algorithmschemataanddatastructuresinsyntacticprocessing.InB.Grosz,K.S.Jones,
+and B. L. Webber (Eds.), Readings in Natural Language Processing , pp. 35–70, Morgan Kaufmann
+Publishers,LosAltos,CA.OriginallypublishedasReportCSL-80-12,XeroxPARC,PaloAlto,CA,1980.
+Kay, M. (1989). Head-driven parsing. In Proceedings of the First International Workshop on Parsing
+Technologies,IWPT’89,Pittsburgh,PA.
+Kay,M.(1999).Charttranslation.In ProceedingsoftheMTSummitVII ,Singapore,pp.9–14.
+Kipps, J. R. (1991). GLR parsing in time O(n
+3). In M. Tomita (Ed.), Generalized LR Parsing ,C h a p t e r4 ,
+pp.43–59.KluwerAcademicPublishers,Boston,MA.
+Knuth, D. E. (1965). On the translation of languages from left to right. Information and Control 8,
+607–639.
+Kuno,S.andA.G.Oettinger(1962).Multiple-pathsyntacticanalyzer.In ProceedingsoftheIFIPCongress ,
+Munich,Germany,pp.306–312.
+Lang, B. (1974). Deterministic techniques for eﬃcient non-deterministic parsers. In J. Loeckx (Ed.),
+Proceedings of the Second Colloquium on Automata, Languages and Programming , Saarbrücken,
+Germany,Volume14of LNCS,pp.255–269.Springer-Verlag,London,U.K.
+Lavie, A. (1996). GLR∗: A robust parser for spontaneously spoken language. In Proceedings of the
+ESSLLI’96WorkshoponRobustParsing ,Prague,CzechRepublic.
+Lavie, A. and C. P. Rosé (2004). Optimal ambiguity packing in context-free parsers with interleaved
+uniﬁcation. In H. Bunt, J. Carroll, and G. Satta (Eds.), New Developments in Parsing Technology,
+pp.307–321.KluwerAcademicPublishers,Dordrecht,theNetherlands.
+
+88 HandbookofNaturalLanguageProcessing
+Lavie, A. and M. Tomita (1996). GLR∗—an eﬃcient noise-skipping parsing algorithm for context-free
+grammars. In H. Bunt and M. Tomita (Eds.), Recent Advances in Parsing Technology , Chapter 10,
+pp.183–200.KluwerAcademicPublishers,Dordrecht,theNetherlands.
+Lee,L.(2002).Fastcontext-freegrammarparsingrequiresfastBooleanmatrixmultiplication. Journalof
+theACM 49 (1),1–15.
+Leiss, H. (1990). On Kilbury’s modiﬁcation of Earley’s algorithm. ACM Transactions on Programming
+LanguageandSystems12 (4),610–640.
+Ljunglöf, P. (2004). Expressivity and complexity of the grammatical framework. PhD thesis, University
+ofGothenburgandChalmersUniversityofTechnology,Gothenburg,Sweden.
+Marcus,M.P.(1980). ATheoryofSyntacticRecognitionforNaturalLanguage.MITPress,Cambridge,MA.
+Mellish, C. S. (1989). Some chart-based techniques for parsing ill-formed input. In Proceedings of the
+27thAnnualMeetingoftheAssociationforComputationalLinguistics,ACL’89 ,Vancouver,Canada,
+pp.102–109.
+Menzel, W. (1995). Robust processing of natural language. In Proceedings of the 19th Annual German
+ConferenceonArtiﬁcialIntelligence,Bielefeld,Germany.
+Moore,R.C.(2000).Timeasameasureofparsingeﬃciency.In ProceedingsoftheCOLING’00Workshop
+onEﬃciencyinLarge-ScaleParsingSystems,Luxembourg .
+Moore, R. C. (2004). Improved left-corner chart parsing for large context-free grammars. In H. Bunt,
+J. Carroll, and G. Satta (Eds.), New Developments in Parsing Technology, pp. 185–201. Kluwer
+AcademicPublishers,Dordrecht,theNetherlands.
+Nakazawa, T. (1991). An extended LR parsing algorithm for grammars using feature-based syntactic
+categories. In Proceedings of the Fifth Conference of the European Chapter of the Association for
+ComputationalLinguistics,EACL’91 ,Berlin,Germany.
+Nederhof,M.-J.andJ.Sarbo(1996).IncreasingtheapplicabilityofLRparsing.InH.BuntandM.Tomita
+(Eds.),RecentAdvancesinParsingTechnology ,pp.35–58.KluwerAcademicPublishers,Dordrecht,
+theNetherlands.
+Nederhof, M.-J. and G. Satta (1996). Eﬃcient tabular LR parsing. In Proceedings of the 34th Annual
+MeetingoftheAssociationforComputationalLinguistics,ACL’96 ,SantaCruz,CA,pp.239–246.
+Nederhof, M.-J. and G. Satta (2004a). IDL-expressions: A formalism for representing and parsing
+ﬁnite languages in natural language processing. Journal of Artiﬁcial Intelligence Research 21 , 287–
+317.
+Nederhof,M.-J.andG.Satta(2004b).Tabularparsing.InC.Martin-Vide,V.Mitrana,andG.Paun(Eds.),
+Formal Languages and Applications, Volume 148 of Studies in Fuzziness and Soft Computing,p p .
+529–549.Springer-Verlag,Berlin,Germany.
+Nivre,J.(2002).Onstatisticalmethodsinnaturallanguageprocessing.InJ.Bubenko,Jr.andB.Wangler
+(Eds.),Promote IT: Second Conference for the Promotion of Research in IT at New Universities and
+UniversityCollegesinSweden,pp.684–694,UniversityofSkövde.
+Nivre,J.(2006). InductiveDependencyParsing.Springer-Verlag,NewYork.
+Nozohoor-Farshi, R. (1991). GLR parsing for ϵ-grammars. In M. Tomita (Ed.), Generalized LR Parsing .
+KluwerAcademicPublishers,Boston,MA.
+Oepen,S.andJ.Carroll(2002).Eﬃcientparsingforuniﬁcation-basedgrammars.InH.U.D.Flickinger,
+S. Oepen and J.-I. Tsujii (Eds.), Collaborative Language Engineering: A Case Study in Eﬃcient
+Grammar-basedProcessing ,pp.195–225.CSLIPublications,Stanford,CA.
+Oepen, S., D. Flickinger, H. Uszkoreit, and J.-I. Tsujii (2000). Introduction to this special issue. Natural
+LanguageEngineering 6 (1),1–14.
+Pereira, F. C. N. and S. M. Shieber (1984). The semantics of grammar formalisms seen as computer
+languages. In Proceedings of the 10th International Conference on Computational Linguistics,
+COLING’84,Stanford,CA,pp.123–129.
+Pereira, F. C. N. and S. M. Shieber (1987). Prolog and Natural-Language Analysis , Volume 4 of CSLI
+LectureNotes .CSLIPublications,Stanford,CA.Reissuedin2002byMicrotomePublishing.
+
+SyntacticParsing 89
+Pereira, F. C. N. and D. H. D. Warren (1983). Parsing as deduction. In Proceedings of the 21st
+Annual Meeting of the Association for Computational Linguistics, ACL’83 , Cambridge, MA,
+pp.137–144.
+Pollard, C. and I. Sag (1994). Head-Driven Phrase Structure Grammar . University of Chicago Press,
+Chicago,IL.
+Pratt,V.R.(1975).LINGOL–aprogressreport.In ProceedingsoftheFourthInternationalJointConference
+onArtiﬁcialIntelligence,Tbilisi,Georgia,USSR,pp.422–428.
+Ranta,A.(1994). Type-TheoreticalGrammar.OxfordUniversityPress,Oxford,U.K.
+Ranta,A.(2004).Grammaticalframework,atype-theoreticalgrammarformalism. JournalofFunctional
+Programming 14(2),145–189.
+Rayner,M.,D.Carter,P.Bouillon,V.Digalakis,andM.Wirén(2000). TheSpokenLanguageTranslator.
+CambridgeUniversityPress,Cambridge,U.K.
+Rayner,M.,B.A.Hockey,andP.Bouillon(2006). PuttingLinguisticsintoSpeechRecognition:TheRegulus
+GrammarCompiler.CSLIPublications,Stanford,CA.
+Robinson, J. A. (1965). A machine-oriented logic based on the resolution principle. Journal of the
+ACM 12(1),23–49.
+Rosé, C. P. and A. Lavie (2001). Balancing robustness and eﬃciency in uniﬁcation-augmented context-
+freeparsersforlargepracticalapplications.InJ.-C.JunquaandG.vanNoord(Eds.), Robustnessin
+LanguageandSpeechTechnology .KluwerAcademicPublishers,Dordrecht,theNetherlands.
+Samuelsson,C.(1994).NotesonLRparserdesign.In Proceedingsofthe15thInternationalConferenceon
+ComputationalLinguistics ,Kyoto,Japan,pp.386–390.
+Samuelsson, C. and M. Rayner (1991). Quantitative evaluation of explanation-based learning as an
+optimizationtoolforalarge-scalenaturallanguagesystem.In Proceedingsofthe12thInternational
+JointConferenceonArtiﬁcialIntelligence,Sydney,Australia,pp.609–615.
+Sapir,E.(1921). Language:AnIntroductiontotheStudyofSpeech.HarcourtBrace&Co.Orlando,FL.
+Satta, G.(1992). Recognition of linear context-free rewriting systems. In Proceedings of the 30th Annual
+MeetingoftheAssociationforComputationalLinguistics,ACL’92 ,Newark,DE,pp.89–95.
+Scott, E. and A. Johnstone (2006). Right nulled GLR parsers. ACM Transactions on Programming
+LanguagesandSystems28 (4),577–618.
+Scott, E., A. Johnstone, and R. Economopoulos (2007). BRNGLR: A cubic Tomita-style GLR parsing
+algorithm. ActaInformatica44(6),427–461.
+Seki,H.,T.Matsumara,M.Fujii,andT.Kasami(1991).Onmultiplecontext-freegrammars. Theoretical
+ComputerScience88,191–229.
+Shieber, S. M. (1983). Sentence disambiguation by a shift-reduce parsing technique. In Proceedings of
+the21stAnnualMeetingoftheAssociationforComputationalLinguistics,ACL’83 ,Cambridge,MA,
+pp.113–118.
+Shieber, S. M. (1985a). Evidence against the context-freeness of natural language. Linguistics and
+Philosophy8 (3),333–343.
+Shieber, S. M. (1985b). Using restriction to extend parsing algorithms for complex-feature-based for-
+malisms.In Proceedingsofthe23rdAnnualMeetingoftheAssociationforComputationalLinguistics,
+ACL’85,Chicago,IL,pp.145–152.
+Shieber, S. M. (1986). An Introduction to Uniﬁcation-based Approaches to Grammar . Volume 4 of CSLI
+LectureNotes.UniversityofChicagoPress,Chicago,IL.
+Shieber,S.M.(1992). Constraint-BasedGrammarFormalisms .MITPress,Cambridge,MA.
+Shieber, S. M., Y. Schabes, and F. C. N. Pereira (1995). Principles and implementation of deductive
+parsing.JournalofLogicProgramming 24 (1–2),3–36.
+Shieber, S. M., H. Uszkoreit, F. C. N. Pereira, J. J. Robinson, and M. Tyson (1983). The formalism and
+implementationofPATR-II.InB.J.GroszandM.E.Stickel(Eds.), ResearchonInteractiveAcqui-
+sitionandUseofKnowledge ,FinalReport,SRIprojectnumber1894,pp.39–79.SRIInternational,
+MelanoPark,CA.
+
+90 HandbookofNaturalLanguageProcessing
+Sikkel, K. (1998). Parsing schemata and correctness of parsing algorithms. Theoretical Computer
+Science199 ,87–103.
+Sikkel,K.andA.Nijholt(1997).Parsingofcontext-freelanguages.InG.RozenbergandA.Salomaa(Eds.),
+TheHandbookofFormalLanguages ,VolumeII,pp.61–100.Springer-Verlag,Berlin,Germany.
+Slocum,J.(1981).Apracticalcomparisonofparsingstrategies.In Proceedingsofthe19thAnnualMeeting
+oftheAssociationforComputationalLinguistics,ACL’81 ,Stanford,CA,pp.1–6.
+Steedman,M.(1985).DependencyandcoordinationinthegrammarofDutchandEnglish. Language61,
+523–568.
+Steedman, M. (1986). Combinators and grammars. In R. Oehrle, E. Bach, and D. Wheeler (Eds.),
+CategorialGrammarsandNaturalLanguageStructures ,pp.417–442.ForisPublications,Dordrecht,
+theNetherlands.
+Steedman, M. J. (1983). Natural and unnatural language processing. In K. Sparck Jones and Y. Wilks
+(Eds.),AutomaticNaturalLanguageParsing ,pp.132–140.EllisHorwood,Chichester,U.K.
+Tesnière,L.(1959). ÉlémentsdeSyntaxeStructurale .LibraireC.Klincksieck,Paris,France.
+Thompson, H. S. (1981). Chart parsing and rule schemata in GPSG. In Proceedings of the 19th Annual
+MeetingoftheAssociationforComputationalLinguistics,ACL’81 ,Stanford,CA,pp.167–172.
+Thompson,H.S.(1983).MCHART:Aﬂexible,modularchartparsingsystem.In ProceedingsoftheThird
+NationalConferenceonArtiﬁcialIntelligence ,Washington,DC,pp.408–410.
+Tomita,M.(1985). EﬃcientParsingforNaturalLanguage .KluwerAcademicPublishers,Norwell,MA.
+Tomita, M. (1987). An eﬃcient augmented context-free parsing algorithm. Computational Linguis-
+tics13(1–2),31–46.
+Tomita, M. (1988). Graph-structured stack and natural language parsing. In Proceedings of the 26th
+AnnualMeetingoftheAssociation forComputationalLinguistics, ACL’88 , UniversityofNewYork
+atBuﬀalo,Buﬀalo,NY.
+Toutanova,K.,C.D.Manning,S.M.Shieber,D.Flickinger,andS.Oepen(2002).Parsedisambiguationfor
+arichHPSGgrammar.InProceedingsoftheFirstWorkshoponTreebanksandLinguisticTheories ,
+Sozopol,Bulgaria,pp.253–263.
+Valiant, L. (1975). General context-free recognition in less than cubic time. Journal of Computer and
+SystemsSciences10(2),308–315.
+van Noord, G. (1997). An eﬃcient implementation of the head-corner parser. Computational
+Linguistics23(3),425–456.
+vanNoord,G.,G.Bouma,R.Koeling,andM.-J.Nederhof(1999).Robustgrammaticalanalysisforspoken
+dialoguesystems. NaturalLanguageEngineering 5(1),45–93.
+Vijay-Shanker, K. and D. Weir (1993). Parsing some constrained grammar formalisms. Computational
+Linguistics19 (4),591–636.
+Vijay-Shanker, K. and D. Weir (1994). The equivalence of four extensions of context-free grammars.
+MathematicalSystemsTheory27 (6),511–546.
+Vijay-Shanker, K., D. Weir, and A. K. Joshi (1987). Characterizing structural descriptions produced by
+various grammatical formalisms. In Proceedings of the 25th Annual Meeting of the Association for
+ComputationalLinguistics,ACL’87,Stanford,CA.
+Ward, W. (1989). Understanding spontaneous speech. In Proceedings of the Workshop on Speech and
+NaturalLanguage,HLT’89,Philadelphia,PA,pp.137–141.
+Wirén,M.(1987).Acomparisonofrule-invocationstrategiesincontext-freechartparsing.In Proceedings
+of the Third Conference of the European Chapter of the Association for Computational LinguisticsEACL’87,Copenhagen,Denmark.
+Woods, W. A. (1970). Transition network grammars for natural language analysis. Communications of
+theACM 13(10),591–606.
+Woods, W. A. (1973). An experimental parsing system for transition network grammars. In R. Rustin
+(Ed.),NaturalLanguageProcessing ,pp.111–154.AlgorithmicsPress,NewYork.
+
+SyntacticParsing 91
+Woods,W.A.,R.M.Kaplan,andB.Nash-Webber(1972).Thelunarsciencesnaturallanguageinformation
+system:ﬁnalreport.BBNReport2378,Bolt,Beranek,andNewman,Inc.,Cambridge,MA.
+Yngve,V.H.(1955).Syntaxandtheproblemofmultiplemeaning.InW.N.LockeandA.D.Booth(Eds.),
+MachineTranslationofLanguages,pp.208–226.MITPress,Cambridge,MA.
+Younger,D.H.(1967).Recognitionofcontext-freelanguagesintime n3.InformationandControl10 (2),
+189–208.
+
+
+

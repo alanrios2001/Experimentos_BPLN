@@ -1,0 +1,678 @@
+9
+Fundamental Statistical
+Techniques
+Tong Zhang
+Rutgers,TheStateUniversityofNewJersey9.1 BinaryLinearClassiﬁcation.........................................1899.2 One-versus-AllMethodforMulti-CategoryClassiﬁcation......1939.3 MaximumLikelihoodEstimation..................................1949.4 GenerativeandDiscriminativeModels............................194
+NaiveBayes •LogisticRegression
+9.5 MixtureModelandEM..............................................1989.6 SequencePredictionModels........................................200
+HiddenMarkovModel •LocalDiscriminativeModelforSequence
+Prediction •GlobalDiscriminativeModelforSequencePrediction
+References....................................................................204
+Thestatisticalapproachtonaturallanguageprocessing(NLP)hasbecomemoreandmoreimportantinrecent years. This chapter gives an overview of some fundamental statistical techniques that have beenwidely used in diﬀerent NLP tasks. Methods for statistical NLP mainly come from machine learning,whichisascientiﬁcdisciplineconcernedwithlearningfromdata.Thatis,toextractinformation,discoverpatterns, predict missing information based on observed information, or more generally constructprobabilisticmodelsofthedata.Machinelearningtechniquescoveredinthischaptercanbedividedintotwotypes:supervisedandunsupervised.
+Supervisedlearningismainlyconcernedwithpredictingmissinginformationbasedonobservedinfor-
+mation.Forexample,predictingpartofspeech(POS)basedonsentences.Itemploysstatisticalmethodsto construct a prediction rule from labeled training data. Supervised learning algorithms discussed inthis chapter include naive Bayes, support vector machines (SVMs), and logistic regression. The goalof unsupervised learning is to group data into clusters. The main statistical techniques are mixturemodels and the expectation maximization (EM) algorithm. This chapter will also cover methods usedin sequence analysis, such as hidden Markov model (HMM), conditional random ﬁeld (CRF), and theViterbidecodingalgorithm.
+9.1 Binary Linear Classiﬁcation
+Thegoalofbinaryclassiﬁcationistopredictanunobservedbinarylabel y∈{ −1,1},basedonanobserved
+input vector x∈Rd. A classiﬁer h(x)mapsx∈Rdto{−1,1}. If it agrees with the label y, the error is
+zero. If it does not agree with the label y, we suﬀer a loss of one. That is, the classiﬁcation error is
+deﬁnedas
+189
+
+190 HandbookofNaturalLanguageProcessing
+err(h(x ),y)=I(h(x)̸=y)={
+1h(x)̸=y
+−1 otherwise,
+whereI(·)isthesetindicatorfunction.
+A commonly used method for binary classiﬁcation is to learn a real-valued scoring function f(x):
+Rd→Rthatinducesaclassiﬁcationrule
+h(x)={
+1f(x)>0
+−1 otherwise.(9.1)
+A commonly used scoring function is linear: f(x)=wTx+b,w h e r e w∈Rdandb∈R. A binary
+classiﬁcationmethodusinglinearscoringfunctioniscalledalinearclassiﬁer.
+In supervised learning, the classiﬁer h(x), or its scoring function f(x), is learned from a set of labeled
+examples
+{(x1,y1),...,(xn,yn)},
+referredtoastrainingdata.Itsperformance(averageclassiﬁcationerror)shouldbeevaluatedonaseparatesetoflabeleddatacalledtestdata.
+Aprocedurethatconstructsascoringfunction f(x)fromthetrainingdataiscalledalearningalgorithm.
+Forexample,astandardlearningalgorithmforlinearclassiﬁcationislinearleastsquaresmethod,whichﬁndsaweightvector ˆw∈R
+dandbias ˆb∈Rforalinearscoringfunction f(x)=ˆwTx+ˆbbyminimizing
+thesquarederroronthetrainingset:
+[ˆw,ˆb]=argmin
+w,bn∑
+i=1(wTxi+b−yi)2. (9.2)
+Usinglinearalgebra,wemaywritethesolutionofthisformulainclosedformas
+ˆw=[n∑
+i=1(xi−¯x)(xi−¯x)T]−1n∑
+i=1(xi−¯x)(yi−¯y),
+ˆb=¯y−ˆwT¯x,
+where
+¯x=1
+nn∑
+i=1xiand ¯y=1
+nn∑
+i=1yi.
+One problem of the above formulation is that the matrix∑ni=1(xi−¯x)(xi−¯x)Tmay be singular or
+ill-conditioned(thisoccurs,e.g.,when nislessthanthedimensionof x).Astandardremedyistousethe
+ridge regression method (Hoerl and Kennard 1970) that adds a regularization term λwTwto (9.2). For
+convenience,weset b=0:
+ˆw=argminw[
+1
+nn∑
+i=1(wTxiyi−1)2+λwTw]
+, (9.3)
+where λ>0isanappropriatelychosenregularizationparameter.Thesolutionisgivenby
+ˆw=(n∑
+i=1xixT
+i+λnI)−1(n∑
+i=1xiyi)
+,
+
+FundamentalStatisticalTechniques 191
+whereIdenotes the identity matrix. This method solves the ill-conditioning problem because∑n
+i=1xixT
+i+λnIisalwaysnon-singular.
+Notethattaking b=0in(9.3)doesnotmaketheresultingscoringfunction f(x)=ˆwTxlessgeneral.To
+seethis,onecanembedallthedataintoaspacewithonemoredimensionwithsomeconstant A(normally,
+one takes A=1). In this conversion, each vector xi=[xi,1,...,xi,d]in the original space becomes the
+vectorx′=[xi,1,...,xi,d,A]in the larger space. Therefore, the linear classiﬁer wTx+b=w′Tx′,w h e r e
+w′=[w,b]isaweightvectorin (d+1)-dimensionalspace.Duetothissimplechangeofrepresentation,
+thelinearscoringfunctionwith bintheoriginalspaceisequivalenttoalinearscoringfunctionwithout
+binthelargerspace.
+The introduction of the regularization term λwTwin (9.3) makes the solution more stable. That is,
+a small perturbation of the observation does not signiﬁcantly change the solution. This is a desirable
+propertybecausetheobservations(both xiandyi)oftencontainnoise.However, λintroducesabiasinto
+thesystembecauseitpullsthesolution ˆwtowardzero.When λ→∞,ˆw→0.Therefore,itisnecessary
+to balance the desirable stabilization eﬀect and the undesirable bias eﬀect, so that the optimal trade-oﬀ
+canbeachieved.Figure9.1illustratesthetrainingerrorversustesterrorwhen λchanges.As λincreases,
+due to the bias eﬀect, the training error always increases. However, since the solution becomes more
+robusttonoiseas λincreases,thetesterrorwilldecreaseﬁrst.Thisisbecausethebeneﬁtofamorestable
+solutionislargerthanthebiaseﬀect.Aftertheoptimaltrade-oﬀ(thelowesttesterrorpoint)isachieved,
+thetesterrorbecomeslargerwhen λincreases.Thisisbecausethebeneﬁtofmorestabilityissmallerthan
+theincreasedbias.
+Inpractice,theoptimal λcanbeselectedusingcross-validation,wherewerandomlysplitthetraining
+dataintotwoparts:atrainingpartandavalidationpart.Weuseonlytheﬁrst(training)parttocompute
+ˆwwith diﬀerent λ, and then estimate its performance on the validation part. The λwith the smallest
+validationerroristhenchosenastheoptimalregularizationparameter.
+The decision rule (9.1) for a linear classiﬁer f(x)=wTx+bis deﬁned by a decision boundary
+{x:wTx+b=0}:ononesideofthishyperplane,wepredict h(x)=1,andontheotherside,wepredict
+h(x)=−1.Ifthehyperplanecompletelyseparatesthepositivedatafromthenegativedatawithouterror,
+we call it a separating hyperplane. If the data are linearly separable, then there can be more than one
+possibleseparatinghyperplanes,asshowninFigure9.2.Anaturalquestionis:Whatisabetterseparating
+hyperplane?Onepossiblemeasuretodeﬁnethequalityofaseparatinghyperplaneisthroughtheconcept
+of margin, which is the distance of the nearest training example to the linear decision boundary. A
+separating hyperplane with a larger margin is more robust to noise because training data can still be
+separatedafterasmallperturbation.InFigure9.2,theboundaryrepresentedbythesolidlinehasalarger
+marginthantheboundaryrepresentedbythedashedline,andthusitisthepreferredclassiﬁer.
+Test errorError
+LambdaTraining error
+FIGURE9.1 Eﬀectofregularization.
+
+192 HandbookofNaturalLanguageProcessing
+Soft-margin penalization
+MarginLarge margin separating hyperplane
+Separating hyperplane
+FIGURE9.2 Marginandlinearseparatinghyperplane.
+The idea of ﬁnding an optimal separating hyperplane with largest margin leads to another popular
+linearclassiﬁcationmethod calledsupport vectormachine(Cortesand Vapnik1995; Joachims1998). If
+the training data are linearly separable, the method ﬁnds a separating hyperplane with largest margin
+deﬁnedas
+min
+i=1,...,n(wTxi+b)yi/∥w∥2.
+Theequivalentformulationistominimize ∥w∥2undertheconstraintmin i(wTxi+b)yi≥1.Thatis,the
+optimalhyperplaneisthesolutionto
+[ˆw,ˆb]=argmin
+w,b∥w∥2
+2
+subjectto (wTxi+b)yi≥1(i=1,...,n).
+For training data that is not linearly separable, the idea of margin maximization cannot be directly
+applied.Instead,oneconsiderstheso-calledsoft-marginformulationasfollows:
+[ˆw,ˆb]=argmin
+w,b[
+∥w∥2
+2+Cn∑
+i=1ξi]
+,
+subjectto yi(wTxi+b)≥1−ξi,ξi≥0, (i=1,...,n).(9.4)
+Inthismethod,wedonotrequirethatalltrainingdatacanbeseparatedwithmarginatleastone.Instead,
+weintroducesoft-marginslackvariable ξi≥0thatpenalizepointswithsmallermargins.Theparameter
+C≥0balancesthemarginviolation(when ξi>0)andtheregularizationterm ∥w∥2
+2.WhenC→∞,we
+haveξi→0;therefore,themargincondition yi(wTxi+b)≥1isenforcedforall i.Theresultingmethod
+becomesequivalenttotheseparableSVMformulation.
+Byeliminating ξifrom(9.4),andlet λ=1/(nC),weobtainthefollowingequivalentformulation:
+[ˆw,ˆb]=argmin
+w,b[
+1
+nn∑
+i=1g((wTxi+b)yi)+λ∥w∥2
+2]
+, (9.5)
+
+FundamentalStatisticalTechniques 193
+where
+g(z)={
+1−zifz≤1,
+0i f z>0.(9.6)
+Thismethodisrathersimilartotheridgeregressionmethod(9.3).Themaindiﬀerenceisadiﬀerentlossfunctiong(·), which is called hinge loss in the literature. Compared to the least squares loss, the hinge
+lossdoesnotpenalizedatapointswithlargemargin.
+9.2 One-versus-All Method for Multi-Category Classiﬁcation
+In practice, one often encounters multi-category classiﬁcation, where the goal is to predict a labely∈{1,...,k}basedonanobservedinputx .
+If we have a binary classiﬁcation algorithm that can learn a scoring function f(x)from training data
+{(x
+i,yi)}i=1,...,nwithyi∈{ −1,1},thenitcanalsobeusedformulti-categoryclassiﬁcation.
+A commonly used method is one-versus-all. Consider a multi-category classiﬁcation problem with k
+classes:yi∈{1,...,k}. We may reduce it into kbinary classiﬁcation problems indexed by class label
+ℓ∈{1,...,k}.T h e ℓth problem has training data (xi,y(ℓ)
+i)(i=1,...,n), where we deﬁne the binary
+labely(ℓ)
+i∈{ −1,+1}as
+y(ℓ)
+i={
+1i fyi=ℓ,
+−1 otherwise.
+Foreachbinaryproblem ℓdeﬁnedthiswaywithtrainingdata {(xi,y(ℓ)
+i)},wemayuseabinaryclassiﬁcation
+algorithmtolearnascoringfunction fℓ(x).Forexample,usinglinearSVMorlinearleastsquares,wecan
+learnalinearscoringfunctionoftheform fℓ(x)=w(ℓ)x+b(ℓ)foreach ℓ.Foradatapoint x,thehigher
+the score fℓ(x), the more likely xbelongs to class ℓ. Therefore, the classiﬁcation rule for the multi-class
+problemis
+h(x)=arg max
+ℓ∈{1,...,k}fℓ(x).
+Figure9.3showsthedecisionboundaryforthreeclasseswithlinearscoringfunctions fℓ(x)(ℓ=1,2,3).
+The three dashed lines represent the decision boundary fℓ(x)=0(ℓ=1,2,3) for the three binary
+problems. The threesolid lines represent thedecision boundary of the multi-class problem, determinedbythelines f
+1(x)=f2(x),f1(x)=f3(x),andf2(x)=f3(x),respectively.
+FIGURE9.3 Multi-classlinearclassiﬁerdecisionboundary.
+
+194 HandbookofNaturalLanguageProcessing
+9.3 Maximum Likelihood Estimation
+Averygeneralapproachtomachinelearningistoconstructaprobabilitymodelofeachindividualdatapointasp(x,y|θ),where θisthemodelparameterthatneedstobeestimatedfromthedata.Ifthetraining
+dataareindependent,thentheprobabilityofthetrainingdatais
+n∏
+i=1p(xi,yi|θ).
+A commonly used statistical technique for parameter estimation is the maximum likelihood method,whichﬁndsaparameter ˆθbymaximizingthelikelihoodofthedata {(x
+1,y1),...,(xn,yn)}:
+ˆθ=argmax
+θn∏
+i=1p(xi,yi|θ).
+Moregenerally,wemayimposeaprior p(θ)onθ,andusethepenalizedmaximumlikelihoodasfollows:
+ˆθ=argmax
+θ[
+p(θ)n∏
+i=1p(xi,yi|θ)]
+.
+IntheBayesianstatisticsliterature, thismethodisalsocalledMAP(maximumaposterior)estimator. Amorecommonwaytowritetheestimatoristotakelogarithmoftheright-handside:
+ˆθ=argmax
+θ[n∑
+i=1lnp(xi,yi|θ)+lnp(θ)]
+.
+For multi-classiﬁcation problems with kclasses {1,...,k}, we obtain the following class conditional
+probabilityestimate:
+p(y|x)=p(x,y|θ)
+∑kℓ=1p(x,ℓ|θ)(y=1,...,k).
+The class conditional probability function may be regarded as a scoring function, with the followingclassiﬁcationrulethatchoosestheclasswiththelargestconditionalprobability:
+h(x)=arg max
+y∈{1,...,k}p(y|x).
+9.4 Generative and Discriminative Models
+We shall give two concrete examples of maximum likelihood estimation for supervised learning. In theliterature,therearetwotypesofprobabilitymodelscalledgenerativemodelanddiscriminativemodel.Inagenerativemodel,wemodeltheconditionalprobabilityofinput xgiventhelabel y;inadistriminative
+model, we directly model the condition probability p(y|x). This section describes two methods: naive
+Bayes,agenerativemodel,andlogisticregression,adiscriminativemodel.Botharecommonlyusedlinearclassiﬁcationmethods.
+
+FundamentalStatisticalTechniques 195
+y
+x
+θ
+FIGURE9.4 Graphicalrep-
+resentation of a generative
+model.9.4.1 Naive Bayes
+The naive Bayes method starts with a generative model as in (9.7). Let
+θ={θ(ℓ)}ℓ=1,...,kbe the model parameter, where we use a diﬀerent
+parameter θ(ℓ)foreachclass ℓ.Thenwecanmodelthedataas
+p(x,y|θ)=p(y)p(x|y,θ)andp(x|y,θ)=p(x|θ(y)). (9.7)
+Thisprobabilitymodelcanbevisuallyrepresentedusingagraphicalmodel
+as in Figure 9.4, where the arrows indicate the conditional dependency
+structureamongthevariables.
+Theconditionalclassprobabilityis
+p(y|x)=p(y)p(x|θ(y))
+∑k
+ℓ=1p(y=ℓ)p(x|θ(ℓ)).
+In the following, we shall describe the multinomial naive Bayes model (McCallum and Nigam 1998)
+forp(x|θ(y)), which is important in many NLP problems. In this model, the observation xrepresents
+multiple (unordered) occurrences of dpossible symbols. For example, xmay represent the number of
+word occurrences in a text document by ignoring the word order information (such a representation is
+often referred to as “bag of words”). Each word in the document is one of dpossible symbols from a
+dictionary.
+Speciﬁcally, each data point xiis ad-dimensional vector xi=[xi,1,...,xi,d]representing the number
+ofoccurrencesofthese dsymbols:Foreachsymbol jinthedictionary, xi,jisthenumberofoccurrencesof
+symbolj.Foreachclass ℓ,weassumethatwordsareindependentlydrawnfromthedictionaryaccording
+to a probability distribution θ(ℓ)=[θ(ℓ)
+1,...,θ(ℓ)
+d]: that is, the symbol joccurs with probability θ(ℓ).
+Now,foradatapoint xiwithlabel yi=ℓ,xicomesfromamultinomialdistribution:
+p(xi|θ(ℓ))=d∏
+j=1(θ(ℓ)
+j)xi,jp⎛
+⎝d∑
+j=1xi,j⎞
+⎠,
+wherewemaketheassumptionthatthetotalnumberofoccurrences∑d
+j=1xjisindependentofthelabel
+yi=ℓ.Foreach y∈{1,...,k},weconsidertheso-calledDirichletpriorfor θ(y)as
+p(θ(y))∝d∏
+j=1(θ(y)
+j)λ,
+where λ>0isatuningparameter. WemayusetheMAPestimatortocompute θ(ℓ)separatelyforeach
+classℓ:
+ˆθ(ℓ)=argmax
+θ∈Rd⎡
+⎣⎛
+⎝∏
+i:yi=ℓd∏
+j=1(θj)xi,j⎞
+⎠d∏
+j=1(θj)λ⎤
+⎦
+subjecttod∑
+j=1θj=1, and θj≥0(j=1,...,d).
+Thesolutionisgivenby
+ˆθ(ℓ)
+j=n(ℓ)
+j∑d
+j′=1n(ℓ)
+j′,
+
+196 HandbookofNaturalLanguageProcessing
+where
+n(ℓ)
+j=λ+∑
+i:yi=ℓxi,j.
+Letn(ℓ)=∑
+i:yi=ℓ1 be the number of training data with class label ℓfor each ℓ=1,...,k,t h e nw e
+mayestimate
+p(y)=n(y)/n.
+Withtheaboveestimates,weobtainascoringfunction
+fℓ(x)=lnp(x|θ(y))+lnp(y)=(ˆw(ℓ))Tx+ˆb(ℓ),
+where
+ˆw(ℓ)=[lnˆθ(ℓ)
+j]j=1,...,dand ˆb(ℓ)=ln(n(ℓ)/n).
+TheconditionalclassprobabilityisgivenbytheBayesrule:
+p(y|x)=p(x|y)p(y)
+∑k
+ℓ=1p(x|ℓ)p(ℓ)=efy(x)
+∑k
+ℓ=1efℓ(x), (9.8)
+andthecorrespondingclassiﬁcationruleis
+h(x)=arg max
+ℓ∈{1,...,k}fℓ(x).
+9.4.2 Logistic Regression
+Naive Bayes is a generative model in which we model the conditional probability of input xgiven the
+labely.Afterestimatingthemodelparameter,wemaythenobtainthedesiredclassconditionalprobability
+p(y|x)using the Bayes rule. A diﬀerent approach is to directly model the conditional probability p(y|x).
+Suchamodelisoftencalledadiscriminativemodel.ThedependencystructureisgivenbyFigure9.5.
+Ridge regression can be interpreted as the MAP estimator for a discriminative model with Gaussian
+noise (note that although ridge regression can be applied to classiﬁcation problems, the underlying
+Gaussiannoiseassumptionisonlysuitableforreal-valuedoutput)andaGaussianprior.Theprobability
+modelis(withparameter θ=w)
+p(y|w,x)=N(wTx,τ2),
+x
+y
+θ
+FIGURE9.5 Graphicalrep-
+resentation of a discrimina-
+tivemodel.withprioronparameter
+p(w)=N(0,σ2).
+Here,weshallsimplyassumethat σ2andτ2areknownvarianceparameters,
+andtheonlyunknownparameteris w.TheMAPestimatoris
+ˆw=argminw[
+1
+τ2n∑
+i=1(wTxi−yi)2+wTw
+σ2]
+,
+whichisequivalenttotheridgeregressionmethodin(9.3)with λ=τ2/σ2.
+
+FundamentalStatisticalTechniques 197
+However, for binary classiﬁcation, since yi∈{ −1,1}is discrete, the noise wTxi−yicannot be a
+Gaussian distribution. The standard remedy to this problem is logistic regression, which models theconditionalclassprobabilityas
+p(y=1|w,x)=1
+exp(−wTx)+1.
+Thismeansthatbothfor y=1andy=−1,thelikelihoodis
+p(y|w,x)=1
+exp(−wTxy)+1. (9.9)
+IfweagainassumeaGaussianprior p(w)=N(0,σ2),thenthepenalizedmaximumlikelihoodestimateis
+ˆw=argminw[n∑
+i=1ln(1+exp(−wTxiyi))+λwTw]
+, (9.10)
+where λ=1/(2σ2).Itsuseintextcategorizationaswellasnumericalalgorithmsforsolvingtheproblem
+canbefoundinZhangandOles(2001).
+Althoughbinarylogisticregressioncanbeusedtosolvemulti-classproblemsusingtheone-versus-all
+method described earlier, there is a direct formulation of multi-class logistic regression, which we shalldescribenext.Assumewehave kclasses,thenaiveBayesmethodinducesaprobabilityoftheform(9.8),
+where each function f
+ℓ(x)is linear. Therefore, as a direct generalization of the binary logistic model in
+(9.9),wemayconsidermulti-categorylogisticmodel:
+p(y|{w(ℓ)},x)=e(w(y))Tx
+∑kℓ=1e(w(ℓ))Tx. (9.11)
+The binary logistic model is a special case of (9.11) with w(1)=wandw(−1)=0. If we further assume
+Gaussianpriorsforeach w(ℓ),
+P(w(ℓ))=N(0,σ2)( ℓ=1,...,k),
+thenwehavethefollowingMAPestimator:
+{ˆw(ℓ)}=arg min
+{w(ℓ)}[n∑
+i=1(
+−(w(yi))Txi+lnk∑
+ℓ=1e(w(ℓ))Txi)
++λk∑
+ℓ=1(w(ℓ))Tw(ℓ)]
+,
+where λ=1/(2σ2).
+Multi-class logistic regression is also referred to as the maximum entropy method (MaxEnt) (Berger
+etal.1996)underthefollowingmoregeneralform:
+P(y|w,x)=exp(wTz(x,y))
+∑kℓ=1exp(wTz(x,y)), (9.12)
+wherez(x,y)is a human-constructed vector called feature vector that depends both on xand ony.L e t
+w=[w(1),...,w(k)]∈Rkd,a n dz(x,y)=[0,...,0,x,0,...,0],w h e r exappears only in the positions
+(y−1)d+1toydthatcorrespondsto w(y).Withthisrepresentation,wehave wTz(x,y)=(w(y))Tx,and
+(9.11)becomesaspecialcaseof(9.12).
+
+198 HandbookofNaturalLanguageProcessing
+Although logistic regression and naive Bayes share the same conditional class probability model, a
+major advantage of the logistic regression method is that it does not make any assumption on howxis generated. In contrast, naive Bayes assumes that xis generated in a speciﬁc way, and uses such
+informationtoestimatethemodelparameters.Thelogisticregressionapproachshowsthatevenwithoutany assumptions on x, the conditional probability can still be reliably estimated using discriminative
+maximumlikelihoodestimation.
+9.5 Mixture Model and EM
+Clusteringisacommonunsupervisedlearningproblem. Itsgoalistogroupunlabeleddataintoclustersso that data in the same cluster are similar, while data in diﬀerent clusters are dissimilar. In clustering,we only observe the input data vector x, but do not observe its cluster label y. Therefore, it is called
+unsupervisedlearning.
+Clusteringcanalsobeviewedfromaprobabilisticmodelingpointofview.Assumethatthedatabelong
+tokclusters. Each data point is a vector x
+i, withyi∈{1,...,k}being its corresponding (unobserved)
+clusterlabel.Each yitakesvalue ℓ∈{1,...,k}withprobability p(yi=ℓ|xi).
+Thegoal ofclustering istoestimate p(yi=ℓ|xi). SimilartothenaiveBayesapproach, we startwitha
+generativemodelofthefollowingform:
+p(x|θ,y)=p(x|θ(y)).
+Sinceyisnotobserved,weintegrateout ytoobtain
+p(x|θ)=k∑
+c=1μℓp(x|θ(ℓ)), (9.13)
+where μℓ=p(y=ℓ)(ℓ=1,...,k)arekparameterstobeestimatedfromthedata.Themodelin(9.13),
+with missing data (in this case, y) integrated out, is called a mixture model. A cluster ℓ∈{1,...,k}is
+referredtoasamixturecomponent.
+We can interpret the data generation process in (9.13) as follows. First we pick a cluster ℓ(mixture
+component)from {1,...,k}withaﬁxedprobability μℓasyi;thenwegeneratedatapoints xiaccording
+totheprobabilitydistribution p(xi|θ(ℓ)).
+Inordertoobtaintheclusterconditionalprobability p(y=ℓ|x),wecansimpleapplyBayesrule:
+p(y|x)=μyp(x|θ(y))
+∑kℓ=1μℓp(x|θ(ℓ)). (9.14)
+Next we show how to estimate the model parameters {θ(ℓ),μℓ}from the data. This can be achieved
+usingthepenalizedmaximumlikelihoodmethod:
+{ˆθ(ℓ),ˆμℓ}=arg max
+{θ(ℓ),μℓ}[n∑
+i=1lnk∑
+ℓ=1μℓp(xi|θ(ℓ))+k∑
+ℓ=1lnp(θ(ℓ))]
+. (9.15)
+A direct optimization of (9.15) is usually diﬃcult because the sum over the mixture components ℓ
+is inside the logarithm for each data point. However, for many simple models such as the naive Bayesexample considered earlier, if we know the label y
+ifor eachxi, then the estimation becomes easier: we
+simplyestimatetheparametersusingtheequation
+{ˆθ(ℓ),ˆμℓ}=arg max
+{θ(ℓ),μℓ}[n∑
+i=1lnμyip(xi|θ(yi))+k∑
+ℓ=1lnp(θ(ℓ))]
+,
+
+FundamentalStatisticalTechniques 199
+which does not have the sum inside the logarithm. For example, in the naive Bayes model, both μℓand
+θ(ℓ)canbeestimatedusingsimplecounting.
+TheEMalgorithm(Dempsteretal.1977)simpliﬁesthemixturemodelestimationproblembyremoving
+the sum over ℓinside the logarithm in (9.15). Although we do not know the true value of yi,w ec a n
+estimate the conditional probability of yi=ℓforℓ=1,...,kusing (9.14). This can then be used to
+movethesumover ℓinsidethelogarithmtoasumover ℓoutsidethelogarithm:Foreachdatapoint i,we
+weighteachmixturecomponent ℓbytheestimatedconditionalclassprobability p(yi=ℓ|xi).Thatis,we
+repeatedlysolvethefollowingoptimizationproblem:
+[ˆθ(ℓ)new,ˆμnewℓ]=arg max
+θ(ℓ),μℓ[n∑
+i=1p(yi=ℓ|xi,ˆθold,ˆμold)ln[μℓp(xi|θ(ℓ))]+lnp(θ(ℓ))]
+forℓ=1,...,k. Eachtime, we start with [ˆθold,ˆμold]and update its value to [ˆθnew,ˆμnew]. Note thatthe
+solutionof ˆμnewℓis
+ˆμnewℓ=∑ni=1p(yi=ℓ|xi,ˆθold,ˆμold)
+∑ni=1∑kℓ
+′=1p(yi=ℓ′|xi,ˆθold,ˆμold).
+ThealgorithmicdescriptionofEMisgiveninFigure9.6.
+In practice, a few dozen iterations of EM often gives a satisfactory result. It is also necessary to start
+EM with diﬀerent random initial parameters. This is to improve local optimal solutions found by thealgorithmwitheachspeciﬁcinitialparameterconﬁguration.
+The EM algorithm can be used with any generative probability model including the naive Bayes
+model discussed earlier. Another commonly used model is Gaussian, where we assume p(x|θ
+(ℓ))∝
+exp(
+−(θ(ℓ)−x)2
+2σ2)
+. Figure 9.7 shows a two-dimensional Gaussian mixture model with two mixture com-
+ponents represented by the dotted circles. For simplicity, we may assume that σ2is known. Under this
+assumption, Figure 9.6 can be used to compute the mean vectors θ(ℓ)for the Gaussian mixture model,
+wheretheEandMstepsaregivenby
+•Estep:q i,y=μyexp(
+−(xi−θ(y))2
+2σ2)
+/∑kℓ=1μℓexp(
+−(xi−θ(ℓ))2
+2σ2)
+•Mstep: μℓ=∑ni=1qi,y/nandθ(ℓ)=∑ni=1qi,ℓxi/∑ni=1qi,ℓ
+Initialize θ(ℓ)and let μℓ=1/k(ℓ=1,...,k)
+iterate
+// the E-stepfori=1,...,n
+q
+i,y=μyp(xi|θ(y))/∑kℓ=1μℓp(xi|θ(ℓ))( y=1,..., k)
+endfor// the M-stepfory=1,...,k
+θ
+(y)=arg max ˜θ[∑ni=1qi,ylnp(xi|˜θ)+lnp(˜θ)]
+μy=∑ni=1qi,y/n
+endfor
+until convergence
+FIGURE9.6 EMalgorithm.
+
+200 HandbookofNaturalLanguageProcessing
+FIGURE9.7 Gaussianmixturemodelwithtwomixturecomponents.
+9.6 Sequence Prediction Models
+NLP problems involve sentences that can be regarded as sequences. For example, a sentence of nwords
+canberepresentedasasequenceof nobservations {x1,...,xn}. Weareofteninterestedinpredictinga
+sequenceofhiddenlabels {y1,...,yn},oneforeachword.Forexample,inPOStagging, yiisthePOSof
+theword xi.
+The problem of predicting hidden labels {yi}given observations {xi}is often referred to as sequence
+prediction.Althoughthistaskmayberegardedasasupervisedlearningproblem,ithasanextracomplexity
+that data (xi,yi)in the sequence are dependent. For example, label yimay depend on the previous label
+yi−1.Intheprobabilisticmodelingapproach,onemayconstructaprobabilitymodelofthewholesequence
+{(xi,yi)},andthenestimatethemodelparameters.
+Similartothestandardsupervisedlearningsettingwithindependentobservations,wehavetwotypes
+of models for sequence prediction: generative and discriminative. We shall describe both approaches
+in this section. For simplicity, we only consider ﬁrst-order dependency where yionly depends on yi−1.
+Higher order dependency (e.g., yimay depend on yi−2,yi−3, and so on) can be easily incorporated but
+requires more complicated notations. Also for simplicity, we shall ignore sentence boundaries, and just
+assume that the training data contain nsequential observations. In the following, we will assume that
+eachyitakesoneofthe kvaluesin {1,...,k}.
+9.6.1 Hidden Markov Model
+ThestandardgenerativemodelforsequencepredictionistheHMM,illustratedinFigure9.8.Ithasbeen
+used in various NLP problems, such as POS tagging (Kupiec 1992) This model assumes that each yi
+depends on the previous label yi−1,a n dxionly depends on yi. Sincexidepends only on yi, if the labels
+areobservedonthetrainingdata,wemaywritethelikelihoodmathematicallyas
+p(xi|yiθ)=p(xi|θ(yi)),
+whichisidenticalto(9.7).
+One often uses the naive Bayes model for p(x|θ(y)). Because the observations xiare independent
+conditionedon yi,theparameter θcanbeestimatedfromthetrainingdatausingexactlythesamemethod
+...... yn y1 y2
+x1 x2 xn
+FIGURE9.8 GraphicalrepresentationofHMM.
+
+FundamentalStatisticalTechniques 201
+described in Section 9.4.1. Using the Bayes rule, the conditional probability of the label sequence {yi}is
+givenby
+p({yi}|{xi},θ)∝p({yi})n∏
+i=1p(xi|θ(yi)).
+Thatis,
+p({yi}|{xi},θ)∝n∏
+i=1[p(xi|θ(yi))p(yi|yi−1)]. (9.16)
+Similar to Section 9.4.1, the probability p(yi=a|yi−1=b)=p(yi=a,yi−1=b)/p(yi−1=b)can be
+estimated using counting. Let nbbe the number of training data with label b,a n dna,bbe the number of
+consecutivelabelpairs (yi,yi−1)withvalue (a,b).Wecanestimatetheconditionalprobabilityas
+p(yi−1=b)=nb
+n,
+p(yi=a,yi−1=b)=na,b
+n,
+p(yi=a|yi−1=b)=na,b
+nb.
+Theprocessofestimatingthesequence {yi}fromobservation {xi}isoftencalleddecoding.Astandard
+method is the maximum likelihood decoding, which ﬁnds the most likely sequence {ˆyi}based on the
+conditionalprobabilitymodel(9.16).Thatis,
+[{ˆyi}] =argmax
+{yi}n∑
+i=1f(yi,yi−1), (9.17)
+where
+f(yi,yi−1)=lnp(xi|θ(yi))+lnp(yi|yi−1).
+Itisnotpossibletoenumerateallpossiblesequences {yi}andpickthelargestscorein(9.17)becausethe
+number of possible label sequences is kn. However, an eﬃcient procedure called the Viterbi decoding
+algorithmcanbeusedtosolve(9.17). Thealgorithmusesdynamicprogrammingtotrackthebestscoreuptoaposition j,andupdatethescorerecursivelyfor j=1,...,n.Let
+s
+j(yj)=max
+{yi}i=1,...,j−1j∑
+i=1f(yi,yi−1),
+thenitiseasytocheckthatwehavethefollowingrecursiveidentity:
+sj+1(yj+1)=max
+yj∈{1,...,k}[sj(yj)+f(yj+1,yj)].
+Therefore, sj(yj)canbecomputedrecursivelyfor j=1,...,n.Aftercomputing sj(yj),wemaytraceback
+j=n,n−1,..., 1toﬁndtheoptimalsequence {ˆyj}.TheViterbialgorithmthatsolves(9.17)ispresented
+inFigure9.9.
+
+202 HandbookofNaturalLanguageProcessing
+Initialize s0(y0)=0(y0=1,...,k)
+forj=0,...,n−1
+sj+1(yj+1)=max yj∈{1,...,k}[sj(yj)+f(yj+1,yj)](yj+1=1,...,k)
+endfor
+ˆyn=arg max yn∈{1,...,k}sn(yn)
+forj=n−1,...,1
+ˆyj=arg max yj∈{1,...,k}[sj(yj)+f(ˆyj+1,yj)]
+endfor
+FIGURE9.9 Viterbialgorithm.
+9.6.2 Local Discriminative Model for Sequence Prediction
+HMMisagenerativemodelforsequenceprediction.Similartothestandardsupervisedlearning,onecan
+also construct discriminative models for sequence prediction. In a discriminative model, in addition to
+the Markov dependency of yionyi−1, we also allow an arbitrary dependency of yionxn
+1={xi}i=1,...,n.
+Thatis,weconsideramodeloftheform
+p({yi}|xn
+1,θ)=n∏
+i=1p(yi|yi−1,xn
+1,θ). (9.18)
+ThegraphicalmodelrepresentationisgiveninFigure9.10.
+One may use logistic regression (MaxEnt) to model the conditional probability in (9.18). That is, we
+letθ=wand
+p(yi|yi−1,xn
+1,θ)=exp(wTzi(yi,yi−1,xn
+1))
+∑k
+ℓ=1exp(wTzi(yi=ℓ,yi−1,xn
+1)). (9.19)
+The vector zi(yi,yi−1,xn
+1)is a human-constructed vector called feature vector. This model has identical
+formasthemaximumentropymodel(9.12).Therefore,supervisedtrainingalgorithmforlogisticregres-
+sioncanbedirectlyappliedtotrainthemodelparameter θ.Onthetestdata,givenasequence xn
+1,onecan
+usetheViterbialgorithmtodecode {yi}usingthescoringfunction fℓ(yi,yi−1)=lnp(yi|yi−1,xn
+1,θ).This
+methodhasbeenwidelyusedinNLP,forexample,POStagging(Ratnaparkhi1996).
+More generally, one may reduce sequence prediction into a standard prediction problem, where we
+simply predict the next label yigiven the previous label yi−1and the observation xn
+1.O n em a yu s e
+any classiﬁcation algorithm such as SVM to solve this problem. The scoring function returned by the
+x(1...n)
+y2 yn...... y1θ
+FIGURE9.10 Graphicalrepresentationofdiscriminativelocalsequencepredictionmodel.
+
+FundamentalStatisticalTechniques 203
+underlying classiﬁer can then be used as the scoring function for the Viterbi decoding algorithm. An
+exampleofthisapproachisgiveninZhangetal.(2002).
+9.6.3 Global Discriminative Model for Sequence Prediction
+In (9.18), we decompose the conditional model of the label sequence {yi}using local model of the form
+p(yi|yi−1,xn
+1,θ)ateachposition i. Anotherapproachistotreatthelabelsequence yn
+1={yi}directlyasa
+multi-classclassiﬁcationproblemwith knpossiblevalues.WecanthendirectlyapplytheMaxEntmodel
+(9.12)tothis kn-classmulti-categoryclassiﬁcationproblemusingthefollowingrepresentation:
+p(yn
+1|w,xn
+1)=ef(w,xn
+1,yn
+1)
+∑
+yn
+1ef(w,xn
+1,yn
+1), (9.20)
+where
+f(w,xn
+1,yn
+1)=n∑
+i=1wTzi(yi,yi−1,xn
+1),
+wherezi(yi,yi−1,xn
+1)is a feature vector just like (9.19). While in (9.19), we model the local conditional
+probability p(yi|yi−1)thatisasmallfragmentofthetotallabelsequence {yi};in(9.20),wedirectlymodel
+thegloballabelsequence.
+The probability model (9.20) is called a conditional random ﬁeld (Laﬀerty et al. 2001). The graphical
+model representation is given in Figure 9.11. Unlike Figure 9.10, the dependency between each yiand
+yi−1inFigure9.11isundirectional.Thismeansthatwedonotdirectlymodeltheconditionaldependency
+p(yi|yi−1), and do not normalize the conditional probability at each point iin the maximum entropy
+representationofthelabelsequenceprobability.
+TheCRFmodelismorediﬃculttotrainbecausethenormalizationfactorinthedenominatorof(9.20)
+has to be computed in the training phase. Although the summation is over knpossible values of the
+labelsequence yn
+1,similartotheViterbidecodingalgorithm,thecomputationcanbearrangedeﬃciently
+usingdynamicprogramming.Indecoding,thedenominatorcanbeignoredinthemaximumlikelihood
+solution.Thatis,themostlikelysequence {ˆyi}isthesolutionof
+{ˆyi}=argmax
+yn
+1n∑
+i=1wTzi(yi,yi−1,xn
+1). (9.21)
+ThesolutionofthisproblemcanbeeﬃcientlycomputedusingtheViterbialgorithm.
+More generally, global discriminative learning refers to the idea of treating sequence prediction as a
+multi-category classiﬁcation problem with knclasses, and a classiﬁcation rule of the form (9.21). This
+approach can be used with some other learning algorithms such as Perceptron (Collins 2002) and large
+marginclassiﬁers(Taskaretal.2004;Tsochantaridisetal.2005;TillmannandZhang2008).
+x(1...n) θ
+y1 y2 yn ......
+FIGURE9.11 Graphicalrepresentationofadiscriminativeglobalsequencepredictionmodel.
+
+204 HandbookofNaturalLanguageProcessing
+References
+Berger, A., S. A. Della Pietra, and V. J. Della Pietra, A maximum entropy approach to natural language
+processing. ComputationalLinguistics ,22(1):39–71,1996.
+Collins, M., Discriminative training methods for hidden Markov models: Theory and experiments with
+perceptronalgorithms.In ProceedingsoftheConferenceonEmpericalMethodsinNaturalLanguage
+Modeling (EMNLP’02),Philadelphia,PA,pp.1–8,July2002.
+Cortes,C.andV.N.Vapnik,Supportvectornetworks. MachineLearning ,20:273–297,1995.
+Dempster,A.,N.Laird,andD.Rubin,MaximumlikelihoodfromincompletedataviatheEMalgorithm.
+JournaloftheRoyalStatisticalSociety,SeriesB,39(1):1–38,1977.
+Hoerl, A. E. and R. W. Kennard, Ridge regression: Biased estimation for nonorthogonal problems.
+Technometrics ,12(1):55–67,1970.
+Joachims, T., Text categorization with support vector machines: Learning with many relevant features.
+InEuropeanConferenceonMachineLearing,ECML-98 ,Berlin,Germany,pp.137–142,1998.
+Kupiec,J.,Robustpart-of-speechtaggingusingahiddenMarkovmodel. ComputerSpeechandLanguage ,
+6:225–242,1992.
+Laﬀerty,J.,A.McCallum,andF.Pereira,Conditionalrandomﬁelds:Probabilisticmodelsforsegmenting
+and labeling sequence data. In Proceedings of ICML-01, San Francisco, CA, pp. 282–289, 2001.
+MorganKaufmann.
+McCallum, A. and K. Nigam, A comparison of event models for naive Bayes text classiﬁcation. In
+AAAI/ICML-98WorkshoponLearningforTextCategorization,Madison,WI,pp.41–48,1998.
+Ratnaparkhi,A.,Amaximumentropymodelforpart-of-speechtagging.In ProceedingsoftheConference
+onEmpiricalMethodsinNaturalLanguageProcessing ,Philadelphia,PA,pp.133–142,1996.
+Taskar, B., C. Guestrin, and D. Koller, Max-margin Markov networks. In S. Thrun, L. Saul, and
+B. Schölkopf (editors), Advances in Neural Information Processing Systems 16 . MIT Press,
+Cambridge,MA,2004.
+Tillmann, C. and T. Zhang, An online relevant set algorithm for statistical machine translation. IEEE
+TransactionsonAudio,Speech,andLanguageProcessing ,16(7):1274–1286,2008.
+Tsochantaridis, I., T. Joachims, T. Hofmann, and Y. Altun. Large margin methods for structured and
+interdependentoutputvariables. JournalofMachineLearningResearch ,6:1453–1484,2005.
+Zhang,T.,F.Damerau,andD.E.Johnson,TextchunkingbasedonageneralizationofWinnow. Journal
+ofMachineLearningResearch,2:615–637,2002.
+Zhang, T. and F. J. Oles, Text categorization based on regularized linear classiﬁcation methods.
+InformationRetrieval ,4:5–31,2001.
+

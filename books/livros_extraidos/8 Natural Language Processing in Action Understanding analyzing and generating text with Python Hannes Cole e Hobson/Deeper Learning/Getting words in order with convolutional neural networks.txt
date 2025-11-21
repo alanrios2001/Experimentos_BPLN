@@ -1,0 +1,1108 @@
+218Getting words in order
+with convolutional
+neural networks (CNNs)
+Language’s true power isn’t in the words themselves, but in th e spaces between the
+words, in the order and combination of  words. Sometimes meaning is hidden
+beneath the words, in the intent and emot ion that formed that particular combina-
+tion of words. Understandin g the intent beneath the words is a critical skill for an
+empathetic, emotionally intelligent listener  or reader of natural language, be it
+human or machine.1 Just as in thought and idea s, it’s the connections betweenThis chapter covers
+Using neural networks for NLP
+Finding meaning in word patterns
+Building a CNN
+Vectorizing natural language text in a way that 
+suits neural networks
+Training a CNN
+Classifying the sentiment of novel text
+1International Association of Facilitators Handbook , http:/ /mng.bz/oVWM .
+ 
+
+219
+words that create depth, information, and complexity. With a grasp on the meaning of
+individual words, and multiple clever ways to string them together, how do you look
+beneath them and measure the meaning of a combination of wo rds with something
+more flexible than counts of n-gram matches? How do yo u find meaning, emotion—
+latent semantic information —from a sequence of words, so you can do something with
+it? And even more ambitious, how do you impart that hidden meaning to text gener-
+ated by a cold, calculating machine?
+ Even the phrase “machine-generated text ” inspires dread of a hollow, tinned voice
+issuing a chopped list of words. Machines ma y get the point across, but little more than
+that. What’s missing? The tone, the flow, th e character that you expect a person to
+express in even the most passing of engage ments. Those subtleties exist between the
+words, underneath the words, in the patter ns of how they’re constructed. As a person
+communicates, they will underlay patterns in  their text and speech. Truly great writers
+and speakers will actively manipulate these patterns, to great effect. And your innate
+ability to recognize them, even if on a less- than-conscious level, is the reason machine-
+produced text tends to sound terrible. The patterns aren’t there. But you can find them
+in human-generated text and impart them to your machine friends.
+ In the past few years, research has qu ickly blossomed around neural networks.
+With widely available open source tools, th e power of neural networks to find patterns
+in large datasets quickly transformed th e NLP landscape. The perceptron quickly
+became the feedforward network (a multilay er perceptron), which led to the develop-
+ment of new variants: convol utional neural nets and recurrent neural nets, ever more
+efficient and precise tools to fish patterns out of large datasets.
+ As you have seen already with Word2Vec , neural networks have opened entirely new
+approaches to NLP. Although neural networ ks’ original design purpose was to enable
+a machine to learn  to quantify input, the field has si nce grown from just learning clas-
+sifications and regressions (topic analysis, se ntiment analysis) to actually being able to
+generate novel text based on previously unseen input: translating a new phrase to
+another language, generating responses to questions not seen before (chatbot, any-
+one?), and even generating new text base d on the style of a particular author.
+ A complete understanding of the mathem atics of the inner workings of a neural
+network isn’t critical to employing the tool s presented in this chapter. But, it does
+help to have a basic grasp of  what is going on inside. If you understand the examples
+and explanations in chapter 5, you will ha ve an intuition about where to use neural
+networks. And you can weak your neural ne twork architecture (the number of layers
+or number of neurons) to help a network work better for your problem. This intu-
+ition will help you see how neural networks  can give depth to your chatbot. Neural
+networks promise to make your chatbot a better listener and a little less super-
+ficially chatty.
+ 
+
+220 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+7.1 Learning meaning
+The nature of words and their secrets are most  tightly correlated to (after their defini-
+tion, of course) their relation to each othe r. That relationship can be expressed in at
+least two ways:
+1Word order —here are two statements that don’t mean the same thing: 
+The dog chased the cat.
+The cat chased the dog.
+2Word proximity —here “shone” refers to the word “hull” at the other end of the
+sentence: 
+The ship's hull, despite years at sea, millions of tons of cargo, and
+➥ two mid-sea collisions, shone like new.
+These relationships can be explored for patt erns (along with patterns in the presence
+of the words themselves) in two ways: sp atially and temporarily. The difference
+between the two is this: in the former, you examine the statement as if written onpage—you’re looking for relationships in th e position of words; in the latter, you
+explore it as if spoken—the words and letters become time series  data. These are closely
+related, but they mark a key difference in how you’ll deal with them with neural net-work tools. Spatial data is usually viewed through a fixed-width window. Time seriescan extend for an unknown amount of time.
+ Basic feedforward networks (multilayer perceptron) are capa ble of pulling pat-
+terns out of data. But, the patterns they discover are found by relating weights to
+pieces of the input. Nothing captures the relations of the tokens spatially or tempo-
+rally. But feed forward is only the beginning  of the neural netw ork architectures out
+there. The two most importan t choices for natural language processing are currently
+convolutional neural nets and recurrent ne ural nets and the many flavors of each.
+ In figure 7.1, three tokens are passed into this neural net input layer . And each
+input layer neuron is connected to each fully connected hidden layer neuron with an
+individual weight.
+TIP How are you passing tokens into the net ? The two major approaches you’ll
+use in this chapter are the ones you de veloped in the previous chapters: one-
+hot encoding and word vectors. You ca n one-hot encode them—a vector that
+has a 0 for every possible vocabulary wo rd you want to consider, with a 1 in
+the position of the word you’re enco ding. Or you can use the trained word
+vectors you discovered in chapter 6. Yo u need the words to be represented as
+numbers to do math on them.
+Now, if you swapped the order of these toke ns from “See Jim run” to “run See Jim”
+and passed that into the network, unsurpri singly a different answer may come out.
+Remember each input position is associated with a specific weight inside each hidden
+neuron (x 1 is tied to w 1, x2 is tied to w 2, and so on).
+ 
+
+221 Toolkit
+A feedforward network may be able to learn specific relationships of tokens such as
+these, because they appear together in a sa mple but in different positions. But you can
+easily see how longer sentences of 5, 10, or  50 tokens—with all th e possible pairs, trip-
+lets, and so on in all the possible position s for each—quickly become an intractable
+problem. Luckily you have other options. 
+7.2 Toolkit
+Python is one of the richest languages for working with neural nets. Although a lot of
+the major players (hi Google and Facebook) have moved to lower-level languages for
+the implementation of these expensive ca lculations, the extensive resources poured
+into early models using Python for deve lopment have left their mark. Two of the
+major programs for neural networ k architecture are Theano ( http:/ /deeplearning
+.net/software/theano/ ) and TensorFlow ( http:/ /www.tensorflow.org ). Both rely heav-
+ily on C for their underlying computations , but both have robust Python APIs. Face-
+book put their efforts into a Lua package call ed Torch; luckily Python now has an API
+for that as well in PyTorch ( http:/ /pytorch.org/ ). Each of these, however, for all their
+power, are heavily abstracted  toolsets for building models from scratch. But the
+Python community is quick to the rescue with libraries to ease the use of these under-lying architectures. Lasagne (Theano) and Skflow (TensorFlow) are popular options,
+but we’ll use Keras ( https:/ /keras.io/ ) for its balance of frie ndly API and versatility.
+Keras can use either TensorFlow or Theano as its backend, and each has its advantages
+and weaknesses, but you’ll use TensorFlow for the examples. You also need the h5py
+package for saving the internal  state of your trained model.
+ By default, Keras will use TensorFlow as th e backend, and the first line output at run-
+time will remind you which backend you’re using for processing. You can easily changeNeuronNeuron 0.99
+NeuronNeuronNeuron
+See
+Jim
+runInput
+vectorHidden
+Output
+layerOutput
+value
+Figure 7.1 Fully connected neural net
+ 
+
+222 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+the backend in a config file, with an environm ent variable, or in your script itself. The
+documentation in Keras is thorough and cl ear; we highly reco mmend you spend some
+time there. But here’s a quick overview: Sequential()  is a class that is a neural net
+abstraction that gives you access to the basi c API of Keras, spec ifically the methods
+compile  and fit, which will do the heavy lifting of  building the underlying weights
+and their interconnected relationships (compile), calculating the errors in training,
+and most importantly applyi ng backpropagation (fit). epochs , batch_size , and
+optimizer  are all hyperparameters that will re quire tuning, and in some senses, art.
+ Unfortunately, no one-size-fits-all rule ex ists for designing and tuning, a neural net-
+work. You’ll need to develop your own in tuition for which framework will work best
+for a particular application.  But if you find example implementations for a problem
+similar to yours, then you’re probably OK using that framework and adjusting that
+implementation to meet your needs. Ther e’s nothing scary about these neural net-
+work frameworks or all these bells and whis tles you can play with and tune. But for
+now we steer this conversation back toward  natural language processing via the world
+of image processing. Images? Bear with us for a minute, the trick will become clear. 
+7.3 Convolutional neural nets
+Convolutional neural nets , or CNNs, get their name from the concept of sliding (or con-
+volving) a small window over the data sample.
+Figure 7.2 Window convolving over functionWindow
+Windowf(x)
+f(x)
+xxY
+Y
+ 
+
+223 Convolutional neural nets
+Convolutions appear in many  places in mathematics, and they’re usually related to
+time series data. The higher  order concepts related to those use cases aren’t impor-
+tant for your application in this chapter. The key concept is visualizing that box slidingover a field (see figure 7.2). You’re going to  start sliding them ov er images to get the
+concept. And then you’ll start sliding the wi ndow over text. But always come back to
+that mental image of a window  sliding over a larger piece of data, and you’re looking
+only at what can be seen through the window.
+7.3.1 Building blocks
+Convolutional neural nets first came to prominence in image processing and image
+recognition. Because the net is capable of capturing spatial relationships between datapoints of each sample, the net can suss out whether the image contains a cat or a dog
+driving a bulldozer.
+ A convolutional net, or convnet (yeah that extra
+n in there is hard to say), achieves its magic not by
+assigning a weight to each element (say, each pixel of
+an image), as in a trad itional feedforward net;
+instead it defines a set of filters  (also known as kernels )
+that move across the image. Your convolution !
+ In image recognition, the elements of each data
+point could be a 1 (on) or 0 (off) for each pixel in a
+black-and-white image.
+ Or it could be the intensity of each pixel in a
+grayscale image (see figures 7.3 and 7.4), or the
+intensity in each of the color channels of each pixel
+in a color image.
+Figure 7.4 Pixel values for the telephone pole image
+Figure 7.3 Small telephone pole 
+image
+ 
+
+224 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+Each filter you make is going to convolve  or slide across the input sample (in this case,
+your pixel values). Let’s pause and describe  what we mean by sliding. You won’t be
+doing anything in particular while the window  is “in motion.” You can think of it as a
+series of snapshots. Look through the window, do some processing, slide the window
+down a bit, do the processing again.
+TIP This sliding/snapshot routine is precisely what makes convolutional
+neural nets highly parallelize-able. Each  snapshot for a given data sample can
+be calculated independently of all the others for that given data sample. No
+need to wait for the first snapshot to happen before taking the second.
+How big are these filters we’re talking about?  The filter window size is a parameter to
+be chosen by the model builder and is high ly dependent on the content of data. But
+there are some common starting points. In  image-based data, you’ll commonly see a
+window size of three-by-three (3, 3) pixels . We get into a little more detail about the
+window size choice later in the chap ter when we get back to NLP uses. 
+7.3.2 Step size (stride)
+Note that the distance traveled during th e sliding phase is a parameter. And more
+importantly, it’s almost never as large as the filter itself. Each snapshot usually has anoverlap with its neighboring snapshot.
+ The distance each convolution “travels” is known as the stride  and is typically set to
+1. Only moving one pixel (or anything less than the width of the filter) will create
+overlap in the various inputs to  the filter from one position to the next. A larger stride
+that has no overlap between filter applicatio ns will lose the “blurring” effect of one
+pixel (or in your case, token)  relating to its neighbors.
+ This overlap has some interesting proper ties, which will become apparent as you
+see how the filters change over time. 
+7.3.3 Filter composition
+Okay, so far we’ve been describing window s sliding over data, looking at the data
+through the window, but we’ve said nothing about what you do with the data you see.
+ Filters are composed of two parts:
+A set of weights (exactly like the we ights feeding into the neurons from
+chapter 5)
+An activation function
+As we said earlier, filters are typically 3 x 3 (but often othe r sizes and shapes).
+TIP These collections of filtering neuron s are similar to the normal hidden
+layer neurons, except that each filter ’s weights are fixed for the entire sweep
+through the input sample. The weights are the same across the entire image.
+ 
+
+225 Convolutional neural nets
+Each filter in a convolutional neural net is unique, but each individual filter
+element is fixed within an image snapshot.
+As each filter slides over the image, one st ride at a time, it pauses and takes a snapshot
+of the pixels it’s currently covering. The values of those pixels are then multiplied bythe weight associated with th at position in the filter.
+ Say you’re using a 3 
+x 3 filter. You start in the upper -left corner and snapshot the
+first pixel (0, 0) by the first weight (0, 0), th en the second pixel (0, 1) by weight (0, 1),
+and so on.
+ The products of pixel and weight (at that position) are then summed up and
+passed into the activation function (see figu re 7.5); most often this function is ReLU
+(rectified linear units)—we come  back to that in a moment.
+Figure 7.5 Convolutional neural net step
+In figures 7.5 and 7.6, xi is the value of the pixel at position i and z0 is the output of a
+ReLU activation function ( z_0 = max(sum(x * w), 0)  or z0 = max(xi * wj), 0). The
+output of that activation fu nction is recorded as a po sitional value in an output
+“image.” The filter slides one stride-width , takes the next snapshot, and puts the out-
+put value next to the output of  the first (see figure 7.6).Pairwise
+multiplicationSummationz0
+w0
+w3
+w6w7w4w1w2
+w5
+w8
+Filter
+Input data (image)Layer output
+x3
+x6x4x1 x0 x2
+x5
+x8 x7
+ 
+
+226 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+ 
+Figure 7.6 Convolution
+There are several of these filters in a layer, and as they each convolve over the entire
+image, they each create a new “image,” a “filtered” image if yo u will. Say you have n fil-
+ters. After this process, you’d have n new, filtered images for each filter you defined.
+ We get back to what you do with these n new images in a moment. 
+7.3.4 Padding
+Something funny happens at the edges of an image, however. If you start a 3 x 3 filter
+in the upper-left corner of an input image and stride one pixel at a time across, stop-
+ping when the rightmost edge of the filter  reaches the rightmost edge of the input,
+the output “image” will be two pixels narrower than the source input.
+ Keras has tools to help deal with this issue. The first is to ignore that the output is
+slightly smaller. The Keras argument for this is padding='valid' . If this is the case,
+you just have to be careful and take note of  the new dimensions as you pass the data into
+the next layer. The downfall of this strategy is that the data in the edge of the original
+input is undersampled as the interior data points are passed into each filter multiple
+times, from the overlapped filt er positions. On a large imag e, this may not be an issue,
+but as soon as you bring this concept to be ar on a Tweet, for example, undersampling
+a word at the beginning of a 10-word data set could drastically change the outcome.w0
+w6w1
+w5w2
+w3w4
+w8 w7
+Input data (image)Filter
+Convolve
+(slide)Layer output
+x0x1x2
+x3x
+x
+xx4x5
+x6x7x8z0z1
+ 
+
+227 Convolutional neural nets
+ The next strategy is known as padding , which consists of adding enough data to the
+input’s outer edges so that the first real data  point is treated just as the innermost data
+points are. The downfall of this strategy is that you’re adding potentially unrelated
+data to the input, which in itself can skew the outcome. You don’t care to find patterns
+in fake data that you generated after all. But you can pad the input several ways to try
+to minimize the ill effects. See the following listing.
+>>> from keras.models import Sequential
+>>> from keras.layers import Conv1D
+>>> model = Sequential()
+>>> model.add(Conv1D(filters=16,
+kernel_size=3,padding='same',
+activation='relu',
+strides=1,input_shape=(100, 300)))
+More on the implementation details in a mo ment. Just be aware of these troublesome
+bits, and know that a good deal of what co uld be rather annoying data wrangling has
+been abstracted away for you nicely by the tools you’ll be using.
+ There are other strategies where the pre- processor attempts to guess at what the
+padding should be, mimicking the data points that are already on the edge. But you
+won’t have use for that strategy in NLP appl ications, for it’s fraught with its own peril.
+CONVOLUTIONAL  PIPELINE
+You have n filters and n new images now. What do you do with that? This, like most
+applications of neural networ ks, starts from the same place: a labeled dataset. And
+likewise you have a similar goal. To predic t a label given a novel image. The simplest
+next step is to take each of those filtered  images and string them out as input to a
+feedforward layer and then proceed as you did in chapter 5.
+TIP You can pass these filtered images into a second convolutional layer with
+its own set of filters. In practice, this  is the most common  architecture; you’ll
+brush up on it later. It turns out the mu ltiple layers of conv olutions leads to a
+path to learning layers of abstractions : first edges, then shapes/colors, and
+eventually concepts!
+No matter how many layers (convolutional  or otherwise) you add to your network,
+once you have a final output you can com pute the error and backpropagate that error
+all the way back through the network.
+ Because the activation function was diff erentiable, you can backpropagate as nor-
+mal and update the weights of the individual filters themselves. The network then
+learns what kind of filters it needs to  get the right output for a given input.
+ You can think of this process as the network learning to detect and extract infor-
+mation for the later layers to act on more easily. Listing 7.1 Keras network with one convolution layer
+'same' or 'valid' 
+are the options.
+input_shape is still the 
+shape of your unmodified 
+input. The padding happens under the hood.
+ 
+
+228 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+7.3.5 Learning
+The filters themselves, as in any neural netw ork, start out with we ights that are initial-
+ized to random values near zero. How is the output “image” going to be anything morethan noise? At first, in the first few iteratio ns of training, it will be just that: noise.
+ But the classifier you’re building will  h a v e  s o m e  a m o u n t  o f  e r r o r  f r o m  t h e
+expected label for each input, and that in put can be backpropagat ed through the acti-
+vation function to the values of the filter s themselves. To backpr opagate the error, you
+have to take the derivative of the error with respect to the weight that fed it.
+ And as the convolution layer comes earlier in the net, it’s specifically the derivative
+of the gradient from the layer above with resp ect to the weight that fed it. This calcula-
+tion is similar to normal backpropagatio n because the weight generated output in
+many positions for a gi ven training sample.
+ The specific derivations of the gradient wi th respect to the weights of a convolutional
+filter are beyond the scope of this book. But a shorthand way of thinking about it is for
+a given weight in a given filter , the gradient is the sum of the normal gradients that were
+created for each individual position in the convolution during the forward pass. This is
+a fairly complicated formula (two sums and multiple stacked equations, as follows): 
+Sum of the gradients for a filter weight
+This concept is pretty much the same as a regular feedforward ne t, where you are fig-
+uring out how much each particular weight contributed to the overall error of the sys-
+tem. Then you decide how best to correct that toward a weight that will cause less
+error in the future training  examples. None of these details are vital for the under-
+standing of the use of convolutional neural  nets in natural language processing. But
+hopefully you’ve developed an intuition fo r how to tweak neural network architec-
+tures and build on these exam ples later in the chapters. 
+7.4 Narrow windows indeed
+Yeah, yeah, okay, images. But we’re talking about language here, remember? Let’s see
+some words to train on. It turns out you can use convolut ional neural networks for
+natural language processing by us ing word vectors (also known as word embeddings ),
+which you learned about in chapter 6, instea d of an image’s pixel values, as the input
+to your network.
+ Because relative ve rtical relations between words would be arbitrary, depending on
+the page width, no relevant information is in the patterns that may emerge there. Rel-
+evant information is in the relative “horizontal” positions though.
+TIP The same concepts hold true for la nguages that are read top to bottom
+before  reading right or left, such as Japa nese. But in those cases, you focus on
+“vertical” relationships rather than “horizontal.”mΣ
+i=0nΣ
+j=0=∂wab ∂E
+∂wab ∂xij
+∂xij ∂E
+ 
+
+229 Narrow windows indeed
+You want to focus only on the relationships of
+tokens in one spatial dimension. Instead of a
+two-dimensional filter that you would convolve
+over a two-dimensional input (a picture), you’llconvolve one-dimensional filters over a one-
+dimensional input, su ch as a sentence.
+ Your filter shape will also be one-dimensional
+instead of two-dimensional as in the 1 
+x 3 roll-
+ing window shown in figure 7.7.
+ If you imagine the text as an image, the “s econd” dimension is the full length of the
+word vector, typically 100-D--500 -D, just like a real image. You’ll only be concerned with
+the “width” of the filter. In figure 7.7, the filter is three tokens wide. Aha! Notice that
+each word token (or later character token) is a “pixel” in your sentence “image.”
+Figure 7.8 1D convolution with embeddingsThe cat and dog went to the bodega together.1 × 3 FilterThe cat and dog went to the bodega together.1 × 3 Filter
+The cat and dog went to the bodega together.1 × 3 Filter
+Figure 7.7 1D convolution
+Slide
+(convolve)FilterInput
+(word embeddings)
+Aggregate and activation function
+z[0] = activation_function(sum(w * x[:, i:i+3]))
+Layer output
+(for a given filter)The cat and dog went to the bodega together
+z0 z6 z5 z4 z3 z1z2w9
+w15w16w17w12 w14 w13w11 w10w8 w7 w6w5 w4 w3w2 w1 w0
+w9
+w15w16w17w12 w14 w13w11 w10w8 w7 w6w5 w4 w3w2 w1 w0.03
+.14.00
+.24
+.12
+.32.92
+.32
+.62
+.99
+.02
+.23.62.61
+.43
+.44
+.55.66
+.34
+.33
+.42.32
+.32.72
+.63
+.34
+.22.27
+.42.11
+.00
+.00
+.11
+.42.33.15
+.00
+.00.12
+.02
+.66.23
+.01.34
+.66
+.23.52.00
+.33.23
+.56
+.25.99.23
+ 
+
+230 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+TIP The term one-dimensional filter can be a little misleading as you get to
+word embeddings. The vector represen tation of the word itself extends
+“downward” as shown in figure 7.8, bu t the filter covers the whole length of
+that dimension in one go. The dimensio n we’re referring to when we say one-
+dimensional convolution is the “width ” of the phrase—the dimension you’re
+traveling across. In a two-dimensional convolution, of an image say, you
+would scan the input from side to side and top to bottom, hence the two-dimensional name. Here you only slide in one dimension, left to right.
+As mentioned earlier, the term convolution is  actually a bit of sh orthand. But it bears
+repeating: the sliding has no effect on the model. The data at multiple positions dic-
+tates what’s going on. The order in which the “snapshots” are calculated isn’t impor-tant as long as the output is reconstructed in the same way the windows onto the inputwere positioned.
+ The weight values in the filters are unch anged for a given input sample during the
+forward pass, which means you can take a give n filter and all its “snapshots” in parallel
+and compose the output “image” all at once. This is the convolutional neural net-work’s secret to speed.
+ This speed, plus its ability to ignore the position of a feature, is why researchers
+keep coming back to this convolutio nal approach to fe ature extraction.
+7.4.1 Implementation in Keras: prepping the data
+Let’s take a look at convolution in Python  with the example convolutional neural net-
+work classifier provided in the Keras documentation. They have crafted a one-
+dimensional convolutional net to exam ine the IMDB movie review dataset.
+ Each data point is prelabeled with a 0 (negative sentiment) or a 1 (positive senti-
+ment). In listing 7.2, you’re going to swap  out their example IMDB movie review dataset
+for one in raw text, so you can get your ha nds dirty with the preprocessing of the text
+as well. And then you’ll see if you can use this trained network to classify text it has neverseen before.
+>>> import numpy as np
+>>> from keras.preprocessing import sequence>>> from keras.models import Sequential
+>>> from keras.layers import Dense, Dropout, Activation
+>>> from keras.layers import Conv1D, GlobalMaxPooling1D
+First download the original dataset from the Stanford AI department ( https:/ /ai.stan-
+ford.edu/%7eamaas/data/sentiment/ ). This is a dataset compiled for the 2011 paperListing 7.2 Import your Keras convolution tools 
+Keras takes care of most of this,
+but it likes to see numpy arrays.A helper module
+to handle
+ padding inputThe base Keras neural 
+network model
+The layer objects 
+you’ll pile into 
+the model
+Your convolution 
+layer, and pooling
+ 
+
+231 Narrow windows indeed
+Learning Word Vectors for Sentiment Analysis .2 Once you have downloaded the dataset,
+unzip it to a convenient directory and look inside. You’re just going to use the train/
+directory, but other toys are in ther e also, so feel free to look around.
+ The reviews in the train folder are broken up  into text files in either the pos or neg
+folders. You’ll first need to read those in  Python with their appropriate label and then
+shuffle the deck so the samples aren’t all po sitive and then all ne gative. Training with
+the sorted labels will skew training toward  whatever comes last, especially when you
+use certain hyperpar ameters, such as momentum . See the following listing.
+>>> import glob
+>>> import os
+>>> from random import shuffle>>> def pre_process_data(filepath):
+... """
+... This is dependent on your training data source but we will
+... try to generalize it as best as possible.
+... """... positive_path = os.path.join(filepath, 'pos')
+... negative_path = os.path.join(filepath, 'neg')
+... pos_label = 1... neg_label = 0
+... dataset = []
+...... for filename in glob.glob(os.path.join(positive_path, '*.txt')):
+... with open(filename, 'r') as f:
+... dataset.append((pos_label, f.read()))...
+... for filename in glob.glob(os.path.join(negative_path, '*.txt')):
+... with open(filename, 'r') as f:... dataset.append((neg_label, f.read()))
+...
+... shuffle(dataset)...
+... return dataset
+The first example document should look some thing like the following. Yours will dif-
+fer depending on how the samples were shu ffled, but that’s fine. The first element in
+the tuple is the target  value for sentiment: 1 for positive sentiment, 0 for negative:
+>>> dataset = pre_process_data('<path to your downloaded file>/aclimdb/train')
+>>> dataset[0](1, 'I, as a teenager really enjoyed this movie! Mary Kate and Ashley worked
+➥ great together and everyone seemed so at ease. I thought the movie plot was
+➥ very good and hope everyone else enjoys it to! Be sure and rent it!! Also
+they had some great soccer scenes for all those soccer players! :)')
+2Maas, Andrew L. et al., Learning Word Vectors for Sentiment Analysis , Proceedings of the 49th Annual Meeting of
+the Association for Computational Linguistics: Human Language Technologies, June 2011, Association for
+Computational Linguistics.Listing 7.3 Preprocessor to load your documents 
+ 
+
+232 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+The next step is to tokenize and vectoriz e the data. You’ll use the Google News pre-
+trained Word2vec vect ors, so download those via the nlpia package or directly from
+Google.3
+ You’ll use gensim to unpack the vectors, just like you did in chapter 6. You can
+experiment with the limit  a r g u m e n t  t o  t h e  load_word2vec_format  method; a
+higher number will get you more vectors to play with, but memory quickly becomes an
+issue and return on investment drops quickly in really high values for limit .
+ Let’s write a helper function to tokenize the data and then create a list of the vec-
+tors for those tokens to use as your data to feed the model, as shown in the following
+listing.
+>>> from nltk.tokenize import TreebankWordTokenizer
+>>> from gensim.models.keyedvectors import KeyedVectors
+>>> from nlpia.loaders import get_data>>> word_vectors = get_data('w2v', limit=200000)
+>>> def tokenize_and_vectorize(dataset):
+... tokenizer = TreebankWordTokenizer()... vectorized_data = []... expected = []... for sample in dataset:... tokens = tokenizer.tokenize(sample[1])... sample_vecs = []... for token in tokens:... try:... sample_vecs.append(word_vectors[token])...... except KeyError:... pass # No matching token in the Google w2v vocab...... vectorized_data.append(sample_vecs)...... return vectorized_data
+Note that you’re throwing away information here. The Google News Word2vec vocab-
+ulary includes some stopwords,  but not all of them. A lot of common words like “a”
+will be thrown out in your function. Not idea l by any stretch, but this will give you a
+baseline for how well convolutional neural ne ts can perform even on lossy data. To get
+around this loss of information, you can train your word2vec  models separately and
+make sure you have better vector coverage. The data also has a lot of HTML tags like
+<br\>, which you do want to exclude, becaus e they aren’t usually relevant to the text’s
+sentiment.
+3See the download titled “GoogleNews-vector s-negative300.bin.gz - Google Drive” ( https:/ /drive.google.com/
+file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit?usp=sharing ).Listing 7.4 Vectorizer and tokenizer
+get_data('w2v') downloads
+“GoogleNews-vectors-
+negative300.bin.gz” to the
+nlpia.loaders.BIGDATA_PATH
+directory.
+ 
+
+233 Narrow windows indeed
+ You also need to collect the target values—0 for a negative review, 1 for a positive
+review—in the same order as the traini ng samples. See th e following listing.
+>>> def collect_expected(dataset):
+... """ Peel off the target values from the dataset """
+... expected = []... for sample in dataset:
+... expected.append(sample[0])
+... return expected
+And then you simply pass your  data into those functions:
+>>> vectorized_data = tokenize_and_vectorize(dataset)
+>>> expected = collect_expected(dataset)
+Next you’ll split the prepared da ta into a training set and a test set. You’re just going
+to split your imported dataset 80/20, but this  ignores the folder of test data. Feel free
+to combine the data from the download’s orig inal test folder with the training folder.
+They both contain valid training and testin g data. More data is always better. The
+train/ and test/ folders in most datasets you will download are the particular train/test split that the maintainer of that pack age used. Those folders are provided so you
+can duplicate their results exactly.
+4
+ The next code block buckets th e data into the training set ( x_train ) that you’ll
+show the network, along with “correct” answers ( y_train ) and a testing dataset
+(x_test ) that you hold back, along with its answers ( y_test ). You can then let the
+network make a “guess” about samples from th e test set, and you can validate that it’s
+learning something that generalize s outside of the training data. y_train  and
+y_test  are the associated “corre ct” answers for each example in the respective sets
+x_train  and x_test . See the following listing.
+>>> split_point = int(len(vectorized_data)*.8)
+>>> x_train = vectorized_data[:split_point_]
+>>> y_train_ = expected[:split_point]
+>>> x_test = vectorized_data[split_point:]>>> y_test = expected[split_point:]
+The next block of code (listing 7.7) sets most of the hyperparameters for the net. The
+maxlen  variable holds the maximum review length you’ll consider. Because each
+input to a convolutional neural net must be equal in dimension, you truncate any
+sample that is longer than 400 tokens an d pad the shorter samples out to 400 tokensListing 7.5 Target labels 
+4You want to publicize the test set performance with a mo del that has never seen the test data. But you want to
+use all the labeled data you have available to you for your final training of the model you deploy to your users.Listing 7.6 Train/test split
+ 
+
+234 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+with Null or 0; actual “PAD” tokens are commonly used to represent this when show-
+ing the original text. Again this introduces data into the system that wasn’t previously
+in the system. The network itself can learn th at pattern as well though, so that PAD ==
+“ignore me” becomes part of th e network’s structure, so it’s not the end of the world.
+ Note of caution: this padding isn’t th e same as the padding introduced earlier.
+Here you’re padding out the input to be of co nsistent size. You’ll need to decide sepa-
+rately the issue of padding the beginning an d ending of each training sample based
+on whether you want the output to be of si milar size and the end tokens to be treated
+the same as the interior ones, or whether you don’t mind the first/last tokens being
+treated differently. See the following listing.
+maxlen = 400
+batch_size = 32embedding_dims = 300filters = 250
+kernel_size = 3
+hidden_dims = 250epochs = 2
+TIP In listing 7.7, the kernel_size  (filter size or wind ow size) is a scalar
+value, as opposed to the two-dimensional type filters you had with images.Your filter will look at the word vectors for three tokens at a time. It’s helpful
+to think of the filter sizes, in the first layer only , as looking at n-grams of the
+text. In this case, you’re looking at 3- grams of your input text. But this could
+easily be five or seven or more. The choice is data- and task-dependent, so
+experiment freely with this  parameter for your models.
+Keras has a preprocessi ng helper method, 
+pad_sequences , that in theory could be
+used to pad your input data, but unfortunatel y it works only with sequences of scalars,
+and you have sequences of vectors. Let’s wr ite a helper function of your own to pad
+your input data, as shown in the following listing.
+>>> def pad_trunc(data, maxlen):
+... """... For a given dataset pad with zero vectors or truncate to maxlen
+... """
+... new_data = []Listing 7.7 CNN parameters
+Listing 7.8 Padding and truncating your token sequenceHow many samples to show the
+net before backpropagating the
+error and updating the weightsLength of the token
+vectors you’ll create for
+passing into the convnetNumber of filters 
+you’ll train
+The width of the filters; 
+actual filters will each be a 
+matrix of weights of size: embedding_dims x kernel_size, 
+or 50 x 3 in your caseNumber of neurons 
+in the plain 
+feedforward net at 
+the end of the chain Number of times yo u’ll pass the entire
+training dataset through the network
+An astute LiveBook reader (@ madara) pointed out this can
+all be accomplished with a on e-liner: [smp[:maxlen] + [[0.]
+* emb_dim] * (maxlen - len (smp)) for smp in data]
+ 
+
+235 Narrow windows indeed
+...
+... # Create a vector of 0s the length of our word vectors
+... zero_vector = []... for _ in range(len(data[0][0])):
+... zero_vector.append(0.0)
+...... for sample in data:
+... if len(sample) > maxlen:
+... temp = sample[:maxlen]... elif len(sample) < maxlen:
+... temp = sample
+... # Append the appropriate number 0 vectors to the list... additional_elems = maxlen - len(sample)
+... for _ in range(additional_elems):
+... temp.append(zero_vector)... else:
+... temp = sample
+... new_data.append(temp)... return new_data
+Then you need to pass your train and test data into the padder/truncator. After that
+you can convert it to numpy arrays to make  Keras happy. This is a tensor with the
+shape (number of samples, se quence length, word vector length) that you need for
+your CNN. See the following listing.
+>>> x_train = pad_trunc(x_train, maxlen)
+>>> x_test = pad_trunc(x_test, maxlen)
+>>> x_train = np.reshape(x_train, (len(x_train), maxlen, embedding_dims))
+>>> y_train = np.array(y_train)>>> x_test = np.reshape(x_test, (len(x_test), maxlen, embedding_dims))
+>>> y_test = np.array(y_test)
+Phew; finally you’re ready to  build a neural network. 
+7.4.2 Convolutional neural network architecture
+You start with the base neural network model class Sequential . As with the feed-
+forward network from chapter 5, Sequential  is one of the base classes for neural
+networks in Keras. From here you can start to layer on the magic.
+ The first piece you add is a convolutional layer. In this case, you assume that it’s
+okay that the output is of smaller dimens ion than the input, and you set the padding
+to 'valid' . Each filter will start its pass with its leftmost edge at the start of the sen-
+tence and stop with its rightmost edge on the last token.
+ Each shift (stride) in the convolutio n will be one token. The kernel (window
+width) you already set to three tokens in listing 7.7. And you’re using the 'relu'  acti-
+vation function. At each step, you’ll multiply  the filter weight times the value in the
+three tokens it’s looking at (element-w ise), sum up those answers, and pass themListing 7.9 Gathering your augmented and truncated data Finally the augm ented data is 
+ready to be tacked onto the end of our list of augmented data.
+ 
+
+236 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+through if they’re greater than 0, else you output 0. That last passthrough of positive
+values and 0s is the rectified linear units  activation function or ReLU . See the following
+listing.
+>>> print('Build model...')
+>>> model = Sequential()
+>>> model.add(Conv1D(
+... filters,... kernel_size,
+... padding='valid',
+... activation='relu',... strides=1,
+... input_shape=(maxlen, embedding_dims)))
+7.4.3 Pooling
+You’ve started a neural networ k, so … everyone into the pool! Pooling is the convolu-
+tional neural network’s path to dimensiona lity reduction. In some ways, you’re speed-
+ing up the process by allowing for parall elization of the computation. But you may
+notice you make a new “version” of the data sample, a filtered one, for each filter youdefine. In the preceding example, that would be 250 filtered versions (see listing 7.7)coming out of the first layer. Pooling will  mitigate that somewh at, but it also has
+another striking property.
+ The key idea is you’re going to evenly divide the output of each filter into a subsec-
+tion. Then for each of those subsections,  you’ll select or compute a representative
+value. And then you set the original output  aside and use the collections of represen-
+tative values as the input to the next layers.
+ But wait. Isn’t throwing away data terrible? Usually, discarding data wouldn’t be the
+best course of action. But it turns out, it’s a path to ward learning higher order repre-
+sentations of the source data. The filters are being trained to find patterns. The pat-
+terns are revealed in relationships  between words and their ne ighbors! Just the kind of
+subtle information you set out to find.
+ In image processing, the first layers will tend to learn to be edge detectors, places
+where pixel densities rapidly shift from one side to the other. Later layers learn con-
+cepts like shape and texture. And layers a fter that may learn “content” or “meaning.”
+Similar processes will happen with text.
+TIP In an image processor, the pooling region would usually be a 2 x 2 pixel
+window (and these don’t overlap, like yo ur filters do), but in your 1D convo-
+lution they would be a 1D window (such as 1 x 2 or 1 x 3).Listing 7.10 Construct a 1D CNN
+The standard model definition pattern 
+for Keras. You’ll learn an alternative 
+constructor pattern called the Keras 
+“functional API” in chapter 10.
+Add one Conv1D layer, which will learn word group filters
+of size kernel_size. Ther e are many more keyword
+arguments, but you’re just using their defaults for now.
+ 
+
+237 Narrow windows indeed
+You have two choices for pooling (see figure 7.9): average  and max. Average is the
+more intuitive of the two in that by taking  the average of the subset of values you
+would in theory retain the most data. Max pooling, however, has an interesting prop-
+erty, in that by taking the largest activati on value for the given region, the network sees
+that subsection’s most prominent feature.  The network has a path toward learning
+what it should look at, regardle ss of exact pixel- level position!
+ In addition to dimensionality reductio n and the computational savings that come
+with it, you gain some thing else special: location invariance . If an original input ele-
+ment is jostled slightly in position in a si milar but distinct input sample, the max pool-
+ing layer will still output something simi lar. This is a huge boon in the image
+recognition world, and it serves a similar purpose in natural language processing.
+ In this simple example from Keras, you’re using the GlobalMaxPooling1D  layer.
+Instead of taking the max of a small subsecti on of each filter’s output, you’re taking
+the max of the entire output for that filter, which results in a large amount of informa-tion loss. But even tossing aside all that good information, your toy model won’t be
+deterred:
+>>> model.add(GlobalMaxPooling1D())
+ 
+ 
+ 2D max pooling  (2 x 2 window)
+.15
+.33.00.00.00
+.52
+.34
+.66 .56.33.23.23
+.66.02.23.12
+.33
+.66 .66.52
+1D max pooling  (1 x 2 window)
+.33 .99 .01 .52 .99 .00 .01 .16 .33 .52 .23 .23
+1D global max pooling
+.99 .99 .00 .01 .16 .33 .52 .23 .23
+Figure 7.9 Pooling layers 
+Pooling options are
+GlobalMaxPooling1D(),
+MaxPooling1D(n), or AvgPooling1D(n),
+where n is the size of the area to pool
+and defaults to 2 if not provided.
+ 
+
+238 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+Okay, outta the pool; grab a towel. Let’s recap the path so far:
+For each input example, you applied a f ilter (weights and activation function).
+Convolved across the length of the in put, which would output a 1D vector
+slightly smaller than the original input (1 x 398 which is input with the filter
+starting left-aligned and finishin g right-aligned) for each filter.
+For each filter output (there are 250 of them, remember), you took the single
+maximum value from each 1D vector.
+At this point you have a single vector (per input example) that is 1 x 250 (the
+number of filters).
+Now for each input sample you have a 1D vector that the ne twork thinks is a good rep-
+resentation of that in put sample. This is a semantic  representation of the input—a
+crude one to be sure. And it will only be semantic in the context of the training target,
+which is sentiment. There won’t be an en coding of the content of the movie being
+reviewed, say, just an encoding of its sentiment.
+ You haven’t done any training yet, so it ’ s a garbage pile of numbers. But we get
+back to that later . This is an important point to stop and really understand what is
+going on, for once the network is trained, this semantic  representation (we like to
+think of it as a “thought vector”) can be useful. Much like the various ways you embed-
+ded words into vectors, so too you can pe rform math on them: you now have some-
+thing that represents whole groupings of words.
+ Enough of the excitement, back to the ha rd work of training. You have a goal to
+work toward and that’ s your labels for sentiment. Y ou take your current vector and
+pass it into a standard feedforwar d network; in Keras that is a Dense  layer. The cur-
+rent setup has the same number of elements  in your semantic vector and the number
+o f  n o d e s  i n  t h e  D e n s e  l a y e r ,  b u t  t h a t ’ s  j u s t  c o i n c i d e n c e .  E a c h  o f  t h e  2 5 0
+(hidden_dims ) neurons in the Dense layer has 250 weights for the input from the
+pooling layer. You temper that with a dropout layer to prevent overfitting. 
+7.4.4 Dropout
+Dropout  (represented as a layer by Keras, as in  listing 7.11) is a special technique devel-
+oped to prevent overfitting in neural netw orks. It isn’t specific to natural language
+processing, but it does work well here.
+ The idea is that on each training pass, if you “turn off” a certain percentage of the
+input going to the next layer , randomly ch osen on each pass, the model will be less
+likely to learn the specifics of the training  set, “overfitting,” and instead learn more
+nuanced representations of the patterns in the data and thereby be able to generalize
+and make accurate pred ictions when it sees completely novel data.
+ Your model implements the dropout by a ssuming the output coming into the Drop-
+out layer (the output from the previous layer)  is 0 for that particular pass. It works on
+that pass because the contribution to the over all error of each of the neuron’s weights
+that would receive the dropout’s zero inpu t is also effectively 0. Therefore those
+ 
+
+239 Narrow windows indeed
+weights won’t get updated on the backpropagation pass. The network is then forced to
+rely on relationships among varying weight sets to achieve its goals (hopefully they
+won’t hold this tough love against us).
+TIP Don’t worry too much about this point, but note that Keras will do some
+magic under the hood for Dropout laye rs. Keras is randomly turning off a
+percentage of the inputs on each forw ard pass of the training data. You won’t
+do that dropout during inference or pred iction on your real  application. The
+strength of the signal going into layers  after a Dropout layer would be signifi-
+cantly higher during the nontraining inference stage.
+Keras mitigates this in the training phas e by proportionally boosting all inputs
+that aren’t turned off, so the aggregate signal that goes into the next layer is
+of the same magnitude as it will be during inference.
+The parameter passed into the Dropout layer in Keras is th e percentage of the inputs
+to randomly turn off. In this example,  only 80% of the embedding data, randomly
+chosen for each training sample , will pass into the next layer as it is. The rest will go in
+as 0s. A 20% dropout setting is common, bu t a dropout of up to 50% can have good
+results (one more hyperpar ameter you can play with).
+ And then you use the Rectified Linear Units activation ( relu ) on the output end
+of each neuron. See the following listing.
+>>> model.add(Dense(hidden_dims))
+>>> model.add(Dropout(0.2))
+>>> model.add(Activation('relu'))
+7.4.5 The cherry on the sundae
+The last layer, or output layer, is the actu al classifier, so here you have a neuron that
+fires based on the sigmoid  activation function; it give s a value between 0 and 1. Dur-
+ing validation, Keras will consider anything below 0.5 to be classi fied as 0 and anything
+above 0.5 to be a 1. But in terms of the loss calculated, it will use the target minus the
+actual value provided by the sigmoid ( y - f(x)).
+ Here you project onto a single unit output  layer, and funnel your signal into a sig-
+moid activation function, as shown in the following listing.
+>>> model.add(Dense(1))
+>>> model.add(Activation('sigmoid'))
+Now you finally have a convolutional neur al network model fully defined in Keras.
+Nothing’s left but to compile it and train it, as shown in the following listing.Listing 7.11 Fully connected layer with dropout
+Listing 7.12 FunnelYou start with a vanilla fully 
+connected hidden layer and then tack on dropout and ReLU. 
+ 
+
+240 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+ 
+>>> model.compile(loss='binary_crossentropy',
+... optimizer='adam',... metrics=['accuracy'])
+The loss  function is what the network will try to minimize. Here, you use
+'binary_crossentropy' . At the time of writing, 13 loss functions are defined in
+Keras, and you have the option to define your own. You won’t go into the use cases for
+each of those, but the two workhorses to know about are binary_crossentropy
+and categorical_crossentropy .
+ Both are similar in their mathematical de finitions, and in many ways you can think
+of binary_crossentropy  as a special case of categorical_crossentropy . The
+important thing to know is when to use wh ich. Because in this example you have one
+output neuron that is either on or off, you’ll use binary_crossentropy .
+ Categorical is used when you’re predicti ng one of many classes. In those cases,
+your target will be an n-dimensional vector, one-hot encoded, with a position for each
+of your n classes. The last layer in your network in this case would be as shown in the
+following listing.
+>>> model.add(Dense(num_classes))
+>>> model.add(Activation('sigmoid'))
+In this case, target minus output ( y - f(x)) would be an n-dimensional vector sub-
+tracted from an n-dimensional vector. And categorical_crossentropy  would try
+to minimize that difference.
+ But back to your bi nary classification.
+OPTIMIZATION
+The parameter optimizer  is any of a list of strategies to optimize the network during
+training, such as stochastic gradient de scent, Adam, and RSMProp. The optimizers
+themselves are each different approaches to  minimizing the loss function in a neural
+network; the math behind each is beyond th e scope of this book, but be aware of them
+and try different ones for your particular problem. Although many  may converge for a
+given problem, some may not, and they will do so at different paces.
+ Their magic comes from dynamically alteri ng the parameters of the training, spe-
+cifically the learning rate , based on the current state of the training. For example, the
+starting learning rate (remember: alpha  is the learning rate applied to the weight
+updates you saw in chapter 5) may decay over time. Or some methods may apply
+momentum  and increase the learning rate if th e last movement of the weights in that
+particular direction was succe ssful at decreasing the loss.
+ Each optimizer itself has a handful of hyperparameters,  such as learning rate.
+Keras has good defaults for these values, so you shouldn’t have to worry about them
+too much at first. Listing 7.13 Compile the CNN
+Listing 7.14 Output layer for categorical variable (word)
+Where num_classes is … well, 
+you get the picture.
+ 
+
+241 Narrow windows indeed
+FIT
+Where compile  builds the model, fit trains the model. All the inputs times the weights,
+all the activation functions, all the backpr opagation is kicked off by this one state-
+ment. Depending on your hardware, the size of your model, and the size of your data,this process can take anywhere from a fe w seconds to a few months. Using a GPU can
+greatly reduce the training time in most ca ses, and if you have access to one, by all
+means use it. A few extra steps are required  to pass environment variables to Keras to
+direct it to use the GPU, but this exampl e is small enough you can run it on most
+modern CPUs in a reasonable amount  of time. See the following listing.
+>>> model.fit(x_train, y_train,
+... batch_size=batch_size,... epochs=epochs,
+... validation_data=(x_test, y_test))
+7.4.6 Let’s get to learning (training)
+One last step before you hit run. You would like to save the model state after training.
+Because you aren’t going to hold the mode l  i n  m e m o r y  f o r  n o w ,  y o u  c a n  g r a b  i t s
+structure in a JSON file and save the trai ned weights in anothe r file for later re-
+instantiation. See the following listing.
+>>> model_structure = model.to_json()
+>>> with open("cnn_model.json", "w") as json_file:
+... json_file.write(model_structure)>>> model.save_weights("cnn_weights.h5")
+Now your trained model will be persisted on  disk; should it converge, you won’t have
+to train it again.
+ Keras also provides some amazingly useful  callbacks during the training phase that
+are passed into the fit method as keyword arguments, such as checkpointing ,
+which iteratively saves the model only when the accuracy or loss has improved, or
+EarlyStopping , which stops the training phase early if the model is no longer
+improving based on a metric you provide.  And probably most exciting, they have
+implemented a TensorBoard callback. Tensor Board works only with TensorFlow as a
+backend, but it provides an amazing level of introspection into your models and canListing 7.15 Training a CNN
+Listing 7.16 Save your hard workThe number of data samples processed before the
+backpropagation u pdates the weights. The cumulative
+error for the n samples in the batch is applied at once.
+The number of times the training 
+will run through the entire 
+training dataset, before stopping 
+Note that this doesn’t save the weights
+of the network, only the structure.
+Save your trained 
+model before you lose it!
+ 
+
+242 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+be indispensable when troubl eshooting and fine-tuning. Let’s get to learning! Run-
+ning the compile  and fit steps above should lead to the following output:
+Using TensorFlow backend.
+Loading data...
+25000 train sequences25000 test sequences
+Pad sequences (samples x time)
+x_train shape: (25000, 400)x_test shape: (25000, 400)
+Build model...
+Train on 20000 samples, validate on 5000 samplesEpoch 1/2 [================================] - 417s - loss: 0.3756 -
+acc: 0.8248 - val_loss: 0.3531 - val_acc: 0.8390
+Epoch 2/2 [================================] - 330s - loss: 0.2409 -acc: 0.9018 - val_loss: 0.2767 - val_acc: 0.8840
+Your final loss and accuracies may vary a bit, which is a side effect of the random initial
+weights chosen for all the neurons. You ca n overcome this randomness to create a
+repeatable pipeline by passi ng a seed into the randomiz er. Doing so forces the same
+values to be chosen for the initial random weights on each run, which can be helpful
+in debugging and tuning your model. Just keep in mind that the starting point can
+itself force the model into a local minimum  or even prevent the model from converg-
+ing, so we recommend that you try a few different seeds.
+ To set the seed, add the following two lin es above your model definition. The inte-
+ger passed in as the argument to  seed is unimportant, but as long as it’s consistent, the
+model will initialize its weights to small values in the same way:
+>>> import numpy as np
+>>> np.random.seed(1337)
+We haven’t seen definitive signs of overfi tting; the accuracy improved for both the
+training and validation sets. You could let the model run for another epoch or twoand see if you could improve more withou t overfitting. A Keras model can continue
+the training from this point if it’s still in memory, or if it’s reloaded from a save file.
+Just call the 
+fit method again (change the sample da ta or not), and the training will
+resume from th at last state.
+TIP Overfitting will be apparent when the loss continues to drop for the
+training run, but the val_loss  at the end of each epoch starts to climb com-
+pared to the previous epoch. Finding that happy medium where the valida-
+tion loss curve starts to bend back up is a major key to creating a good model.
+Great. Done. Now, what did you just do?
+ The model was described and then compiled into an initial untrained state. You
+then called fit to actually learn the weights of the filters and the feedforward fully
+connected network at the end, as well as the weights of each of the 250 individual
+ 
+
+243 Narrow windows indeed
+filters, by backpropagating the error enco untered at each example all the way back
+down the chain.
+ The progress meter reported loss, which you specified as binary_crossentropy .
+For each batch, Keras is reporting a metric of how far you’re away from the label you
+provided for that sample. The accuracy is a report of “percent correct guesses.” This
+metric is fun to watch but certainly can be misleading, especially if you have a lopsided
+dataset. Imagine you have 100 examples: 99  of them are positive examples and only
+one of them should be predicted as negative . If you predict all 10 0 as positive without
+even looking at the data, you’ll still be 99 % accurate, which isn’t helpful in generaliz-
+ing. The val_loss  and val_acc  are the same metrics on th e test dataset provided in
+the following:
+>>> validation_data=(x_test, y_test)
+The validation samples are ne ver shown to the network for training; they’re only
+passed in to see what the mo del predicts for them, and then reported on against the
+metrics. Backpropagation doesn’t happen fo r these samples. This helps keep track of
+how well the model will generalize to novel, real-world data.
+ You’ve trained a model. The magic is do ne. The box has told you it figured every-
+thing out. You believe it. So what? Let’s get some use out of your work. 
+7.4.7 Using the model in a pipeline
+After you have a trained model, you can then  pass in a novel sample and see what the
+network thinks. This could be an incoming ch at message or tweet to your bot; in your
+case, it’ll be a made-up example.
+ First, reinstate your trained model, if it’s  no longer in memory, as shown in the fol-
+lowing listing.
+>>> from keras.models import model_from_json
+>>> with open("cnn_model.json", "r") as json_file:... json_string = json_file.read()
+>>> model = model_from_json(json_string)
+>>> model.load_weights('cnn_weights.h5')
+Let’s make up a sentence with an obviou s negative sentiment and see what the net-
+work has to say about it. See the following listing.
+>>> sample_1 = "I hate that the dismal weather had me down for so long,
+➥ when will it break! Ugh, when does happiness return? The sun is blinding
+➥ and the puffy clouds are too thin. I can't wait for the weekend."Listing 7.17 Loading a saved model 
+Listing 7.18 Test example
+ 
+
+244 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+With the model pretrained, testing a new samp le is quick. The are still thousands and
+thousands of calculations to do, but for ea ch sample you only need one forward pass
+and no backpropagation to get a result. See the following listing.
+>>> vec_list = tokenize_and_vectorize([(1, sample_1)])
+>>> test_vec_list = pad_trunc(vec_list, maxlen)
+>>> test_vec = np.reshape(test_vec_list, (len(test_vec_list), maxlen,\
+... embedding_dims))
+>>> model.predict(test_vec)array([[ 0.12459087]], dtype=float32)
+The Keras predict  method gives you the raw output of the final layer of the net. In
+this case, you have one neuron, and because the last layer is a sigmoid it will output
+something between 0 and 1.
+ The Keras predict_classes  method gives you the expected 0 or 1. If you have a
+multiclass classification prob lem, the last layer in your network will likely be a softmax
+function, and the outputs of each node will be the probability (in the network’s eyes)
+that each node is the right answer. Calling predict_classes  there will return the
+node associated with the highest valued probability.
+ But back to your example:
+>>> model.predict_classes(test_vec)
+array([[0]], dtype=int32)
+A “negative” sentiment indeed.
+ A sentence that contains words such as “happiness,” “sun,” “puffy,” and “clouds”
+isn’t necessarily a sentence full of positive emotion. Just as a sentence with “dismal,”
+“break,” and “down” isn’t necessarily a nega tive sentiment. But with a trained neural
+network, you were able to detect the unde rlying pattern and to learn something that
+generalized from data, without ev er hard-coding a single rule. 
+7.4.8 Where do you go from here?
+In the introduction, we talked about CNNs  importance in image processing. One key
+point that was breezed over is the ability of the network to process channels  of informa-
+tion. In the case of a black-and-white image, there’s one channel in the two-
+dimensional image. Each data point is the grayscale value of that pixel, which gives
+you a two-dimensional input. In the case of co lor, the input is still a pixel intensity, but
+it’s separated into its red, green, and bl ue components. The input then becomes aListing 7.19 Prediction
+You pass a dummy value in the firs t element of the tuple just because
+your helper expects it from the way you processed the initial data.
+That value won’t ever see the ne twork, so it can be anything.
+Tokenize returns a list of the
+data (length 1 here).
+ 
+
+245 Narrow windows indeed
+three-dimensional tensor that is passed into  the net. And the filters follow suit and
+become three-dimensional as well, still a 3 x 3 or 5 x 5 or whatever in the x,y plane,
+but also three layers deep, resulting in filt ers that are three pixels wide x three pixels
+high x three channels deep, which leads to an interesting application in natural lan-
+guage processing.
+ Your input to the network was a series of words represented as vectors lined up
+next to each other, 400 (maxlen) words wide x 300 elements long, and you usedWord2vec embeddings for the word vectors. Bu t as you’ve seen in earlier chapters, you
+can generate word embeddings multiple ways . If you pick several and restrict them to
+an identical number of elements, you can stack them as you would picture channels ,
+which is an interesting way to add informatio n to the network, especially if the embed-
+dings come from disparate so urces. Stacking a variety of word embeddings this way
+may not be worth the increased training time due to the multiplier effect it has on the
+c o m p l e x i t y  o f  y o u r  model. But you can see now why we started you off with some
+image processing analogies. However, this analogy breaks down when you realize that
+the dimensions independent of word embeddin gs aren’t correlated with each other in
+the same way that color channels in an image are, so YMMV.
+ We touched briefly on the output of the convolutional layers (before you step into
+the feedforward layer). This semantic representation  is an important artifact. It’s in many
+ways a numerical representation of the thou ght and details of the input text. Specifi-
+cally in this case, it’s a representation of the thought and details through the lens of sen-
+timent analysis, as all the “learning” that  happened was in response to whether the
+sample was labeled as a positive or negative sentiment.  The vector that was generated
+by training on a set that was labeled for an other specific topic an d classified as such
+would contain much different  information. Using the intermediary vector directly
+from a convolutional neural net isn’t common,  but in the coming chapters you’ll see
+examples from other neural network architec tures where the details of that intermedi-
+ary vector become important, and in some cases are the end goal itself.
+ Why would you choose a CNN for your NLP classification task? The main benefit it
+provides is efficiency. In many ways, becaus e of the pooling layers and the limits cre-
+ated by filter size (though you can make your  filters large if you wish), you’re throwing
+away a good deal of information. But that doesn’t mean they aren’t useful models. As
+you’ve seen, they were able to efficiently detect and predict sentiment over a relatively
+large dataset, and even though you relied  on the Word2vec embeddings, CNNs can
+perform on much less rich embeddings without mapping the entire language.
+ Where can you take CNNs from here? A lot can depend on the available datasets,
+but richer models can be achieved by stac king convolutional layers and passing the
+output of the first set of filters as the “i mage” sample into the second set and so on.
+Research has also found that running the mo del with multiple size filters and concate-
+nating the output of each size filter into a longer thought vector  before passing it into
+the feedforward network at the end can prov ide more accurate results. The world is
+wide open. Experiment and enjoy.
+ 
+
+246 CHAPTER  7Getting words in order with convolutional neural networks (CNNs)
+Summary
+A convolution is a window sliding over something larger (keeping the focus on
+a subset of the greater whole).
+Neural networks can treat text just as they treat images and “see” them.
+Handicapping the learning proce ss with dropout actually helps.
+Sentiment exists not only in the word s but in the patterns that are used.
+Neural networks have many knobs you can turn. 
+ 
+

@@ -1,0 +1,190 @@
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum6/one.pnum
+/four.pnum./one.pnum/two.pnum./one.pnum What is Token Classiﬁcation?
+Token classiﬁcation refers to the process of assigning a lab el to individual tokens in a given text. For
+example, in Named Entity Recognition, the goal is to identif y named entities (e.g., persons, organiza-
+tions, locations) in text and classify them into predeﬁned c ategories. Given a sentence like:
+"John lives in New York."
+A token classiﬁcation model might assign labels like:
+John (Person), lives (O), in (O), New York (Location)
+Ostands for "Other," meaning that the token doesn’t belong to any of the entity categories.
+/four.pnum./one.pnum/two.pnum./two.pnum Using Hugging Face Transformers for Token Classiﬁca tion
+Hugging Face provides an easy-to-use interface for token cl assiﬁcation tasks. We can utilize a pre-
+trained model like ‘bert-base-cased‘ ﬁne-tuned for NER tas ks to classify tokens in a given sentence.
+Let’s break down the implementation step-by-step.
+/four.pnum./one.pnum/two.pnum./three.pnum Step /one.pnum: Install the Hugging Face Transformers Librar y
+If you don’t have the ‘transformers‘ library installed, you can install it using the following command:
+/one.pnum!pip install transformers
+/four.pnum./one.pnum/two.pnum./four.pnum Step /two.pnum: Loading the Pre-trained Model
+We will use the ‘AutoModelForTokenClassiﬁcation‘ and ‘Aut oTokenizer‘ classes to load a pre-trained
+modelﬁne-tunedfor NER.Thetokenizer isresponsibleforsp littingthetextinto tokens, andthemodel
+will classify each token.
+/one.pnumfrom transformers import AutoTokenizer, AutoModelForTok enClassification
+/two.pnumfrom transformers import pipeline
+/three.pnum
+/four.pnum# Load the pre-trained model and tokenizer
+/five.pnummodel_name = "dbmdz/bert-large-cased-finetuned-conll03-english"
+6tokenizer = AutoTokenizer.from_pretrained(model_name)
+/seven.pnummodel = AutoModelForTokenClassification.from_pretrain ed(model_name)
+In this example, we are using the ‘bert-large-cased‘ model ﬁ ne-tuned on the CoNLL-/two.pnum/zero.pnum/zero.pnum/three.pnum dataset,
+which is commonly used for NER.
+/four.pnum./one.pnum/two.pnum./five.pnum Step /three.pnum: Token Classiﬁcation Pipeline
+To make the process even simpler, Hugging Face provides a ‘pi peline‘ for token classiﬁcation tasks.
+This pipeline takes care of the tokenization and model infer ence in one go.
+/one.pnum# Initialize the NER pipeline
+/two.pnumner_pipeline = pipeline( "ner", model=model, tokenizer=tokenizer)
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum6/two.pnum
+/four.pnum./one.pnum/two.pnum.6 Step /four.pnum: Perform Token Classiﬁcation on a Sample Sente nce
+Now, let’s classify the tokens in a sample sentence.
+/one.pnum# Sample sentence
+/two.pnumsentence = "Hugging Face Inc. is a company based in New York."
+/three.pnum
+/four.pnum# Perform token classification
+/five.pnumner_results = ner_pipeline(sentence)
+6
+/seven.pnum# Display the results
+8for entity in ner_results:
+/nine.pnumprint(f"Word: {entity[’word’]}, Label: {entity[’entity’]}" )
+Here, we use a simple sentence, and the model will output the e ntities it has identiﬁed along with
+their corresponding labels.
+/four.pnum./one.pnum/two.pnum./seven.pnum Step /five.pnum: Output Explanation
+Theresultwill containthetokensfromthesentence,alongw iththepredictedlabels. Forexample,you
+may see output like:
+/one.pnumWord: Hugging, Label: B-ORG
+/two.pnumWord: Face, Label: I-ORG
+/three.pnumWord: Inc, Label: I-ORG
+/four.pnumWord: New, Label: B-LOC
+/five.pnumWord: York, Label: I-LOC
+In this output:
+•B-ORGstands for the beginning of an organization entity.
+•I-ORGstands for a continuation of the organization entity.
+•B-LOCmarks the beginning of a location entity.
+•I-LOCmarks the continuation of the location entity.
+These labels follow the IOB (Inside-Outside-Beginning)fo rmat, where:
+•B-Xdenotes the beginning of an entity of type X.
+•I-Xdenotes that the token is inside an entity of type X.
+•Omeans that the token is not part of any entity.
+/four.pnum./one.pnum/two.pnum.8 Step 6: Fine-Tuning on Your Own Dataset (Optional)
+Ifyou wanttoﬁne-tunethemodelonyourowndataset,Hugging Faceprovidesaneasywaytodothat.
+You’ll need a dataset with labeled tokens, such as in the CoNL L format. After preparing the data, you
+can use the ‘Trainer‘ class to ﬁne-tune the model. Here’s a ba sic outline of the process:
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum6/three.pnum
+/one.pnumfrom transformers import Trainer, TrainingArguments
+/two.pnum
+/three.pnum# Define training arguments
+/four.pnumtraining_args = TrainingArguments(
+/five.pnumoutput_dir= "./results" ,# Output directory
+6evaluation_strategy= "epoch",# Evaluation strategy
+/seven.pnumlearning_rate=2e-5, # Learning rate
+8per_device_train_batch_size=16, # Batch size
+/nine.pnumnum_train_epochs=3, # Number of epochs
+/one.pnum/zero.pnumweight_decay=0.01, # Weight decay
+/one.pnum/one.pnum)
+/one.pnum/two.pnum
+/one.pnum/three.pnum# Initialize the trainer
+/one.pnum/four.pnumtrainer = Trainer(
+/one.pnum/five.pnummodel=model,
+/one.pnum6args=training_args,
+/one.pnum/seven.pnumtrain_dataset=train_dataset, # Your training data here
+/one.pnum8eval_dataset=eval_dataset # Your evaluation data here
+/one.pnum/nine.pnum)
+/two.pnum/zero.pnum
+/two.pnum/one.pnum# Train the model
+/two.pnum/two.pnumtrainer.train()
+Note:This step assumes you have already prepared your training an d evaluation datasets, which
+should be tokenized and labeled similarly to the CoNLL forma t.
+/four.pnum./one.pnum/two.pnum./nine.pnum Conclusion
+TokenclassiﬁcationisafundamentalNLPtaskwithmanyappl ications,includingNamedEntityRecog-
+nition, POS tagging, and more. Using Hugging Face’s ‘transf ormers‘ library, we can easily implement
+andﬁne-tunepre-trainedmodelsforthesetasks. Inthissec tion,wewalkedthroughanexampleofhow
+to perform NER using a pre-trained BERT model. For more compl ex tasks, you can ﬁne-tune models
+on your speciﬁc datasets.
+/four.pnum./one.pnum/two.pnum./one.pnum/zero.pnum Advanced Considerations for Token Classiﬁcation
+Whilethepreviousexampledemonstrateshowtoquicklysetu ptokenclassiﬁcationusingapre-trained
+model, there are more advanced aspects worth considering wh en implementing token classiﬁcation
+systems in real-world applications. These include:
+•Handling Subword Tokenization: Many transformer models, including BERT, use subword tok-
+enization. This can cause challenges in aligning token labe ls with the subwords generated by
+the tokenizer.
+•Dealing with Imbalanced Data: In many datasets, some entity types may be underrepresented .
+This requires techniques like data augmentation or weighte d loss functions to handle imbal-
+anced data effectively.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum6/four.pnum
+•Evaluating Performance: Evaluation metrics like accuracy are not always sufﬁcient. Metrics
+suchasprecision,recall,andF/one.pnum-scoreprovideabetterund erstandingofhowthemodelperforms
+in identifying entities correctly.
+/four.pnum./one.pnum/two.pnum./one.pnum/zero.pnum./one.pnum Handling Subword Tokenization
+Transformers often break words into subwords, especially f or rare or long words. For instance, the
+word"HuggingFace"mightbetokenizedinto[’Hugging’,’##F ace’]bytheBERTtokenizer. Thechallenge
+here is how to assign labels to subwords since each word typic ally only has one label.
+There are two common strategies to address this issue:
+• Assign the same label to all subwords of a word.
+• Assign the label only to the ﬁrst subword and ignore the rest .
+Here’s how you can deal with this in code:
+/one.pnum# Tokenize input with special attention to subwords
+/two.pnumtokenized_input = tokenizer(sentence, return_offsets_m apping=True)
+/three.pnumtokens = tokenized_input[ ’input_ids’ ]
+/four.pnum
+/five.pnum# Iterate over the tokens and assign labels
+6for idx, token in enumerate(tokens):
+/seven.pnumif not token.startswith( "\#\#"):# If it’s a beginning token, assign the entity label
+8 label = labels[idx] # Assign corresponding label
+/nine.pnumelse:
+/one.pnum/zero.pnum label = "O"# Assign ’O’ to subwords or decide based on your strategy
+This strategy ensures that the model handles subword tokens appropriately.
+/four.pnum./one.pnum/two.pnum./one.pnum/zero.pnum./two.pnum Dealing with Imbalanced Data
+Real-world datasets often suffer from class imbalances, wh ere some entities are much less frequent
+than others. For example, the number of ‘Person‘ entities mi ght signiﬁcantly outweigh the number
+of ‘Location‘ entities in a dataset. This imbalance can lead to a bias in predictions, where the model
+favors more frequent labels.
+To address this, several strategies can be employed:
+•Classweights: Adjustthelossfunctiontopenalizemisclassiﬁcationofun derrepresentedclasses
+more heavily.
+•Oversampling/undersampling: Increasetherepresentationofrareclassesbyoversamplin gthem
+or undersampling frequent classes.
+•Dataaugmentation: Generatesyntheticdataforunderrepresentedclassestoba lancethedataset.
+Here’s how you can apply class weights in the loss function:
+/one.pnumfrom torch import nn
+/two.pnum
+/three.pnum# Assuming you have label counts for each entity class
+/four.pnumlabel_counts = [1000, 500, 50] # Example counts for entities
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum6/five.pnum
+/five.pnumclass_weights = torch.FloatTensor([1/count for count in l abel_counts])
+6
+/seven.pnum# Define a loss function with class weights
+8loss_function = nn.CrossEntropyLoss(weight=class_weig hts)
+This approach helps the model focus more on underrepresente d classes, improving the overall
+performance across all entity types.
+/four.pnum./one.pnum/two.pnum./one.pnum/zero.pnum./three.pnum Evaluating Performance
+To thoroughly evaluate the performance of a token classiﬁca tion model, it is essential to go beyond
+simple accuracy and use more appropriate metrics for this ty pe of task, such as:
+•Precision: Measurestheproportionoftruepositivesamong theentitie spredictedbythemodel.
+•Recall: Measures the proportion of true positives that were correct ly identiﬁed by the model.
+•F/one.pnum-Score: The harmonic mean of precision and recall, providing a balan ced measure of the
+model’s performance.
+The ‘seqeval‘ library is often used to evaluate token classi ﬁcation tasks. You can install it with:
+/one.pnum!pip install seqeval
+Then, you can calculate the precision, recall, and F/one.pnum-score as follows:
+/one.pnumfrom seqeval.metrics import classification_report
+/two.pnum
+/three.pnum# Assuming you have a list of true labels and predicted labels
+/four.pnumtrue_labels = [[ "O","B-LOC","I-LOC","O"], ["O","B-PER","O","O"]]
+/five.pnumpredicted_labels = [[ "O","B-LOC","I-LOC","O"], ["O","B-PER","O","B-PER"]]
+6
+/seven.pnum# Generate the classification report
+8report = classification_report(true_labels, predicted_ labels)
+/nine.pnumprint(report)
+Theoutputwillincludeprecision,recall,andF/one.pnum-scorefor eachentitytype,aswellasoverallmetrics.
+/four.pnum./one.pnum/two.pnum./one.pnum/one.pnum Practical Applications of Token Classiﬁcation
+Token classiﬁcation has numerous real-world applications , including:
+•Named Entity Recognition (NER): Identifying and classifying entities such as people, locat ions,
+and organizations.
+•Part-of-Speech (POS) Tagging: [8/seven.pnum] Assigning parts of speech, such as nouns, verbs, and ad-
+jectives, to each token in a sentence.
+•Chunking: Grouping tokens into higher-level syntactic units like nou n phrases or verb phrases.
+•BiomedicalNamedEntity Recognition: Recognizingmedicalterms,diseases,andtreatmentsin
+biomedical literature.
+

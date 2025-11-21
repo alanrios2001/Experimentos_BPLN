@@ -1,0 +1,1076 @@
+p/CX /CX10 Part-of-Speech Tagging
+The ultimate goal of research on Natural Language Processing is
+to parse and understand language. As we have seen in the precedingchapters, we are still far from achieving this goal. For this reason, muchresearch in
+NLPhas focussed on intermediate tasks that make sense of
+some of the structure inherent in language without requiring complete
+understanding. One such task is part-of-speech tagging, or simply tag- tagging
+ging. Tagging is the task of labeling (or tagging) each word in a sentence
+with its appropriate part of speech. We decide whether each word is anoun, verb, adjective, or whatever. Here is an example of a tagged sen-tence:
+(10.1) The-AT representative-NN put-VBD chairs-NNS on-IN the-AT table-NN.
+The part-of-speech tags we use in this chapter are shown in table 10.1,
+and generally follow the Brown/Penn tag sets (see section 4.3.2). Notethat another tagging is possible for the same sentence (with the rarersense for putof an option to sell ):
+(10.2) The-AT representative-JJ put-NN chairs-VBZ on-IN the-AT table-NN.
+But this tagging gives rise to a semantically incoherent reading. The tag-
+ging is also syntactically unlikely since uses of putas a noun and uses of
+chairs as an intransitive verb are rare.
+This example shows that tagging is a case of limited syntactic disam-
+biguation. Many words have more than one syntactic category. In tagging,we try to determine which of these syntactic categories is the most likelyfor a particular use of a word in a sentence.
+Tagging is a problem of limited scope: Instead of constructing a com-
+plete parse, we just ﬁx the syntactic categories of the words in a sentence.
+
+p/CX /CX342 10 Part-of-Speech Tagging
+Tag Part Of Speech
+AT article
+BEZ the word is
+IN prepositionJJ adjectiveJJR comparative adjectiveMD modalNN singular or mass nounNNP singular proper noun
+NNS plural noun
+PERIOD .:?!
+PN personal pronounRB adverbRBR comparative adverbTO the word to
+VB verb, base form
+VBD verb, past tense
+VBG verb, present participle, gerundVBN verb, past participleVBP verb, non-3rd person singular presentVBZ verb, 3rd singular presentWDT wh-determiner ( what ,which )
+Table 10.1 Some part-of-speech tags frequently used for tagging English.
+For example, we are not concerned with ﬁnding the correct attachment
+of prepositional phrases. As a limited eﬀort, tagging is much easier tosolve than parsing, and accuracy is quite high. Between 96% and 97% oftokens are disambiguated correctly by the most successful approaches.However, it is important to realize that this impressive accuracy ﬁgure isnot quite as good as it looks, because it is evaluated on a per-word basis.For instance, in many genres such as newspapers, the average sentence is
+over twenty words, and on such sentences, even with a tagging accuracy
+of 96% this means that there will be on average over one tagging errorper sentence.
+Even though it is limited, the information we get from tagging is still
+quite useful. Tagging can be used in information extraction, question an-
+
+p/CX /CX10.1 The Information Sources in Tagging 343
+swering, and shallow parsing. The insight that tagging is an intermediate
+layer of representation that is useful and more tractable than full parsingis due to the corpus linguistics work that was led by Francis and Ku ˇcera
+at Brown University in the 1960s and 70s (Francis and Ku ˇcera 1982).
+The following sections deal with Markov Model taggers, Hidden Markov
+Model taggers and transformation-based tagging. At the end of the chap-
+ter, we discuss levels of accuracy for diﬀerent approaches to tagging. Butﬁrst we make some general comments on the types of information thatare available for tagging.
+10.1 The Information Sources in Tagging
+How can one decide the correct part of speech for a word used in a con-text? There are essentially two sources of information. One way is to lookat the tags of other words in the context of the word we are interested in.These words may also be ambiguous as to their part of speech, but theessential observation is that some part of speech sequences are common,such as AT JJ NN, while others are extremely unlikely or impossible, such
+as AT JJ VBP. Thus when choosing whether to give an NN or a VBP tag
+to the word play in the phrase a new play , we should obviously choose
+the former. This type of syntagmatic structural information is the most
+syntagmatic
+obvious source of information for tagging, but, by itself, it is not very
+successful. For example, Greene and Rubin (1971), an early deterministicrule-based tagger that used such information about syntagmatic patternscorrectly tagged only 77% of words. This made the tagging problem look
+quite hard. One reason that it looks hard is that many content words in
+English can have various parts of speech. For example, there is a veryproductive process in English which allows almost any noun to be turnedinto a verb, for example, Next, you ﬂour the pan ,o r ,Iw a n ty o ut o webour
+annual report . This means that almost any noun should also be listed in a
+dictionary as a verb as well, and we lose a lot of constraining informationneeded for tagging.
+These considerations suggest the second information source: just
+knowing the word involved gives a lot of information about the correcttag. Although ﬂour can be used as a verb, an occurrence of ﬂour is much
+more likely to be a noun. The utility of this information was conclusivelydemonstrated by Charniak et al. (1993), who showed that a ‘dumb’ tagger
+
+p/CX /CX344 10 Part-of-Speech Tagging
+that simply assigns the most common tag to each word performs at the
+surprisingly high level of 90% correct.1This made tagging look quite easy
+– at least given favorable conditions, an issue to which we shall return. Asa result of this, the performance of such a ‘dumb’ tagger has been used togive a baseline performance level in subsequent studies. And all modern
+taggers in some way make use of a combination of syntagmatic informa-
+tion (looking at information about tag sequences) and lexical information(predicting a tag based on the word concerned).
+Lexical information is so useful because the distribution of a word’s us-
+ages across diﬀerent parts of speech is typically extremely uneven. Evenfor words with a number of parts of speech, they usually occur usedas one particular part of speech. Indeed, this distribution is usually so
+marked that this one part of speech is often seen as basic, with others be-
+ing derived from it. As a result, this has led to a certain tension over theway the term ‘part of speech’ has been used. In traditional grammars, oneoften sees a word in context being classiﬁed as something like ‘a noun be-ing used as an adjective,’ which confuses what is seen as the ‘basic’ partof speech of the lexeme with the part of speech of the word as used inthe current context. In this chapter, as in modern linguistics in general,
+we are concerned with determining the latter concept, but nevertheless,
+the distribution of a word across the parts of speech gives a great dealof additional information. Indeed, this uneven distribution is one reasonwhy one might expect statistical approaches to tagging to be better thandeterministic approaches: in a deterministic approach one can only saythat a word can or cannot be a verb, and there is a temptation to leaveout the verb possibility if it is very rare (since doing so will probably lift
+the level of overall performance), whereas within a statistical approach,
+we can say that a word has an extremely high ap r i o r i probability of being
+a noun, but there is a small chance that it might be being used as a verb,or even some other part of speech. Thus syntactic disambiguation can beargued to be one context in which a framework that allows quantitativeinformation is more adequate for representing linguistic knowledge thana purely symbolic approach.
+1. The general eﬃcacy of this method was noted earlier by Atwell (1987).
+
+p/CX /CX10.2 Markov Model Taggers 345
+10.2 Markov Model Taggers
+10.2.1 The probabilistic model
+In Markov Model tagging, we look at the sequence of tags in a text as a
+Markov chain. As discussed in chapter 9, a Markov chain has the follow-
+ing two properties:
+Limited horizon. PXi1tjjX1;:::;XiPXi1tjjXi
+Time invariant (stationary). PXi1tjjXiPX 2tjjX1
+That is, we assume that a word’s tag only depends on the previous tag
+(limited horizon) and that this dependency does not change over time(time invariance). For example, if a ﬁnite verb has a probability of 0.2 to
+occur after a pronoun at the beginning of a sentence, then this probability
+will not change as we tag the rest of the sentence (or new sentences). Aswith most probabilistic models, the two Markov properties only approxi-mate reality. For example, the Limited Horizon property does not modellong-distance relationships like Wh-extraction – this was in fact the core
+of Chomsky’s famous argument against using Markov Models for natural
+language.
+Exercise 10.1 [«]
+What are other linguistic phenomena that are not modeled correctly by Markov
+chains? Which general property of language is common to these phenomena?
+Exercise 10.2 [«]
+Why is Time Invariance problematic for modeling language?
+Following (Charniak et al. 1993), we will use the notation in table 10.2.
+We use subscripts to refer to words and tags in particular positions ofthe sentences and corpora we tag. We use superscripts to refer to wordtypes in the lexicon of words and to refer to tag types in the tag set. Inthis compact notation, we can state the above Limited Horizon property
+as follows:
+Pt
+i1jt1;iPti1jti
+We use a training set of manually tagged text to learn the regularities
+of tag sequences. The maximum likelihood estimate of tag tkfollowing
+
+p/CX /CX346 10 Part-of-Speech Tagging
+wi the word at position iin the corpus
+ti the tag ofwi
+wi;im the words occurring at positions ithroughim
+(alternative notations: wiwim,wi;:::;wim,wiim)
+ti;im the tagstitimforwiwim
+wlthelthword in the lexicon
+tjthejthtag in the tag set
+Cwl the number of occurrences of wlin the training set
+Ctj the number of occurrences of tjin the training set
+Ctj;tk the number of occurrences of tjfollowed bytk
+Cwl:tjthe number of occurrences of wlthat are tagged as tj
+T number of tags in tag set
+W number of words in the lexicon
+n sentence length
+Table 10.2 Notational conventions for tagging.
+tjis estimated from the relative frequencies of diﬀerent tags following a
+certain tag as follows:
+PtkjtjCtj;tk
+Ctj
+For instance, following on from the example of how to tag a new play ,w e
+would expect to ﬁnd that PNNjJJPVBPjJJ. Indeed, on the Brown
+corpus,PNNjJJ0:45 andPVBPjJJ0:0005.
+With estimates of the probabilities Pti1jti, we can compute the prob-
+ability of a particular tag sequence. In practice, the task is to ﬁnd the
+most probable tag sequence for a sequence of words, or equivalently, themost probable state sequence for a sequence of words (since the statesof the Markov Model here are tags). We incorporate words by having theMarkov Model emit words each time it leaves a state. This is similar tothe symbol emission probabilities b
+ijkinHMM s from chapter 9:
+POnkjXnsi;Xn1sjbijk
+The diﬀerence is that we can directly observe the states (or tags) if we
+have a tagged corpus. Each tag corresponds to a diﬀerent state. We
+
+p/CX /CX10.2 Markov Model Taggers 347
+can also directly estimate the probability of a word being emitted by a
+particular state (or tag) via Maximum Likelihood Estimation:
+PwljtjCwl;tj
+Ctj
+Now we have everything in place to ﬁnd the best tagging t1;nfor a sen-
+tencew1;n. Applying Bayes’ rule, we can write:
+arg max
+t1;nPt1;njw1;narg max
+t1;nPw 1;njt1;nPt 1;n
+Pw 1;n(10.3)
+arg max
+t1;nPw 1;njt1;nPt 1;n
+We now reduce this expression to parameters that can be estimated
+from the training corpus. In addition to the Limited Horizon assumption(10.5), we make two assumptions about words:
+words are independent of each other (10.4), and
+a word’s identity only depends on its tag (10.5)
+Pw 1;njt1;nPt 1;nnY
+i1Pwijt1;n (10.4)
+Ptnjt1;n−1Ptn−1jt1;n−2Pt2jt1
+nY
+i1Pwijti (10.5)
+Ptnjtn−1Ptn−1jtn−2Pt2jt1
+nY
+i1
+PwijtiPtijti−1
+(10.6)
+(We deﬁnePt1jt01:0 to simplify our notation.)
+Exercise 10.3 [«]
+These are simplifying assumptions. Give two examples each of phenomena
+where independence of words (10.4) and independence from previous and fol-lowing tags (10.5) don’t hold.
+So the ﬁnal equation for determining the optimal tags for a sentence
+is:
+ˆt1;narg max
+t1;nPt1;njw1;nnY
+i1PwijtiPtijti−1 (10.7)
+
+pa/CX /CX348 10 Part-of-Speech Tagging
+1forall tagstjdo
+2 forall tagstkdo
+3Ptkjtj:Ctj;tk
+Ctj
+4 end
+5end
+6forall tagstjdo
+7 forall wordswldo
+8Pwljtj:Cwl;tj
+Ctj
+9 end
+10end
+Figure 10.1 Algorithm for training a Visible Markov Model Tagger. In most
+implementations, a smoothing method is applied for estimating the Ptkjtjand
+Pwljtj.
+Second tag
+First tag AT BEZ IN NN VB PERIOD
+AT 0 0 0 48636 0 19
+BEZ 1973 0 426 187 0 38
+IN 43322 0 1325 17314 0 185
+NN 1067 3720 42470 11773 614 21392
+VB 6072 42 4758 1476 129 1522
+PERIOD 8016 75 4656 1329 954 0
+Table 10.3 Idealized counts of some tag transitions in the Brown Corpus. For
+example, NN occurs 48636 times after AT.
+The algorithm for training a Markov Model tagger is summarized in
+ﬁgure 10.1. The next section describes how to tag with a Markov Modeltagger once it is trained.
+Exercise 10.4 [«]
+Given the data in table 10.3, compute maximum likelihood estimates as shown
+in ﬁgure 10.1 for PATjPERIOD,PNNjAT,PBEZjNN,PINjBEZ,PATjIN,
+andPPERIODjNN. Assume that the total number of occurrences of tags can be
+obtained by summing over the numbers in a row (e.g., 1973+426+187 for BEZ).
+Exercise 10.5 [«]
+Given the data in table 10.4, compute maximum likelihood estimates as shows in
+ﬁgure 10.1 for Pbearjtk,Pisjtk,Pmovejtk,Ppresidentjtk,Pprogressjtk,
+andPthejtk. Take the total number of occurrences of tags from table 10.3.
+
+p/CX /CX10.2 Markov Model Taggers 349
+AT BEZ IN NN VB PERIOD
+bear 00 1 0 0 4 3 0
+is 0 10065 0 0 0 0
+move 0 0 0 36 133 0
+on 0 0 5484 0 0 0
+president 0 0 0 382 0 0
+progress 0 0 0 108 4 0
+the 69016 0 0 0 0 0
+. 0 0 0 0 0 48809
+Table 10.4 Idealized counts of tags that some words occur within the Brown
+Corpus. For example, 36 occurrences of move are with the tag NN.
+Exercise 10.6 [«]
+Compute the following two probabilities:
+PAT NN BEZ IN AT NN jT h eb e a ri so nt h em o v e . 
+PAT NN BEZ IN AT VB jThe bear is on the move. 
+10.2.2 The Viterbi algorithm
+We could evaluate equation (10.7) for all possible taggings t1;nof a sen-
+tence of length n, but that would make tagging exponential in the length
+of the input that is to be tagged. An eﬃcient tagging algorithm is the
+Viterbi algorithm from chapter 9. To review, the Viterbi algorithm has
+three steps: (i) initialization, (ii) induction, and (iii) termination and path-readout. We compute two functions 
+ij, which gives us the probability
+of being in state j(= tagj) at wordi,a n d i1j, which gives us the most
+likely state (or tag) at word igiven that we are in state jat wordi1.
+The reader may want to review the discussion of the Viterbi algorithm insection 9.3.2 before reading on. Throughout, we will refer to states as
+tags in this chapter because the states of the model correspond to tags.
+(But note that this is only true for a bigram tagger.)
+The initialization step is to assign probability 1.0 to the tag
+PERIOD :
+1PERIOD1:0
+1t0:0f o rtPERIOD
+That is, we assume that sentences are delimited by periods and we pre-
+pend a period in front of the ﬁrst sentence in our text for convenience.
+
+pa/CX /CX350 10 Part-of-Speech Tagging
+1comment : Given: a sentence of length n
+2comment : Initialization
+31PERIOD1:0
+41t0:0f o rtPERIOD
+5comment : Induction
+6fori:1tonstep 1do
+7 forall tagstjdo
+8i1tj:max 1kTitkPwi1jtjPtjjtk
+9 i1tj:arg max1kTitkPwi1jtjPtjjtk
+10 end
+11end
+12comment : Termination and path-readout
+13Xn1arg max1jTn1j
+14forj:nto1step−1do
+15Xj j1Xj1
+16end
+17PX 1;:::;Xnmax 1jTn1tj
+Figure 10.2 Algorithm for tagging with a Visible Markov Model Tagger.
+The induction step is based on equation (10.7), where ajkPtkjtj
+andbjkwlPwljtj:
+i1tjmax
+1kT
+itkPwi1jtjPtjjtk
+;1jT
+ i1tjarg max
+1kT
+itkPwi1jtjPtjjtk
+;1jT
+Finally, termination and read-out steps are as follows, where X1;:::;Xn
+are the tags we choose for words w1;:::;wn:
+Xnarg max
+1jTntj
+Xi i1Xi1;1in−1
+PX 1;:::;Xnmax 1jTn1tj
+Tagging with a Visible Markov Model tagger is summarized in ﬁgure 10.2.
+Exercise 10.7 [«]
+Based on the probability estimates from the previous set of exercises, tag the
+following sentence using the Viterbi algorithm.
+
+p/CX /CX10.2 Markov Model Taggers 351
+(10.8) The bear is on the move.
+Exercise 10.8
+Some larger data sets of tag sequence probabilities and some suggested exercises
+are available on the website.
+Terminological note: Markov Models vs. Hidden Markov Models. The
+reader may have noticed that for the purposes of tagging, the MarkovModels in this chapter are treated as Hidden Markov Models. This isbecause we can observe the states of the Markov Model in training (thetags of the labeled corpus), but we only observe words in applying theMarkov Model to the tagging task. We could say that the formalism used
+in Markov Model tagging is really a mixed formalism. We construct ‘Visi-
+ble’ Markov Models in training, but treat them as Hidden Markov Modelswhen we put them to use and tag new corpora.
+10.2.3 Variations
+Unknown words
+We have shown how to estimate word generation probabilities for words
+that occur in the corpus. But many words in sentences we want to tagwill not be in the training corpus. Some words will not even be in thedictionary. We discussed above that knowing the a priori distribution ofthe tags for a word (or at any rate the most common tag for a word) takesyou a great deal of the way in solving the tagging problem. This meansthat unknown words are a major problem for taggers, and in practice,
+the diﬀering accuracy of diﬀerent taggers over diﬀerent corpora is often
+mainly determined by the proportion of unknown words, and the smartsbuilt into the tagger that allow it to try to guess the part of speech ofunknown words.
+The simplest model for unknown words is to assume that they can be
+of any part of speech (or perhaps only any open class part of speech– that is nouns, verbs, etc., but not prepositions or articles). Unknown
+words are given a distribution over parts of speech corresponding to that
+of the lexicon as a whole. While this approach is serviceable in somecases, the loss of lexical information for these words greatly lowers theaccuracy of the tagger, and so people have tried to exploit other featuresof the word and its context to improve the lexical probability estimatesfor unknown words. Often, we can use morphological and other cues to
+
+pa/CX /CX352 10 Part-of-Speech Tagging
+Feature Value NNP NN NNS VBG VBZ
+unknown word yes 0.05 0.02 0.02 0.005 0.005
+no 0.95 0.98 0.98 0.995 0.995
+capitalized yes 0.95 0.10 0.10 0.005 0.005
+no 0.05 0.90 0.90 0.995 0.995
+ending -s 0.05 0.01 0.98 0.00 0.99
+-ing 0.01 0.01 0.00 1.00 0.00
+-tion 0.05 0.10 0.00 0.00 0.00
+other 0.89 0.88 0.02 0.00 0.01
+Table 10.5 Table of probabilities for dealing with unknown words in tagging.
+For example, Punknown word = yes jNNP0:05 andPending = -ingjVBG
+1:0.
+make inferences about a word’s possible parts of speech. For example,
+words ending in -edare likely to be past tense forms or past participles.
+Weischedel et al. (1993) estimate word generation probabilities based on
+three types of information: how likely it is that a tag will generate anunknown word (this probability is zero for some tags, for example PN,personal pronouns); the likelihood of generation of uppercase/lowercasewords; and the generation of hyphens and particular suﬃxes:
+Pw
+ljtj1
+ZPunknown word jtjPcapitalizedjtjPendings/hyph jtj
+whereZis a normalization constant. This model reduces the error rate
+for unknown words from more than 40% to less than 20%.
+Charniak et al. (1993) propose an alternative model which depends
+both on roots and suﬃxes and can select from multiple morphologicalanalyses (for example, do-es (a verb form) vs. doe-s (the plural of a noun)).
+Most work on unknown words assumes independence between fea-
+tures. Independence is often a bad assumption. For example, capitalizedwords are more likely to be unknown, so the features ‘unknown word’
+and ‘capitalized’ in Weischedel et al.’s model are not really independent.
+Franz (1996; 1997) develops a model for unknown words that takes de-pendence into account. He proposes a loglinear model that models main
+main effects
+eﬀects (the eﬀects of a particular feature on its own) as well as interac- interactions
+tions (such as the dependence between ‘unknown word’ and ‘capitalized’).
+For an approach based on Bayesian inference see Samuelsson (1993).
+
+p/CX /CX10.2 Markov Model Taggers 353
+Exercise 10.9 [«]
+Given the (made-up) data in table 10.5 and Weischedel et al.’s model for un-
+known words, compute Pfenestrationjtk,Pfenestratesjtk,Ppalladiojtk,
+Ppalladiosjtk,PPalladiojtk,PPalladiosjtk, andPguesstimating jtk.A s -
+sume that NNP, NN, NNS, VBG, and VBZ are the only possible tags. Do theestimates seem intuitively correct? What additional features could be used forbetter results?
+Exercise 10.10 [««]
+Compute better estimates of the probabilities in table 10.5 from the data on the
+web site.
+Trigram taggers
+The basic Markov Model tagger can be extended in several ways. In the
+model developed so far, we make predictions based on the preceding tag.This is called a bigram tagger because the basic unit we consider is the
+bigram tagger
+preceding tag and the current tag. We can think of tagging as selecting
+the most probable bigram (modulo word probabilities).
+We would expect more accurate predictions if more context is taken
+into account. For example, the tag RB (adverb) can precede both a verbin the past tense (VBD) and a past participle (VBN). So a word sequencelikeclearly marked is inherently ambiguous in a Markov Model with a
+‘memory’ that reaches only one tag back. A trigram tagger has a two-
+trigram tagger
+tag memory and lets us disambiguate more cases. For example, is clearly
+marked andhe clearly marked suggest VBN and VBD, respectively, be-
+cause the trigram “BEZ RB VBN” is more frequent than the trigram “BEZRB VBD” and because “PN RB VBD” is more frequent than “PN RB VBN.”A trigram tagger was described in (Church 1988), which is probably themost cited publication on tagging and got many
+NLPresearchers inter-
+ested in the problem of part-of-speech tagging.
+Interpolation and variable memory
+Conditioning predictions on a longer history is not always a good idea.
+For example, there are usually no short-distance syntactic dependen-cies across commas. So knowing what part of speech occurred beforea comma does not help in determining the correct part of speech af-ter the comma. In fact, a trigram tagger may make worse predictionsthan a bigram tagger in such cases because of sparse data problems –
+
+p/CX /CX354 10 Part-of-Speech Tagging
+trigram transition probabilities are estimated based on rarer events, so
+the chances of getting a bad estimate are higher.
+One way to address this problem is linear interpolation of unigram,
+bigram, and trigram probabilities:
+Ptijt1;i−11P1ti2P2tijti−13P3tijti−1;i−2
+This method of linear interpolation was covered in chapter 6 and how to
+estimate the parameters iusing an HMM was covered in chapter 9.
+Some researchers have selectively augmented a low-order Markov
+model based on error analysis and prior linguistic knowledge. For ex-ample, Kupiec (1992b) observed that a ﬁrst order
+HMM systematically
+mistagged the sequence “the bottom of” as “AT JJ IN.” He then extendedthe order-one model with a special network for this construction so thatthe improbability of a preposition after a “AT JJ” sequence could be
+learned. This method amounts to manually selecting higher-order states
+for cases where an order-one memory is not suﬃcient.
+A related method is the Variable Memory Markov Model (
+VMMM )
+(Schütze and Singer 1994). VMMM s have states of mixed “length” instead
+of the ﬁxed-length states of bigram and trigram taggers. A VMMM tagger
+can go from a state that remembers the last two tags (corresponding toa trigram) to a state that remembers the last three tags (corresponding
+to a fourgram) and then to a state without memory (corresponding to a
+unigram). The number of symbols to remember for a particular sequenceis determined in training based on an information-theoretic criterion. Incontrast to linear interpolation,
+VMMM s condition the length of mem-
+ory used for prediction on the current sequence instead of using a ﬁxedweighted sum for all sequences.
+VMMM s are built top-down by splitting
+states. An alternative is to build this type of model bottom-up by way of
+model merging (Stolcke and Omohundro 1994a; Brants 1998). model merging
+The hierarchical non-emitting Markov model is an even more powerful
+model that was proposed by Ristad and Thomas (1997). By introduc-ing non-emitting transitions (transitions between states that do not emita word or, equivalently, emit the empty word ), this model can store
+dependencies between states over arbitrarily long distances.
+Smoothing
+Linear interpolation is a way of smoothing estimates. We can use any of
+the other estimation methods discussed in chapter 6 for smoothing. For
+
+p/CX /CX10.2 Markov Model Taggers 355
+example, Charniak et al. (1993) use a method that is similar to Adding
+One (but note that, in general, it does not give a proper probability distri-b u t i o n...) :
+Pt
+jjtj11−Ctj−1;tj
+Ctj−1
+Smoothing the word generation probabilities is more important than
+smoothing the transition probabilities since there are many rare wordsthat will not occur in the training corpus. Here too, Adding One has beenused (Church 1988). Church added 1 to the count of all parts of speechlisted in the dictionary for a particular word, thus guaranteeing a non-zero probability for all parts of speech t
+jthat are listed as possible for
+wl:
+PtjjwlCtj;wl1
+CwlKl
+whereKlis the number of possible parts of speech of wl.
+Exercise 10.11 [«]
+Recompute the probability estimates in exercises 10.4 and 10.5 with Adding One.
+Reversibility
+We have described a Markov Model that ‘decodes’ (or tags) from left to
+right. It turns out that decoding from right to left is equivalent. The
+following derivation shows why this is the case:
+Pt1;nPt1Pt 1;2jt1Pt 2;3jt2:::Ptn−1;njtn−1 (10.9)
+Pt1Pt 1;2Pt 2;3:::Ptn−1;n
+Pt1Pt 2:::Ptn−1
+PtnPt 1;2jt2Pt 2;3jt3:::Ptn−1;njtn
+Assuming that the probability of the initial and last states are the same
+(which is the case in tagging since both correspond to the tag PERIOD ),
+‘forward’ and ‘backward’ probability are the same. So it doesn’t matterwhich direction we choose. The tagger described here moves from left toright. Church’s tagger takes the opposite direction.
+Maximum Likelihood: Sequence vs. tag by tag
+As we pointed out in chapter 9, the Viterbi Algorithm ﬁnds the most
+likely sequence of states (or tags). That is, we maximize Pt
+1;njw1;n.W e
+
+p/CX /CX356 10 Part-of-Speech Tagging
+could also maximize Ptijw1;nfor alliwhich amounts to summing over
+diﬀerent tag sequences.
+As an example consider sentence (10.10):
+(10.10) Time ﬂies like an arrow.
+Let us assume that, according to the transition probabilities we’ve gath-
+ered from our training corpus, (10.11a) and (10.11b) are likely taggings(assume probability 0.01), (10.11c) is an unlikely tagging (assume proba-bility 0.001), and that (10.11d) is impossible because transition probabil-ityPVBjVBZis 0.0.
+(10.11) a. NN VBZ RB AT NN. P0:01
+b. NN NNS VB AT NN. P0:01
+c. NN NNS RB AT NN. P0:001
+d. NN VBZ VB AT NN. P0
+For this example, we will obtain taggings (10.11a) and (10.11b) as the
+equally most likely sequences Pt
+1;njw1;n. But we will obtain (10.11c) if
+we maximize Ptijw1;nfor alli. This is because PX 2NNSjTime ﬂies
+like an arrow0:011PbPc> 0:01PaPX 2VBZjTime
+ﬂies like an arrow )a n dPX 3RBjTime ﬂies like an arrow 0:011
+PaPc> 0:01PbPX 3VBjTime ﬂies like an arrow ).
+Experiments conducted by Merialdo (1994: 164) suggest that there is
+no large diﬀerence in accuracy between maximizing the likelihood of in-dividual tags and maximizing the likelihood of the sequence. Intuitively,it is fairly easy to see why this might be. With Viterbi, the tag transi-tions are more likely to be sensible, but if something goes wrong, we willsometimes get a sequence of several tags wrong; whereas with tag by tag,one error does not aﬀect the tagging of other words, and so one is more
+likely to get occasional dispersed errors. In practice, since incoherent se-
+quences (like “NN NNS RB AT NN” above) are not very useful, the Viterbialgorithm is the preferred method for tagging with Markov Models.
+10.3 Hidden Markov Model Taggers
+Markov Model taggers work well when we have a large tagged trainingset. Often this is not the case. We may want to tag a text from a special-ized domain with word generation probabilities that are diﬀerent from
+
+p/CX /CX10.3 Hidden Markov Model Taggers 357
+those in available training texts. Or we may want to tag text in a foreign
+language for which training corpora do not exist at all.
+10.3.1 Applying HMM st oPOStagging
+If we have no training data, we can use an HMM to learn the regularities
+of tag sequences. Recall that an HMM as introduced in chapter 9 consists
+of the following elements:
+a set of states
+an output alphabet
+initial state probabilities
+state transition probabilities
+symbol emission probabilities
+As in the case of the Visible Markov Model, the states correspond to tags.
+The output alphabet consists either of the words in the dictionary orclasses of words as we will see in a moment.
+We could randomly initialize all parameters of the
+HMM , but this would
+leave the tagging problem too unconstrained. Usually dictionary infor-mation is used to constrain the model parameters. If the output alphabetconsists of words, we set word generation (= symbol emission) proba-
+bilities to zero if the corresponding word-tag pair is not listed in the
+dictionary (e.g., JJ is not listed as a possible part of speech for book ). Al-
+ternatively, we can group words into word equivalence classes so that allwords that allow the same set of tags are in the same class. For example,we could group bottom andtopinto the class JJ-NN if both are listed with
+just two parts of speech, JJ and NN. The ﬁrst method was proposed byJelinek (1985), the second by Kupiec (1992b). We write b
+j:lfor the prob-
+ability that word (or word class) lis emitted by tag j. This means that
+as in the case of the Visible Markov Model the ‘output’ of a tag does notdepend on which tag (= state) is next.
+Jelinek’s method.
+bj:lb?
+j:lCwl
+P
+wmb?
+j:mCwm
+
+p/CX /CX358 10 Part-of-Speech Tagging
+where the sum is over all words wmin the dictionary and
+b?
+j:l(
+0i ftjis not a part of speech allowed for wl
+1
+Twlotherwise
+whereTwjis the number of tags allowed for wj.
+Jelinek’s method amounts to initializing the HMM with the maximum
+likelihood estimates for Pwkjti, assuming that words occur equally
+likely with each of their possible tags.
+Kupiec’s method. First, group all words with the same possible parts
+of speech into ‘metawords’ uL. HereLis a subset of the integers from
+1t oT,w h e r eTis the number of diﬀerent tags in the tag set:
+uLfwljj2L$tjis allowed for wlg8Lf1;:::;Tg
+For example, if NN t5and JJt8thenuf5;8gwill contain all words
+for which the dictionary allows tags NN and JJ and no other tags.
+We then treat these metawords uLthe same way we treated words in
+Jelinek’s method:2
+bj:Lb?
+j:LCuLP
+uL0b?
+j:L0CuL0
+whereCuL0is the number of occurrences of words from uL0, the sum
+in the denominator is over all metawords uL0,a n d
+b?
+j:L(
+0i fjL
+1
+jLjotherwise
+wherejLjis the number of indices in L.
+The advantage of Kupiec’s method is that we don’t ﬁne-tune a sepa-
+rate set of parameters for each word. By introducing equivalence classes,the total number of parameters is reduced substantially and this smallerset can be estimated more reliably. This advantage could turn into adisadvantage if there is enough training material to accurately estimate
+parameters word by word as Jelinek’s method does. Some experiments
+2. The actual initialization used by Kupiec is a variant of what we present here. We have
+tried to make the similarity between Jelinek’s and Kupiec’s methods more transparent.
+
+p/CX /CX10.3 Hidden Markov Model Taggers 359
+D0 maximum likelihood estimates from a tagged training corpus
+D1 correct ordering only of lexical probabilitiesD2 lexical probabilities proportional to overall tag probabilitiesD3 equal lexical probabilities for all tags admissible for a word
+T0 maximum likelihood estimates from a tagged training corpus
+T1 equal probabilities for all transitions
+Table 10.6 Initialization of the parameters of an HMM . D0, D1, D2, and D3 are
+initializations of the lexicon, and T0 and T1 are initializations of tag transitionsinvestigated by Elworthy.
+conducted by Merialdo (1994) suggest that unsupervised estimation of
+a separate set of parameters for each word introduces error. This ar-gument does not apply to frequent words, however. Kupiec thereforedoes not include the 100 most frequent words in equivalence classes, buttreats them as separate one-word classes.
+Training. Once initialization is completed, the Hidden Markov Model is
+trained using the Forward-Backward algorithm as described in chapter 9.
+Tagging. As we remarked earlier, the diﬀerence between
+VMM tagging
+and HMM tagging is in how we train the model, not in how we tag. The
+formal object we end up with after training is a Hidden Markov model
+in both cases. For this reason, there is no diﬀerence when we apply themodel in tagging. We use the Viterbi algorithm in exactly the same man-ner for Hidden Markov Model tagging as we do for Visible Markov Modeltagging.
+10.3.2 The eﬀect of initialization on HMM training
+The ‘clean’ (i.e., theoretically well-founded) way of stopping training withthe Forward-Backward algorithm is the log likelihood criterion (stop when
+the log likelihood no longer improves). However, it has been shown that,
+for tagging, this criterion often results in overtraining. This issue wasinvestigated in detail by Elworthy (1994). He trained
+HMM s from the dif-
+ferent starting conditions in table 10.6. The combination of D0 and T0corresponds to Visible Markov Model training as we described it at thebeginning of this chapter. D1 orders the lexical probabilities correctly
+
+p/CX /CX360 10 Part-of-Speech Tagging
+(for example, the fact that the tag VB is more likely for make than the
+tag NN), but the absolute values of the probabilities are randomized. D2gives the same ordering of parts of speech to all words (for example, forthe most frequent tag t
+j, we would have Pwjtjis greater than Pwjtk
+f o ra l lo t h e rt a g s tk). D3 preserves only information about which tags are
+possible for a word, the ordering is not necessarily correct. T1 initializes
+the transition probabilities to roughly equal numbers.3
+Elworthy (1994) ﬁnds three diﬀerent patterns of training for diﬀerent
+combinations of initial conditions. In the classical pattern, performance classical
+on the test set improves steadily with each training iteration. In this case
+the log likelihood criterion for stopping is appropriate. In the early max- early maximum
+imum pattern, performance improves for a number of iterations (most
+often for two or three), but then decreases. In the initial maximum pat- initial maximum
+tern, the very ﬁrst iteration degrades performance.
+The typical scenario for applying HMM s is that a dictionary is available,
+but no tagged corpus as training data (conditions D3 (maybe D2) andT1). For this scenario, training follows the early maximum pattern. Thatmeans that we have to be careful in practice not to overtrain. One wayto achieve this is to test the tagger on a held-out validation set after each
+iteration and stop training when performance decreases.
+Elworthy also conﬁrms Merialdo’s ﬁnding that the Forward-Backward
+algorithm degrades performance when a tagged training corpus (of evenmoderate size) is available. That is, if we initialize according to D0 andT0, then we get the initial maximum pattern. However, an interestingtwist is that if training and test corpus are very diﬀerent, then a fewiterations do improve performance (the early maximum pattern). This is
+a case that occurs frequently in practice since we are often confronted
+with types of text for which we do not have similar tagged training text.
+In summary, if there is a suﬃciently large training text that is fairly
+similar to the intended text of application, then we should use VisibleMarkov Models. If there is no training text available or training and testtext are very diﬀerent, but we have at least some lexical information, thenwe should run the Forward-Backward algorithm for a few iterations. Only
+when we have no lexical information at all, should we train for a larger
+number of iterations, ten or more. But we cannot expect good perfor-
+3. Exactly identical probabilities are generally bad as a starting condition for the EM algo-
+rithm since they often correspond to suboptimal local optima that can easily be avoided.We assume that D3 and T1 refer to approximately equal probabilities that are slightlyperturbed to avoid ties.
+
+p/CX /CX10.4 Transformation-Based Learning of Tags 361
+mance in this case. This failure is not a defect in the forward-backward
+algorithm, but reﬂects the fact that the forward-backward algorithm isonly maximizing the likelihood of the training data by adjusting the pa-rameters of an
+HMM . The changes it is using to reduce the cross entropy
+may not be in accord with our true objective function – getting words
+assigned tags according to some predeﬁned tag set. Therefore it is not
+capable of optimizing performance on that task.
+Exercise 10.12 [«]
+When introducing HMM tagging above, we said that random initialization of the
+model parameters (without dictionary information) is not a useful starting pointfor the EM algorithm. Why is this the case? What would happen if we just hadthe following eight parts of speech: preposition, verb, adverb, adjective, noun,article, conjunction, and auxiliary; and randomly initialized the
+HMM . Hint: The
+EM algorithm will concentrate on high-frequency events which have the highestimpact on log likelihood (the quantity maximized).
+How does this initialization diﬀer from D3?
+Exercise 10.13 [«]
+The EM algorithm improves the log likelihood of the model given the data in
+each iteration. How is this compatible with Elworthy’s and Merialdo’s resultsthat tagging accuracy often decreases with further training?
+Exercise 10.14 [«]
+The crucial bit of prior knowledge that is captured by both Jelinek’s and Kupiec’s
+methods of parameter initialization is which of the word generation probabilitiesshould be zero and which should not. The implicit assumption here is thata generation probability set to zero initially will remain zero during training.Show that this is the case referring to the introduction of the Forward-Backwardalgorithm in chapter 9.
+Exercise 10.15 [««]
+Get the Xerox tagger (see pointer on website) and tag texts from the web site.
+10.4 Transformation-Based Learning of Tags
+In our description of Markov models we have stressed at several points
+that the Markov assumptions are too crude for many properties of nat-ural language syntax. The question arises why we do not adopt moresophisticated models. We could condition tags on preceding words (notjust preceding tags) or we could use more context than trigram taggersby going to fourgram or even higher order taggers.
+
+p/CX /CX362 10 Part-of-Speech Tagging
+This approach is not feasible because of the large number of param-
+eters we would need. Even with trigram taggers, we had to smoothand interpolate because maximum likelihood estimates were not robustenough. This problem would be exacerbated with models more complexthan the Markov models introduced so far, especially if we wanted to
+condition transition probabilities on words.
+We will now turn to transformation-based tagging. One of the strengths
+of this method is that it can exploit a wider range of lexical and syn-tactic regularities. In particular, tags can be conditioned on words andon more context. Transformation-based tagging encodes complex in-terdependencies between words and tags by selecting and sequencingtransformations that transform an initial imperfect tagging into one with
+fewer errors. The training of a transformation-based tagger requires an
+order of magnitude fewer decisions than estimating the large number ofparameters of a Markov model.
+Transformation-based tagging has two key components:
+a speciﬁcation of which ‘error-correcting’ transformations are admis-sible
+the learning algorithm
+As input data, we need a tagged corpus and a dictionary. We ﬁrst tag
+each word in the training corpus with its most frequent tag – that is whatwe need the dictionary for. The learning algorithm then constructs aranked list of transformations that transforms the initial tagging into atagging that is close to correct. This ranked list can be used to tag newtext, by again initially choosing each word’s most frequent tag, and then
+applying the transformations. We will now describe these components in
+more detail.
+10.4.1 Transformations
+A transformation consists of two parts, a triggering environment and a
+rewrite rule. Rewrite rules have the form t1!t2, meaning “replace tag
+t1by tagt2.” Brill (1995a) allows the triggering environments shown in
+table 10.7. Here the asterisk is the site of the potential rewriting and theboxes denote the locations where a trigger will be sought. For example,line 5 refers to the triggering environment “Tag t
+joccurs in one of the
+three previous positions.”
+
+p/CX /CX10.4 Transformation-Based Learning of Tags 363
+Schemati−3ti−2ti−1titi1ti1ti3
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+Table 10.7 Triggering environments in Brill’s transformation-based tagger. Ex-
+amples: Line 5 refers to the triggering environment “Tag tjoccurs in one of the
+three previous positions”; Line 9 refers to the triggering environment “Tag tj
+occurs two positions earlier and tag tkoccurs in the following position.”
+Source tag Target tag Triggering environment
+NN VB previous tag is TO
+VBP VB one of the previous three tags is MDJJR RBR next tag is JJ
+VBP VB one of the previous two words is n’t
+Table 10.8 Examples of some transformations learned in transformation-based
+tagging.
+Examples of the type of transformations that are learned given these
+triggering environments are shown in table 10.8. The ﬁrst transforma-
+tion speciﬁes that nouns should be retagged as verbs after the tag TO.Later transformations with more speciﬁc triggers will switch some wordsback to NN (e.g., school ingo to school ). The second transformation in
+table 10.8 applies to verbs with identical base and past tense forms likecutandput. A preceding modal makes it unlikely that they are used in
+the past tense. An example for the third transformation is the retagging
+ofmore inmore valuable player .
+The ﬁrst three transformations in table 10.8 are triggered by tags. The
+fourth one is triggered by a word. (In the Penn Treebank words like don’t
+andshouldn’t are split up into a modal and n’t.) Similar to the second
+transformation, this one also changes a past tense form to a base form.A preceding n’tmakes a base form more likely than a past tense form.
+
+p/CX /CX364 10 Part-of-Speech Tagging
+1C0:corpus with each word tagged with its most frequent tag
+3fork:0step 1do
+4v:the transformation uithat minimizes EuiCk
+6 ifECk−EvCk< then break ﬁ
+7Ck1:vCk
+8k1:v
+9end
+10Output sequence: 1;:::;k
+Figure 10.3 The learning algorithm for transformation-based tagging. Ci
+refers to the tagging of the corpus in iteration i.Ei st h ee r r o rr a t e .
+Word-triggered environments can also be conditioned on the current
+word and on a combination of words and tags (“the current word is wi
+and the following tag is tj”).
+There is also a third type of transformation in addition to tag-triggered
+and word-triggered transformations. Morphology-triggered transforma-
+tions oﬀer an elegant way of integrating the handling of unknown words
+into the general tagging formalism. Initially, unknown words are taggedas proper nouns (NNP) if capitalized, as common nouns (NN) otherwise.Then morphology-triggered transformations like “Replace NN by NNS ifthe unknown word’s suﬃx is -s” correct errors. These transformations
+are learned by the same learning algorithm as the tagging transforma-
+tions proper. We will now describe this learning algorithm.
+10.4.2 The learning algorithm
+The learning algorithm of transformation-based tagging selects the best
+transformations and determines their order of application. It works asshown in ﬁgure 10.3.
+Initially we tag each word with its most frequent tag. In each iteration
+of the loop, we choose the transformation that reduces the error rate
+most (line 4), where the error EC
+kis measured as the number of words
+that are mistagged in tagged corpus Ck. We stop when there is no trans-
+formation left that reduces the error rate by more than a prespeciﬁedthreshold. This procedure is a greedy search for the optimal sequence
+of transformations.
+We also have to make two decisions about how to apply the transfor-
+
+p/CX /CX10.4 Transformation-Based Learning of Tags 365
+mations, that is, how exactly to compute iCk. First, we are going to
+stipulate that transformations are applied from left to right to the input.Secondly, we have to decide whether transformations should have an im-mediate or delayed eﬀect. In the case of immediate eﬀect, applicationsof the same transformation can inﬂuence each other. Brill implements
+delayed-eﬀect transformations, which are simpler. This means that a
+transformation “A !B if the preceding tag is A” will transform AAAA
+to ABBB. AAAA would be transformed to ABAB if transformations tookeﬀect immediately.
+An interesting twist on this tagging model is to use it for unsuper-
+vised learning as an alternative to
+HMM tagging. As with HMM tagging,
+the only information available in unsupervised tagging is which tags are
+allowable for each word. We can then take advantage of the fact that
+many words only have one tag and use that as the scoring function forselecting transformations. For example, we can infer that the tagging ofcaninThe can is open as NN is correct if most unambiguous words in
+the environment “AT
+BEZ” are nouns with this tag. Brill (1995b) de-
+scribes a system based on this idea that achieves tagging accuracies ofup to 95.6%, a remarkable result for an unsupervised method. What is
+particularly interesting is that there is no overtraining – in sharp contrast
+to
+HMM s which are very prone to overtraining as we saw above. This is a
+point that we will return to presently.
+10.4.3 Relation to other models
+Decision trees
+Transformation-based learning bears some similarity to decision trees
+(see section 16.1). We can view a decision tree as a mechanism that labelsall leaves that are dominated by a node with the majority class label ofthat node. As we descend the tree we relabel the leaves of a child nodeif its label diﬀers from that of the parent node. This way of lookingat a decision tree shows the similarity to transformation-based learning
+where we also go through a series of relabelings, working on smaller and
+smaller subsets of the data.
+In principle, transformation-based learning is strictly more powerful
+than decision trees as shown by Brill (1995a). That is, there exist clas-siﬁcation tasks that can be solved using transformation-based learningthat cannot be solved using decision trees. However, it is not clear that
+
+p/CX /CX366 10 Part-of-Speech Tagging
+this ‘extra power’ of transformation-based learning is used in NLPappli-
+cations.
+The main practical diﬀerence between the two methods is that the
+training data are split at each node in a decision tree and that we ap-ply a diﬀerent sequence of ‘transformations’ for each node (the sequence
+corresponding to the decisions on the path from the root to that node). In
+transformation-based learning, each transformation in the learned trans-formation list is applied to all the data (leading to a rewriting when thetriggering environment is met). As a result, we can directly minimize onthe ﬁgure of merit that we are most interested in (number of tagging er-rors in the case of tagging) as opposed to indirect measures like entropythat are used for
+HMM s and decision trees. If we directly minimized tag-
+ging errors in decision tree learning, then it would be easy to achieve
+100% accuracy for each leaf node. But performance on new data would bepoor because each leaf node would be formed based on arbitrary proper-ties of the training set that don’t generalize. Transformation-based learn-ing seems to be surprisingly immune to this form of overﬁtting (Ramshawand Marcus 1994). This can be partially explained by the fact that wealways learn on the whole data set.
+One price we pay for this robustness is that the space of transforma-
+tion sequences we have to search is huge. A naive implementation oftransformation-based learning will therefore be quite ineﬃcient. How-ever, there are ways of searching the space more intelligently and eﬃ-ciently (Brill 1995a).
+Probabilistic models in general
+In comparison to probabilistic models (including decision trees), trans-
+formation based learning does not make the battery of standard methodsavailable that probability theory provides. For example, no extra work isnecessary in a probabilistic model for a ‘ k-best’ tagging – a tagging mod-
+ule that passes a number of tagging hypotheses with probabilities on to
+the next module downstream (such as the parser).
+It is possible to extend transformation-based tagging to ‘ k-best’ tagging
+by allowing rules of the form “add tag A to B if . . . ” so that some wordswill be tagged with multiple tags. However, the problem remains that wedon’t have an assessment of how likely each of the tags is. The ﬁrst tagcould be 100 times more likely than the next best one in one situation
+
+p/CX /CX10.4 Transformation-Based Learning of Tags 367
+and all tags could be equally likely in another situation. This type of
+knowledge could be critical for constructing a parse.
+An important characteristic of learning methods is the way prior know-
+ledge can be encoded. Transformation-based tagging and probabilisticapproaches have diﬀerent strengths here. The speciﬁcation of templates
+for the most appropriate triggering environments oﬀers a powerful way
+of biasing the learner towards good generalizations in transformation-based learning. The templates in table 10.7 seem obvious. But theyseem obvious only because of what we know about syntactic regularities.A large number of other templates that are obviously inappropriate areconceivable (e.g., “the previous even position in the sentence is a noun”).
+In contrast, the probabilistic Markov models make it easier to encode
+precisely what the prior likelihood for the diﬀerent tags of a word are (for
+example, the most likely tag is ten times as likely or just one and a halftimes more likely). The only piece of knowledge we can give the learnerin transformation-based tagging is which tag is most likely.
+10.4.4 Automata
+The reader may wonder why we describe transformation-based taggingin this textbook even though we said we would not cover rule-orientedapproaches. While transformation-based tagging has a rule component,it also has a quantitative component. We are somewhat loosely usingStatistical
+NLPin the sense of any corpus-based or quantitative method
+that uses counts from corpora, not just those that use the framework ofprobability theory. Transformation-based tagging clearly is a Statistical
+NLPmethod in this sense because transformations are selected based on
+a quantitative criterion.
+However, the quantitative evaluation of transformations (by how much
+they improve the error rate) only occurs during training. Once learning iscomplete, transformation-based tagging is purely symbolic. That meansthat a transformation-based tagger can be converted into another sym-bolic object that is equivalent in terms of tagging performance, but has
+other advantageous properties like time eﬃciency.
+This is the approach taken by Roche and Schabes (1995). They convert
+a transformation-based tagger into an equivalent ﬁnite state transducer ,
+ﬁnite state
+transducer a ﬁnite-state automaton that has a pair of symbols on each arc, one input
+symbol and one output symbol (in some cases several symbols can beoutput when an arc is traversed). A ﬁnite-state transducer passes over an
+
+p/CX /CX368 10 Part-of-Speech Tagging
+input string and converts it into an output string by consuming the input
+symbols on the arcs it traverses and outputting the output symbols onthe same arcs.
+The construction algorithm proposed by Roche and Schabes has four
+steps. First, each transformation is converted into a ﬁnite-state trans-
+ducer. Second, the transducer is converted into its local extension . Simply
+local extension
+put, the local extension f2of a transducer f1is constructed such that run-
+ningf2on an input string in one pass has the same eﬀect as running f1
+on each position of the input string. This step takes care of cases like the
+following. Suppose we have a transducer that implements the transfor-mation “replace A by B if one of the two preceding symbols is C.” Thistransducer will have one arc with the input symbol A and the output sym-
+bol B. So for an input sequence like “CAA” we have to run it twice (at the
+second and third position) to correctly transduce “CAA” to “CBB.” Thelocal extension is constructed such that one pass will do this conversion.
+In the third step, we compose all transducers into one single trans-
+ducer whose eﬀect is the same as running the individual transducers insequence. This single transducer is generally non-deterministic. When-ever this transducer has to keep an event (like “C occurred at position i”)
+in memory it will do this by launching two paths one assuming that a
+tag aﬀected by a preceding C will occur later, one assuming that nosuch tag will occur. The appropriate path will be pursued further, theinappropriate path will be ‘killed oﬀ’ at the appropriate position in thestring. This type of indeterminism is not eﬃcient, so the fourth step is toconvert the non-deterministic transducer into a deterministic one. Thisis not possible in general since non-deterministic transducers can keep
+events in memory for an arbitrary long sequence, which cannot be done
+by deterministic transducers. However, Roche and Schabes show that thetransformations used in transformation-based tagging do not give riseto transducers with this property. We can therefore always transform atransformation-based tagger into a deterministic ﬁnite-state transducer.
+The great advantage of a deterministic ﬁnite-state transducer is speed.
+A transformation-based tagger can take RKn elementary steps to tag a
+text whereRis the number of transformations, Kis the length of the
+triggering environment, and nis the length of the input text (Roche and
+Schabes 1995: 231). In contrast, ﬁnite-state transducers are linear in thelength of the input text with a much smaller constant. Basically, we onlyhop from one state to the next as we read a word, look up its most likelytag (the initial state) and output the correct tag. This makes speeds of
+
+p/CX /CX10.4 Transformation-Based Learning of Tags 369
+several tens of thousands of words per second possible. The speed of
+Markov model taggers can be an order of magnitude lower. This meansthat transducer-based tagging adds a very small overhead to operationslike reading the input text from disk and its time demands are likely tobe negligible compared to subsequent processing steps like parsing or
+message understanding.
+There has also been work on transforming Hidden Markov models into
+ﬁnite state transducers (Kempe 1997). But, in this case, we cannot achievecomplete equivalence since automata cannot perfectly mimic the ﬂoatingpoint operations that need to be computed for the Viterbi algorithm.
+10.4.5 Summary
+The great advantage of transformation-based tagging is that it can condi-tion tagging decisions on a richer set of events than the probabilisticmodels we looked at earlier. For example, information from the leftand right can be used simultaneously and individual words (not justtheir tags) can inﬂuence the tagging of neighboring words. One rea-son transformation-based tagging can accommodate this richer set of
+triggering environments is probably that it primarily deals with binary
+information, which is less complex than probabilities.
+It has also been claimed that transformations are easier to understand
+and modify than the transition and word generation probabilities in prob-abilistic tagging. However, it can be quite hard to foresee the eﬀect ofchanging one transformation in a sequence, since complex interactionscan occur when several dozen transformations are applied in sequence
+and each depends on the output of the previous one.
+Work on the theoretical foundations of transformation-based tagging
+is still on-going. For example, the fact that transformation-based learningseems remarkably resistant to overﬁtting is so far an empirical result thatis not well understood.
+Even so, both learning and tagging are remarkably simple and intuitive
+in transformation-based tagging. Whether this simplicity is the principal
+criterion for choosing between a transformation-based or a probabilis-
+tic tagger, or whether the strength of probabilistic models in dealing withuncertainty and certain types of prior knowledge are more important con-siderations will depend on many factors such as what type of system thetagger is a component of and whether those working on this system aremore comfortable with rule-based or probabilistic approaches.
+
+p/CX /CX370 10 Part-of-Speech Tagging
+Apart from tagging, transformation-based learning has also been ap-
+plied to parsing (Brill 1993b), prepositional phrase attachment (Brill andResnik 1994), and word sense disambiguation (Dini et al. 1998).
+Exercise 10.16 [«]
+Transformation-based learning is a form of greedy search. Is greedy search ex-
+pected to ﬁnd the optimal sequence of transformations? What would be alterna-tives?
+Exercise 10.17 [«]
+Most of the triggering environments in Brill (1995a) refer to preceding context.
+Why? Would you expect the same tendency for languages other than English?
+Exercise 10.18 [«]
+The set of possible triggering environments for words and tags is diﬀerent in
+(Brill 1995a). For example, “one of the three preceding tags is X” is admissible asa triggering environment, but not “one of the three preceding words is X.” Whatmight be the reason for this diﬀerence? Consider the diﬀerences between thesizes of the search spaces for words and tags.
+Exercise 10.19 [«]
+Apart from choosing the most frequent tag as initialization, we can also assign
+all words to the same tag (say, NN) or use the output of another tagger whichthe transformation-based tagger can then improve. Discuss relative advantagesof diﬀerent initializations.
+Exercise 10.20 [««]
+Get the Brill tagger (see pointer on website) and tag texts from the website.
+10.5 Other Methods, Other Languages
+10.5.1 Other approaches to tagging
+Tagging has been one of the most active areas of research in NLPin the
+last ten years. We were only able to cover three of the most important ap-
+proaches here. Many other probabilistic and quantitative methods have
+been applied to tagging, including all the methods we cover in chap-ter 16: neural networks (Benello et al. 1989), decision trees (Schmid 1994),memory-based learning (or knearest neighbor approaches) (Daelemans
+et al. 1996), and maximum entropy models (Ratnaparkhi 1996).
+4
+4. Ratnaparkhi’s tagger, one of the highest performing statistical taggers, is publicly avail-
+able. See the website.
+
+p/CX /CX10.6 Tagging Accuracy and Uses of Taggers 371
+There has also been work on how to construct a tagged corpus with
+a minimum of human eﬀort (Brill et al. 1990). This problem poses itselfwhen a language with as yet no tagged training corpus needs to be tackledor when in the case of already tagged languages we encounter text that isso diﬀerent as to make existing tagged corpora useless.
+Finally, some researchers have explored ways of constructing a tag set
+automatically in order to create syntactic categories that are appropri-ate for a language or a particular text sort (Schütze 1995; McMahon andSmith 1996).
+10.5.2 Languages other than English
+We have only covered part-of-speech tagging of English here. It turnsout that English is a particularly suitable language for methods that try
+to infer a word’s grammatical category from its position in a sequence
+of words. In many other languages, word order is much freer, and thesurrounding words will contribute much less information about part ofspeech. However, in most such languages, the rich inﬂections of a wordcontribute more information about part of speech than happens in En-glish. A full evaluation of taggers as useful preprocessors for high-levelmultilingual
+NLPtasks will only be possible after suﬃcient experimental
+results from a wide range of languages are available.
+Despite these reservations, there exist now quite a number of tagging
+studies, at least for European languages. These studies suggest that theaccuracy for other languages is comparable with that for English (Der-matas and Kokkinakis 1995; Kempe 1997), although it is hard to makesuch comparisons due to the incomparability of tag sets (tag sets are notuniversal, but all encode the particular functional categories of individual
+languages).
+10.6 Tagging Accuracy and Uses of Taggers
+10.6.1 Tagging accuracy
+Accuracy numbers currently reported for tagging are most often in the
+range of 95% to 97%, when calculated over all words. Some authors giveaccuracy for ambiguous words only, in which case the accuracy ﬁguresare of course lower. However, performance depends considerably on fac-tors such as the following.
+
+p/CX /CX372 10 Part-of-Speech Tagging
+The amount of training data available. In general, the more the better.
+The tag set. Normally, the larger the tag set, the more potential am-
+biguity, and the harder the tagging task (but see the discussion in sec-tion 4.3.2). For example, some tag sets make a distinction between thepreposition toand the inﬁnitive marker to, and some don’t. Using the
+latter tag set, one can’t tag towrongly.
+The diﬀerence between training corpus and dictionary on the one
+hand and the corpus of application on the other. If training and ap-
+plication text are drawn from the same source (for example, the sametime period of a particular newspaper), then accuracy will be high. Nor-mally the only results presented for taggers in research papers presentresults from this situation. If the application text is from a later timeperiod, from a diﬀerent source, or even from a diﬀerent genre than the
+training text (e.g., scientiﬁc text vs. newspaper text), then performance
+can be poor.
+5
+Unknown words. A special case of the last point is coverage of the
+dictionary. The occurrence of many unknown words will greatly de-grade performance. The percentage of words not in the dictionary canbe very high when trying to tag material from some technical domain.
+A change in any of these four conditions will impact tagging accuracy,
+sometimes dramatically. If the training set is small, the tag set large,the test corpus signiﬁcantly diﬀerent from the training corpus, or we areconfronted with a larger than expected number of unknown words, thenperformance can be far below the performance range cited above. It is
+important to stress that these types of external conditions often have a
+stronger inﬂuence on performance than the choice of tagging method –especially when diﬀerences between methods reported are on the orderof half a percent.
+The inﬂuence of external factors also needs to be considered when
+we evaluate the surprisingly high performance of a ‘dumb’ tagger whichalways chooses a word’s most frequent tag. Such a tagger can get an ac-
+curacy of about 90% in favorable conditions (Charniak et al. 1993). This
+high number is less surprising when we learn that the dictionary that wasused in (Charniak et al. 1993) is based on the corpus of application, the
+5. See Elworthy (1994) and Samuelsson and Voutilainen (1997) for experiments looking
+at performance for diﬀerent degrees of similarity to the training set.
+
+p/CX /CX10.6 Tagging Accuracy and Uses of Taggers 373
+Brown corpus. Considerable manual eﬀort went into the resources that
+make it now easy to determine what the most frequent tag for a word inthe Brown corpus is. So it is not surprising that a tagger exploiting thisdictionary information does well. The automatic tagger that was origi-nally used to preprocess the Brown corpus only achieved 77% accuracy
+(Greene and Rubin 1971). In part this was due to its non-probabilistic
+nature, but in large part this was due to the fact that it could not relyon a large dictionary giving the frequency with which words are used indiﬀerent parts of speech that was suitable for the corpus of application.
+Even in cases where we have a good dictionary and the most-frequent-
+tag strategy works well, it is still important how well a tagger does inthe range from 90% correct to 100% correct. For example, a tagger with
+97% accuracy has a 63% chance of getting all tags in a 15-word sentence
+right, compared to 74% for a tagger with 98% accuracy. So even smallimprovements can make a signiﬁcant diﬀerence in an application.
+One of the best-performing tagging formalisms is non-quantitative:
+EngCG ( English Constraint Grammar ), developed at the University of
+English Constraint
+Grammar Helsinki. Samuelsson and Voutilainen (1997) show that it performs bet-
+ter than Markov model taggers, especially if training and test corpora are
+not from the same source.6In EngCG, hand-written rules are compiled
+into ﬁnite-state automata (Karlsson et al. 1995; Voutilainen 1995). Thebasic idea is somewhat similar to transformation-based learning, exceptthat a human being (instead of an algorithm) iteratively modiﬁes a setof tagging rules so as to minimize the error rate. In each iteration, thecurrent rule set is run on the corpus and an attempt is made to mod-ify the rules so that the most serious errors are handled correctly. This
+methodology amounts to writing a small expert system for tagging. The
+claim has been made that for somebody who is familiar with the method-ology, writing this type of tagger takes no more eﬀort than building an
+HMM tagger (Chanod and Tapanainen 1995), though it could be argued
+that the methodology for HMM tagging is more easily accessible.
+We conclude our remarks on tagging accuracy by giving examples of
+some of the most frequent errors. Table 10.9 shows some examples of
+common error types reported by Kupiec (1992b). The example phrases
+and fragments are all ambiguous, demonstrating that semantic context,
+6. The accuracy ﬁgures for EngCG reported in the paper are better than 99% vs. better
+than 95% for a Markov Model tagger, but comparison is diﬃcult since some ambiguitiesare not resolved by EngCG. EngCG returns a set of more than one tag in some cases.
+
+p/CX /CX374 10 Part-of-Speech Tagging
+Correct tag Tagging error Example
+noun singular adjective an executive order
+adjective adverb more important issues
+preposition particle He ran up ab i g...
+past tense past participle loan needed to meet
+past participle past tense loan needed to meet
+Table 10.9 Examples of frequent errors of probabilistic taggers.
+or more syntactic context is necessary than a Markov model has access
+to. Syntactically, the word executive could be an adjective as well as a
+noun. The phrase more important issues could refer to a larger number
+of important issues or to issues that are more important. The word upis
+used as a preposition in running up a hill , as a particle in running up a
+bill. Finally, depending on the embedding, needed can be a past participle
+or a past tense form as the following two sentences from (Kupiec 1992b)show:
+(10.12) a. The loan needed to meet rising costs of health care.
+b. They cannot now handle the loan needed to meet rising costs of health
+care.
+Table 10.10 shows a portion of a confusion matrix for the tagger de-
+confusion matrix
+scribed in (Franz 1995). Each row shows the percentage of the time words
+of a certain category were given diﬀerent tags by the tagger. In a way theresults are unsurprising. The errors occur in the cases where multipleclass memberships are common. Particularly to be noted, however, is the
+low accuracy of tagging particles, which are all word types that can also
+act as prepositions. The distinction between particles and prepositions,while real, is quite subtle, and some people feel that it is not made veryaccurately even in hand-tagged corpora.
+7
+10.6.2 Applications of tagging
+The widespread interest in tagging is founded on the belief that many NLP
+applications will beneﬁt from syntactically disambiguated text. Given this
+7. Hence, as we shall see in chapter 12, it is often ignored in the evaluation of probabilistic
+parsers.
+
+p/CX /CX10.6 Tagging Accuracy and Uses of Taggers 375
+Correct Tags assigned by the tagger
+Tags DT IN JJ NN RB RP VB VBG
+DT 99.4 .3 .3
+IN .4 97.5 1.5 .5
+JJ .1 93.9 1.8 .9 .1 .4
+NN 2.2 95.5 .2 .4
+RB .2 2.4 2.2 .6 93.2 1.2
+RP 24.7 1.1 12.6 61.5
+VB .3 1.4 96.0
+VBG 2.5 4.4 93.0
+Table 10.10 A portion of a confusion matrix for part of speech tagging. For
+each tag, a row of the table shows the percentage of the time that the tagger
+assigned tokens of that category to diﬀerent tags. (Thus, in the full confusion
+matrix, the percentages in each row would add to 100%, but do not do so here,because only a portion of the table is shown.). Based on (Franz 1995).
+ultimate motivation for part-of-speech tagging, it is surprising that there
+seem to be more papers on stand-alone tagging than on applying tagging
+to a task of immediate interest. We summarize here the most importantapplications for which taggers have been used.
+Most applications require an additional step of processing after tag-
+ging: partial parsing . Partial parsing can refer to various levels of detail
+partial parsing
+of syntactic analysis. The simplest partial parsers are limited to ﬁnding
+the noun phrases of a sentence. More sophisticated approaches assign
+grammatical functions to noun phrases (subject, direct object, indirect
+object) and give partial information on attachments, for example, ‘thisnoun phrase is attached to another (unspeciﬁed) phrase to the right’.
+There is an elegant way of using Markov models for noun phrase
+recognition (see (Church 1988), but a better description can be foundin (Abney 1996a)). We can take the output of the tagger and form asequence of tag bigrams. For example, NN VBZ RB AT NN would be
+transformed into NN-VBZ VBZ-RB RB-AT AT-NN. This sequence of tag
+bigrams is then tagged with ﬁve symbols: noun-phrase-beginning, noun-phrase-end, noun-phrase-interior, noun-phrase-exterior (that is, this tagbigram is not part of a noun phrase), and between-noun-phrases (that is,at the position of this tag bigram there is a noun phrase immediately tothe right and a noun phrase immediately to the left). The noun phrases
+
+p/CX /CX376 10 Part-of-Speech Tagging
+are then all sequences of tags between a noun-phrase-beginning symbol
+(or a between-noun-phrases symbol) and a noun-phrase-end symbol (ora between-noun-phrases symbol), with noun-phrase-interior symbols inbetween.
+The best known approaches to partial parsing are Fidditch, developed
+in the early eighties by Hindle (1994), and an approach called “parsing by
+chunks” developed by Abney (1991). These two systems do not use tag-gers because they predate the widespread availability of taggers. See also(Grefenstette 1994). Two approaches that are more ambitious than cur-rent partial parsers and attempt to bridge the gap between shallow andfull parsing are the
+XTAG system (Doran et al. 1994) and chunk tagging
+(Brants and Skut 1998; Skut and Brants 1998).
+In many systems that build a partial parser on top of a tagger, partial
+parsing is accomplished by way of regular expression matching over theoutput of the tagger. For example, a simple noun phrase may be deﬁnedas a sequence of article (AT), an arbitrary number of adjectives (JJ) and asingular noun (NN). This would correspond to the regular expression “ATJJ* NN.” Since these systems focus on the ﬁnal application, not on partialparsing we cover them in what follows not under the rubric “partial pars-
+ing,” but grouped according to the application they are intended for. For
+an excellent overview of partial parsing (and tagging) see (Abney 1996a).
+One important use of tagging in conjunction with partial parsing is for
+lexical acquisition . We refer the reader to chapter 8.
+Another important application is information extraction (which is also
+information
+extraction referred to as message understanding, data extraction, or text data min-
+ing). The goal in information extraction is to ﬁnd values for the prede-
+ﬁned slots of a template. For example, a template for weather report-
+ing might have slots for the type of weather condition (tornado, snowstorm), the location of the event (the San Francisco Bay Area), the timeof the event (Sunday, January 11, 1998), and what the eﬀect of the eventwas (power outage, traﬃc accidents, etc.). Tagging and partial parsinghelp identify the entities that serve as slot ﬁllers and the relationshipsbetween them. A recent overview article on information extraction is
+(Cardie 1997). In a way one could think of information extraction as
+like tagging except that the tags are semantic categories, not grammati-cal parts of speech. However, in practice quite diﬀerent techniques tendto be employed, because local sequences give less information about se-mantic categories than grammatical categories.
+Tagging and partial parsing can also be applied to ﬁnding good in-
+
+p/CX /CX10.7 Further Reading 377
+dexing terms in information retrieval. The best unit for matching user
+queries and documents is often not the individual word. Phrases likeUnited States of America and secondary education lose much of their
+meaning if they are broken up into words. Information retrieval per-formance can be improved if tagging and partial parsing are applied
+to noun phrase recognition and query-document matching is done on
+more meaningful units than individual terms (Fagan 1987; Smeaton 1992;Strzalkowski 1995). A related area of research is phrase normalizationin which variants of terms are normalized and represented as the samebasic unit (for example, book publishing andpublishing of books ). See
+(Jacquemin et al. 1997).
+Finally, there has been work on so-called question answering systems
+question answering
+which try to answer a user query that is formulated in the form of a ques-
+tion by returning an appropriate noun phrase such as a location, a person,or a date (Kupiec 1993b; Burke et al. 1997). For example, the questionWho killed President Kennedy? might be answered with the noun phrase
+Oswald instead of returning a list of documents as most information re-
+trieval systems do. Again, analyzing a query in order to determine whattype of entity the user is looking for and how it is related to other noun
+phrases mentioned in the question requires tagging and partial parsing.
+We conclude with a negative result: the best lexicalized probabilistic
+parsers are now good enough that they perform better starting with un-tagged text and doing the tagging themselves, rather than using a taggeras a preprocessor (Charniak 1997a). Therefore, the role of taggers ap-pears to be as a fast lightweight component that gives suﬃcient informa-tion for many application tasks, rather than as a desirable preprocessing
+stage for all applications.
+10.7 Further Reading
+Early work on modeling natural language using Markov chains had been
+largely abandoned by the early sixties, partially due to Chomsky’s criti-
+cism of the inadequacies of Markov models (Chomsky 1957: ch. 3). The
+lack of training data and computing resources to pursue an ‘empirical’approach to natural language probably also played a role. Chomsky’scriticism still applies: Markov chains cannot fully model natural lan-guage, in particular they cannot model many recursive structures (butcf. Ristad and Thomas (1997)). What has changed is that approaches that
+
+p/CX /CX378 10 Part-of-Speech Tagging
+emphasize technical goals such as solving a particular task have become
+acceptable even if they are not founded on a theory that fully explainslanguage as a cognitive phenomenon.
+The earliest ‘taggers’ were simply programs that looked up the category
+of words in a dictionary. The ﬁrst well-known program which attempted
+to assign tags based on syntagmatic contexts was the rule-based pro-
+gram presented in (Klein and Simmons 1963), though roughly the sameidea is present in (Salton and Thorpe 1962). Klein and Simmons use theterms ‘tags’ and ‘tagging,’ though apparently interchangeably with ‘codes’and ‘coding.’ The earliest probabilistic tagger known to us is (Stolz et al.1965). This program initially assigned tags to some words (including allfunction words) via use of a lexicon, morphology rules, and other ad-hoc
+rules. The remaining open class words were then tagged using condi-
+tional probabilities calculated from tag sequences. Needless to say, thiswasn’t a well-founded probabilistic model.
+Credit has to be given to two groups, one at Brown University, one
+at the University of Lancaster, who spent enormous resources to tag twolarge corpora, the Brown corpus and the Lancaster-Oslo-Bergen (
+LOB) cor-
+pus. Both groups recognized how invaluable a corpus annotated with
+tag information would be for further corpus research. Without these two
+tagged corpora, progress on part-of-speech tagging would have been hardif not impossible. The availability of a large quantity of tagged data is nodoubt an important reason that tagging has been such an active area ofresearch.
+The Brown corpus was automatically pre-tagged with a rule-based tag-
+ger,
+TAGGIT (Greene and Rubin 1971). This tagger used lexical informa-
+tion only to limit the tags of words and only applied tagging rules when
+words in the surrounding context were unambiguously tagged. The out-put of the tagger was then manually corrected in an eﬀort that took manyyears and supplied the training data for a lot of the quantitative work thatwas done later.
+One of the ﬁrst Markov Model taggers was created at the University
+of Lancaster as part of the
+LOBtagging eﬀort (Garside et al. 1987; Mar-
+shall 1987). The heart of this tagger was the use of bigram tag sequence
+probabilities, with limited use of higher order context, but the diﬀeringprobabilities of assigning a word to diﬀerent parts of speech were han-dled by ad hoc discounting factors. The type of Markov Model tagger thattags based on both word probabilities and tag transition probabilities wasintroduced by Church (1988) and DeRose (1988).
+
+pa/CX /CX10.8 Exercises 379
+During the beginning of the resurgence of quantitative methods in NLP,
+the level of knowledge of probability theory in the NLPcommunity was
+so low that a frequent error in early papers is to compute the probabilityof the next tag in a Markov model as (10.14) instead of (10.13). At ﬁrstsight, (10.14) can seem more intuitive. After all, we are looking at a word
+and want to determine its tag, so it is not far-fetched to assume the word
+as given and the tag as being conditioned on the word.
+arg max
+t1;nPt1;njw1;nnY
+i1
+PwijtiPtijti−1
+(10.13)
+arg max
+t1;nPt1;njw1;nnY
+i1
+PtijwiPtijti−1
+(10.14)
+But, actually, equation (10.14) is not correct, and use of it results in lower
+performance (Charniak et al. 1993).
+While the work of Church and DeRose was key in the resurgence of
+statistical methods in computational linguistics, work on hidden Markov
+model tagging had actually begun much earlier at the IBMresearch cen-
+ters in New York state and Paris. Jelinek (1985) and Derouault and Meri-aldo (1986) are widely cited. Earlier references are Bahl and Mercer (1976)and Baker (1975), who attributes the work to Elaine Rich. Other earlywork in probabilistic tagging includes (Eeg-Olofsson 1985; Foster 1991).
+A linguistic discussion of the conversion of nouns to verbs ( denomi-
+denominal verbs
+nal verbs ) and its productivity can be found in Clark and Clark (1979).
+Huddleston (1984: ch. 3) contains a good discussion of the traditionaldeﬁnitions of parts of speech, their failings, and the notion of part ofspeech or word class as used in modern structuralist linguistics.
+10.8 Exercises
+Exercise 10.21 [«]
+Usually, the text we want to tag is not segmented into sentences. An algorithm
+for identifying sentence boundaries is introduced in chapter 4, together with ageneral overview of the nitty-gritty of corpus processing.
+Could we integrate sentence-boundary detection into the tagging methods intro-
+duced in this chapter? What would we have to change? How eﬀective would youexpect sentence-boundary detection by means of tagging to be?
+
+p/CX /CX380 10 Part-of-Speech Tagging
+Exercise 10.22 [««]
+Get the MULTEXT tagger (see the website) and tag some non-English text from
+the website.
+

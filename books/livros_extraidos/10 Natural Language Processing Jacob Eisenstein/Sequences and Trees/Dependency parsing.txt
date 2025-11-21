@@ -1,0 +1,863 @@
+Chapter 11 5579
+Dependency parsing 5580
+The previous chapter discussed algorithms for analyzing sentences in terms of nested con- 5581
+stituents, such as noun phrases and verb phrases. However, many of the key sources of 5582
+ambiguity in phrase-structure analysis relate to questions of attachment : where to attach a 5583
+prepositional phrase or complement clause, how to scope a coordinating conjunction, and 5584
+so on. These attachment decisions can be represented with a more lightweight structure: 5585
+a directed graph over the words in the sentence, known as a dependency parse . Syn- 5586
+tactic annotation has shifted its focus to such dependency structures: at the time of this 5587
+writing, the Universal Dependencies project offers more than 100 dependency treebanks 5588
+for more than 60 languages.1This chapter will describe the linguistic ideas underlying 5589
+dependency grammar, and then discuss exact and transition-based parsing algorithms. 5590
+The chapter will also discuss recent research on learning to search in transition-based 5591
+structure prediction. 5592
+11.1 Dependency grammar 5593
+While dependency grammar has a rich history of its own (Tesni `ere, 1966; K ¨ubler et al., 5594
+2009), it can be motivated by extension from the lexicalized context-free grammars that 5595
+we encountered in previous chapter ( §10.5.2). Recall that lexicalization augments each 5596
+non-terminal with a head word . The head of a constituent is identiﬁed recursively, using 5597
+a set of head rules , as shown in Table 10.3. An example of a lexicalized context-free parse 5598
+is shown in Figure 11.1a. In this sentence, the head of the S constituent is the main verb, 5599
+scratch ; this non-terminal then produces the noun phrase the cats , whose head word is 5600
+cats, and from which we ﬁnally derive the word the. Thus, the word scratch occupies the 5601
+central position for the sentence, with the word catsplaying a supporting role. In turn, cats 5602
+1universaldependencies.org
+261
+
+262 CHAPTER 11. DEPENDENCY PARSING
+S(scratch)
+VP(scratch)
+PP(with)
+NP(claws)
+NNS
+clawsIN
+withNP(people)
+NNS
+peopleVB
+scratchNP(cats)
+NNS
+catsDT
+The
+(a) lexicalized constituency parse
+The cats scratch people with claws (b) unlabeled dependency tree
+Figure 11.1: Dependency grammar is closely linked to lexicalized context free grammars:
+each lexical head has a dependency path to every other word in the constituent. (This
+example is based on the lexicalization rules from §10.5.2, which make the preposition
+the head of a prepositional phrase. In the more contemporary Universal Dependencies
+annotations, the head of with claws would be claws , so there would be an edge scratch→
+claws .)
+occupies the central position for the noun phrase, with the word theplaying a supporting 5603
+role. 5604
+The relationships between words in a sentence can be formalized in a directed graph, 5605
+based on the lexicalized phrase-structure parse: create an edge (i,j)iff wordiis the head 5606
+of a phrase whose child is a phrase headed by word j. Thus, in our example, we would 5607
+have scratch→cats and cats→the. We would not have the edge scratch→the, because 5608
+although S( scratch ) dominates D ET(the) in the phrase-structure parse tree, it is not its im- 5609
+mediate parent. These edges describe syntactic dependencies , a bilexical relationship 5610
+between a head and a dependent , which is at the heart of dependency grammar. 5611
+Continuing to build out this dependency graph , we will eventually reach every word 5612
+in the sentence, as shown in Figure 11.1b. In this graph — and in all graphs constructed 5613
+in this way — every word has exactly one incoming edge, except for the root word, which 5614
+is indicated by a special incoming arrow from above. Furthermore, the graph is weakly 5615
+connected : if the directed edges were replaced with undirected edges, there would be a 5616
+path between all pairs of nodes. From these properties, it can be shown that there are no 5617
+cycles in the graph (or else at least one node would have to have more than one incoming 5618
+edge), and therefore, the graph is a tree. Because the graph includes all vertices, it is a 5619
+spanning tree . 5620
+11.1.1 Heads and dependents 5621
+A dependency edge implies an asymmetric syntactic relationship between the head and 5622
+dependent words, sometimes called modiﬁers . For a pair like the cats orcats scratch , how 5623
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.1. DEPENDENCY GRAMMAR 263
+do we decide which is the head? Here are some possible criteria: 5624
+•The head sets the syntactic category of the construction: for example, nouns are the 5625
+heads of noun phrases, and verbs are the heads of verb phrases. 5626
+•The modiﬁer may be optional while the head is mandatory: for example, in the 5627
+sentence cats scratch people with claws , the subtrees cats scratch and cats scratch people 5628
+are grammatical sentences, but with claws is not. 5629
+•The head determines the morphological form of the modiﬁer: for example, in lan- 5630
+guages that require gender agreement, the gender of the noun determines the gen- 5631
+der of the adjectives and determiners. 5632
+•Edges should ﬁrst connect content words, and then connect function words. 5633
+As always, these guidelines sometimes conﬂict. The Universal Dependencies (UD) 5634
+project has attempted to identify a set of principles that can be applied to dozens of dif- 5635
+ferent languages (Nivre et al., 2016).2These guidelines are based on the universal part- 5636
+of-speech tags from chapter 8. They differ somewhat from the head rules described in 5637
+§10.5.2: for example, on the principle that dependencies should relate content words, the 5638
+prepositional phrase with claws would be headed by claws , resulting in an edge scratch→ 5639
+claws , and another edge claws→with. 5640
+One objection to dependency grammar is that not all syntactic relations are asymmet- 5641
+ric. Coordination is one of the most obvious examples (Popel et al., 2013): in the sentence, 5642
+Abigail and Max like kimchi (Figure 11.2), which word is the head of the coordinated noun 5643
+phrase Abigail and Max ? Choosing either Abigail orMax seems arbitrary; fairness argues 5644
+for making andthe head, but this seems like the least important word in the noun phrase, 5645
+and selecting it would violate the principle of linking content words ﬁrst. The Universal 5646
+Dependencies annotation system arbitrarily chooses the left-most item as the head — in 5647
+this case, Abigail — and includes edges from this head to both Max and the coordinating 5648
+conjunction and. These edges are distinguished by the labels CONJ (for the thing begin 5649
+conjoined) and CC(for the coordinating conjunction). The labeling system is discussed 5650
+next. 5651
+11.1.2 Labeled dependencies 5652
+Edges may be labeled to indicate the nature of the syntactic relation that holds between 5653
+the two elements. For example, in Figure 11.2, the label NSUBJ on the edge from liketo 5654
+Abigail indicates that the subtree headed by Abigail is the noun subject of the verb like; 5655
+similarly, the label OBJon the edge from liketokimchi indicates that the subtree headed by 5656
+2The latest and most speciﬁc guidelines are available at universaldependencies.org/
+guidelines.html
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+264 CHAPTER 11. DEPENDENCY PARSING
+Abigail andMax likekimchi butnotjookroot
+nsubj
+obj ccconjconj
+cc
+advmod
+Figure 11.2: In the Universal Dependencies annotation system, the left-most item of a
+coordination is the head.
+I know New York pizza and this is not it !!nsubj compound compoundobjcc
+nsubj
+cop
+advmodconjpunct
+root
+Figure 11.3: A labeled dependency parse from the English UD Treebank (reviews-361348-
+0006)
+kimchi is the object.3The negation notis treated as an adverbial modiﬁer ( ADVMOD ) on 5657
+the noun jook. 5658
+A slightly more complex example is shown in Figure 11.3. The multiword expression 5659
+New York pizza is treated as a “ﬂat” unit of text, with the elements linked by the COM - 5660
+POUND relation. The sentence includes two clauses that are conjoined in the same way 5661
+that noun phrases are conjoined in Figure 11.2. The second clause contains a copula verb 5662
+(see§8.1.1). For such clauses, we treat the “object” of the verb as the root — in this case, 5663
+it— and label the verb as a dependent, with the COP relation. This example also shows 5664
+how punctuations are treated, with label PUNCT . 5665
+11.1.3 Dependency subtrees and constituents 5666
+Dependency trees hide information that would be present in a CFG parse. Often what 5667
+is hidden is in fact irrelevant: for example, Figure 11.4 shows three different ways of 5668
+3Earlier work distinguished direct and indirect objects (De Marneffe and Manning, 2008), but this has
+been dropped in version 2.0 of the Universal Dependencies annotation system.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.1. DEPENDENCY GRAMMAR 265
+VP
+PP
+with a forkPP
+on the tableNP
+dinnerV
+ate
+(a) FlatVP
+PP
+with a forkVP
+PP
+on the tableVP
+NP
+dinnerV
+ate
+(b) Chomsky adjunction
+VP
+PP
+with a forkPP
+on the tableVP
+NP
+dinnerV
+ate
+(c) Two-level (PTB-style)
+atedinner onthetable with afork (d) Dependency representation
+Figure 11.4: The three different CFG analyses of this verb phrase all correspond to a single
+dependency structure.
+representing prepositional phrase adjuncts to the verb ate. Because there is apparently no 5669
+meaningful difference between these analyses, the Penn Treebank decides by convention 5670
+to use the two-level representation (see Johnson, 1998, for a discussion). As shown in 5671
+Figure 11.4d, these three cases all look the same in a dependency parse. 5672
+But dependency grammar imposes its own set of annotation decisions, such as the 5673
+identiﬁcation of the head of a coordination ( §11.1.1); without lexicalization, context-free 5674
+grammar does not require either element in a coordination to be privileged in this way. 5675
+Dependency parses can be disappointingly ﬂat: for example, in the sentence Yesterday, 5676
+Abigail was reluctantly giving Max kimchi , the root giving is the head of every dependency! 5677
+The constituent parse arguably offers a more useful structural analysis for such cases. 5678
+Projectivity Thus far, we have deﬁned dependency trees as spanning trees over a graph 5679
+in which each word is a vertex. As we have seen, one way to construct such trees is by 5680
+connecting the heads in a lexicalized constituent parse. However, there are spanning trees 5681
+that cannot be constructed in this way. Syntactic constituents are contiguous spans. In a 5682
+spanning tree constructed from a lexicalized constituent parse, the head hof any con- 5683
+stituent that spans the nodes from itojmust have a path to every node in this span. This 5684
+is property is known as projectivity , and projective dependency parses are a restricted 5685
+class of spanning trees. Informally, projectivity means that “crossing edges” are prohib- 5686
+ited. The formal deﬁnition follows: 5687
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+266 CHAPTER 11. DEPENDENCY PARSING
+% non-projective edges % non-projective sentences
+Czech 1.86% 22.42%
+English 0.39% 7.63%
+German 2.33% 28.19%
+Table 11.1: Frequency of non-projective dependencies in three languages (Kuhlmann and
+Nivre, 2010)
+Abigail ateapizza yesterday which wasvegetarianroot
+nsubjobj
+detacl:relcl
+obl:tmod
+nsubj
+cop
+Figure 11.5: An example of a non-projective dependency parse. The “crossing edge” arises
+from the relative clause which was vegetarian and the oblique temporal modiﬁer yesterday .
+Deﬁnition 2 (Projectivity) .An edge from itojis projective iff all kbetweeniandjare descen- 5688
+dants ofi. A dependency parse is projective iff all its edges are projective. 5689
+Figure 11.5 gives an example of a non-projective dependency graph in English. This 5690
+dependency graph does not correspond to any constituent parse. As shown in Table 11.1, 5691
+non-projectivity is more common in languages such as Czech and German. Even though 5692
+relatively few dependencies are non-projective in these languages, many sentences have 5693
+at least one such dependency. As we will soon see, projectivity has important algorithmic 5694
+consequences. 5695
+11.2 Graph-based dependency parsing 5696
+Lety={ir− →j}represent a dependency graph, in which each edge is a relation rfrom 5697
+head word i∈{1,2,...,M, ROOT}to modiﬁer j∈{1,2,...,M}. The special node R OOT 5698
+indicates the root of the graph, and Mis the length of the input |w|. Given a scoring 5699
+function Ψ(y,w;θ), the optimal parse is, 5700
+ˆy= argmax
+y∈Y(w)Ψ(y,w;θ), [11.1]
+whereY(w)is the set of valid dependency parses on the input w. As usual, the number 5701
+of possible labels |Y(w)|is exponential in the length of the input (Wu and Chao, 2004). 5702
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.2. GRAPH-BASED DEPENDENCY PARSING 267
+Figure 11.6: Feature templates for higher-order dependency parsing (Koo and Collins,
+2010) [todo: permission]
+Algorithms that search over this space of possible graphs are known as graph-based de- 5703
+pendency parsers . 5704
+In sequence labeling and constituent parsing, it was possible to search efﬁciently over
+an exponential space by choosing a feature function that decomposes into a sum of local
+feature vectors. A similar approach is possible for dependency parsing, by requiring the
+scoring function to decompose across dependency arcs i→j:
+Ψ(y,w;θ) =∑
+ir− →j∈yψ(ir− →j,w;θ). [11.2]
+Dependency parsers that operate under this assumption are known as arc-factored , since 5705
+the overall score is a product of scores over all arcs. 5706
+Higher-order dependency parsing The arc-factored decomposition can be relaxed to al-
+low higher-order dependencies. In second-order dependency parsing , the scoring func-
+tion may include grandparents and siblings, as shown by the templates in Figure 11.6.
+The scoring function is,
+Ψ(y,w;θ) =∑
+ir− →j∈y∑
+kr′− →i∈yψgrandparent (ir− →j,k,r′,w;θ)
+∑
+ir′− →s∈y
+s̸=jψsibling (ir− →j,s,r′,w;θ). [11.3]
+The top line scores computes a scoring function that includes the grandparent k; the 5707
+bottom line computes a scoring function for each sibling s. For projective dependency 5708
+graphs, there are efﬁcient algorithms for second-order and third-order dependency pars- 5709
+ing (Eisner, 1996; McDonald and Pereira, 2006; Koo and Collins, 2010); for non-projective 5710
+dependency graphs, second-order dependency parsing is NP-hard (McDonald and Pereira, 5711
+2006). The speciﬁc algorithms are discussed in the next section. 5712
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+268 CHAPTER 11. DEPENDENCY PARSING
+11.2.1 Graph-based parsing algorithms 5713
+The distinction between projective and non-projective dependency trees ( §11.1.3) plays 5714
+a key role in the choice of algorithms. Because projective dependency trees are closely 5715
+related to (and can be derived from) lexicalized constituent trees, lexicalized parsing al- 5716
+gorithms can be applied directly. For the more general problem of parsing to arbitrary 5717
+spanning trees, a different class of algorithms is required. In both cases, arc-factored de- 5718
+pendency parsing relies on precomputing the scores ψ(ir− →j,w;θ)for each potential 5719
+edge. There are O(M2R)such scores, where Mis the length of the input and Ris the 5720
+number of dependency relation types, and this is a lower bound on the time and space 5721
+complexity of any exact algorithm for arc-factored dependency parsing. 5722
+11.2.1.1 Projective dependency parsing 5723
+Any lexicalized constituency tree can be converted into a projective dependency tree by 5724
+creating arcs between the heads of constituents and their parents, so any algorithm for 5725
+lexicalized constituent parsing can be converted into an algorithm for projective depen- 5726
+dency parsing, by converting arc scores into scores for lexicalized productions. As noted 5727
+in§10.5.2, there are cubic time algorithms for lexicalized constituent parsing, which are 5728
+extensions of the CKY algorithm. Therefore, arc-factored projective dependency parsing 5729
+can be performed in cubic time in the length of the input. 5730
+Second-order projective dependency parsing can also be performed in cubic time, with 5731
+minimal modiﬁcations to the lexicalized parsing algorithm (Eisner, 1996). It is possible to 5732
+go even further, to third-order dependency parsing , in which the scoring function may 5733
+consider great-grandparents, grand-siblings, and “tri-siblings”, as shown in Figure 11.6. 5734
+Third-order dependency parsing can be performed in O(M4)time, which can be made 5735
+practical through the use of pruning to eliminate unlikely edges (Koo and Collins, 2010). 5736
+11.2.1.2 Non-projective dependency parsing 5737
+In non-projective dependency parsing, the goal is to identify the highest-scoring span- 5738
+ning tree over the words in the sentence. The arc-factored assumption ensures that the 5739
+score for each spanning tree will be computed as a sum over scores for the edges, which 5740
+are precomputed. Based on these scores, we build a weighted connected graph. Arc- 5741
+factored non-projective dependency parsing is then equivalent to ﬁnding the spanning 5742
+tree that achieves the maximum total score, Ψ(y,w) =∑
+ir− →j∈yψ(ir− →j,w). The Chu- 5743
+Liu-Edmonds algorithm (Chu and Liu, 1965; Edmonds, 1967) computes this maximum 5744
+spanning tree efﬁciently. It does this by ﬁrst identifying the best incoming edge ir− →jfor 5745
+each vertex j. If the resulting graph does not contain cycles, it is the maximum spanning 5746
+tree. If there is a cycle, it is collapsed into a super-vertex, whose incoming and outgoing 5747
+edges are based on the edges to the vertices in the cycle. The algorithm is then applied 5748
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.2. GRAPH-BASED DEPENDENCY PARSING 269
+recursively to the resulting graph, and process repeats until a graph without cycles is 5749
+obtained. 5750
+The time complexity of identifying the best incoming edge for each vertex is O(M2R), 5751
+whereMis the length of the input and Ris the number of relations; in the worst case, the 5752
+number of cycles is O(M). Therefore, the complexity of the Chu-Liu-Edmonds algorithm 5753
+isO(M3R). This complexity can be reduced to O(M2N)by storing the edge scores in a 5754
+Fibonnaci heap (Gabow et al., 1986). For more detail on graph-based parsing algorithms, 5755
+see Eisner (1997) and K ¨ubler et al. (2009). 5756
+Higher-order non-projective dependency parsing Given the tractability of higher-order 5757
+projective dependency parsing, you may be surprised to learn that non-projective second- 5758
+order dependency parsing is NP-Hard. This can be proved by reduction from the vertex 5759
+cover problem (Neuhaus and Br ¨oker, 1997). A heuristic solution is to do projective pars- 5760
+ing ﬁrst, and then post-process the projective dependency parse to add non-projective 5761
+edges (Nivre and Nilsson, 2005). More recent work has applied techniques for approxi- 5762
+mate inference in graphical models, including belief propagation (Smith and Eisner, 2008), 5763
+integer linear programming (Martins et al., 2009), variational inference (Martins et al., 5764
+2010), and Markov Chain Monte Carlo (Zhang et al., 2014). 5765
+11.2.2 Computing scores for dependency arcs 5766
+The arc-factored scoring function ψ(ir− →j,w;θ)can be deﬁned in several ways:
+Linearψ(ir− →j,w;θ) =θ·f(ir− →j,w) [11.4]
+Neural ψ(ir− →j,w;θ) =Feedforward ([uwi;uwj];θ) [11.5]
+Generative ψ(ir− →j,w;θ) = log p(wj,r|wi). [11.6]
+11.2.2.1 Linear feature-based arc scores 5767
+Linear models for dependency parsing incorporate many of the same features used in 5768
+sequence labeling and discriminative constituent parsing. These include: 5769
+•the length and direction of the arc; 5770
+•the wordswiandwjlinked by the dependency relation; 5771
+•the preﬁxes, sufﬁxes, and parts-of-speech of these words; 5772
+•the neighbors of the dependency arc, wi−1,wi+1,wj−1,wj+1; 5773
+•the preﬁxes, sufﬁxes, and part-of-speech of these neighbor words. 5774
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+270 CHAPTER 11. DEPENDENCY PARSING
+Each of these features can be conjoined with the dependency edge label r. Note that 5775
+features in an arc-factored parser can refer to words other than wiandwj. The restriction 5776
+is that the features consider only a single arc. 5777
+Bilexical features (e.g., sushi→chopsticks ) are powerful but rare, so it is useful to aug-
+ment them with coarse-grained alternatives, by “backing off” to the part-of-speech or
+afﬁx. For example, the following features are created by backing off to part-of-speech tags
+in an unlabeled dependency parser:
+f(3− →5,we eat sushi with chopsticks ) =⟨sushi→chopsticks,
+sushi→NNS,
+NN→chopsticks,
+NNS→NN⟩.
+Regularized discriminative learning algorithms can then trade off between features at 5778
+varying levels of detail. McDonald et al. (2005) take this approach as far as tetralexical 5779
+features (e.g., (wi,wi+1,wj−1,wj)). Such features help to avoid choosing arcs that are un- 5780
+likely due to the intervening words: for example, there is unlikely to be an edge between 5781
+two nouns if the intervening span contains a verb. A large list of ﬁrst and second-order 5782
+features is provided by Bohnet (2010), who uses a hashing function to store these features 5783
+efﬁciently. 5784
+11.2.2.2 Neural arc scores 5785
+Given vector representations xifor each word wiin the input, a set of arc scores can be
+computed from a feedforward neural network:
+ψ(ir− →j,w;θ) =FeedForward ([xi;xj];θr), [11.7]
+where unique weights θrare available for each arc type (Pei et al., 2015; Kiperwasser and
+Goldberg, 2016). Kiperwasser and Goldberg (2016) use a feedforward network with a
+single hidden layer,
+z=g(Θr[xi;xj] +b(z)
+r) [11.8]
+ψ(ir− →j) =βrz+b(y)
+r, [11.9]
+where Θris a matrix,βris a vector, each bris a scalar, and the function gis an elementwise 5786
+tanh activation function. 5787
+The vectorxican be set equal to the word embedding, which may be pre-trained or 5788
+learned by backpropagation (Pei et al., 2015). Alternatively, contextual information can 5789
+be incorporated by applying a bidirectional recurrent neural network across the input, as 5790
+described in§7.6. The RNN hidden states at each word can be used as inputs to the arc 5791
+scoring function (Kiperwasser and Goldberg, 2016). 5792
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.2. GRAPH-BASED DEPENDENCY PARSING 271
+11.2.2.3 Probabilistic arc scores 5793
+If each arc score is equal to the log probability logp(wj,r|wi), then the sum of scores
+gives the log probability of the sentence and arc labels, by the chain rule. For example,
+consider the unlabeled parse of we eat sushi with rice ,
+y={(ROOT,2),(2,1),(2,3),(3,5),(5,4)} [11.10]
+logp(w|y) =∑
+(i→j)∈ylogp(wj|wi) [11.11]
+= log p(eat|ROOT ) + log p(we|eat) + log p(sushi|eat)
++ log p(rice|sushi ) + log p(with|rice). [11.12]
+Probabilistic generative models are used in combination with expectation-maximization 5794
+(chapter 5) for unsupervised dependency parsing (Klein and Manning, 2004). 5795
+11.2.3 Learning 5796
+Having formulated graph-based dependency parsing as a structure prediction problem,
+we can apply similar learning algorithms to those used in sequence labeling. Given a loss
+functionℓ(θ;w(i),y(i)), we can compute gradient-based updates to the parameters. For a
+model with feature-based arc scores and a perceptron loss, we obtain the usual structured
+perceptron update,
+ˆy= argmax
+y′∈Y(w)θ·f(w,y′) [11.13]
+θ=θ+f(w,y)−f(w,ˆy) [11.14]
+In this case, the argmax requires a maximization over all dependency trees for the sen- 5797
+tence, which can be computed using the algorithms described in §11.2.1. We can apply 5798
+all the usual tricks from §2.2: weight averaging, a large margin objective, and regular- 5799
+ization. McDonald et al. (2005) were the ﬁrst to treat dependency parsing as a structure 5800
+prediction problem, using MIRA, an online margin-based learning algorithm. Neural arc 5801
+scores can be learned in the same way, backpropagating from a margin loss to updates on 5802
+the feedforward network that computes the score for each edge. 5803
+A conditional random ﬁeld for arc-factored dependency parsing is built on the proba-
+bility model,
+p(y|w) =exp∑
+ir− →j∈yψ(ir− →j,w;θ)
+∑
+y′∈Y(w)exp∑
+ir− →j∈y′ψ(ir− →j,w;θ)[11.15]
+Such a model is trained to minimize the negative log conditional-likelihood. Just as in 5804
+CRF sequence models ( §7.5.3) and the logistic regression classiﬁer ( §2.4), the gradients 5805
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+272 CHAPTER 11. DEPENDENCY PARSING
+involve marginal probabilities p (ir− →j|w;θ), which in this case are probabilities over 5806
+individual dependencies. In arc-factored models, these probabilities can be computed 5807
+in polynomial time. For projective dependency trees, the marginal probabilities can be 5808
+computed in cubic time, using a variant of the inside-outside algorithm (Lari and Young, 5809
+1990). For non-projective dependency parsing, marginals can also be computed in cubic 5810
+time, using the matrix-tree theorem (Koo et al., 2007; McDonald et al., 2007; Smith and 5811
+Smith, 2007). Details of these methods are described by K ¨ubler et al. (2009). 5812
+11.3 Transition-based dependency parsing 5813
+Graph-based dependency parsing offers exact inference, meaning that it is possible to re- 5814
+cover the best-scoring parse for any given model. But this comes at a price: the scoring 5815
+function is required to decompose into local parts — in the case of non-projective parsing, 5816
+these parts are restricted to individual arcs. These limitations are felt more keenly in de- 5817
+pendency parsing than in sequence labeling, because second-order dependency features 5818
+are critical to correctly identify some types of attachments. For example, prepositional 5819
+phrase attachment depends on the attachment point, the object of the preposition, and 5820
+the preposition itself; arc-factored scores cannot account for all three of these features si- 5821
+multaneously. Graph-based dependency parsing may also be criticized on the basis of 5822
+intuitions about human language processing: people read and listen to sentences sequen- 5823
+tially , incrementally building mental models of the sentence structure and meaning before 5824
+getting to the end (Jurafsky, 1996). This seems hard to reconcile with graph-based algo- 5825
+rithms, which perform bottom-up operations on the entire sentence, requiring the parser 5826
+to keep every word in memory. Finally, from a practical perspective, graph-based depen- 5827
+dency parsing is relatively slow, running in cubic time in the length of the input. 5828
+Transition-based algorithms address all three of these objections. They work by mov- 5829
+ing through the sentence sequentially, while performing actions that incrementally up- 5830
+date a stored representation of what has been read thus far. As with the shift-reduce 5831
+parser from§10.6.2, this representation consists of a stack, onto which parsing substruc- 5832
+tures can be pushed and popped. In shift-reduce, these substructures were constituents; 5833
+in the transition systems that follow, they will be projective dependency trees over partial 5834
+spans of the input.4Parsing is complete when the input is consumed and there is only 5835
+a single structure on the stack. The sequence of actions that led to the parse is known as 5836
+thederivation . One problem with transition-based systems is that there may be multiple 5837
+derivations for a single parse structure — a phenomenon known as spurious ambiguity . 5838
+4Transition systems also exist for non-projective dependency parsing (e.g., Nivre, 2008).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.3. TRANSITION-BASED DEPENDENCY PARSING 273
+11.3.1 Transition systems for dependency parsing 5839
+Atransition system consists of a representation for describing conﬁgurations of the parser, 5840
+and a set of transition actions, which manipulate the conﬁguration. There are two main 5841
+transition systems for dependency parsing: arc-standard , which is closely related to shift- 5842
+reduce, and arc-eager , which adds an additional action that can simplify derivations (Ab- 5843
+ney and Johnson, 1991). In both cases, transitions are between conﬁgurations that are 5844
+represented as triples, C= (σ,β,A ), whereσis the stack, βis the input buffer, and Ais 5845
+the list of arcs that have been created (Nivre, 2008). In the initial conﬁguration, 5846
+Cinitial = ([ROOT],w,∅), [11.16]
+indicating that the stack contains only the special node R OOT, the entire input is on the 5847
+buffer, and the set of arcs is empty. An accepting conﬁguration is, 5848
+Caccept = ([ROOT],∅,A), [11.17]
+where the stack contains only R OOT, the buffer is empty, and the arcs Adeﬁne a spanning 5849
+tree over the input. The arc-standard and arc-eager systems deﬁne a set of transitions 5850
+between conﬁgurations, which are capable of transforming an initial conﬁguration into 5851
+an accepting conﬁguration. In both of these systems, the number of actions required to 5852
+parse an input grows linearly in the length of the input, making transition-based parsing 5853
+considerably more efﬁcient than graph-based methods. 5854
+11.3.1.1 Arc-standard 5855
+The arc-standard transition system is closely related to shift-reduce, and to the LR algo- 5856
+rithm that is used to parse programming languages (Aho et al., 2006). It includes the 5857
+following classes of actions: 5858
+•SHIFT : move the ﬁrst item from the input buffer on to the top of the stack, 5859
+(σ,i|β,A)⇒(σ|i,β,A ), [11.18]
+where we write i|βto indicate that iis the leftmost item in the input buffer, and σ|i 5860
+to indicate the result of pushing ion to stack σ. 5861
+•ARC-LEFT : create a new left-facing arc of type rbetween the item on the top of the 5862
+stack and the ﬁrst item in the input buffer. The head of this arc is j, which remains 5863
+at the front of the input buffer. The arc jr− →iis added to A. Formally, 5864
+(σ|i,j|β,A)⇒(σ,j|β,A⊕jr− →i), [11.19]
+whereris the label of the dependency arc, and ⊕concatenates the new arc jr− →ito 5865
+the listA. 5866
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+274 CHAPTER 11. DEPENDENCY PARSING
+σ β action arc added to A
+1. [ROOT] they like bagels with lox SHIFT
+2. [ROOT,they] like bagels with lox ARC-LEFT (they←like)
+3. [ROOT] like bagels with lox SHIFT
+4. [ROOT,like] bagels with lox SHIFT
+5. [ROOT,like, bagels ] with lox SHIFT
+6. [ROOT,like, bagels, with ]lox ARC-LEFT (with←lox)
+7. [ROOT,like, bagels ] lox ARC-RIGHT (bagels→lox)
+8. [ROOT,like] bagels ARC-RIGHT (like→bagels )
+9. [ROOT] like ARC-RIGHT (ROOT→like)
+10. [ROOT] ∅ DONE
+Table 11.2: Arc-standard derivation of the unlabeled dependency parse for the input they
+like bagels with lox .
+•ARC-RIGHT : creates a new right-facing arc of type rbetween the item on the top of 5867
+the stack and the ﬁrst item in the input buffer. The head of this arc is i, which is 5868
+“popped” from the stack and pushed to the front of the input buffer. The arc ir− →j 5869
+is added to A. Formally, 5870
+(σ|i,j|β,A)⇒(σ,i|β,A⊕ir− →j), [11.20]
+where again ris the label of the dependency arc. 5871
+Each action has preconditions. The S HIFT action can be performed only when the buffer 5872
+has at least one element. The A RC-LEFT action cannot be performed when the root node 5873
+ROOT is on top of the stack, since this node must be the root of the entire tree. The A RC- 5874
+LEFT and A RC-RIGHT remove the modiﬁer words from the stack (in the case of A RC-LEFT ) 5875
+and from the buffer (in the case of A RC-RIGHT ), so it is impossible for any word to have 5876
+more than one parent. Furthermore, the end state can only be reached when every word is 5877
+removed from the buffer and stack, so the set of arcs is guaranteed to constitute a spanning 5878
+tree. An example arc-standard derivation is shown in Table 11.2. 5879
+11.3.1.2 Arc-eager dependency parsing 5880
+In the arc-standard transition system, a word is completely removed from the parse once 5881
+it has been made the modiﬁer in a dependency arc. At this time, any dependents of 5882
+this word must have already been identiﬁed. Right-branching structures are common in 5883
+English (and many other languages), with words often modiﬁed by units such as prepo- 5884
+sitional phrases to their right. In the arc-standard system, this means that we must ﬁrst 5885
+shift all the units of the input onto the stack, and then work backwards, creating a series of 5886
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.3. TRANSITION-BASED DEPENDENCY PARSING 275
+arcs, as occurs in Table 11.2. Note that the decision to shift bagels onto the stack guarantees 5887
+that the prepositional phrase with lox will attach to the noun phrase, and that this decision 5888
+must be made before the prepositional phrase is itself parsed. This has been argued to be 5889
+cognitively implausible (Abney and Johnson, 1991); from a computational perspective, it 5890
+means that a parser may need to look several steps ahead to make the correct decision. 5891
+Arc-eager dependency parsing changes the ARC-RIGHT action so that right depen- 5892
+dents can be attached before all of their dependents have been found. Rather than re- 5893
+moving the modiﬁer from both the buffer and stack, the ARC-RIGHT action pushes the 5894
+modiﬁer on to the stack, on top of the head. Because the stack can now contain elements 5895
+that already have parents in the partial dependency graph, two additional changes are 5896
+necessary: 5897
+•A precondition is required to ensure that the ARC-LEFT action cannot be applied 5898
+when the top element on the stack already has a parent in A. 5899
+•A new REDUCE action is introduced, which can remove elements from the stack if 5900
+they already have a parent in A: 5901
+(σ|i,β,A )⇒(σ,β,A ). [11.21]
+As a result of these changes, it is now possible to create the arc like→bagels before parsing 5902
+the prepositional phrase with lox . Furthermore, this action does not imply a decision about 5903
+whether the prepositional phrase will attach to the noun or verb. Noun attachment is 5904
+chosen in the parse in Table 11.3, but verb attachment could be achieved by applying the 5905
+REDUCE action at step 5 or 7. 5906
+11.3.1.3 Projectivity 5907
+The arc-standard and arc-eager transition systems are guaranteed to produce projective 5908
+dependency trees, because all arcs are between the word at the top of the stack and the 5909
+left-most edge of the buffer (Nivre, 2008). Non-projective transition systems can be con- 5910
+structed by adding actions that create arcs with words that are second or third in the 5911
+stack (Attardi, 2006), or by adopting an alternative conﬁguration structure, which main- 5912
+tains a list of all words that do not yet have heads (Covington, 2001). In pseudo-projective 5913
+dependency parsing , a projective dependency parse is generated ﬁrst, and then a set of 5914
+graph transformation techniques are applied, producing non-projective edges (Nivre and 5915
+Nilsson, 2005). 5916
+11.3.1.4 Beam search 5917
+In “greedy” transition-based parsing, the parser tries to make the best decision at each 5918
+conﬁguration. This can lead to search errors, when an early decision locks the parser into 5919
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+276 CHAPTER 11. DEPENDENCY PARSING
+σ β action arc added to A
+1. [ROOT] they like bagels with lox SHIFT
+2. [ROOT,they] like bagels with lox ARC-LEFT (they←like)
+3. [ROOT] like bagels with lox ARC-RIGHT (ROOT→like)
+4. [ROOT,like] bagels with lox ARC-RIGHT (like→bagels )
+5. [ROOT,like, bagels ] with lox SHIFT
+6. [ROOT,like, bagels, with ]lox ARC-LEFT (with←lox)
+7. [ROOT,like, bagels ] lox ARC-RIGHT (bagels→lox)
+8. [ROOT,like, bagels, lox ]∅ REDUCE
+9. [ROOT,like, bagels ] ∅ REDUCE
+10. [ROOT,like] ∅ REDUCE
+11. [ROOT] ∅ DONE
+Table 11.3: Arc-eager derivation of the unlabeled dependency parse for the input they like
+bagels with lox .
+t= 1 t= 2 t= 3 t= 4 t= 5
+[[Root ]
+they can ﬁsh] [[Root ,they]
+can ﬁsh] [[Root ,they]
+ﬁsh] [[Root ,can]
+∅] [[Root ]
+∅]
+[[Root ,can]
+ﬁsh] [[Root ,ﬁsh]
+∅] [[Root ]
+∅]Shift Arc-Right
+Arc-LeftArc-Right
+Arc-LeftArc-Right
+Arc-Right
+Figure 11.7: Beam search for unlabeled dependency parsing, with beam size K= 2. The
+arc lists for each conﬁguration are not shown, but can be computed from the transitions.
+a poor derivation. For example, in Table 11.2, if ARC-RIGHT were chosen at step 4, then 5920
+the parser would later be forced to attach the prepositional phrase with lox to the verb 5921
+likes. Note that the likes→bagels arc is indeed part of the correct dependency parse, but 5922
+the arc-standard transition system requires it to be created later in the derivation. 5923
+Beam search addresses this issue by maintaining a set of hypothetical derivations,
+called a beam. At step tof the derivation, there is a set of khypotheses, each of which is a
+tuple of a score and a sequence of actions,
+h(k)
+t= (s(k)
+t,A(k)
+t) [11.22]
+Each hypothesis is then “expanded” by considering the set of all valid actions from the 5924
+current conﬁguration c(k)
+t, writtenA(c(k)
+t). This yields a large set of new hypotheses. For 5925
+each action aA(c(k)
+t), we score the new hypothesis A(k)
+t⊕a. The topkhypotheses by 5926
+this scoring metric are kept, and parsing proceeds to the next step (Zhang and Clark, 5927
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.3. TRANSITION-BASED DEPENDENCY PARSING 277
+2008). Note that beam search requires a scoring function for action sequences , rather than 5928
+individual actions. This issue will be revisited in the next section. 5929
+An example of beam search is shown in Figure 11.7, with a beam size of K= 2. For the 5930
+ﬁrst transition, the only valid action is S HIFT , so there is only one possible conﬁguration 5931
+att= 2. From this conﬁguration, there are three possible actions. The top two are A RC- 5932
+RIGHT and A RC-LEFT, and so the resulting hypotheses from these actions are on the beam 5933
+att= 3. From these conﬁgurations, there are three possible actions each, but the best 5934
+two are expansions of the bottom hypothesis at t= 3. Parsing continues until t= 5, at 5935
+which point both hypotheses reach an accepting state. The best-scoring hypothesis is then 5936
+selected as the parse. 5937
+11.3.2 Scoring functions for transition-based parsers 5938
+Transition-based parsing requires selecting a series of actions. In greedy transition-based
+parsing, this can be done by training a classiﬁer,
+ˆa= argmax
+a∈A(c)Ψ(a,c,w;θ), [11.23]
+whereA(c)is the set of admissible actions in the current conﬁguration c,wis the input, 5939
+andΨis a scoring function with parameters θ(Yamada and Matsumoto, 2003). 5940
+A feature-based score can be computed, Ψ(a,c,w) =θ·f(a,c,w), using features that 5941
+may consider any aspect of the current conﬁguration and input sequence. Typical features 5942
+for transition-based dependency parsing include: the word and part-of-speech of the top 5943
+element on the stack; the word and part-of-speech of the ﬁrst, second, and third elements 5944
+on the input buffer; pairs and triples of words and parts-of-speech from the top of the 5945
+stack and the front of the buffer; the distance (in tokens) between the element on the top 5946
+of the stack and the element in the front of the input buffer; the number of modiﬁers of 5947
+each of these elements; and higher-order dependency features as described above in the 5948
+section on graph-based dependency parsing (see, e.g., Zhang and Nivre, 2011). 5949
+Parse actions can also be scored by neural networks. For example, Chen and Manning 5950
+(2014) build a feedforward network in which the input layer consists of the concatenation 5951
+of embeddings of several words and tags: 5952
+•the top three words on the stack, and the ﬁrst three words on the buffer; 5953
+•the ﬁrst and second leftmost and rightmost children (dependents) of the top two 5954
+words on the stack; 5955
+•the leftmost and right most grandchildren of the top two words on the stack; 5956
+•embeddings of the part-of-speech tags of these words. 5957
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+278 CHAPTER 11. DEPENDENCY PARSING
+Let us call this base layer x(c,w), deﬁned as,
+c=(σ,β,A )
+x(c,w) =[vwσ1,vtσ1vwσ2,vtσ2,vwσ3,vtσ3,vwβ1,vtβ1,vwβ2,vtβ2,...],
+wherevwσ1is the embedding of the ﬁrst word on the stack, vtβ2is the embedding of the
+part-of-speech tag of the second word on the buffer, and so on. Given this base encoding
+of the parser state, the score for the set of possible actions is computed through a feedfor-
+ward network,
+z=g(Θ(x→z)x(c,w)) [11.24]
+ψ(a,c,w;θ) =Θ(z→y)
+az, [11.25]
+where the vector zplays the same role as the features f(a,c,w), but is a learned represen- 5958
+tation. Chen and Manning (2014) use a cubic elementwise activation function, g(x) =x3, 5959
+so that the hidden layer models products across all triples of input features. The learning 5960
+algorithm updates the embeddings as well as the parameters of the feedforward network. 5961
+11.3.3 Learning to parse 5962
+Transition-based dependency parsing suffers from a mismatch between the supervision, 5963
+which comes in the form of dependency trees, and the classiﬁer’s prediction space, which 5964
+is a set of parsing actions. One solution is to create new training data by converting parse 5965
+trees into action sequences; another is to derive supervision directly from the parser’s 5966
+performance. 5967
+11.3.3.1 Oracle-based training 5968
+A transition system can be viewed as a function from action sequences (also called deriva- 5969
+tions ) to parse trees. The inverse of this function is a mapping from parse trees to deriva- 5970
+tions, which is called an oracle . For the arc-standard and arc-eager parsing system, an 5971
+oracle can be computed in linear time in the length of the derivation (K ¨ubler et al., 2009, 5972
+page 32). Both the arc-standard and arc-eager transition systems suffer from spurious 5973
+ambiguity : there exist dependency parses for which multiple derivations are possible, 5974
+such as 1←2→3.The oracle must choose between these different derivations. For exam- 5975
+ple, the algorithm described by K ¨ubler et al. (2009) would ﬁrst create the left arc (1←2), 5976
+and then create the right arc, (1←2)→3; another oracle might begin by shifting twice, 5977
+resulting in the derivation 1←(2→3). 5978
+Given such an oracle, a dependency treebank can be converted into a set of oracle ac-
+tion sequences{A(i)}N
+i=1. The parser can be trained by stepping through the oracle action
+sequences, and optimizing on an classiﬁcation-based objective that rewards selecting the
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.3. TRANSITION-BASED DEPENDENCY PARSING 279
+oracle action. For transition-based dependency parsing, maximum conditional likelihood
+is a typical choice (Chen and Manning, 2014; Dyer et al., 2015):
+p(a|c,w) =exp Ψ(a,c,w;θ)∑
+a′∈A(c)exp Ψ(a′,c,w;θ)[11.26]
+ˆθ= argmax
+θN∑
+i=1|A(i)|∑
+t=1logp(a(i)
+t|c(i)
+t,w), [11.27]
+where|A(i)|is the length of the action sequence A(i). 5979
+Recall that beam search requires a scoring function for action sequences. Such a score 5980
+can be obtained by adding the log-likelihoods (or hinge losses) across all actions in the 5981
+sequence (Chen and Manning, 2014). 5982
+11.3.3.2 Global objectives 5983
+The objective in Equation 11.27 is locally-normalized : it is the product of normalized 5984
+probabilities over individual actions. A similar characterization could be made of non- 5985
+probabilistic algorithms in which hinge-loss objectives are summed over individual ac- 5986
+tions. In either case, training on individual actions can be sub-optimal with respect to 5987
+global performance, due to the label bias problem (Lafferty et al., 2001; Andor et al., 5988
+2016). 5989
+As a stylized example, suppose that a given conﬁguration appears 100 times in the 5990
+training data, with action a1as the oracle action in 51 cases, and a2as the oracle action in 5991
+the other 49 cases. However, in cases where a2is correct, choosing a1results in a cascade 5992
+of subsequent errors, while in cases where a1is correct, choosing a2results in only a single 5993
+error. A classiﬁer that is trained on a local objective function will learn to always choose 5994
+a1, but choosing a2would minimize the overall number of errors. 5995
+This observation motivates a global objective, such as the globally-normalized condi- 5996
+tional likelihood, 5997
+p(A(i)|w;θ) =exp∑|A(i)|
+t=1Ψ(a(i)
+t,c(i)
+t,w)
+∑
+A′∈A(w)exp∑|A′|
+t=1Ψ(a′
+t,c′
+t,w), [11.28]
+where the denominator sums over the set of all possible action sequences, A(w).5In the
+conditional random ﬁeld model for sequence labeling ( §7.5.3), it was possible to compute
+5Andor et al. (2016) prove that the set of globally-normalized conditional distributions is a strict superset
+of the set of locally-normalized conditional distributions, and that globally-normalized conditional models
+are therefore strictly more expressive.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+280 CHAPTER 11. DEPENDENCY PARSING
+this sum explicitly, using dynamic programming. In transition-based parsing, this is not
+possible. However, the sum can be approximated using beam search,
+∑
+A′∈A(w)exp|A′|∑
+t=1Ψ(a′
+t,c′
+t,w)≈K∑
+k=1exp|A(k)|∑
+t=1Ψ(a(k)
+t,c(k)
+t,w), [11.29]
+whereA(k)is an action sequence on a beam of size K. This gives rise to the following loss
+function,
+L(θ) =−|A(i)|∑
+t=1Ψ(a(i)
+t,c(i)
+t,w) + logK∑
+k=1exp|A(k)|∑
+t=1Ψ(a(k)
+t,c(k)
+t,w). [11.30]
+The derivatives of this loss involve expectations with respect to a probability distribution 5998
+over action sequences on the beam. 5999
+11.3.3.3 *Early update and the incremental perceptron 6000
+When learning in the context of beam search, the goal is to learn a decision function so that 6001
+the gold dependency parse is always reachable from at least one of the partial derivations 6002
+on the beam. (The combination of a transition system (such as beam search) and a scoring 6003
+function for actions is known as a policy .) To achieve this, we can make an early update 6004
+as soon as the oracle action sequence “falls off” the beam, even before a complete analysis 6005
+is available (Collins and Roark, 2004; Daum ´e III and Marcu, 2005). The loss can be based 6006
+on the best-scoring hypothesis on the beam, or the sum of all hypotheses (Huang et al., 6007
+2012). 6008
+For example, consider the beam search in Figure 11.7. In the correct parse, ﬁshis the 6009
+head of dependency arcs to both of the other two words. In the arc-standard system, 6010
+this can be achieved only by using S HIFT for the ﬁrst two actions. At t= 3, the oracle 6011
+action sequence has fallen off the beam. The parser should therefore stop, and update the 6012
+parameters by the gradient∂
+∂θL(A(i)
+1:3,{A(k)
+1:3};θ), whereA(i)
+1:3is the ﬁrst three actions of the 6013
+oracle sequence, and {A(k)
+1:3}is the beam. 6014
+This integration of incremental search and learning was ﬁrst developed in the incre- 6015
+mental perceptron (Collins and Roark, 2004). This method updates the parameters with 6016
+respect to a hinge loss, which compares the top-scoring hypothesis and the gold action 6017
+sequence, up to the current point t. Several improvements to this basic protocol are pos- 6018
+sible: 6019
+•As noted earlier, the gold dependency parse can be derived by multiple action se- 6020
+quences. Rather than checking for the presence of a single oracle action sequence on 6021
+the beam, we can check if the gold dependency parse is reachable from the current 6022
+beam, using a dynamic oracle (Goldberg and Nivre, 2012). 6023
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.4. APPLICATIONS 281
+Figure 11.8: Google n-grams results for the bigram write code and the dependency arc write
+=>code (and their morphological variants)
+•By maximizing the score of the gold action sequence, we are training a decision 6024
+function to ﬁnd the correct action given the gold context. But in reality, the parser 6025
+will make errors, and the parser is not trained to ﬁnd the best action given a context 6026
+that may not itself be optimal. This issue is addressed by various generalizations of 6027
+incremental perceptron, known as learning to search (Daum ´e III et al., 2009). Some 6028
+of these methods are discussed in chapter 15. 6029
+11.4 Applications 6030
+Dependency parsing is used in many real-world applications: any time you want to know 6031
+about pairs of words which might not be adjacent, you can use dependency arcs instead 6032
+of regular expression search patterns. For example, you may want to match strings like 6033
+delicious pastries ,delicious French pastries , and the pastries are delicious . 6034
+It is possible to search the Google n-gramscorpus by dependency edges, ﬁnding the 6035
+trend in how often a dependency edge appears over time. For example, we might be inter- 6036
+ested in knowing when people started talking about writing code , but we also want write 6037
+some code ,write good code ,write all the code , etc. The result of a search on the dependency 6038
+edge write→code is shown in Figure 11.8. This capability has been applied to research 6039
+in digital humanities, such as the analysis of gender in Shakespeare Muralidharan and 6040
+Hearst (2013). 6041
+A classic application of dependency parsing is relation extraction , which is described
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+282 CHAPTER 11. DEPENDENCY PARSING
+in chapter 17. The goal of relation extraction is to identify entity pairs, such as
+(MELVILLE,MOBY-DICK)
+(TOLSTOY,WAR AND PEACE )
+(MARQU ´EZ,100 Y EARS OF SOLITUDE )
+(SHAKESPEARE ,A M IDSUMMER NIGHT ’SDREAM ),
+which stand in some relation to each other (in this case, the relation is authorship). Such 6042
+entity pairs are often referenced via consistent chains of dependency relations. Therefore, 6043
+dependency paths are often a useful feature in supervised systems which learn to detect 6044
+new instances of a relation, based on labeled examples of other instances of the same 6045
+relation type (Culotta and Sorensen, 2004; Fundel et al., 2007; Mintz et al., 2009). 6046
+Cui et al. (2005) show how dependency parsing can improve automated question an- 6047
+swering. Suppose you receive the following query: 6048
+(11.1) What percentage of the nation’s cheese does Wisconsin produce? 6049
+The corpus contains this sentence: 6050
+(11.2) In Wisconsin, where farmers produce 28% of the nation’s cheese, . . . 6051
+The location of Wisconsin in the surface form of this string makes it a poor match for the 6052
+query. However, in the dependency graph, there is an edge from produce toWisconsin in 6053
+both the question and the potential answer, raising the likelihood that this span of text is 6054
+relevant to the question. 6055
+A ﬁnal example comes from sentiment analysis. As discussed in chapter 4, the polarity 6056
+of a sentence can be reversed by negation, e.g. 6057
+(11.3) There is no reason at all to believe the polluters will suddenly become reasonable. 6058
+By tracking the sentiment polarity through the dependency parse, we can better iden- 6059
+tify the overall polarity of the sentence, determining when key sentiment words are re- 6060
+versed (Wilson et al., 2005; Nakagawa et al., 2010). 6061
+Additional resources 6062
+More details on dependency grammar and parsing algorithms can be found in the manuscript 6063
+by K ¨ubler et al. (2009). For a comprehensive but whimsical overview of graph-based de- 6064
+pendency parsing algorithms, see Eisner (1997). Jurafsky and Martin (2018) describe an 6065
+agenda-based version of beam search, in which the beam contains hypotheses of varying 6066
+lengths. New hypotheses are added to the beam only if their score is better than the worst 6067
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+11.4. APPLICATIONS 283
+item currently on the beam. Another search algorithm for transition-based parsing is 6068
+easy-ﬁrst , which abandons the left-to-right traversal order, and adds the highest-scoring 6069
+edges ﬁrst, regardless of where they appear (Goldberg and Elhadad, 2010). Goldberg et al. 6070
+(2013) note that although transition-based methods can be implemented in linear time in 6071
+the length of the input, na ¨ıve implementations of beam search will require quadratic time, 6072
+due to the cost of copying each hypothesis when it is expanded on the beam. This issue 6073
+can be addressed by using a more efﬁcient data structure for the stack. 6074
+Exercises 6075
+1. The dependency structure 1←2→3, with 2as the root, can be obtained from more 6076
+than one set of actions in arc-standard parsing. List both sets of actions that can 6077
+obtain this parse. 6078
+2. Suppose you have a set of unlabeled arc scores ψ(i→j), where the score depends 6079
+only on the identity of the two words. The scores include ψ(ROOT→j). 6080
+•Assuming each word occurs only once in the sentence ( (i̸=j)⇐(wi̸=wj)), 6081
+how would you construct a weighted lexicalized context-free grammar so that 6082
+the score of anyprojective dependency tree is equal to the score of some equiv- 6083
+alent derivation in the lexicalized context-free grammar? 6084
+•Verify that your method works for a simple example like they eat ﬁsh . 6085
+•How would you adapt your method to handle the case an individual word 6086
+may appear multiple times in the sentence? 6087
+3. Provide the UD-style dependency parse for the sentence Xi-Lan eats shoots and leaves , 6088
+assuming leaves is a verb. Provide arc-standard and arc-eager derivations for this 6089
+dependency parse. 6090
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+

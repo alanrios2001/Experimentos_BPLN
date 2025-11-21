@@ -1,0 +1,970 @@
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 105 — #1
+4 Theory of Parsing
+MARK-JAN NEDERHOFAND GIORGIO SATTA
+1 Introduction
+In the context of natural language processing, the term parsing refers to the process
+of automatically analyzing a given sentence, viewed as a sequence of words, inorder to determine its possible underlying syntactic structures.
+Parsing requires a mathematical model of the syntax of the language of interest.
+In this chapter, these mathematical models are assumed to be formal grammars.Aformal grammar consists of a collection of rules that specify how elements of the
+language, e.g., words, may be combined to form sentences, and how sentencesare structured. Rules may be concerned with purely syntactic information, suchas grammatical functions, subject–verb agreement, word ordering, etc., but somemodels may also incorporate issues such as lexical semantics.
+There is a wide range of grammatical formalisms, which depend on various
+syntactic theories, and the structures that result from parsing, or parses, may differ
+substantially between one such formalism and another. Many formalisms spec-ify the syntactic analysis of a sentence in terms of a phrase structure , which is an
+ordered, labeled tree that expresses hierarchical relations among certain group-ings of words called phrases . An alternative representation is dependency structure ,
+which indicates binary grammatical relations between words in a sentence.
+In contrast to these ‘deep’ representations, there are also ‘shallow’ representa-
+tions of syntactic structures, where the maximum depth is severely restricted. Suchrepresentations are typically obtained using ﬁnite state techniques.
+The main importance of parse structures lies in the grammatical information
+they convey to modules that implement semantic, pragmatic, and discourse pro-cessing, which are crucial in applications such as text summarization, questionanswering, and machine translation. Parsing can therefore be seen as a central partin typical natural language processing systems, and the accuracy of the parses canhave much impact on the success of an application as a whole.
+In this chapter we do not further discuss the interaction between parsing and
+the other types of linguistic processing mentioned above, nor do we discuss the
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 106 — #2
+106 Mark-Jan Nederhof and Giorgio Satta
+criteria for the possible choices of grammatical formalisms and parse structures.Instead, we cast the parsing problem into an abstract framework, and analyzemathematical and computational aspects of parsing algorithms.
+Parsing is related to recognition , which is the process of determining whether an
+input sentence is in a chosen language or, equivalently, whether some underlyingsyntactic structure can be assigned to a given sentence. Many of the algorithmsthat we will discuss in this chapter are recognition algorithms, but since they canbe straightforwardly extended to perform parsing, we will sometimes blur thedistinction between parsing and recognition.
+The set of parses that a natural language grammar allows for a given input sen-
+tence is typically very large. This is because formal grammars often fail to capturesubtle properties of the structure, meaning, and use of language, and consequentlyallow many parses that humans would not ﬁnd plausible. Signiﬁcant practicaldifﬁculties in computing and storing the parses can be avoided by computing iso-lated fragments of these and storing them in a table. The advantage of this is thatone such fragment may be shared among many different parses. This is calledtabular parsing.
+Many tabular parsing methods are capable of computing and storing expo-
+nentially many parses using only polynomial time and space. Tabular parsing,invented in the ﬁeld of computer science in the period roughly between 1965 and1975, also became known later in the ﬁeld of computational linguistics as chart
+parsing. Tabular parsing is a form of dynamic programming, a standard paradigmin the design of computer algorithms.
+In natural language systems, parsing is commonly one stage of processing
+among several others. The effectiveness of the stages that follow parsing gener-ally relies on having obtained a small set of preferred parses, ideally only one,from among the full set of parses. This process is called syntactic disambiguation .
+One common approach is to augment each grammar rule with some kind of
+numeric value, or weight. During parsing these values are combined to give
+values for entire parses, and the optimal value (which might be the minimumor the maximum, depending on the nature of the values) then determines thepreferred parse.
+One special case of this is probabilistic parsing, which relies on the assignment of
+probabilities to grammar rules. The probability of a parse is deﬁned as the productof the probabilities of the rules out of which it is constructed. Disambiguation isachieved by selecting the parse with the highest probability. The success of prob-abilistic parsing, and weighted parsing in general, is due to their ﬂexibility andscalability, in contrast to approaches to syntactic disambiguation that rely on muchdeeper knowledge of language.
+The structure of this chapter is as follows. In Section 2 we look at simple recogni-
+tion algorithms for context-free grammars. We then consider the parsing problemfor context-free grammars in Section 3, and its probabilistic extension in Section 4.Section 5 explores the parsing problem for context-free grammars that have beenaugmented with lexical information. The related subject of dependency pars-ing is discussed in Section 6. Parsing of tree adjoining grammars, a formalism
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 107 — #3
+Theory of Parsing 107
+generatively more powerful than context-free grammars, is discussed in Section 7.In Section 8 we show how parsing algorithms can be exploited in syntax-basedmachine translation.
+2 Context-Free Grammars and Recognition
+In this section we consider two algorithms that perform context-free recogni-tion. The input consists of a context-free grammar G=(Σ,N,S,R)and a string
+w=a
+1a2···a n.H e r e Σand Nare two disjoint sets of terminal and non-terminal
+symbols respectively, S∈Nis the start symbol, and Ris the set of rules of
+the grammar. The output is a Boolean value, depending on whether wis in the
+language generated by G.
+Both algorithms are tabular, and run in polynomial time, both in the size of the
+input grammar and in the length of the input string. Furthermore, they are amongthe best-known and most widely used recognition algorithms in natural languageprocessing, often in an extended form as parsing algorithms, as will be explainedin the next section.
+The older of the two algorithms is called the Cocke–Kasami–Younger algorithm,
+orCKY algorithm for short, after the three authors by whom it was independently
+discovered. The algorithm implements a pure bottom-up strategy, which means itstarts by recognizing non-terminal occurrences near the leaves of parse-trees, andworks upwards from there.
+The CKY algorithm requires the grammar to be in Chomsky normal form (CNF),
+that is, each rule must have one of the following two forms:
+A→BC, where B,C∈N;
+A→a, where a∈Σ.
+Any CFG, provided it does not derive the empty string, can be cast into CNFby a transformation that preserves the language. To accommodate for the emptystring, some deﬁnitions of CNF include S→εas an allowable rule, provided
+that Sdoes not occur in the right-hand side of any rule. To keep the presentation
+simple, however, we will further ignore rules of the form S→ε.
+We let Tdenote the table of the CKY algorithm. The elements stored in the
+table, which we will refer to as items, have the form [i,A,j], where A∈Nand
+0≤i<j≤n,a n d nis the length of the input string w=a
+1···a n. The numbers i
+andjare best thought of as input positions : the position 0 precedes a1, each position
+iwith 1 ≤i≤n−1 separates the symbol occurrences ai−1andaiinw,a n dn is the
+position following an.
+If an item [i,A,j]is added to the table, this signiﬁes that the substring ai+1···a j
+ofwcan be derived from non-terminal A, or formally A⇒+ai+1···a j. This can be
+seen as a partial recognition result, and the main goal of the algorithm is to additem[0,S,n]to the table. This item is found at the end of the process if and only if
+the input string is correct.
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 108 — #4
+108 Mark-Jan Nederhof and Giorgio Satta
+1:Function CKY(G,w){w=a1···a n;Rthe rules of G}
+2:T←∅ ;
+3:for all jfrom 1 up to ndo
+4: for all rules A→ajinRdo
+5: add [j−1,A,j]toT;
+6: for all ifrom j−2 down to 0 do
+7: for all kfrom i+1u pt oj −1do
+8: for all rules A→BCinRdo
+9: if[i,B,k]and[k,C,j]are both in Tthen
+10: add[i,A,j]toT;
+11:if[0,S,n]is inTthen
+12: return true;
+13:else
+14: return false ;
+Figure 4.1 The CKY recognition algorithm.
+1 234
+0 AS,AS,AS,A
+1 A A A
+2 S S
+3 S
+Figure 4.2 Table Tobtained by the CKY algorithm.
+The algorithm is presented in Figure 4.1. The table is initially empty (line 2).
+For each input position j, the algorithm considers substrings ending in j,a n dﬁ n d s
+the non-terminals from which the substrings can be derived. First, substrings ajof
+length 1 are considered. The Chomsky normal form implies that any parse of sucha substring consists of a single rule occurrence of the form A→a
+j.T h i sj u s t i ﬁ e s
+lines 4 and 5.
+Then, substrings ai+1···a jof length greater than 1 are considered ( j>i+1).
+The CNF implies that if such a substring can be derived from A, then there is
+ar u l eA →BC, for some Band C, from which ai+1···a kand ak+1···a jcan be
+derived respectively, for some choice of k, where i<k<j. This is the basis for
+lines 6 through 10.
+As an example, consider the CFG with Σ={a,b},N={S,A}, and with rules
+S→SS,S→AA,S→b,A→AS,A→AA,a n dA →a, and consider the input
+string w=aabb. The table Tproduced by the CKY algorithm is given in Figure 4.2,
+represented as an upper triangular matrix. Each cell at row iand column jcontains
+all the non-terminals Bsuch that [i,B,j]is inT. This means that the main diagonal
+represents derivations of substrings of length 1, the next diagonal corresponds tosubstrings of length 2, etc. In the example, the string wis recognized since the start
+symbol Sis found in the cell in the upper right corner.
+An alternative way of describing a tabular algorithm is by means of a deduction
+system , where we have logical, declarative expressions in place of procedural ones.
+This is exempliﬁed for CKY recognition in Figure 4.3. A deduction system containsa set of inference rules, each consisting of a list of antecedents, which stand for items
+that we have already added to T, and, below a horizontal line, the consequent ,
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 109 — #5
+Theory of Parsing 109
+[j−1,A,j]{A→aj(a)[i,B,k]
+[k,C,j]
+[i,A,j]{
+A→BC (b)
+Figure 4.3 The CKY recognition algorithm, expressed as a deduction system.
+which stands for an item that we derive from the antecedents and that is addedtoTunless it is already present. To the right of the horizontal line, we may also
+write a number of side conditions, which indicate when rules may be applied, on
+the basis of the given grammar.
+One difference between pseudo-code as in Figure 4.1 and deduction systems as
+in Figure 4.3 is that the latter does not specify the exact order of the steps. Let usconsider the upper triangular matrix in Figure 4.2. The contents of a cell depend,directly or indirectly, on cells that are (1) on the same row or a row further down,and (2) on the same column or a column further to the left. These dependenciesbetween cells are consistent with an algorithm that computes the columns fromleft to right, and within each column computes the rows from bottom to top. Thisis realized in Figure 4.1. Another algorithm could for example compute the rowsfrom bottom to top, and within each row compute the columns from left to right.The deduction system allows both strategies, as well as several others.
+The time complexity of a recognition algorithm is commonly determined by the
+number of steps, but not by their relative order. A deduction system can thereforeallow a simpler and more abstract description of an algorithm, while the computa-tional properties remain identical to those of a speciﬁcation of the same algorithmin pseudo-code.
+In the case of the CKY algorithm, the complexity is dominated by the inference
+rule in Figure 4.3(b). As this inference rule involves one grammar rule and threeinput positions, the number of corresponding steps is O(|R|n
+3)=O(|G|n3),a n d
+this is also the total time complexity of the CKY algorithm. The number of itemsof the form [i,A,j]isO(|N|n
+2)=O(|G|n2), and this is also the space complexity.
+When considering the size of the grammar in the above analysis, one should
+remember that transformation to CNF is needed before the CKY algorithm can beapplied, and such transformations may increase the size by a square function. Thesecond algorithm we consider, called Earley’s algorithm , circumvents this problem
+by allowing the input grammar to be an arbitrary context-free grammar. To sim-plify the presentation, however, we will assume that there is only one rule in Rof
+the form S→α. (If this does not hold, it sufﬁces to add a new start symbol S
+†and
+ar u l eS†→S.)
+The items for Earley’s algorithm are of the form [i,A→α•β,j], where A→
+αβis a rule from R. The components A→α•βare often called dotted rules.
+Intuitively, the dot separates the grammar symbols that have already been foundto derive some portion of the input string (between positions iand j)f r o mt h o s e
+grammar symbols that are still to be processed. Whereas CKY parsing only usedcombinations of iand jsuch that i<j, Earley’s algorithm relaxes this constraint
+toi≤j. The added case i=jis particularly relevant if αis the empty string, but
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 110 — #6
+110 Mark-Jan Nederhof and Giorgio Satta
+1:Function EARLEY (G,w){w=a1···a n;Rthe rules of G}
+2:T←A←{ [ 0,S→•σ,0]};
+3:for all jfrom 0 to ndo
+4: for all items [i,A→α•aα′,j−1]inTdo
+5: ifa=ajthen
+6: add [i,A→αa•α′,j]toTand to A;
+7: while A̸=∅do
+8: remove some [k,A→α•α′,j]fromA;
+9: ifα′=Bβthen
+10: for all rules B→γinRdo
+11: ifitem[j,B→•γ ,j]is not in Tthen
+12: add[j,B→•γ ,j]toTand to A;
+13: for all items [j,B→γ•,j]inTdo
+14: ifitem[k,A→αB•β,j]is not in Tthen
+15: add[k,A→αB•β,j]toTand to A;
+16: ifα′=εthen
+17: for all items [i,B→β•Aγ,k]inTdo
+18: ifitem[i,B→βA•γ,j]is not in Tthen
+19: add[i,B→βA•γ,j]toTand to A;
+20:if[0,S→σ•,n]is inTthen
+21: return true ;
+22:else
+23: return false ;
+Figure 4.4 The Earley recognition algorithm.
+it may also occur if αmerely derives the empty string by epsilon rules. (By epsilon
+rule, we mean a rule with an empty right-hand side.)
+In addition, an item of the form [i,A→α•β,j]is only added to the table Tif an
+occurrence of A→αβstarting at position iis consistent with the input preceding
+position i. More precisely, [i,A→α•β,j]is eventually added to Tif and only if:
+(1) S⇒∗a1···a iAγ, for some γ,a n d
+(2)α⇒∗ai+1···a j.
+The second condition mirrors the condition for items in the CKY algorithm,whereas the ﬁrst condition introduces a type of left-to-right directionality, in sucha way that no rule occurrence can be considered unless it ﬁts in a parse-tree that isconsistent with the input to the left of the position currently considered.
+Earley’s algorithm is presented as pseudo-code in Figure 4.4. Next to the famil-
+iar table T, there is another set A, in which items are stored that still need to be
+processed. We call this set the agenda. We ensure that items are never added to the
+agenda more than once, so that the parsing process is guaranteed to terminate.
+Initially, in line 2, the agenda is made to contain a single item, with dotted rule
+S→•σ. This is sometimes called the initializer step . The intuition is that it starts
+the investigation whether the input can be derived from S, under the assumption
+we made earlier that S→σis the only rule with left-hand side S.T h ed o ti sa t
+the beginning of the right-hand side as no grammar symbols have been matchedagainst the input yet.
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 111 — #7
+Theory of Parsing 111
+[0,S→•σ,0](a)
+[i,A→α•Bβ,j]
+[j,B→•γ,j]{
+B→γ( b)[i,A→α•aβ,j−1]
+[i,A→αa•β,j]{a=aj(c)
+[i,A→α•Bβ,k]
+[k,B→γ•,j]
+[i,A→αB•β,j](d)
+Figure 4.5 Deduction system for Earley’s algorithm.
+Lines 4 to 6 are called the scanner step, as the processed part of the right-hand
+side is extended by matching one terminal symbol against a symbol from the inputstring. Lines 10 to 12 are called the predictor step, as they predict an occurrence of a
+rule starting at position j.T h e completer step consists of lines 13 to 15 and of lines 17
+to 19. Both code fragments do essentially the same, namely combining two itemsassociated with two consecutive substrings into a third item associated with thejoint substring. One or the other code fragment is used depending on whetherthe ﬁrst or the second of these items is found ﬁrst. Lines 13 to 15 are in fact onlynecessary if there are epsilon rules; otherwise γin line 13 cannot derive the empty
+string and therefore the item on that line cannot exist.
+In the formulation as deduction system, in Figure 4.5, the completer step is
+expressed more succinctly, as inference rule (d). The initializer step appears asrule (a), the predictor step as rule (b), and the scanner step as rule (c).
+The step that dominates the running time is clearly the completer step, as
+that involves three input positions and two rules, making the time complexityO(|G|
+2n3), which can be improved to O(|G|n3)with a small trick that we will not
+discuss here. The space complexity is O(|G|n2).
+Let us consider the CFG consisting of the rules S→E,E→E−E,a n d E→a,
+and consider the input string w=a−a−a. The table produced by Earley’s algo-
+rithm can be represented as an upper triangular matrix, as illustrated in Figure 4.6.Each cell at row iand column jcontains all the dotted rules A→α•βsuch that
+[i,A→α•β,j]is inT.
+This matrix is similar to the one in Figure 4.2, which was constructed by the CKY
+algorithm. One difference is that there is now an extra diagonal, which containsitems that correspond to the empty string. Items resulting from the predictor stepwill end up in cells in this diagonal.
+Observe that [0,E→E−E•,5]can be derived from [0,E→E−•E,4 ]and
+[4,E→a•,5]or from [0,E→E−•E,2 ]and[2,E→E−E•,5]. This indicates
+thatwis ambiguous.
+3 Context-Free Parsing
+In this section we look at the computation of parse-trees, and consider howrecognition algorithms can be extended to become parsing algorithms. Since thenumber of parse-trees can be exponential in the length of the input string, and
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 112 — #8
+112 Mark-Jan Nederhof and Giorgio Satta
+01234 5
+0S→• E
+E→• E−E
+E→• aE→a•
+S→E•
+E→E•−EE→E−• E E→E−E•
+S→E•
+E→E•−EE→E−•E E→E−E•
+S→E•
+E→E•−E
+1
+2 E→• E−E
+E→• aE→a•
+E→E•−EE→E−•E E→E−E•
+E→E•−E
+3
+4 E→• E−E
+E→• aE→a•
+E→E•−E
+5
+Figure 4.6 Table Tobtained by Earley’s algorithm.
+even inﬁnite when Gis cyclic, one ﬁrst needs to ﬁnd a way to compactly represent
+the set of all parse-trees.
+Let us assume a CFG G=(Σ,N,S,R)a n da ni n p u ts t r i n g w=a1···a noverΣ.
+A representation of all parse-trees of wis called a parse forest and is itself a CFG Gw.
+The alphabet of Gwis the same as that of G, and the non-terminals of Gwhave the
+form(j,X,i), where X∈N∪Σand 0 ≤j≤i≤n. The start symbol of Gwis(0,S,n).
+Ifwis in the language generated by G, then the rules of Gwshould ideally
+be the rules (i−1,ai,i)→ai(1≤i≤n) plus the rules (i0,A,im)→(i0,X1,i1)···
+(im−1,Xm,im)such that:
+(1)(A→X1···X m)∈R,
+(2) S⇒∗a1···a i0Aaim+1···a n,a n d
+(3) Xj⇒∗aij−1+1···a ijfor 1≤j≤m.
+In words, there are two kinds of rules in Gw. The ﬁrst, of the form (i−1,ai,i)→ai,
+is little more than a notational convenience. It attaches appropriate input posi-tions to occurrences of terminals in the input. The second kind, of the form(i
+0,A,im)→(i0,X1,i1)···(i m−1,Xm,im), is obtained by taking a rule from Gand
+annotating it with input positions that project the members of the right-hand sideonto consecutive substrings of the input. Constraint (2) above guarantees that therule occurrence thus speciﬁed is part of at least one complete parse-tree, whichspans the entire input string and has label Sat the root.
+In intermediate stages of parsing, however, constraint (2) and sometimes also
+constraint (3) may be violated, which means that G
+wcontains useless rules,t h a ti s ,
+rules that either do not derive any string, or that cannot be reached from the startsymbol. Useless rules can be removed from a CFG by a process called reduction,
+which has a running time that is linear in the size of the grammar.
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 113 — #9
+Theory of Parsing 113
+(0,a,1)→a
+(1,a,2)→a
+(2,b,3)→b
+(3,b,4)→b
+(0,A,1)→(0,a,1)
+(1,A,2)→(1,a,2)
+(2,S,3)→(2,b,3)
+(3,S,4)→(3,b,4)
+(0,S,2)→(0,A,1)(1,A,2)
+(0,A,2)→(0,A,1)(1,A,2)†
+(1,A,3)→(1,A,2)(2,S,3)
+(2,S,4)→(2,S,3)(3,S,4)(0,S,3)→(0,A,1)(1,A,3)
+(0,S,3)→(0,S,2)(2,S,3)
+(0,A,3)→(0,A,1)(1,A,3)†
+(0,A,3)→(0,A,2)(2,S,3)†
+(1,A,4)→(1,A,2)(2,S,4)
+(1,A,4)→(1,A,3)(3,S,4)
+(0,S,4)→(0,A,1)(1,A,4)
+(0,S,4)→(0,S,2)(2,S,4)
+(0,S,4)→(0,S,3)(3,S,4)
+(0,A,4)→(0,A,1)(1,A,4)†
+(0,A,4)→(0,A,2)(2,S,4)†
+(0,A,4)→(0,A,3)(3,S,4)†
+Figure 4.7 Parse forest associated with table Tfrom Figure 4.2.
+If the input string wis not in the language generated by G, then reduction of Gw
+removes all rules, including those of the form (i−1,ai,i)→ai, and thereby Gw
+generates the empty language. If the string is in the language, then Gwgenerates
+the singleton language {w}. Furthermore, the parse-trees of Gware isomorphic to
+those parse-trees of Gthat derive w.
+Many recognition algorithms can be easily extended to become parsing algo-
+rithms. For the CKY algorithm, this involves adding a rule of the form (i,A,j)→
+(i,B,k)(k,C,j)toGweach time an item [i,A,j]is found, based on the existence
+in the table of items [i,B,k]and[k,C,j]and a rule A→BC. In the resulting parse
+forest, constraint (3) is always satisﬁed, but constraint (2) may be violated, anda top-down traversal may be needed to remove rules that are not reachablefrom(0,S,n).
+Let us return to the grammar from Section 2 with rules S→SS,S→AA,S→b,
+A→AS,A→AA,A→a, and input w=aabb. We have seen the table in Figure 4.2
+that is produced by CKY recognition. The corresponding parse forest is given inFigure 4.7. Rules that are subsequently eliminated by reduction are marked by †.
+As the CKY algorithm assumes the input grammar Gis in CNF, the size of G
+w
+is dominated by the number of rules of the form (i,A,j)→(i,B,k)(k,C,j), which
+isO(|G|n3). From the resulting parse forest Gw, an individual parse-tree can be
+extracted in time proportional to the size of the parse-tree itself, which is O(n).
+In contrast, the table Tcan be stored with only O(|G|n2)space, but extracting an
+individual parse-tree directly from Trequires running time O(n2).
+For general CFGs, CKY parsing is not applicable, but we can extend Earley’s
+algorithm to produce parse forests, as a side-effect of recognition. The size of aparse forest is then |G
+w|=O(|G|np+1), where pis the length of the longest right-
+hand side of a rule in G, which is considerably bigger than if the input grammar
+were in CNF.
+For this reason, practical systems often store the set of parse-trees using a mod-
+iﬁed form of parse forests, with rules having no more than two members inthe right-hand side. The main differences with Chomsky normal form are thatunary rules and epsilon rules are allowed. For such parse forests, extraction of an
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 114 — #10
+114 Mark-Jan Nederhof and Giorgio Satta
+individual parse-tree is more involved, but can still be done in linear time in thesize of that parse-tree.
+4 Probabilistic Parsing
+Many parsing algorithms can be extended to compute probabilities of strings orof parses, which we refer to as probabilistic parsing. One application is to iden-
+tify the most likely parse of an input sentence, as a form of disambiguation. Tosimplify the presentation, we will here consider a form of disambiguation thatis strictly separated from the parsing process. More precisely, we assume that aparse forest is constructed as ﬁrst step, for example by CKY parsing or Earley’salgorithm. Subsequently, the parse forest is analyzed to identify the parse-treewith the highest probability. The presentation is further simpliﬁed by showingonly how to compute that highest probability, rather than the parse-tree itself.
+In order to assign probabilities to parse-trees, we deﬁne a probabilistic context-free
+grammar (PCFG) to be of the form G=(Σ,N,S,R,p), where (Σ,N,S,R)is a CFG
+and pis a mapping from rules in Rto real numbers between 0 and 1. We say a
+PCFG is proper if for every non-terminal A:
+∑
+A→αp(A→α)=1
+In other words, properness means that for each A,pdeﬁnes a probability
+distribution over the rules with left-hand side A.
+Let us deﬁne the probability of an occurrence of a rule in a parse-tree as the
+probability of that rule, as speciﬁed by p. The probability of a parse-tree is then
+deﬁned as the product of the probabilities of the rule occurrences out of whichit is constructed. We say that a PCFG is consistent if the sum of probabilities of
+all allowable parse-trees is 1. Many proper PCFGs that arise in practice are alsoconsistent, but consistency is not guaranteed by properness.
+Given a probabilistic CFG Gand a string w, a parse forest G
+wis constructed
+much as in the previous section. One difference in the present section is that Gwis
+itself also a probabilistic CFG. A rule of Gwof the form (i−1,ai,i)→aiis assigned
+the probability 1, and a rule of the form (i0,A,im)→(i0,X1,i1)···(i m−1,Xm,im)
+is assigned the probability p(A→X1···X m), where pis the probability assign-
+ment of the input grammar G. The parse forest Gwis in general neither proper nor
+consistent, even when Gis proper and consistent.
+Consider for example the PCFG Gwith the following rules, with probabilities
+between brackets:
+S→A (0.7)
+S→AS (0.3)
+A→a (0.8)
+A→AA (0.2)
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 115 — #11
+Theory of Parsing 115
+1:Function KNUTH (G)
+2:E←Σ
+3:repeat
+4:F←{A|A/∈E∧∃A→X1···X m[X1,...,Xm∈E]}
+5: ifF=∅then
+6: return ‘failure’
+7: for all A∈Fdo
+8: q(A)← max
+π=(A→X 1···Xm):
+X1,...,Xm∈Ep(π)·pmax(X1)·...·pmax(Xm)
+9: choose A∈Fsuch that q(A) is maximal
+10: pmax(A)←q(A)
+11: E←E∪{A}
+12:until S∈E
+13:return pmax(S)
+Figure 4.8 Knuth’s generalization of Dijkstra’s algorithm, applied to ﬁnding the most
+probable parse in a probabilistic context-free grammar G.
+With input w=aa,Gwis the following PCFG:
+(0,S,2)→(0,A,2)( 0.7)
+(0,S,2)→(0,A,1)(1,S,2)( 0.3)
+(0,A,2)→(0,A,1)(1,A,2)( 0.2)
+(1,S,2)→(1,A,2)( 0.7)
+(0,A,1)→(0,a,1)( 0.8)
+(1,A,2)→(1,a,2)( 0.8)
+(0,a,1)→a (1)
+(1,a,2)→a (1)
+The two parse-trees in Gwhave probabilities 0.7 ∗0.2∗0.8∗0.8=0.0896 and
+0.3∗0.8∗0.7∗0.8=0.1344 respectively. Disambiguation could therefore opt for
+the second of these parses.
+We have already observed in the previous section that parses of whave roughly
+the same structures as parses in Gw. Because the probabilities of corresponding
+parses are identical as well, we can reduce the problem of ﬁnding the most likelyparse of wwith grammar Gto the problem of ﬁnding the most likely parse in
+grammar G
+w.
+Let us therefore consider an arbitrary PCFG G, which may, but need not, be a
+parse forest produced by CKY parsing or a comparable parsing algorithm. Oneway of ﬁnding the most likely parse in Gis the algorithm in Figure 4.8, which
+is due to Knuth. It generalizes Dijkstra’s algorithm to compute the shortest pathin a weighted graph. Knuth’s algorithm ﬁnds the probability p
+max(A)of the most
+probable subparse with root labeled A. The value pmax(S), where Sis the start
+symbol, then gives us the probability of the most probable parse.
+The set Econtains all grammar symbols Xfor which pmax(X)has already been
+established. At the beginning, this is just the set of terminals, assuming pmax(a)=1
+for all a∈Σ.
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 116 — #12
+116 Mark-Jan Nederhof and Giorgio Satta
+At each iteration, the set Fcontains non-terminals Asuch that a subparse with
+root labeled Aexists consisting of a rule A→X1···X m, and subparses with roots
+labeled X1,...,Xmmatching the values of pmax(X1), ..., pmax(Xm)found earlier.
+From these candidates, the non-terminal Afor which such a subparse has the
+highest probability is then added to E. The process ends normally when pmax(S)
+is found. If there are no parses at all in the grammar, which may happen if thegrammar is not reduced, then the algorithm returns a ‘failure’ value.
+The number of iterations of Knuth’s algorithm is linear in the number of non-
+terminals. Values of the form p(π)·p
+max(X1)·...·pmax(Xm)need to be computed
+only once for each rule. The set Fcan be reused between two subsequent itera-
+tions, with minor modiﬁcations. The choice of Ain line 9 relies on the arrangement
+of the elements in Fin a priority queue according to the values of q. It follows
+that the running time is O(|G|+|N|log(|N|)), where the factor log( |N|)corre-
+sponds to the running time of operations of the priority queue containing up to|N|elements.
+In the example above, the ﬁrst two values of p
+max that are found are
+pmax((0,a,1))=1a n d pmax((1,a,2))= 1. As the values are identical, they can
+be found in any order. Similarly, the next two values, pmax((0,A,1))=0 . 8a n d
+pmax((1,A,2))= 0.8, can be found in either order. Then, pmax((1,S,2))=0 . 7 ∗
+pmax((1,A,2))=0.56 and pmax((0,A,2))=0 . 2 ∗pmax((0,A,1))∗pmax((1,A,2))=
+0.128 are found, and, lastly, pmax((0,S,2))is found as the maximum of 0.7 ∗
+pmax((0,A,2))=0.0896 and 0.3 ∗pmax((0,A,1))∗pmax((1,S,2))=0.1344, which
+is 0.1344, as we have seen before.
+If the input grammar is in Chomsky normal form, values of the form
+pmax((i,A,j))can be computed in a ﬁxed order, in such a way that all pmax((i,B,k))
+and pmax((k,C,j))are computed before any value pmax((i,A,j)). This is achieved
+by a probabilistic extension of CKY recognition. It is also regarded as an extensionto CFGs of Viterbi’s algorithm for probabilistic ﬁnite state models.
+The probabilistic CKY algorithm is given by Figure 4.9. It is instructive to com-
+pare this to CKY recognition as presented in Figure 4.1. Instead of adding elements[i,A,j]toT, the probabilistic algorithm assigns non-zero values to p
+max([i,A,j]).
+The two algorithms have the same time complexity. Finding the most likely parsebased on values of p
+maxalso has the same time complexity as the extraction of a
+parse-tree from T.
+5 Lexicalized Context-Free Grammars
+A central issue in modeling the syntax of natural language is the sensitivity ofsyntactic structures to the choice of terminal symbols, also called lexical elements.
+Consider the difference between the following two sentences:(1) our company is training workers
+(2) our problem is training workers
+In the ﬁrst case, ‘training workers’ should be parsed as verb phrase with ‘is’ as aux-iliary verb. In the second case, ‘training workers’ is used nominally as argument of
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 117 — #13
+Theory of Parsing 117
+1:Function CKY(G,w){w=a1···an;Rthe rules of G}
+2:for all jfrom 1 up to ndo
+3: for all non-terminals Ado
+4: ifthere is a rule A→ajthen
+5: pmax([j−1,A,j])←p(A→aj);
+6: else
+7: pmax([j−1,A,j])←0;
+8: for all ifrom j−2 down to 0 do
+9: for all non-terminals Ado
+10: pmax([i,A,j])←0;
+11: for all kfrom i+1u pt o j−1do
+12: for all rules A→BCinRdo
+13: pmax([i,A,j])←
+14: max(pmax([i,A,j]),
+p(A→BC)·pmax([i,B,k])·pmax([k,C,j]));
+15:return pmax([0,S,n]);
+Figure 4.9 The probabilistic CKY algorithm.
+‘is,’ which requires a different parse. Traditional CFGs with non-terminals for basiccategories such as noun, verb, noun phrase, etc., lack the means to distinguishbetween lexical elements, needed to disambiguate sentences such as the above.
+A common solution is to incorporate a lexical element as a so-called head in
+each non-terminal of the CFG. These heads play an important role in the syn-tactic and semantic content of the derived string. In this section we consider amodel called bilexical context-free grammar. This model is used extensively innatural language parsing. It allows us to write rules of the form S [training ]→
+NP[company ]VP[training ], which expresses that a noun phrase whose main
+element is ‘company’ can combine with a verb phrase whose main element is‘training.’ One might, however, want to exclude a rule of the form S[training ]→
+NP[problem ]VP[training ]as, typically, a problem cannot be the subject of training.
+Alternatively, in probabilistic bilexical context-free grammars, which are discussed
+further at the end of this section, such a rule may be given a very low probability.
+Formally, a bilexical context-free grammar (2-LCFG) is a CFG with non-terminal
+symbols of the form A[a], where ais a terminal symbol and Ais a symbol drawn
+from a set of so-called delexicalized non-terminals , which we denote as V
+D. Every
+rule in a 2-LCFG has one of the following forms:
+A[a]→ B[b] C[a],
+A[a]→ B[a] C[c],
+A[a]→ B[a],
+A[a]→ a.
+Note that the terminal symbol associated with the left-hand side non-terminal isalways inherited from the right-hand side.
+We assume the existence of a dummy terminal $ to the right of each sentence
+and nowhere else. A dummy delexicalized non-terminal represented by the same
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 118 — #14
+118 Mark-Jan Nederhof and Giorgio Satta
+S[$]
+S[training]
+NP[company ]
+PosPr[our ]
+ourN[company ]
+companyVP[training ]
+Aux[is ]
+isVP[training ]
+V[training ]
+trainingNP[workers]
+N[workers]
+workers$[$]
+$
+Figure 4.10 A parse of ‘our company is training workers,’ assuming a bilexical
+context-free grammar.
+symbol allows terminal $ to be derived by $ [$]→ $. The start symbol of a 2-LCFG
+isS[$] and there are rules expanding it to S[a] $[$], where acan be, for example,
+the main verb of a sentence. Figure 4.10 presents a possible parse-tree.
+A 2-LCFG can have Θ|VD|3·|Σ|2binary rules, where Σdenotes the set of
+terminals. Whereas VDis typically small, the set Σcan be very large. When
+parsing with a 2-LCFG, it is therefore preferable to restrict the grammar to thoserules that contain lexical elements occurring in the input sentence w. With gen-
+eral context-free parsing as discussed in Section 3, the time complexity wouldthen be O(|V
+D|3·|w|5), under the reasonable assumption that |w|<|Σ|.N o t e
+that this is two factors of |w|worse than the time complexity of unlexicalized
+parsing.
+A recognition algorithm that was speciﬁcally designed for lexicalized grammars
+reduces the time complexity by one factor of |w|. It is presented by Figure 4.11.
+It uses several types of items, the ﬁrst of the form [i,A,h,j]. This encodes that
+the lexicalized non-terminal A[ah]can derive the substring ai+1···a jofw.I ti s
+comparable to an item [i,A[ah],j]that we would have in the case of the CKY
+algorithm. In some steps of the algorithm below, it is convenient to ignoreeither the index ior the index jfrom[i,A,h,j], by replacing one or the other by
+a hyphen.
+There are also items of the form [B,h,A,j,k]. Such an item indicates that
+[−,B,h,j]and[j,C,h
+′,k]were derived, for some Cand h′such that A[ah]→ B[ah]
+C[ah′]is a rule. This represents an intermediate step in establishing [i,A,h,k],a s
+illustrated in Figure 4.12. The reduction of the time complexity comes from thepossibility to temporarily ignore the left boundary iof the substring derived from
+the left child B[a
+h].
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 119 — #15
+Theory of Parsing 119
+[h−1,A,h,h]{A[ah]→a h
+1≤h≤n+1(a)
+[i,B,h,j]
+[i,A,h,j]{
+A[ah]→B[a h](b)
+[−,B,h,j]
+[j,C,h′,k]
+[B,h,A,j,k]{
+A[ah]→B[a h]C[ah′](c)
+[i,B,h′,j]
+[j,C,h,−]
+[i,j,A,C,h]{
+A[ah]→B[ah′]C[ah](d)[i,A,h,j]
+[i,A,h,−](e)
+[i,A,h,j]
+[−,A,h,j](f)
+[i,B,h,j]
+[B,h,A,j,k]
+[i,A,h,k](g)
+[j,C,h,k]
+[i,j,A,C,h]
+[i,A,h,k](h)
+Figure 4.11 Deduction system for recognition with a 2-LCFG. We assume
+w=a1···a n,an+1=$.
+B[ah]
+ai ahaj(f)B[ah]
+? ahaj
+C[ah′]
+aj ah′ak(c)A[ah]
+B[ah]
+? ahaj?
+ak(g)A[ah]
+ai ah ak
+Figure 4.12 Illustration of the use of inference rules (f), (c), and (g) of bilexical
+recognition.
+Items of the form [i,j,A,C,h]have a symmetrical meaning, that is, they indicate
+that[i,B,h′,j]and[j,C,h,−]were derived, for some Band h′such that A[ah]→
+B[ah′]C[ah]is a rule.
+Each of the inference rules involves no more than four input positions and three
+delexicalized non-terminals. This corresponds to O(|VD|3·|w|4)applications of
+each inference rule, which is also the total time complexity of the algorithm.
+The above recognition algorithm can be extended to parsing, and especially
+probabilistic parsing with bilexical grammars. This requires only minor modiﬁ-cations. In practice, explicit representation of a probabilistic 2-LCFG as a set oflexicalized rules would require a prohibitive amount of storage and, furthermore,obtaining accurate probabilities for each of the rules is very hard.
+Therefore, lexicalized rules are often produced on-the-ﬂy during parsing of the
+input string, and their probabilities are then computed as the product of proba-bilities of a number of features that together determine the rule. For example, theprobability of A[b]→ B[b] C[c] can be expressed as the probability of Bgiven A
+andb, times the probability of Cas second member in the right-hand side, given
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 120 — #16
+120 Mark-Jan Nederhof and Giorgio Satta
+A,b,a n d B, times the probability of cgiven A,b,B,a n d Cas second member. The
+last probability can be approximated as, for example, the probability of cgiven b
+andC.
+6 Dependency Grammars
+Dependency grammars are a formalism for the syntactic representation of natu-ral language based on dependencies between pairs of words. This formalism has along tradition in descriptive linguistics. From a computational perspective, depen-dency grammars have also proved to be a simple yet ﬂexible formalism, which canbe applied to several natural language processing tasks.
+A dependency grammar represents syntactic structures by means of depen-
+dency trees. A dependency tree for a sentence wis a directed tree whose nodes are
+all the words of w. Each arc of the tree represents a single syntactic dependency
+directed from a word to its modiﬁer, and is labeled with the speciﬁc syntac-tic function that is encoded, e.g., SBJ for subject and NMOD for modiﬁer of anoun. Figure 4.13 presents an example of a dependency tree. An artiﬁcial tokenrepresenting the root of the dependency tree is appended to the sentence as theright-most word, similarly to what we have done for 2-LCFGs.
+A dependency tree is called projective if its edges can be drawn in the plane above
+the words of the sentence, without any edges crossing each other. Figure 4.13 isan example of a projective tree. In a non-projective dependency tree, this property
+is violated, as illustrated by Figure 4.14. Non-projectivity is typically needed tohandle long-distance dependencies and ﬂexible word order.
+In this section we mainly focus on dependency grammars that derive projec-
+tive dependency trees and that are augmented with probabilities. Dependencygrammars deriving projective trees can be enriched with probabilities in severalways. We consider here one of the simplest models, called edge-factored, which
+assigns a probability to each modiﬁer word conditioned on the headword, andwhich assumes that decisions are independent, within the global constraint thatthe resulting structure must be a projective tree. To simplify the presentation, wealso ignore dependency labels.
+More formally, a probabilistic projective dependency grammar (PPDG) is a tuple
+G=(Σ,p), where Σis a ﬁnite alphabet and pis a function with two arguments
+as explained below, taking real values in the interval [0, 1]. The notation includes
+special symbols L,R,$ ,a n d ⊥not in Σ. The symbols LandRrepresent left
+and right direction respectively for a dependency relation, $ represents the rootsymbol, and ⊥indicates halting of the generation process. Function pis deﬁned
+over the terms:p($→a,L), a∈Σ
+p(a→b,D), a,b∈Σ,D∈{L,R}
+p(a→⊥ ,D), a∈Σ,D∈{L,R}
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 121 — #17
+Theory of Parsing 121
+Mr Tomash will remain as a director emeritus $VCPPNP
+NMODNMOD SBJNMOD$
+Figure 4.13 A projective dependency tree.
+A hearing is scheduled on the issue today $PP
+VCTMP
+NP
+NMOD SBJ NMOD$
+Figure 4.14 A non-projective dependency tree.
+The root $ takes a unique dependent from Σ, always to its left. The probability
+that such a dependent is word aisp($→a,L). The probability of generating a
+dependency between headword aand modiﬁer word bat its left, conditioned upon
+a,i sp(a→b,L), and the probability of stopping the generation of left dependents
+ofaisp(a→⊥ ,L). Probabilities p(a→b,R)andp(a→⊥ ,R)have a symmetrical
+meaning with respect to the generation of dependents at the right direction.
+The following normalization conditions must be satisﬁed by p:
+∑
+a∈Σp($→a,L)=1
+and for every a∈ΣandD∈{L,R}:
+p(a→⊥ ,D)+∑
+b∈Σp(a→b,D)=1
+For a dependency tree t, we deﬁne p(t)as the product of the probabilities of all
+the involved dependencies, including the stop events. For a sentence w, we deﬁne
+p(w) as the sum of all p(t),w i t h ta dependency tree of w. It is not difﬁcult to see
+that a PPDG induces a probability distribution over projective dependency treesand over the generated strings.
+There is a natural mapping from the class of PPDGs to the probabilistic 2-LCFGs
+from Section 5. This mapping preserves the probabilities of trees, modulo straight-forward restructuring operations. Let G=(Σ,p)be some PPDG. We construct a
+probabilistic 2-LCFG G
+′=(Σ∪{$},N,R,S[$], p′)with
+N={A[a]|A ∈{H1,H2},a∈Σ}∪{S[$],$ [$]}
+and with Rincluding all of the following rules with associated probabilities:1
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 122 — #18
+122 Mark-Jan Nederhof and Giorgio Satta
+S[$]→H 1[a]$[$] p′(·)=p($→a)
+H1[a]→H 1[b]H1[a] p′(·)=p(a→b,L)
+H1[a]→H 2[a] p′(·)=p(a→⊥ ,L)
+H2[a]→H 2[a]H1[b] p′(·)=p(a→b,R)
+H2[a]→ap′(·)=p(a→⊥ ,R)
+$[$]→$ p′(·)=1
+It is not difﬁcult to see that G′satisﬁes the usual properness conditions deﬁned
+for PCFGs.
+The above mapping allows us to reuse all of the algorithms developed for (prob-
+abilistic) CFGs, in order to do parsing for a PPDG, transferring the resulting parsesback to projective dependency trees. For example, the recognition algorithm for2-LCFGs from Section 5 would provide a O(|G|n
+4)time recognition algorithm
+for (probabilistic) PDGs.
+In what follows, we derive a more efﬁcient recognition algorithm, running
+in time O(|G|n3). The improvement is obtained by specializing the recognition
+algorithm for 2-LCFGs to the speciﬁc grammars resulting from the above map-ping. Since this is a recognition algorithm, we focus on the underlying 2-LCFG,disregarding the probabilities attached to the rules.
+The algorithm is based on the following idea. We observe that in G
+′there are
+no structural dependencies between the left and the right arguments (comple-ments or modiﬁers) of any headword a. The sequences of the left arguments and
+the sequences of the right arguments can therefore be processed independently,and joined only when this is computationally convenient. We call left (right) split
+any partial parse consisting of a head and some of its left (right, respectively)arguments.
+To simplify the presentation of the algorithm, we ignore the recognition of the
+rules S[$]→ H
+1[a]$[$],a n d$ [$]→ $, which is straightforward. We use items of
+the form [h−1,R,j]to represent a right split with headword ah,w i t hz e r oo rm o r e
+right arguments extending up to position j≥h. Similarly, an item [i,L,h]repre-
+sents a left split with i≤h−1. An item [h−1,R,h′)represents a headword ah
+with zero or more right arguments, followed at the right by the left split of one ofits right arguments with headword a
+h′,h′>h. Items of the form (h′−1,L,h],w i t h
+h′<h, have a symmetric interpretation.
+The algorithm is given in Figure 4.15 by means of a deduction system. Inference
+rules (a) and (d) initialize a right and left split respectively, consisting of a singleheadword. Rule (b) extends a right split with headword a
+hto the right, by means of
+a left split with headword ah′, provided a constituent headed in ah′is a valid right
+argument for a constituent headed in ah. As already discussed, the right arguments
+of the headword ah′can be ignored at this point.
+Inference rule (e) completes the process started by (b), by attaching the missing
+right arguments of the headword ah′. Inference rules (c) and (f) have a symmetrical
+interpretation.
+The time complexity of the algorithm is determined by the maximum number
+of input positions in inference rules. This is 3, and the running time is therefore
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 123 — #19
+Theory of Parsing 123
+[h−1,R,h]{H2[ah]→ ah,
+1≤h≤n(a)[h−1,L,h]{H1[ah]→H2[ah],
+1≤h≤n(d)
+[h−1,R,i]
+[i,L,h′]
+[h−1,R,h′){
+H2[ah]→H 2[ah]H1[ah′](b)
+[j,L,h]
+[h′−1,R,j]
+(h′−1,L,h]{
+H1[ah]→H1[ah′]H1[ah](c)[h−1,R,h′)
+[h′−1,R,j]
+[h−1,R,j](e)
+(h′−1,L,h]
+[i,L,h′]
+[i,L,h](f)
+Figure 4.15 Deduction system for recognition with PDGs. We assume w=a1···a n,
+and disregard the recognition of an+1=$.
+O(n3). By looking at the maximum number of instantiations of the four types
+of items, we can conclude that the space complexity is O(n2). These complex-
+ity results are independent of the size of the input grammar. For this reason,dependency parsing is sometimes called ‘grammarless.’
+Several algorithms for non-projective parsing have been proposed in the lit-
+erature, often based on local relaxation of non-projectivity. Allowing arbitrarycrossing of branches, however, amounts to treating the input as a multiset ofwords, and the resulting dependency structures as unordered trees. The pars-ing problem can then be reduced to the problem of ﬁnding the optimal spanningtree of a weighted graph. This graph has one vertex for each word in the inputsentence, and one edge with appropriate weight for each allowable dependencybetween a corresponding pair of words. A standard method is applied for ﬁnd-ing the directed spanning tree in the graph having the highest weight. Thiscorresponds to the dependency tree with the highest probability.
+Common algorithms to ﬁnd spanning trees in directed graphs make use of
+greedy approaches, and run in time O(mlog(n)) for general graphs with marcs
+and nvertices, and in time O(n
+2)for dense graphs. In the case of dependency
+grammars, the graph is usually dense, and therefore non-projective dependencyparsing can be done in quadratic time in the length of the input, whereas pro-jective dependency parsing has a cubic time complexity. However, if the modelis enriched with certain kinds of contextual information, then non-projectivedependency parsing becomes NP-hard.
+7 Tree Adjoining Grammars
+For modeling the syntax of natural language, several grammatical formalismshave been investigated that fall beyond the generative power of context-free gram-mars. Of particular linguistic relevance is the class of tree adjoining grammars,which is a mildly context-sensitive formalism.
+Atree adjoining grammar (TAG) is a tuple G=(Σ,N,S,I,A), where Σand N
+are ﬁnite, disjoint sets of terminal and non-terminal symbols respectively, S∈Nis
+the start symbol, and IandAare ﬁnite sets of elementary trees, called initial and
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 124 — #20
+124 Mark-Jan Nederhof and Giorgio Satta
+η=⇒
+(a)αη
+γ
+γη=⇒
+(b)β
+γη
+Figure 4.16 Substitution (a) and adjunction (b) in a tree adjoining grammar.
+auxiliary trees respectively. In an elementary tree, internal nodes are labeled by
+symbols in N, and leaf nodes are labeled by symbols in N∪Σ∪{ε}. In addition,
+each auxiliary tree has a special leaf node, called footnode, having the same non-
+terminal label as its root node.
+In a TAG, the notion of derivation is based on two operations involving tree
+composition, deﬁned in what follows. A substitution node ηin an elementary
+tree (or a derivation thereof, see below) is a leaf node labeled by a non-terminalsymbol and annotated with a set Subst(η)of initial trees with root labeled by the
+same symbol as η.T h e substitution operation takes an initial tree α∈Subst(η)and
+replaces ηwith a copy of α, as illustrated in Figure 4.16(a).
+An internal node ηin an elementary tree γ(or a derivation thereof) is associated
+with a set Adj(η) of auxiliary trees with root (and foot node) labeled by the same
+symbol as η.L e tγ
+ηdenote the complete subtree of γrooted in η.T h e adjunction
+operation takes an auxiliary tree β∈Adj(η)and produces a new tree speciﬁed as
+follows:(1)γ
+ηis excised from γ;
+(2) a copy of βreplaces γηinγ, with the root of βreplacing the excised node η;
+(3)γηis attached to the resulting tree, with the foot node of βreplacing ηinγη.
+This is illustrated in Figure 4.16(b).
+In a TAG, a derivation is the process of recursive composition of elementary trees
+using the substitution and the adjunction operations. The resulting trees are calledderived trees. The language generated by a TAG is the set of strings that are yields of
+derived trees with Sas root label and terminal symbols as labels of the leaf nodes.
+We will now discuss a bottom-up tabular recognition algorithm for TAGs. To
+simplify the presentation, we assume that all elementary trees are binary, and thatno leaf node is labeled by the empty string ε. The input string has the form w=
+a
+1···a n,n≥1a n d ai∈Σfor each iwith 1 ≤i≤n.
+The algorithm uses items of the form [ηX,i,j,f1,f2], denoting a complete sub-
+tree of an elementary tree, with possible substitutions and adjunctions. Here ηis
+the root of the subtree, spanning the substring ai+1···a jofw, and the foot of the
+subtree spans the substring af1+1···a f2.W el e t f1=f2=− if there is no foot node
+in the subtree. Symbol X∈{ ⊥ ,⊤}records whether adjunction at ηhas already
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 125 — #21
+Theory of Parsing 125
+[η⊥,i−1,i,−,−]{ηlabeled
+byai(a)
+[ηβ
+⊥,i,j,i,j]⎧⎨⎩η
+βfoot
+ofβ∈A,
+i<j(b)
+[η′
+⊤,i,k,−,−]
+[η′′
+⊤,k,j,f1,f2]
+[η⊥,i,j,f1,f2]{η′,η′′
+children of η(c1)
+[η′
+⊤,i,k,f1,f2]
+[η′′
+⊤,k,j,−,−]
+[η⊥,i,j,f1,f2]{η′,η′′
+children of η(c2)[η′
+⊤,i,k,−,−]
+[η′′
+⊤,k,j,−,−]
+[η⊥,i,j,−,−]{η′,η′′
+children of η(c3)
+[ηα
+⊤,i,j,−,−]
+[η⊤,i,j,−,−]{α∈Subst(η),
+ηαroot of α(d)
+[η⊥,i,j,f1,f2]
+[η⊤,i,j,f1,f2](e)
+[ηβ
+⊤,i,j,f1,f2]
+[η⊥,f1,f2,f′
+1,f′
+2]
+[η⊤,i,j,f′
+1,f′
+2]{β∈Adj(η),
+ηβroot of β(f)
+Figure 4.17 The TAG bottom-up recognition algorithm, expressed as a deduction system.
+been checked ( X=⊤)o rn o t( X=⊥). This is done to avoid multiple adjunction at
+a single node, which is forbidden in traditional TAGs.
+The algorithm is presented by Figure 4.17. Rules (a) and (b) initialize the parsing
+table with items representing leaf nodes that are labeled with a terminal sym-bol, and leaf nodes that are foot nodes, respectively. In the latter case, we haveto blindly guess the span over the input string, because at this point no lexicalelements have been scanned to restrict allowable derivations.
+Rules (c1), (c2), and (c3) combine items for two sibling nodes η
+′andη′′into a
+new item for their parent node η. Note that the spans of the two antecedent items
+must be adjacent within w. The three rules differ in whether η′orη′′dominates a
+foot node, or whether none of them does.
+Rule (d) deals with the substitution at node ηof an initial tree α∈Subst(η).
+Rule (e) deals with the case that no adjunction is performed at an internal nodeη. This is done simply by recording that adjunction has already been checked,
+through symbol ⊤, and leaving the rest of the item unchanged. If ηdoes not
+dominate a foot node, then f
+1andf2are both −.
+Finally, rule (f) processes adjunction of auxiliary tree β∈Adj(η) atη.T h i ss t e p
+involves an antecedent representing a subtree rooted at node η, along with an
+antecedent representing a completely parsed auxiliary tree β∈Adj(η).N o t et h a t
+the span of βmust wrap around the span of node η. Again, f′
+1andf′
+2may both be −.
+We deﬁne the size of a TAG G, written |G|, as the total number of nodes in all
+the trees in the set I∪A. It is not difﬁcult to see that inference rule (f) dominates
+the time complexity of the algorithm. The maximum number of instantiations ofthat rule is O(|G|
+2|w|6), which is therefore the running time of the algorithm. With
+a small trick, this can be reduced to O(|G||w|6). The space complexity is O(|G||w|4).
+8 Translation
+Automatic translation between natural languages is one of the most challengingapplications in NLP . State-of-the-art approaches to this task are based on syntactic
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 126 — #22
+126 Mark-Jan Nederhof and Giorgio Satta
+models, usually enriched with statistical parameters. In this section we considerone such model, called synchronous context-free grammar (SCFG).
+A SCFG consists of synchronous rules, each obtained by pairing two CFG rules
+with the same left-hand side. The right-hand sides of such a pair of rules mustconsist of identical multisets of non-terminals, possibly ordered differently, andpossibly combined with different terminal symbols. Furthermore, there is anexplicit bijection that pairs occurrences of identical non-terminals in the tworight-hand sides.
+As an example, the synchronous rule ⟨VP→VB
+1PP2,V P →PP2VB1ga⟩
+states that an English verb phrase composed of the two constituents VB (‘verbin base form’) and PP (‘prepositional phrase’) can be translated into Japaneseby swapping the order of the translations of these constituents and by insertingthe word ‘ga’ at the right. Note the use of integers within boxes as superscriptsto indicate a bijection between non-terminal occurrences in the two context-freerules.
+A SCFG can derive pairs of sentences as follows. Starting with the pair of non-
+terminals ⟨S
+1,S1⟩, synchronous rules are applied to rewrite pairs of non-
+terminals that have the same index. At the application of a rule, the indices in thenewly added non-terminals are consistently renamed, in order to avoid clasheswith indices introduced at previous rewriting steps. The process stops when allnon-terminals have been rewritten.
+As an example, consider the SCFG based on the following synchronous rules:
+s
+1:⟨S→A1C2,S→A1C2⟩ s5:⟨A→a1,A→a2⟩
+s2:⟨C→B1S2,C→B1S2⟩ s6:⟨A→a1,A→ε⟩
+s3:⟨C→B1S2,C→S2B1⟩ s7:⟨B→b1,B→b2⟩
+s4:⟨C→B1, C→B1⟩
+An example derivation of the string pair ⟨a1b1a1b1,a2b2b2⟩by the above SCFG is:
+⟨S1,S1⟩⇒s1⟨A2C3,A2C3⟩
+⇒s3⟨A2B4S5,A2S5B4⟩
+⇒s1⟨A2B4A6C7,A2A6C7B4⟩
+⇒s4⟨A2B4A6B8,A2A6B8B4⟩
+⇒s5⟨a1B4A6B8,a2A6B8B4⟩
+⇒s7⟨a1b1A6B8,a2A6B8b2⟩
+⇒s6⟨a1b1a1B8,a2B8b2⟩
+⇒s7⟨a1b1a1b1,a2b2b2⟩
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 127 — #23
+Theory of Parsing 127
+S
+A
+a1C
+B
+b1S
+A
+a1C
+B
+b1S
+A
+a2C
+S
+A
+εC
+B
+b2B
+b2
+Figure 4.18 A pair of trees associated with a derivation in a SCFG. The dotted lines link
+pairs of non-terminal occurrences that had the same index during the rewriting process.
+In the same way as a derivation in a CFG can be associated with a parse-tree, a
+derivation in a SCFG can be associated with a pair of parse-trees. These trees areobtained one from the other by reordering of internal sibling nodes, and relabeling,insertion, and deletion of leaf nodes, as illustrated in Figure 4.18. We will refer tothe two trees in a pair as the input tree and the output tree.
+Given a SCFG Gand a string w=a
+1···a n, the expression w◦Gdenotes the set
+of all pairs of parse-trees associated with derivations in Gwhose input tree has
+yield w. Note that all the strings that are translations of wunder Gcan be easily
+produced if we can enumerate the elements of w◦G.
+The set w◦Gcan have size exponential in |w|, and the number of possible trans-
+lations of wunder Gcan likewise be exponential. (There may even be an inﬁnite
+number of translations if there are synchronous rules whose left components areepsilon rules or unit rules.) In Section 3 we discussed a compact representation ofa large set of parse-trees, in the form of a CFG. We will extend this to a construc-tion of a SCFG G
+′that represents w◦Gin a compact way. This is referred to as left
+composition .
+We assume, without loss of generality, that synchronous rules from Gare either
+of the form ⟨A→α,A→α′⟩, where αandα′are non-empty strings of indexed
+non-terminals, or of the form ⟨A→x,A→y⟩, where xandycan each be a termi-
+nal symbol or the empty string. In the former case, we let a permutation πdenote
+the bijective relation that pairs the non-terminal occurrences in αandα′, and write
+a synchronous rule as:⟨A→B
+1
+1···Bm
+m,A→Bπ(1)
+π(1)···Bπ(m)
+π(m)⟩
+The non-terminals of G′have the form [i,A,j], where iandjare input positions
+within w,a n d Ais a non-terminal from G. The algorithm for the left composition is
+given in Figure 4.19. It may introduce many synchronous rules that are useless.
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 128 — #24
+128 Mark-Jan Nederhof and Giorgio Satta
+1:Function LEFTCOMPOSITION (w,G){w=a1···a n}
+2:G′←SCFG with start non-terminal [0,S,n]and empty set of synchronous rules
+3:for all ⟨A→B1
+1···Bm
+m,A→Bπ(1)
+π(1)···Bπ(m)
+π(m)⟩fromGdo
+4: for all i0,...,im(0≤i0≤...≤im≤n)do
+5: add to G′the synchronous rule ⟨[i0,A,im]→[ i0,B1,i1]1··· [im−1,Bm,im]m,
+[i0,A,im]→[ iπ(1)−1 ,Bπ(1),iπ(1)]π(1)··· [iπ(m)−1 ,Bπ(m),iπ(m)]π(m)⟩
+6:for all i(1≤i≤n)a n d⟨A →ai,A→y⟩fromGdo
+7: add to G′the synchronous rule ⟨[i−1,A,i]→ ai,[i−1,A,i]→y⟩
+8:for all i(0≤i≤n)a n d⟨A →ε,A→y⟩fromGdo
+9: add to G′the synchronous rule ⟨[i,A,i]→ε ,[i,A,i]→y⟩
+10:return G′
+Figure 4.19 An algorithm for the left composition of a sentence wand a SCFG G.
+Techniques to eliminate useless rules from G′are very similar to well-known
+techniques to eliminate useless rules from CFGs.
+If we remove the left components from synchronous rules of G′, then we obtain a
+CFGG′′that generates parse-trees for all possible translations of wunder G. These
+parse-trees differ from the output trees in w◦Gonly in the labels of internal nodes.
+In the former case these are of the form [i,A,j]where in the latter they are A.
+With the SCFG from the running example, w=a1b1a1b1can be translated into
+the ﬁve strings a2b2a2b2,a2a2b2b2,a2b2b2,b2a2b2,a n d b2b2. There are eight pairs
+of trees in w◦G, as there are three derivations with output a2b2b2,a n dt w o
+derivations with output b2b2. After applying left composition and reduction of
+the grammar, we obtain the following set of synchronous rules:⟨[0,S,4]→[ 0,A,1]
+1[1,C,4]2,[0,S,4]→[ 0,A,1]1[1,C,4]2⟩,
+⟨[1,C,4]→[ 1,B,2]1[2,S,4]2,[1,C,4]→[ 1,B,2]1[2,S,4]2⟩,
+⟨[1,C,4]→[ 1,B,2]1[2,S,4]2,[1,C,4]→[ 2,S,4]2[1,B,2]1⟩,
+⟨[2,S,4]→[ 2,A,3]1[3,C,4]2,[2,S,4]→[ 2,A,3]1[3,C,4]2⟩,
+⟨[3,C,4]→[ 3,B,4]1, [3,C,4]→[ 3,B,4]1⟩,
+⟨[0,A,1]→ a1,[0,A,1]→ a2⟩,
+⟨[0,A,1]→ a1,[0,A,1]→ε⟩,
+⟨[1,B,2]→ b1,[1,B,2]→ b2⟩,
+⟨[2,A,3]→ a1,[2,A,3]→ a2⟩,
+⟨[2,A,3]→ a1,[2,A,3]→ε⟩,
+⟨[3,B,4]→ b1,[3,B,4]→ b2⟩.
+The size of a SCFG G, written as |G|, is deﬁned as the sum of the number of non-
+terminal and terminal occurrences in its synchronous rules. Let rbe the length
+of the longest right-hand side of a context-free rule that is the input or outputcomponent of a synchronous rule. The time complexity and space complexity of
+
+“9781405155816_4_004” — 2010/5/8 — 11:42 — page 129 — #25
+Theory of Parsing 129
+left composition are both O(|G|·nr+1), where nis the length of the input string. In
+many practical applications, it is possible to factorize synchronous rules in such away that the parameter ris reduced to a small integer. In the general case, however,
+a SCFG cannot be cast into an equivalent form with rbounded by a constant. This
+implies exponential behavior for our algorithm in the worst case.
+9 Further Reading
+For chart parsing, we refer to Thompson and Ritchie (1984). Transformation ofCFGs to Chomsky normal form is discussed by Harrison (1978). Reduction of aCFG can be carried out in linear time in the size of the grammar, as shown in Sippuand Soisalon-Soininen (1988). For deduction systems in the context of parsing,see Shieber et al. (1995).
+Earley’s algorithm and some variants are due to Earley (1970); Aho and
+Ullman (1972); Graham and Harrison (1976); Graham et al. (1980). A morecomplex parsing strategy that is sometimes used for natural language process-ing is tabular LR parsing, also called generalized LR parsing in Tomita (1986). Itspresentation requires the additional deﬁnition of push-down automaton, whichwas not discussed in this chapter, but see for instance Nederhof and Satta (2004).
+The parse forest representation is originally due to Bar-Hillel et al. (1964), with
+states of a ﬁnite automaton in place of positions in an input string. Parse forestshave also been discussed by Tomita (1986). Construction of parse forests usingpush-down transducers is discussed by Billot and Lang (1989). Similar ideas wereproposed for tree adjoining grammars by Lang (1994).
+The problem of ﬁnding the most probable parse in a PCFG is discussed by Knuth
+(1977), who proposes a generalization of the algorithm by Dijkstra (1959). Theprobabilistic CKY algorithm is described by Jelinek et al. (1992) and is similarto Viterbi (1967).
+The 2-LCFG formalism is an abstraction of several head-driven grammar
+models that have been used in statistical parsing; see for instance Collins (2003)and references therein. Our 2-LCFG recognition algorithm was originally pre-sented by Eisner and Satta (1999).
+The PPDGs deﬁned in this chapter are a simpliﬁcation of a model discussed by
+Klein and Manning (2004). Our reduction from PPDGs to 2-LCFGs is related toone of the lexicalized CFG models proposed by Collins (2003). The PPDG recog-nition algorithm we have presented is related to a method originally discussed byEisner (2000). The reduction from non-projective dependency parsing to the prob-lem of spanning trees was ﬁrst proposed by McDonald et al. (2005a). The discussedhardness results for non-projective parsing are taken from McDonald and Satta(2007). See Koo et al. (2007) for further algorithms related to probabilistic parsingof non-projective dependency models.
+A good introduction to TAGs can be found in Joshi and Schabes (1997). The
+discussed recognition algorithm is due to Vijay-Shanker and Joshi (1985).
+

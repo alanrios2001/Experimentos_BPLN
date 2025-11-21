@@ -1,0 +1,598 @@
+Chapter 19 9866
+Text generation 9867
+In many of the most interesting problems in natural language processing, language is 9868
+the output. The previous chapter described the speciﬁc case of machine translation, but 9869
+there are many other applications, from summarization of research articles, to automated 9870
+journalism, to dialogue systems. This chapter emphasizes three main scenarios: data-to- 9871
+text, in which text is generated to explain or describe a structured record or unstructured 9872
+perceptual input; text-to-text, which typically involves fusing information from multiple 9873
+linguistic sources into a single coherent summary; and dialogue, in which text is generated 9874
+as part of an interactive conversation with one or more human participants. 9875
+19.1 Data-to-text generation 9876
+In data-to-text generation, the input ranges from structured records, such as the descrip- 9877
+tion of an weather forecast (as shown in Figure 19.1), to unstructured perceptual data, 9878
+such as a raw image or video; the output may be a single sentence, such as an image cap- 9879
+tion, or a multi-paragraph argument. Despite this diversity of conditions, all data-to-text 9880
+systems share some of the same challenges (Reiter and Dale, 2000): 9881
+•determining what parts of the data to describe; 9882
+•planning a presentation of this information; 9883
+•lexicalizing the data into words and phrases; 9884
+•organizing words and phrases into well-formed sentences and paragraphs. 9885
+The earlier stages of this process are sometimes called content selection and text plan- 9886
+ning ; the later stages are often called surface realization . 9887
+Early systems for data-to-text generation were modular, with separate software com- 9888
+ponents for each task. Artiﬁcial intelligence planning algorithms can be applied to both 9889
+459
+
+460 CHAPTER 19. TEXT GENERATION
+Figure 19.1: An example input-output pair for the task of generating text descriptions of
+weather forecasts (Konstas and Lapata, 2013). [todo: permission]
+the high-level information structure and the organization of individual sentences, ensur- 9890
+ing that communicative goals are met (McKeown, 1992; Moore and Paris, 1993). Surface 9891
+realization can be performed by grammars or templates, which link speciﬁc types of data 9892
+to candidate words and phrases. A simple example template is offered by Wiseman et al. 9893
+(2017), for generating descriptions of basketball games: 9894
+(19.1) The <team1> (<wins1> -losses1 ) defeated the <team2> (<wins2> -<losses2> ), 9895
+<pts1> -<pts2> . 9896
+The New York Knicks (45-5) defeated the Boston Celtics (11-38), 115-79. 9897
+For more complex cases, it may be necessary to apply morphological inﬂections such as 9898
+pluralization and tense marking — even in the simple example above, languages such 9899
+as Russian would require case marking sufﬁxes for the team names. Such inﬂections can 9900
+be applied as a postprocessing step. Another difﬁcult challenge for surface realization is 9901
+the generation of varied referring expressions (e.g., The Knicks ,New York ,they), which is 9902
+critical to avoid repetition. As discussed in §16.2.1, the form of referring expressions is 9903
+constrained by the discourse and information structure. 9904
+An example at the intersection of rule-based and statistical techniques is the Nitrogen 9905
+system (Langkilde and Knight, 1998). The input to Nitrogen is an abstract meaning rep- 9906
+resentation (AMR; see §13.3) of semantic content to be expressed in a single sentence. In 9907
+data-to-text scenarios, the abstract meaning representation is the output of a higher-level 9908
+text planning stage. A set of rules then converts the abstract meaning representation into 9909
+various sentence plans, which may differ in both the high-level structure (e.g., active ver- 9910
+sus passive voice) as well as the low-level details (e.g., word and phrase choice). Some 9911
+examples are shown in Figure 19.2. To control the combinatorial explosion in the number 9912
+of possible realizations for any given meaning, the sentence plans are uniﬁed into a single 9913
+ﬁnite-state acceptor, in which word tokens are represented by arcs (see §9.1.1). A bigram 9914
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+19.1. DATA-TO-TEXT GENERATION 461
+(a / admire-01
+:ARG0 (v / visitor
+:ARG1-of (c / arrive-01
+:ARG4 (j / Japan)))
+:ARG1 (m / "Mount Fuji"))•Visitors who came to Japan admire Mount
+Fuji.
+•Visitors who came in Japan admire Mount
+Fuji.
+•Mount Fuji is admired by the visitor who
+came in Japan.
+Figure 19.2: Abstract meaning representation and candidate surface realizations from the
+Nitrogen system. Example adapted from Langkilde and Knight (1998).
+language model is then used to compute weights on the arcs, so that the shortest path is 9915
+also the surface realization with the highest bigram language model probability. 9916
+More recent systems are uniﬁed models that are trained end-to-end using backpropa- 9917
+gation. Data-to-text generation shares many properties with machine translation, includ- 9918
+ing a problem of alignment : labeled examples provide the data and the text, but they do 9919
+not specify which parts of the text correspond to which parts of the data. For example, to 9920
+learn from Figure 19.1, the system must align the word cloudy to records in CLOUD SKY 9921
+COVER , the phrases 10and 20 degrees to the MIN and MAX ﬁelds in TEMPERATURE , and 9922
+so on. As in machine translation, both latent variables and neural attention have been 9923
+proposed as solutions. 9924
+19.1.1 Latent data-to-text alignment 9925
+Given a dataset of texts and associated records {(w(i),y(i))}N
+i=1, our goal is to learn a 9926
+model Ψ, so that 9927
+ˆw= argmax
+w∈V∗Ψ(w,y;θ), [19.1]
+whereV∗is the set of strings over a discrete vocabulary, and θis a vector of parameters. 9928
+The relationship between wandyis complex: the data ymay contain dozens of records, 9929
+andwmay extend to several sentences. To facilitate learning and inference, it would be 9930
+helpful to decompose the scoring function Ψinto subcomponents. This would be pos- 9931
+sible if given an alignment , specifying which element of yis expressed in each part of 9932
+w(Angeli et al., 2010): 9933
+Ψ(w,y;θ) =M∑
+m=1ψw,y(wm,yzm) +ψz(zm,zm−1), [19.2]
+wherezmindicates the record aligned to word m. For example, in Figure 19.1, z1might 9934
+specify that the word cloudy is aligned to the record cloud-sky-cover:percent . The 9935
+score for this alignment would then be given by the weight on features such as 9936
+(cloudy,cloud-sky-cover:percent ), [19.3]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+462 CHAPTER 19. TEXT GENERATION
+which could be learned from labeled data {(w(i),y(i),z(i))}N
+i=1. The function ψzcan learn 9937
+to assign higher scores to alignments that are coherent, referring to the same records in 9938
+adjacent parts of the text.19939
+Several datasets include structured records and natural language text (Barzilay and 9940
+McKeown, 2005; Chen and Mooney, 2008; Liang and Klein, 2009), but the alignments 9941
+between text and records are usually not available.2One solution is to model the problem 9942
+probabilistically, treating the alignment as a latent variable (Liang et al., 2009; Konstas 9943
+and Lapata, 2013). The model can then be estimated using expectation maximization or 9944
+sampling (see chapter 5). 9945
+19.1.2 Neural data-to-text generation 9946
+The encoder-decoder model and neural attention were introduced in §18.3 as methods 9947
+for neural machine translation. They can also be applied to data-to-text generation, with 9948
+the data acting as the source language (Mei et al., 2016). In neural machine translation, 9949
+the attention mechanism linked words in the source to words in the target; in data-to- 9950
+text generation, the attention mechanism can link each part of the generated text back 9951
+to a record in the data. The biggest departure from translation is in the encoder, which 9952
+depends on the form of the data. 9953
+19.1.2.1 Data encoders 9954
+In some types of structured records, all values are drawn from discrete sets. For example, 9955
+the birthplace of an individual is drawn from a discrete set of possible locations; the diag- 9956
+nosis and treatment of a patient are drawn from an exhaustive list of clinical codes (John- 9957
+son et al., 2016). In such cases, vector embeddings can be estimated for each ﬁeld and 9958
+possible value: for example, a vector embedding for the ﬁeld BIRTHPLACE , and another 9959
+embedding for the value B ERKELEY CALIFORNIA (Bordes et al., 2011). The table of such 9960
+embeddings serves as the encoding of a structured record (He et al., 2017). It is also possi- 9961
+ble to compress the entire table into a single vector representation, by pooling across the 9962
+embeddings of each ﬁeld and value (Lebret et al., 2016). 9963
+Sequences Some types of structured records have a natural ordering, such as events in
+a game (Chen and Mooney, 2008) and steps in a recipe (Tutin and Kittredge, 1992). For
+example, the following records describe a sequence of events in a robot soccer match (Mei
+1More expressive decompositions of Ψare possible. For example, Wong and Mooney (2007) use a syn-
+chronous context-free grammar (see §18.2.4) to “translate” between a meaning representation and natural
+language text.
+2An exception is a dataset of records and summaries from American football games, containing annota-
+tions of alignments between sentences and records (Snyder and Barzilay, 2007).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+19.1. DATA-TO-TEXT GENERATION 463
+Figure 19.3: Examples of the image captioning task, with attention masks shown for each
+of the underlined words. From Xu et al. (2015). [todo: permission]
+et al., 2016):
+PASS(arg1 =PURPLE 6,arg2 =PURPLE 3)
+KICK (arg1 =PURPLE 3)
+BADPASS (arg1 =PURPLE 3,arg2 =PINK 9).
+Each event is a single record, and can be encoded by a concatenation of vector represen- 9964
+tations for the event type (e.g., PASS ), the ﬁeld (e.g., arg1), and the values (e.g., PURPLE 3), 9965
+e.g., 9966
+X=[
+uPASS,uarg1,uPURPLE 6,uarg2,uPURPLE 3]
+. [19.4]
+This encoding can then act as the input layer for a recurrent neural network, yielding a 9967
+sequence of vector representations {zr}R
+r=1, whererindexes over records. Interestingly, 9968
+this sequence-based approach is effective even in cases where there is no natural ordering 9969
+over the records, such as the weather data in Figure 19.1 (Mei et al., 2016). 9970
+Images Another ﬂavor of data-to-text generation is the generation of text captions for 9971
+images. Examples from this task are shown in Figure 19.3. Images are naturally repre- 9972
+sented as tensors: a color image of 320×240 pixels would be stored as a tensor with 9973
+320×240×3intensity values. The dominant approach to image classiﬁcation is to en- 9974
+code images as vectors using a combination of convolution and pooling (Krizhevsky et al., 9975
+2012). Chapter 3 explains how to use convolutional networks for text; for images, convo- 9976
+lution is applied across the vertical, horizontal, and color dimensions. By pooling the re- 9977
+sults of successive convolutions, the image is converted to a vector representation, which 9978
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+464 CHAPTER 19. TEXT GENERATION
+Figure 19.4: Neural attention in text generation. Figure from Mei et al. (2016).[todo: per-
+mission]
+can then be fed directly into the decoder as the initial state (Vinyals et al., 2015), just as 9979
+in the sequence-to-sequence translation model (see §18.3). Alternatively, one can apply 9980
+a set of convolutional networks, yielding vector representations for different parts of the 9981
+image, which can then be combined using neural attention (Xu et al., 2015). 9982
+19.1.2.2 Attention 9983
+Given a set of embeddings of the data {zr}R
+r=1and a decoder state hm, the attention vector
+over the data can be computed using the same technique described in §18.3.1. When
+generating word mof the output, a softmax attention mechanism computes the weighted
+averagecm,
+ψα(m,r) =βα·f(Θα[hm;zr]) [19.5]
+αm=SoftMax ([ψα(m,1),ψα(m,2),...,ψα(m,R )]) [19.6]
+cm=R∑
+r=1αm→rzr, [19.7]
+wherefis an elementwise nonlinearity such as tanh or ReLU (see§3.2.1). The weighted 9984
+averagecmcan then be included in the recurrent update to the decoder state, or in the 9985
+emission probabilities, as described in §18.3.1. Figure 19.4 shows the attention to compo- 9986
+nents of a weather record, while generating the text shown on the x-axis. 9987
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+19.1. DATA-TO-TEXT GENERATION 465
+Adapting this architecture to image captioning is straightforward. A convolutional 9988
+neural networks is applied to a set of image locations, and the output at each location ℓis 9989
+represented with a vector zℓ. Attention can then be computed over the image locations, 9990
+as shown in the right panels of each pair of images in Figure 19.3. 9991
+Various modiﬁcations to this basic mechanism have been proposed. In coarse-to-ﬁne 9992
+attention (Mei et al., 2016), each record receives a global attention ar∈[0,1], which is in- 9993
+dependent of the decoder state. This global attention, which represents the overall impor- 9994
+tance of the record, is multiplied with the decoder-based attention scores, before comput- 9995
+ing the ﬁnal normalized attentions. In structured attention , the attention vector αm→·can 9996
+include structural biases, which can favor assigning higher attention values to contiguous 9997
+segments or to dependency subtrees (Kim et al., 2017). Structured attention vectors can 9998
+be computed by running the forward-backward algorithm to obtain marginal attention 9999
+probabilities (see §7.5.3.3). Because each step in the forward-backward algorithm is dif- 10000
+ferentiable, it can be encoded in a computation graph, and end-to-end learning can be 10001
+performed by backpropagation. 10002
+19.1.2.3 Decoder 10003
+Given the encoding, the decoder can function just as in neural machine translation (see 10004
+§18.3.1), using the attention-weighted encoder representation in the decoder recurrence 10005
+and/or output computation. As in machine translation, beam search can help to avoid 10006
+search errors (Lebret et al., 2016). 10007
+Many applications require generating words that do not appear in the training vocab-
+ulary. For example, a weather record may contain a previously unseen city name; a sports
+record may contain a previously unseen player name. Such tokens can be generated in the
+text by copying them over from the input (e.g., Gulcehre et al., 2016).3First introduce an
+additional variable sm∈{gen,copy}, indicating whether token w(t)
+mshould be generated
+or copied. The decoder probability is then,
+p(w(t)|w(t)
+1:m−1,Z,sm) ={
+SoftMax (βw(t)·h(t)
+m−1), s m=gen
+∑R
+r=1δ(
+w(s)
+r=w(t))
+×αm→r, sm=copy,[19.8]
+whereδ(w(s)
+r=w(t))is an indicator function, taking the value 1iff the text of the record 10008
+w(s)
+ris identical to the target word w(t). The probability of copying record rfrom the source 10009
+isδ(sm=copy)×αm→r, the product of the copy probability by the local attention. Note 10010
+that in this model, the attention weights αmare computed from the previous decoder state 10011
+hm−1. The computation graph therefore remains a feedforward network, with recurrent 10012
+paths such as h(t)
+m−1→αm→w(t)
+m→h(t)
+m. 10013
+3A number of variants of this strategy have been proposed (e.g., Gu et al., 2016; Merity et al., 2017). See
+Wiseman et al. (2017) for an overview.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+466 CHAPTER 19. TEXT GENERATION
+To facilitate end-to-end training, the switching variable smcan be represented by a 10014
+gateπm, which is computed from a two-layer feedforward network, whose input consists 10015
+of the concatenation of the decoder state h(t)
+m−1and the attention-weighted representation 10016
+of the data,cm=∑R
+r=1αm→rzr, 10017
+πm=σ(Θ(2)f(Θ(1)[h(t)
+m−1;cm])). [19.9]
+The full generative probability at token mis then,
+p(w(t)|w(t)
+1:m,Z) =πm×expβw(t)·h(t)
+m−1∑V
+j=1expβj·h(t)
+m−1
+generate+(1−πm)×R∑
+r=1δ(w(s)
+r=w(t))×αm→r
+
+copy.
+[19.10]
+19.2 Text-to-text generation 10018
+Text-to-text generation includes problems of summarization and simpliﬁcation: 10019
+•reading a novel and outputting a paragraph-long summary of the plot;410020
+•reading a set of blog posts about politics, and outputting a bullet list of the various 10021
+issues and perspectives; 10022
+•reading a technical research article about the long-term health consequences of drink- 10023
+ing kombucha, and outputting a summary of the article in language that non-experts 10024
+can understand. 10025
+These problems can be approached in two ways: through the encoder-decoder architec- 10026
+ture discussed in the previous section, or by operating directly on the input text. 10027
+19.2.1 Neural abstractive summarization 10028
+Sentence summarization is the task of shortening a sentence while preserving its mean- 10029
+ing, as in the following examples (Knight and Marcu, 2000; Rush et al., 2015): 10030
+(19.2) The documentation is typical of Epson quality: excellent. 10031
+Documentation is excellent. 10032
+10033
+4In§16.3.4.1, we encountered a special case of single-document summarization, which involved extract-
+ing the most important sentences or discourse units. We now consider the more challenging problem of
+abstractive summarization , in which the summary can include words that do not appear in the original text.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+19.2. TEXT-TO-TEXT GENERATION 467
+(19.3) Russian defense minister Ivanov called sunday for the creation of a joint front for 10034
+combating global terrorism. 10035
+Russia calls for joint front against terrorism. 10036
+10037
+Sentence summarization is closely related to sentence compression , in which the sum- 10038
+mary is produced by deleting words or phrases from the original (Clarke and Lapata, 10039
+2008). But as shown in (19.3), a sentence summary can also introduce new words, such as 10040
+against , which replaces the phrase for combatting . 10041
+Sentence summarization can be treated as a machine translation problem, using the at- 10042
+tentional encoder-decoder translation model discussed in §18.3.1 (Rush et al., 2015). The 10043
+longer sentence is encoded into a sequence of vectors, one for each token. The decoder 10044
+then computes attention over these vectors when updating its own recurrent state. As 10045
+with data-to-text generation, it can be useful to augment the encoder-decoder model with 10046
+the ability to copy words directly from the source. Rush et al. (2015) train this model by 10047
+building four million sentence pairs from news articles. In each pair, the longer sentence is 10048
+the ﬁrst sentence of the article, and the summary is the article headline. Sentence summa- 10049
+rization can also be trained in a semi-supervised fashion, using a probabilistic formulation 10050
+of the encoder-decoder model called a variational autoencoder (Miao and Blunsom, 2016, 10051
+also see§14.8.2). 10052
+When summarizing longer documents, an additional concern is that the summary not
+be repetitive: each part of the summary should cover new ground. This can be addressed
+by maintaining a vector of the sum total of all attention values thus far, tm=∑m
+n=1αn.
+This total can be used as an additional input to the computation of the attention weights,
+αm→n∝exp(
+vα·tanh(Θα[h(t)
+m;h(s)
+n;tm]))
+, [19.11]
+which enables the model to learn to prefer parts of the source which have not been at-
+tended to yet (Tu et al., 2016). To further encourage diversity in the generated summary,
+See et al. (2017) introduce a coverage loss to the objective function,
+ℓm=M(s)∑
+n=1min(αm→n,tm→n). [19.12]
+This loss will be low if αm→·assigns little attention to words that already have large 10053
+values intm→·. Coverage loss is similar to the concept of marginal relevance , in which 10054
+the reward for adding new content is proportional to the extent to which it increases 10055
+the overall amount of information conveyed by the summary (Carbonell and Goldstein, 10056
+1998). 10057
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+468 CHAPTER 19. TEXT GENERATION
+19.2.2 Sentence fusion for multi-document summarization 10058
+Inmulti-document summarization , the goal is to produce a summary that covers the 10059
+content of several documents (McKeown et al., 2002). One approach to this challenging 10060
+problem is to identify sentences across multiple documents that relate to a single theme, 10061
+and then to fuse them into a single sentence (Barzilay and McKeown, 2005). As an exam- 10062
+ple, consider the following two sentences (McKeown et al., 2010): 10063
+(19.4) Palin actually turned against the bridge project only after it became a national 10064
+symbol of wasteful spending. 10065
+(19.5) Ms. Palin supported the bridge project while running for governor, and aban- 10066
+doned it after it became a national scandal. 10067
+Anintersection preserves only the content that is present in both sentences: 10068
+(19.6) Palin turned against the bridge project after it became a national scandal. 10069
+Aunion includes information from both sentences: 10070
+(19.7) Ms. Palin supported the bridge project while running for governor, but turned 10071
+against it when it became a national scandal and a symbol of wasteful spending. 10072
+Dependency parsing is often used as a technique for sentence fusion. After parsing
+each sentence, the resulting dependency trees can be aggregated into a lattice (Barzilay
+and McKeown, 2005) or a graph structure (Filippova and Strube, 2008), in which identical
+or closely related words (e.g., Palin, bridge, national ) are fused into a single node. The
+resulting graph can then be pruned back to a tree by solving an integer linear program
+(see§13.2.2),
+max
+y∑
+i,j,rψ(ir− →j,w;θ)×yi,j,r [19.13]
+s.t.y∈C, [19.14]
+where the variable yi,j,r∈{0,1}indicates whether there is an edge from itojof typer, 10073
+the score of this edge is ψ(ir− →j,w;θ), andCis a set of constraints, described below. As 10074
+usual,wis the list of words in the graph, and θis a vector of parameters. The score ψ(ir− → 10075
+j,w;θ)reﬂects the “importance” of the modiﬁer jto the overall meaning: in intersective 10076
+fusion, this score indicates the extent to which the content in this edge is expressed in all 10077
+sentences; in union fusion, the score indicates whether the content in the edge is expressed 10078
+in any sentence. 10079
+The constraint set Censures that yforms a valid dependency graph. It can also im- 10080
+pose additional linguistic constraints: for example, ensuring that coordinated nouns are 10081
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+19.3. DIALOGUE 469
+sufﬁciently similar. The resulting tree must then be linearized into a sentence. This is 10082
+typically done by generating a set of candidate linearizations, and choosing the one with 10083
+the highest score under a language model (Langkilde and Knight, 1998; Song et al., 2016). 10084
+19.3 Dialogue 10085
+Dialogue systems are capable of conversing with a human interlocutor, often to per- 10086
+form some task (Grosz, 1979), but sometimes just to chat (Weizenbaum, 1966). While re- 10087
+search on dialogue systems goes back several decades (Carbonell, 1970; Winograd, 1972), 10088
+commercial systems such as Alexa and Siri have recently brought this technology into 10089
+widespread use. Nonetheless, there is a signiﬁcant gap between research and practice: 10090
+many practical dialogue systems remain scripted and inﬂexible, while research systems 10091
+emphasize abstractive text generation, “on-the-ﬂy” decision making, and probabilistic 10092
+reasoning about the user’s intentions. 10093
+19.3.1 Finite-state and agenda-based dialogue systems 10094
+Finite-state automata were introduced in chapter 9 as a formal model of computation, 10095
+in which string inputs and outputs are linked to transitions between a ﬁnite number of 10096
+discrete states. This model naturally ﬁts simple task-oriented dialogues, such as the one 10097
+shown in the left panel of Figure 19.5. This (somewhat frustrating) dialogue can be repre- 10098
+sented with a ﬁnite-state transducer, as shown in the right panel of the ﬁgure. The accept- 10099
+ing state is reached only when the two needed pieces of information are provided, and the 10100
+human user conﬁrms that the order is correct. In this simple scenario, the TOPPING and 10101
+ADDRESS are the two slots associated with the activity of ordering a pizza, which is called 10102
+aframe . Frame representations can be hierarchical: for example, an ADDRESS could have 10103
+slots of its own, such as STREET and CITY . 10104
+In the example dialogue in Figure 19.5, the user provides the precise inputs that are 10105
+needed in each turn (e.g., anchovies ;the College of Computing building ). Some users may 10106
+prefer to communicate more naturally, with phrases like I’d, uh, like some anchovies please . 10107
+One approach to handling such utterances is to design a custom grammar, with non- 10108
+terminals for slots such as TOPPING and LOCATION . However, context-free parsing of 10109
+unconstrained speech input is challenging. A more lightweight alternative is BIO-style 10110
+sequence labeling (see §8.3), e.g.: 10111
+(19.9) I’d
+Olike
+Oanchovies
+B-TOPPING,
+Oand
+Oplease
+Obring
+Oit
+Oto
+Othe
+B-ADDRCollege
+I-ADDRof
+I-ADDRComputing
+I-ADDR10112
+Building
+I-ADDR.
+O10113
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+470 CHAPTER 19. TEXT GENERATION
+(19.8) A: I want to order a pizza.
+B: What toppings?
+A: Anchovies.
+B: Ok, what address?
+A: The College of Computing
+building.
+B: Please conﬁrm: one pizza
+with artichokes, to be delivered
+to the College of Computing
+building.
+A: No.
+B: What toppings?
+. . .
+q0 start
+q1
+q2
+q3
+q4
+q5
+q6What toppings?
+Topping
+What address?
+Address
+Conﬁrm?No
+Yes
+Figure 19.5: An example dialogue and the associated ﬁnite-state model. In the ﬁnite-state
+model, SMALL CAPS indicates that the user must provide information of this type in their
+answer.
+The tagger can be driven by a bi-directional recurrent neural network, similar to recurrent 10114
+approaches to semantic role labeling described in §13.2.3. 10115
+The input in (19.9) could not be handled by the ﬁnite-state system from Figure 19.5, 10116
+which forces the user to provide the topping ﬁrst, and then the location. In this sense, 10117
+theinitiative is driven completely by the system. Agenda-based dialogue systems ex- 10118
+tend ﬁnite-state architectures by attempting to recognize all slots that are ﬁlled by the 10119
+user’s reply, thereby handling these more complex examples. Agenda-based systems dy- 10120
+namically pose additional questions until the frame is complete (Bobrow et al., 1977; Allen 10121
+et al., 1995; Rudnicky and Xu, 1999). Such systems are said to be mixed-initiative , because 10122
+both the user and the system can drive the direction of the dialogue. 10123
+19.3.2 Markov decision processes 10124
+The task of dynamically selecting the next move in a conversation is known as dialogue 10125
+management . This problem can be framed as a Markov decision process , which is a 10126
+theoretical model that includes a discrete set of states, a discrete set of actions, a function 10127
+that computes the probability of transitions between states, and a function that computes 10128
+the cost or reward of action-state pairs. Let’s see how each of these elements pertains to 10129
+the pizza ordering dialogue system. 10130
+•Each state is a tuple of information about whether the topping and address are 10131
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+19.3. DIALOGUE 471
+known, and whether the order has been conﬁrmed. For example, 10132
+(KNOWN TOPPING , UNKNOWN ADDRESS , NOT CONFIRMED ) [19.15]
+is a possible state. Any state in which the pizza order is conﬁrmed is a terminal 10133
+state, and the Markov decision process stops after entering such a state. 10134
+•The set of actions includes querying for the topping, querying for the address, and 10135
+requesting conﬁrmation. Each action induces a probability distribution over states, 10136
+p(st|at,st−1). For example, requesting conﬁrmation of the order is not likely to 10137
+result in a transition to the terminal state if the topping is not yet known. This 10138
+probability distribution over state transitions may be learned from data, or it may 10139
+be speciﬁed in advance. 10140
+•Each state-action-state tuple earns a reward, ra(st,st+1). In the context of the pizza 10141
+ordering system, a simple reward function would be, 10142
+ra(st,st+1) =
+
+0, a =CONFIRM,st+1= (*, *, C ONFIRMED )
+−10, a =CONFIRM,st+1= (*, *, N OTCONFIRMED )
+−1, a̸=CONFIRM[19.16]
+This function assigns zero reward for successful transitions to the terminal state, a 10143
+large negative reward to a rejected request for conﬁrmation, and a small negative re- 10144
+ward for every other type of action. The system is therefore rewarded for reaching 10145
+the terminal state in few steps, and penalized for prematurely requesting conﬁrma- 10146
+tion. 10147
+In a Markov decision process, a policy is a function π:S↦→A that maps from states to 10148
+actions (see§15.2.4.3). The value of a policy is the expected sum of discounted rewards, 10149
+Eπ[∑T
+t=1γtrat(st,st+1)], whereγis the discount factor, γ∈[0,1). Discounting has the 10150
+effect of emphasizing rewards that can be obtained immediately over less certain rewards 10151
+in the distant future. 10152
+An optimal policy can be obtained by dynamic programming, by iteratively updating 10153
+thevalue function V(s), which is the expectation of the cumulative reward from sunder 10154
+the optimal action a, 10155
+V(s)←max
+a∈A∑
+s′∈Sp(s′|s,a)[ra(s,s′) +γV(s′)]. [19.17]
+The value function V(s)is computed in terms of V(s′)for all states s′∈ S . A series 10156
+of iterative updates to the value function will eventually converge to a stationary point. 10157
+This algorithm is known as value iteration . Given the converged value function V(s), the 10158
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+472 CHAPTER 19. TEXT GENERATION
+optimal action at each state is the argmax, 10159
+π(s) = argmax
+a∈A∑
+s′∈Sp(s′|s,a)[ra(s,s′) +γV(s′)]. [19.18]
+Value iteration and related algorithms are described in detail by Sutton and Barto (1998). 10160
+For applications to dialogue systems, see Levin et al. (1998) and Walker (2000). 10161
+The Markov decision process framework assumes that the current state of the dialogue 10162
+is known. In reality, the system may misinterpret the user’s statements — for example, 10163
+believing that a speciﬁcation of the delivery location (P EACHTREE ) is in fact a speciﬁcation 10164
+of the topping ( PEACHES ). In a partially observable Markov decision process (POMDP) , 10165
+the system receives an observation o, which is probabilistically conditioned on the state, 10166
+p(o|s). It must therefore maintain a distribution of beliefs about which state it is in, with 10167
+qt(s)indicating the degree of belief that the dialogue is in state sat timet. The POMDP 10168
+formulation can help to make dialogue systems more robust to errors, particularly in the 10169
+context of spoken language dialogues, where the speech itself may be misrecognized (Roy 10170
+et al., 2000; Williams and Young, 2007). However, ﬁnding the optimal policy in a POMDP 10171
+is computationally intractable, requiring additional approximations. 10172
+19.3.3 Neural chatbots 10173
+Chatting is a lot easier when you don’t need to get anything done. Chatbots are systems 10174
+that parry the user’s input with a response that keeps the conversation going. They can be 10175
+built from the encoder-decoder architecture discussed in §18.3 and§19.1.2: the encoder 10176
+converts the user’s input into a vector, and the decoder produces a sequence of words as a 10177
+response. For example, Shang et al. (2015) apply the attentional encoder-decoder transla- 10178
+tion model, training on a dataset of posts and responses from the Chinese microblogging 10179
+platform Sina Weibo.5This approach is capable of generating replies that relate themati- 10180
+cally to the input, as shown in the following examples:610181
+(19.10) A: High fever attacks me every New Year’s day. 10182
+Get B: well soon and stay healthy! 10183
+(19.11) A: I gain one more year. Grateful to my group, so happy. 10184
+B: Getting old now. Time has no mercy. 10185
+While encoder-decoder models can generate responses that make sense in the con- 10186
+text of the immediately preceding turn, they struggle to maintain coherence over longer 10187
+5Twitter is also frequently used for construction of dialogue datasets (Ritter et al., 2011; Sordoni et al.,
+2015). Another source is technical support chat logs from the Ubuntu linux distribution (Uthus and Aha,
+2013; Lowe et al., 2015).
+6All examples are translated from Chinese by Shang et al. (2015).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+19.3. DIALOGUE 473
+Figure 19.6: A hierarchical recurrent neural network for dialogue, with recurrence over
+both words and turns, from Serban et al. (2016). [todo: permission]
+conversations. One solution is to model the dialogue context recurrently. This creates 10188
+ahierarchical recurrent network , including both word-level and turn-level recurrences. 10189
+The turn-level hidden state is then used as additional context in the decoder (Serban et al., 10190
+2016), as shown in Figure 19.6. 10191
+An open question is how to integrate the encoder-decoder architecture into task-oriented 10192
+dialogue systems. Neural chatbots can be trained end-to-end: the user’s turn is analyzed 10193
+by the encoder, and the system output is generated by the decoder. This architecture 10194
+can be trained by log-likelihood using backpropagation (e.g., Sordoni et al., 2015; Serban 10195
+et al., 2016), or by more elaborate objectives, using reinforcement learning (Li et al., 2016). 10196
+In contrast, the task-oriented dialogue systems described in §19.3.1 typically involve a 10197
+set of specialized modules: one for recognizing the user input, another for deciding what 10198
+action to take, and a third for arranging the text of the system output. 10199
+Recurrent neural network decoders can be integrated into Markov Decision Process 10200
+dialogue systems, by conditioning the decoder on a representation of the information 10201
+that is to be expressed in each turn (Wen et al., 2015). Speciﬁcally, the long short-term 10202
+memory (LSTM; §6.3) architecture is augmented so that the memory cell at turn mtakes 10203
+an additional input dm, which is a representation of the slots and values to be expressed 10204
+in the next turn. However, this approach still relies on additional modules to recognize 10205
+the user’s utterance and to plan the overall arc of the dialogue. 10206
+Another promising direction is to create embeddings for the elements in the domain: 10207
+for example, the slots in a record and the entities that can ﬁll them. The encoder then 10208
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+474 CHAPTER 19. TEXT GENERATION
+encodes not only the words of the user’s input, but the embeddings of the elements that 10209
+the user mentions. Similarly, the decoder is endowed with the ability to refer to speciﬁc 10210
+elements in the knowledge base. He et al. (2017) show that such a method can learn to 10211
+play a collaborative dialogue game, in which both players are given a list of entities and 10212
+their properties, and the goal is to ﬁnd an entity that is on both players’ lists. 10213
+Further reading 10214
+Gatt and Krahmer (2018) provide a comprehensive recent survey on text generation. For 10215
+a book-length treatment of earlier work, see Reiter and Dale (2000). For a survey on image 10216
+captioning, see Bernardi et al. (2016); for a survey of pre-neural approaches to dialogue 10217
+systems, see Rieser and Lemon (2011). Dialogue acts were introduced in §8.6 as a label- 10218
+ing scheme for human-human dialogues; they also play a critical in task-based dialogue 10219
+systems (e.g., Allen et al., 1996). The incorporation of theoretical models of dialogue into 10220
+computational systems is reviewed by Jurafsky and Martin (2009, chapter 24). 10221
+While this chapter has focused on the informative dimension of text generation, an- 10222
+other line of research aims to generate text with conﬁgurable stylistic properties (Walker 10223
+et al., 1997; Mairesse and Walker, 2011; Ficler and Goldberg, 2017; Hu et al., 2017). This 10224
+chapter also does not address the generation of creative text such as narratives (Riedl and 10225
+Young, 2010), jokes (Ritchie, 2001), poems (Colton et al., 2012), and song lyrics (Gonc ¸alo Oliveira 10226
+et al., 2007). 10227
+Exercises 10228
+1. The SimpleNLG system produces surface realizations from representations of de- 10229
+sired syntactic structure (Gatt and Reiter, 2009). This system can be accessed on 10230
+github athttps://github.com/simplenlg/simplenlg . Download the sys- 10231
+tem, and produce realizations of the following examples: 10232
+(19.12) Call me Ismael. 10233
+(19.13) I try all things. 10234
+(19.14) I achieve what I can. 10235
+Then convert each example to a question. [todo: Can’t get SimpleNLG to work with 10236
+python anymore] 10237
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+

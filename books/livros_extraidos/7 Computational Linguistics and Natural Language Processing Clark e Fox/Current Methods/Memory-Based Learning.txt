@@ -1,0 +1,541 @@
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 154 — #1
+6 Memory-Based Learning
+WALTER DAELEMANS ANDANTAL
+VAN DEN BOSCH
+1 Introduction
+Most natural language processing (NLP) tasks require the translation of one levelof representation to another. For example, in text to speech systems, it is necessaryto have a component that translates the spelling representation of words to a cor-responding phonetic representation; in part-of-speech (POS) tagging, the words ofa sentence are translated into their contextually appropriate POS tags. Some tasksin NLP involve segmentation: identifying the syllable boundaries in a word or thesyntactic phrases in a sentence are examples of such chunking tasks. Other tasks,
+such as document categorization and word-sense disambiguation require a choicebetween a limited number of possibilities.
+What all these types of NLP tasks have in common is that they can be formulated
+as a classiﬁcation task , and are therefore appropriate problems for discriminative
+supervised machine learning methods. With some effort, even tasks like corefer-ence resolution and machine translation can be cast as a classiﬁcation problem. Inthis chapter, we will see an assortment of examples of NLP problems formulatedas classiﬁcation-based learning.
+Classiﬁcation-based learning starts from a set of instances (examples) consisting
+each of a set of input features (a feature vector) and an output class. For example,for the NLP task of predicting the pronunciation of a word, given a number ofwords with their phonetic transcription as training material, we could create aninstance for each letter, as in Table 6.1. One of the input features is the letter tobe transcribed (here indicated as the focus feature) and other features would bethe spelling symbols before and after the focus; in this case a context of three suchsymbols to the left and to the right are used to make a total of seven predictivefeatures. The output class is the phoneme corresponding with the focus letter inthat context. Data like this can be used as training material to construct a classiﬁer
+that is subsequently used to classify feature vectors belonging to new words, notpart of the training data. In this way, the classiﬁer generalizes from the originaltraining data, which is the purpose of machine learning.
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 155 — #2
+Memory-Based Learning 155
+Table 6.1 Examples generated for the letter–phoneme conversion task, from
+the word–phonemization pair booking–[bukIN], aligned as [b-ukI-N]
+Instance number Left context Focus letter Right context Classiﬁcation
+1 ___ b ook b
+2 __b o oki –
+3_ bo o k in u
+4b oo k i ng k
+5 ook i ng_ I
+6o ki n g __ –
+7k in g _ __ N
+Memory-based learning (MBL) is one of the techniques that has been proposed
+to learn these NLP classiﬁcation problems. Many other techniques for supervisedclassiﬁcation-based learning exist. See Chapter 5,
+MAXIMUM ENTROPY MODELS ,
+Chapter 7, DECISION TREES , Chapter 9, ARTIFICIAL NEURAL NETWORKS .I nt h i s
+chapter, we will show how MBL differs from these approaches.
+MBL has as its deﬁning characteristic that it stores in memory all available
+instances of a task, and that it extrapolates from the most similar instances inmemory to solve problems for which no solution is present in memory. What themost similar instances (the nearest neighbors) are is deﬁned by an adaptive similarity
+metric. The general principle is well known in artiﬁcial intelligence and cogni-tive psychology, and can be found under different labels (case-based reasoning,exemplar-based models, k-NN, instance-based learning, memory-based reason-
+ing, etc.). The approach has been used in application areas ranging from visionand speech via expert systems to robotics and models of human categorization.
+In the remainder of this chapter, we introduce an operationalization of MBL,
+implemented in the open source software package TiMBL in Section 2. Applica-tions in computational linguistics and computational psycholinguistics are dis-cussed in Sections 3 and 4 respectively. We then move to a discussion of thestrengths and limitations of the approach in Section 5, and show how Fambl, avariant of MBL based on careful abstraction, discussed in Section 6, can strike abalance between abstraction and memory.
+2 Memory-Based Language Processing
+MBL, and its application to NLP , which we will call memory-based languageprocessing (MBLP) here, is based on the idea that learning and processingare two sides of the same coin. Learning is the storage of examples in mem-ory, and processing is similarity-based reasoning with these stored examples.The approach is inspired by work in pre-Chomskyan linguistics, categorization
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 156 — #3
+156 Walter Daelemans and Antal van den Bosch
+psychology, and statistical pattern recognition. The main claim is that, contrary tomajority belief since Chomsky, generalization (going beyond the data) can also beachieved without formulating abstract representations such as rules. Abstract rep-resentations such as rules, decision trees, statistical models, and trained artiﬁcialneural networks forget about the data itself, and only keep the abstraction. Sucheager learning approaches are usually contrasted with table lookup, a method that
+obviously cannot generalize. However, by adding similarity-based reasoning totable lookup, lazy learning approaches such as MBL are capable of going beyond
+the training data as well, and on top of that keep all the data available. This isarguably a useful property for NLP tasks: in such tasks, low-frequency or atypicalexamples are often not noise to be abstracted from in models, but on the contraryan essential part of the model. In the remainder of this section, we will describe aparticular instantiation of memory-based approaches, MBLP , that we have foundto work well for language processing problems and for which we make availableopen source software (TiMBL). The approach is a combination and extension ofideas from instance-based learning (Aha et al., 1991) and memory-based reason-ing (Stanﬁll & Waltz 1986), and a direct descendent of the k-NN algorithm (Fix &
+Hodges 1951; Cover & Hart 1967).
+2.1 MBLP: an operationalization of MBL
+An MBLP system has two components: a learning component which is memory-
+based, and a performance component which is similarity-based. The learning com-
+ponent is memory-based as it involves storing examples in memory withoutabstraction, selection, or restructuring. In the performance component of an MBLPsystem the stored examples are used as a basis for mapping input to output;input instances are classiﬁed by assigning them an output label. During classi-ﬁcation, a previously unseen test instance is presented to the system. The class ofthis instance is determined on the basis of an extrapolation from the most simi-lar example(s) in memory. There are different ways in which this approach canbe operationalized. The goal of this section is to provide a clear deﬁnition ofthe operationalizations we have found to work well for NLP tasks. TiMBL is anopen source software package implementing all algorithms and metrics discussedhere.
+1
+First, a visual example serves to illustrate the basic concepts of memory-based
+ork-nearest neighbor classiﬁcation. The left part of Figure 6.1 displays part of a
+two-dimensional Euclidean space with three examples labeled black (i.e., they areexamples of the class ‘black’), and three examples labeled white. Each example’stwo coordinates are its two numeric feature values. An example occupies a pieceof the space, a Voronoi tile, in which it is the closest example. The so-called Voronoitesselation depicted in the left part of Figure 6.1 is essentially a map of the decisionboundaries of the 1-nearest neighbor classiﬁcation rule: the tile on which a newinstance is positioned determines the single nearest neighbor, and the subsequentclassiﬁcation step simply copies the class label of that nearest neighbor (here, blackor white) to the new instance.
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 157 — #4
+Memory-Based Learning 157
+d
+Figure 6.1 An example 2D space with six examples labeled white or black. Left: the
+Voronoi tesselation of the space. Right: around a new test item t, nearest neighbors are
+found at four different distances; some examples are equidistant. The parameter kcan
+regulate the number of either nearest neighbors or distances. Alternatively, a distance d
+can specify the circle (Parzen window) within which nearest neighbors are sought.
+Rather than pre-computing the Voronoi tesselation, which is restricted to be
+used for single nearest-neighbor classiﬁcation, the common mode of operation ofthe more generic k-nearest neighbor classiﬁer is to perform a search for the nearest
+examples around each new instance tto base a classiﬁcation on. The key parame-
+terkdetermines the number of examples within an expanding circle (or hyperball)
+around the new instance. This can either be the actual number of examples foundwhile extending outwards, or the number of distance rings on which equidistantexamples are found. In Figure 6.1, the six visible examples are found at four dif-ferent distances. Alternatively, a distance dcan be speciﬁed as the ﬁxed size of the
+hyperball or Parzen window (Parzen 1962) in which nearest neighbors are sought.Using Parzen windows implies ignoring the local example density; a Parzen win-dow may contain no examples or all examples. In contrast, the k-nearest neighbor
+approach in its most basic form ignores the actual distance at which the k-nearest
+neighbors are found, and adapts the hyperball to the local example density aroundthe new instance. In the remainder of this chapter we adopt the k-nearest neighbor
+approach, and show how the distance of the target to different neighbors can befactored into the classiﬁcation.
+As a side note, the k-nearest neighbor classiﬁer has some strong formal consis-
+tency results. With k=1, the classiﬁcation rule is guaranteed to yield an error
+rate no worse than twice the Bayes error rate (the minimum achievable errorrate given the distribution of the data) as the amount of data approaches inﬁnity(Cover & Hart 1967). Another useful property of the classiﬁer is its insensitivity tothe number of classes; this number is a factor neither in learning (storage) nor inclassiﬁcation.
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 158 — #5
+158 Walter Daelemans and Antal van den Bosch
+Abstracting over the particular type of feature spaces (such as Euclidean space
+in the example of Figure 6.1), the similarity between a new instance Xand all
+examples Yin memory is computed using a similarity metric (that actually mea-
+sures distance) Δ(X ,Y). Classiﬁcation works by assigning the most frequent class
+within the kmost similar example(s) as the class of a new test instance.
+The most basic metric that works for instances with symbolic features such as
+many data sets in language and speech processing is the overlap metric given in
+equations (1) and (2), where Δ(X ,Y)is the distance between instances Xand Y,
+represented by nfeatures, and δis the distance per feature. The distance between
+two patterns is simply the sum of the differences between the features. In thecase of symbolic feature values, the distance is 0 with an exact match, and 1with a mismatch. The k-NN algorithm with this metric is called IB1 in Aha et al.
+(1991).(1)Δ(X ,Y)=
+n∑
+i=1δ(xi,yi)
+where:(2)δ(x
+i,yi)=⎧⎪⎨⎪⎩|
+xi−yi
+max i−min i|if numeric, otherwise
+0i f xi=yi
+1i f xi̸=yi
+Our deﬁnition of this basic algorithm is slightly different from the IB1 algorithm
+originally proposed by Aha et al. (1991). The main difference is that in our ver-sion the value of krefers to k-nearest distances rather than k-nearest examples. As
+illustrated in the right-hand side of Figure 6.1, several examples in memory can beequally similar to a new instance. Instead of choosing one at random, all examplesat the same distance are added to the nearest-neighbor set.
+The distance metric in equation (2) simply counts the number of (mis)matching
+feature values in two instances being compared. In the absence of informationabout feature relevance, this is a reasonable choice. Otherwise, we can use domainknowledge to weight or select different features. We can also compute statisticsabout the relevance of features by looking at which features are good predictors ofthe class labels, using feature weighting methods such as information gain.
+Information gain (IG) weighting looks at each feature in isolation, and estimates
+how much information it contributes to our knowledge of the correct class label.The information gain estimate of feature iis measured by computing the difference
+in uncertainty (i.e., entropy) between the situations without and with knowledgeof the value of that feature (the formula is given in equation (3)), where Cis the set
+of class labels, V
+iis the set of values for feature i,a n d H(C)=−∑
+c∈CP(c) log2P(c)
+is the entropy of the class labels. IG is used in decision tree learning (Chapter 7,
+DECISION TREES ) as an ordering criterion.
+(3) wi=H(C)−∑
+v∈V iP(v)×H(C|v)
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 159 — #6
+Memory-Based Learning 159
+The probabilities are estimated from relative frequencies in the training set. For
+numeric features, an intermediate step needs to be taken to apply the symbol-based computation of IG. All real values of a numeric feature are temporarilydiscretized into a number of intervals. Instances are ranked on their real value,and then spread evenly over the intervals; each interval contains the same num-ber of instances (this is necessary to avoid empty intervals in the case of skeweddistributions of values). Instances in each of these intervals are then used in the IGcomputation as all having the same unordered, symbolic value per group. Notethat this discretization is only temporary; it is not used in the computation of thedistance metric.
+The IG weight of a feature is a probability-weighted average of the informa-
+tiveness of the different values of the feature. This makes the values with lowfrequency but high informativity invisible. Such values disappear in the average.At the same time, this also makes the IG weight robust to estimation problems insparse data. Each parameter (weight) is estimated on the whole data set.
+A well-known problem with IG is that it tends to overestimate the relevance
+of features with large numbers of values, MBLP therefore also includes the gain
+ratio normalization and several alternative feature-relevance weighting methods
+(chi-squared, shared variance, special metrics for binary features, etc.).
+The choice of representation for instances in MBLP is the key factor determining
+the accuracy of the approach. The feature values and classes in NLP tasks are oftenrepresented by symbolic labels. The metrics that have been described so far, i.e.,(weighted) overlap, are limited to either a match or a mismatch between featurevalues. This means that all values of a feature are seen as equally dissimilar to eachother. However, we would like to express that some feature-value pairs are more
+or less similar than other pairs. For instance, we would like vowels to be moresimilar to each other than to consonants in problems where features are lettersor phonemes, nouns more similar to other nouns than to verbs in problems wherefeatures are words, etc. As with feature weights, domain knowledge can be used tocreate a feature system expressing these similarities, e.g., by splitting or collapsingfeatures. But again, an automatic technique might be better in modeling thesestatistical relations.
+For such a purpose a metric was deﬁned by Stanﬁll and Waltz (1986) and further
+reﬁned by Cost and Salzberg (1993). It is called the (modiﬁed) value differencemetric (MVDM; equation (4)), a method to determine the similarity of the val-ues of a feature by looking at co-occurrence of values with target classes. For thedistance between two values v
+1,v2of a feature, we compute the difference of the
+conditional distribution of the classes C1...nfor these values.
+(4)δ(v1,v2)=n∑
+i=1|P(C i|v1)−P(C i|v2)|
+MVDM differs considerably from overlap-based metrics in its composition of
+the nearest-neighbor sets. Overlap causes an abundance of ties in nearest-neighborposition. For example, if the nearest neighbor is at a distance of one mismatch
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 160 — #7
+160 Walter Daelemans and Antal van den Bosch
+from the test instance, then the nearest-neighbor set will contain the entire parti-tion of the training set that contains anyvalue for the mismatching feature. With
+the MVDM metric, however, either the nearest-neighbor set will contain pat-terns which have the value with the lowest δ(v
+1,v2)in the mismatching position,
+or MVDM will select a totally different nearest neighbor which has less exactlymatching features, but a smaller distance in the mismatching features (Zavrel &Daelemans 1997).
+MBLP also contains different metrics for extrapolation from nearest neighbors
+(linear or exponential distance-based decay) and for computing exemplar sim-ilarity with weighted examples. Such weights could be based on frequency ofinstances, or on their goodness or typicality according to some criterion. MBLPis not a new algorithm, rather, it is a set of algorithm parameterizations selectedand optimized for use with language processing data. We will not go into fur-ther details of MBLP here. However, we will return to the crucial discussion aboutgeneralization and abstraction in lazy and eager learning methods in Section 6.First we provide an overview of application areas of MBLP .
+3 NLP Applications
+As explained in Section 1, MBL shares its generic applicability to classiﬁcationtasks with any other machine learning classiﬁer. Hence, when an NLP task isframed as a classiﬁcation task, memory-based learning can be applied to it. Inthe past decade, memory-based learning has indeed been applied across a widerange of NLP tasks. Before we turn to the limitations of memory-based learning inSection 5, we provide an overview of types of NLP tasks in which memory-basedlearning has been successful in this and the next section.
+3.1 Morpho-phonology
+Tasks at the phonological and morphological levels are often framed as sliding-window tasks over sequences of letters or phonemes, where the task is framedas a mapping of one symbol set to another (letters to phonemes), or a mappingfrom an unsegmented string to a segmented string (words to morphological anal-yses). In case of segmentation tasks such as syllabiﬁcation, the output symbol settypically consists of a ‘null’ value that signiﬁes that no boundary occurs at thefocus input symbol, and one or more positive values marking that some type ofboundary does occur at the focus letter. Example morpho-phonological tasks towhich memory-based learning has been applied are hyphenation and syllabiﬁca-tion (Daelemans & van den Bosch 1992); grapheme-to-phoneme conversion (vanden Bosch & Daelemans 1993; Daelemans & van den Bosch 1996); and morpholog-ical analysis (van den Bosch & Daelemans 1999; de Pauw et al., 2004). Althoughthese examples are applied mostly to Germanic languages (English, Dutch, andGerman), applications to other languages with more complicated writing sys-tems or morphologies, or with limited resources, have also been presented: for
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 161 — #8
+Memory-Based Learning 161
+example, letter–phoneme conversion in Scottish Gaelic (Wolters & van den Bosch1997), morphological analysis of Arabic (Marsi et al., 2006), or diacritic restorationin languages with a diacritic-rich writing system (Mihalcea 2002; de Pauw et al.,2007).
+Most of these studies report the important advantage of the memory-based
+approach to faithfully reproduce all training data; essentially, the method can beseen as a compressed lexicon that also generalizes to unseen words if needed. Asan average training lexicon typically covers unseen text at about 95 percent (i.e.,5 percent of the words in a new text are not in the lexicon), the key goal of thememory-based learner is to process the 5 percent unknown words as accuratelyas possible. In the reported studies, most attention is indeed paid to evaluatingthe classiﬁers’ generalization performance on unseen words, often at the wordlevel. Actual percentages are intrinsically linked to the task, the language, andthe amount of training data, and can typically only be assessed properly in thecontext of a higher-level task, such as comparative human judgments of theunderstandability of a speech synthesizer with and without the module underevaluation.
+3.2 Syntacto-semantics
+In the mid-1990s, memory-based learning was among the early set of machinelearning classiﬁers to be applied to tasks in shallow parsing and lexical seman-tics: part-of-speech tagging (Daelemans et al., 1996; Zavrel & Daelemans 1999;van Halteren et al., 2001) and PP-attachment (Zavrel et al., 1997), mostly onEnglish benchmark tasks. Also, early developments of shallow parsing modulesusing memory-based learning contributed to the development of the ﬁeld of shal-low parsing: subcategorization (Buchholz 1998); phrase chunking (Veenstra 1998;Tjong Kim Sang & Veenstra 1999); and the integration of memory-based modulesfor shallow parsing (Daelemans et al., 1999a; Buchholz et al., 1999; Yeh 2000a).More recently, memory-based learning has been integrated as a classiﬁer engine inmore complicated dependency parsing systems (Nivre et al., 2004; Sagae & Lavie2005; Canisius et al., 2006).
+Memory-based learning has been applied succesfully to lexical semantics, in
+particular to word-sense disambiguation (Stevenson & Wilks 1999; Kokkinakis2000; Veenstra et al., 2000; Hoste et al., 2002; Mihalcea 2002; Decadt et al., 2004),but also in other lexical semantic tasks such as determining noun countability(Baldwin & Bond 2003), animacy (Or˘ asan & Evans 2001), and semantic relationswithin noun compounds (Kim & Baldwin 2006; Nastase et al., 2006).
+3.3 Text analysis
+Extending the simple sliding-window approach that proved to be useful inphrase chunking, memory-based learning has also been used for named entityrecognition (Buchholz & van den Bosch 2000; de Meulder & Daelemans 2003;
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 162 — #9
+162 Walter Daelemans and Antal van den Bosch
+Hendrickx & van den Bosch 2003; Sporleder et al., 2006; Leveling & Hartrumpf2007), and domain-dependent information extraction (Zavrel et al., 2000; Zavrel &Daelemans 2003; Ahn 2006).
+Many NLP tasks beyond the sentence level tend not to be phrased (or
+phrasable) in simple sliding-window representations. Some tasks require morecomplicated structures, such as pairs of phrases in their context bearing somerelation to be classiﬁed, as in anaphora and coreference resolution (Mitkovet al., 2002; Preiss 2002a; Hoste 2005), while other tasks appear to be bestsolved using vector space or bag-of-words representations, to which memory-based learning is also amenable, such as text classiﬁcation (Spitters 2000), questionclassiﬁcation (Cumbreras et al., 2006; Dridan & Baldwin 2007), or spam ﬁltering(Androutsopoulos et al., 2000).
+3.4 Dialogue and discourse
+In the ﬁeld of discourse and dialogue modeling, memory-based learning has beenused for shallow semantic analysis of speech-recognised utterances (Gustafsonet al., 1999; van den Bosch et al., 2001; Lendvai et al., 2002; 2003a; Lendvai& Geertzen 2007), in disﬂuency detection in transcribed spontaneous speech(Lendvai et al., 2003b), and in classifying ellipsis in dialogue (Fernández et al.,2004). In most of these studies, the task is framed as a classiﬁcation task into alimited number of labels (usually, some dialogue-act labeling scheme), while theinput can be a mix of bag-of-word features, dialogue history features (e.g., pre-vious dialogue acts), and acoustic features of recognized speech in the context ofspoken dialogue systems. As memory-based learning handles numeric features aseasily as symbolic features, it is unproblematic to mix these heterogeneous featuresets in a single classiﬁer.
+3.5 Generation, language modeling, and translation
+While the general scope of natural language generation, language modeling, andtranslation comprises full sequences, memory-based learning has been appliedto word or phrase-level subtasks within these more general problem ﬁelds.For instance, in natural language generation, memory-based learning has beenapplied particularly to morpho-syntactic generation subtasks: inﬂection gener-ation, such as diminutive formation (Daelemans et al., 1998), article generation(Minnen et al., 2000), or determining the order of multiple prenominal adjectives(Malouf 2000).
+Language modeling has mostly been the domain of stochastic n-gram models,
+but as Zavrel & Daelemans (1997) have already shown, there is an equivalencerelation between back-off smoothing in n-gram models and memory-based classi-
+ﬁcation. Essentially, language modeling in n-gram models can be phrased as the
+classiﬁcation task of predicting the next word given a context of previous words.Indeed, memory-based language models can be developed that perform this task(van den Bosch 2006a). As a specialization of these generic language models,
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 163 — #10
+Memory-Based Learning 163
+memory-based confusable-speciﬁc disambiguators can be trained to determinewhich of a confusable set of words (e.g., to,too,a n d two) is appropriate in a
+certain context. An accurate confusable disambiguator can be useful as a spellingcorrecting module in a prooﬁng environment.
+In machine translation, memory-based learning bears a close relation to
+example-based machine translation (EBMT). A ﬁrst EBMT implementation usingmemory-based learning is described in van den Bosch et al. (2007b). Analogousto memory-based language modeling, memory-based translation maps a localcontext of words (a part of a source-language sentence) to a target word or n-gram
+of words (part of the corresponding target sentence), where the target word or cen-ter of the target n-gram is aligned to the source word according to an externally
+computed word alignment.
+We have not tried to be exhaustive in this section. There are other implemen-
+tations of k-nearest neighbor classiﬁcation apart from TiMBL that have been used
+in NLP , and alternative memory-based algorithms have been proposed for spe-ciﬁc tasks. As a good example, Bob Damper and colleagues have developed apsycholinguistic proposal for modeling pronunciation (Pronunciation by Anal-ogy) into a state-of-the-art grapheme-to-phoneme conversion approach (Damper& Eastmond 1997). Other researchers have argued for richer analogy processes inmemory-based approaches than the basic overlap metric and its extensions thatare used in the research described in this section (Pirrelli & Yvon 1999; Lepage &Denoual 2005a; Yvon & Stroppa 2007). This work is also relevant when memory-based approaches are intended as models of human language acquisition andprocessing as in the work we turn to next.
+4 Exemplar-Based Computational Psycholinguistics
+From the time Chomsky substituted the vague notions of analogy and inductionexisting in linguistics in his time (for instance in the work of de Saussure, Bloom-ﬁeld, and Harris) by a better formalized notion of rule-based grammars, mostmainstream linguistic theories, even the functionally and cognitively inspiredones, have assumed rules to be the only or main means to describe any aspectof language. Also in computational modeling of human language processing andhuman language acquisition, mental rule application and acquisition has beenthe standard approach. See Chapter 17,
+COMPUTATIONAL PSYCHOLINGUISTICS .A
+good example is the dual mechanism model advocated by Pinker (1999) and othersfor inﬂectional morphology. In such a model, a mental rule governing the regu-lar cases in inﬂectional morphology is complemented by an associative memoryexplaining subregularities and exceptions. In contrast, single mechanism models(mostly based on neural network approaches following Rumelhart & McClelland1986) model regular and exceptional language behavior in a single model. SeeChapter 9,
+ARTIFICIAL NEURAL NETWORKS .
+MBLP can be considered an operationalisation of the pre-Chomskyan ana-
+logical approach to language, and as a predictive model for human language
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 164 — #11
+164 Walter Daelemans and Antal van den Bosch
+acquisition and processing that is an alternative to both rule-based and neuralnetwork approaches. The main advantage from a theoretical point of view isthat no ontological distinction has to be made between regular and exceptionalcases, and that the gradedness of language learning and processing is an emer-gent phenomenon of the way the model works. The approach is also incremental,in that the addition of new experience immediately affects processing without anyneed of recomputation of knowledge structures. Conceptually, to model languageacquisition and processing, memorized experiences of previous language use aresearched looking for instances similar to a new item, and a decision is extrapolatedfor the new item from these nearest neighbors. Language acquisition is simply theincremental storage of experience.
+The analogical modeling (AM) approach of Skousen (1989; 1992; 2002) is an
+early alternative example of a computational operationalization of analogy in amemory-based context and its application in modeling language. It is memory-based in that all available training data (experience) is used in extrapolating tothe solution for a new input. As it searches combinatorial combinations of inputfeatures, it is exponential in the number of features, which makes the approachimpractical for problems with many features. The approach has been applied todifferent problems in language processing, mainly in the phonology and morphol-ogy domains. Although algorithmically very different from and more costly thanMBLP (which is linear in the number of features), empirical comparisons havenever shown important accuracy or output differences between AM and MBLP(Eddington 2002a; Daelemans 2002; Krott et al., 2002).
+Inﬂectional morphology has proven a useful and interesting testing ground for
+models of language acquisition and processing because of the relative simplicityof the processes (compared to syntax), the availability of lexical databases, andthe ample psycholinguistic experimental data in the form of accounts of acquisi-tion, adult processing experiments, production tasks on pseudo-words, etc. Thismakes possible controlled comparisons between different computational models.Problems like English past-tense formation, German and Dutch plural forma-tion, etc., have therefore become important benchmark problems. Memory-basedpsycholinguistic models of inﬂectional morphology have been provided for theEnglish past tense by Keuleers (2008), for Dutch plural formation by Keuleerset al. (2007); and Keuleers and Daelemans (2007); for Spanish diminutive for-mation by Eddington (2002c), and for Dutch and German linking phenomena incompounds by Krott et al. (2001; 2007). See Hay and Baayen (2005) for an overviewof the state of the art in modeling morphology and the role of memory-basedmodels in current theory formation. In phonology, memory-based models havebeen proposed and matched to psycholinguistic empirical data for such tasks asﬁnal devoicing in Dutch (Ernestus 2006), Italian conjugation (Eddington 2002b),stress assignment in Dutch (Daelemans et al., 1994), Spanish (Eddington 2004),and English compounds (Plag et al., 2007), etc.
+Much less work has attempted to develop memory-based models of syntac-
+tic processing. Data-oriented parsing (DOP) (Scha et al., 1999; Bod 2006b) isone inﬂuential algorithm where parsing is seen as similarity-based lookup and
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 165 — #12
+Memory-Based Learning 165
+reconstruction of memorized fragments of previously analyzed sentences, keptin memory. It has led to experiments modeling priming effects in syntactic pro-cessing (Snider 2007). See Hay and Bresnan (2006) for additional empirical workin exemplar-based syntax. In addition to work based on traditional parsingapproaches rooted in phrase-based or dependency-based grammar theory, thememory-based shallow parsing research described in the previous section alsomakes possible psycholinguistic studies (e.g., on attachment preferences).
+As for our overview of memory-based approaches in computational linguistics,
+we have not tried to be exhaustive here, but rather to point to interesting stud-ies and starting points in the literature illustrating the power of memory-basedmodels as models of language acquisition and use.
+5 Generalization and Abstraction
+As discussed in Section 3, the memory-based learning approach is functionallysimilar to other supervised discriminative machine learning methods capable oflearning classiﬁcation tasks. It is hard, if not fundamentally impossible, to sayin general that one discriminative machine learning algorithm is better than theother (Wolpert 2002). Yet certain advantages of memory-based learning in learn-ing NLP tasks have been noted in the literature. First, we expand in some detailthe tenet that “forgetting exceptions is harmful in language learning” (Daelemanset al., 1999b); then, we review a few algorithmic advantages of memory-basedlearning.
+“Forgetting” training examples is a common trait of many machine learning
+algorithms; the identity of training examples is lost while, in exchange, each train-ing example inﬂuences to a small extent the construction of an abstract modelcomposed of probabilities or rules. In machine learning, learning is often equatedwith abstraction; in turn, abstraction is often equated with the capacity to gen-eralize to new cases. A key realization is that memory-based learning is able togeneralize, yet does not abstract from the data. In two studies, memory-basedlearning was contrasted against abstracting learners, namely decision tree learn-ers and rule learners (Daelemans et al., 1999b; Daelemans & van den Bosch2005), resulting in the consistent observation that the abstracting learners do notoutperform the memory-based learners on any of a wide selection of NLP tasks. Ina second series of experiments, Daelemans and van den Bosch show that selectedremoval of training examples from the memory of a memory-based classiﬁer,guided by criteria that supposedly express the utility of an individual examplein classiﬁcation, does not produce better generalization performance, although,with some tasks, up to 40 percent of the examples can be removed from memorywithout damaging performance signiﬁcantly (Daelemans & van den Bosch 2005).A safe conclusion from these studies is that when high accuracy is more importantthan optimal memory usage or speed, it is best to never forget training examples.
+In practical terms, the k-nearest neighbor classiﬁer has a number of advan-
+tages that make memory-based learning the method of choice in certain particular
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 166 — #13
+166 Walter Daelemans and Antal van den Bosch
+situations, compared to other rival discriminative supervised machine learningalgorithms:(1) the basic version of the k-NN classiﬁer that uses the overlap metric is insen-
+sitive to the number of class labels, in terms of efﬁciency both in training andin classiﬁcation. This makes memory-based learning suited for classiﬁcationtasks with very large numbers of classes, such as word prediction or machinetranslation;
+(2) memory-based learning is able to reproduce the classiﬁcation of training data
+ﬂawlessly, as long as there are no identical training instances in memory withdifferent class labels. This advantage, an important component of the “forget-ting exceptions is harmful” tenet, is especially useful in NLP tasks in whichmuch of the training data can be expected to recur in new data, such as inword pronunciation, where a typical lexicon used for training will alreadycontain the pronunciation of approximately 95 percent of all words in anew text;
+(3) memory-based learning allows for incremental learning at no cost, or with
+little cost if the similarity function uses weighting functions; this is practicalin situations in which training examples become available over time, and theclassiﬁer needs to be retrained preferably with the availability of each newtraining example, e.g., in active learning (Thompson et al., 1999). Also, thealgorithm is equally easily decremental, allowing for fast leave-one-out testing,
+a powerful evaluation scheme (Weiss & Kulikowski 1991);
+(4) as mentioned earlier, it has been shown that the 1-nearest neighbor classiﬁer
+has an attractive error upper bound: as the amount of data approaches inﬁn-ity, it is guaranteed to yield an error rate no worse than twice the Bayes errorrate (the minimum achievable error rate given the distribution of the data)(Cover & Hart 1967).
+The main disadvantage of memory-based learning, compared to most rival
+approaches, is its slow classiﬁcation speed. Its worst-case complexity of clas-siﬁcation is O(nf), where nis the number of memorized examples, and fis
+the number of features; each new example needs to be compared against all ofthe memorized examples, each time involving a comparison of all ffeatures.
+Implementing k-nearest neighbor classiﬁcation in a trie (Knuth 1973) can under
+the proper conditions, namely highly differing feature weights, or by dropping theguarantee of ﬁnding the exact nearest neighbors (Daelemans et al., 1997b), reduceclassiﬁcation time to O(f).
+Another disadvantage of the memory-based learning approach that it shares
+with other discriminative classiﬁers is that its strength is in classiﬁcation taskswith relatively low dimensionality in the class space. In the larger context ofNLP tasks with structured output speciﬁcations, such as parsing or machinetranslation, it is widely recognized that discriminative classiﬁcation alone is notenough to perform these global tasks, as the class spaces that would coverentire sequences, or large subsequences, would be too high-dimensional, thus toosparse to allow for sufﬁcient amounts of examples per class. Even memory-based
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 167 — #14
+Memory-Based Learning 167
+learning, with its insensitivity towards the number of classes, suffers directlyfrom such sparseness. Currently, the generally adopted solution is to combinediscriminitive classiﬁers with an inference method that searches for an optimalglobal solution.
+6 Generalizing Examples
+To alleviate the computational inefﬁciency of the classiﬁcation process in memory-based learning, part of the early work in k-NN classiﬁcation focused on editing
+methods, i.e., methods for the removal of certain examples in memory that areestimated to be useless or even harmful to classiﬁcation. Yet bad estimates maylead to the removal of useful examples, thus to loss of generalization performance.While keeping full memory may be a safe guideline to avoid any eventual harmfuleffect of editing, in the interest of speed of classiﬁcation it is still interesting andtempting to explore other means to reduce the need for memory, provided thatperformance is not harmed. In this section we explore methods that attempt toabstract over memorized examples in a different and more careful manner, namelyby merging examples into generalized examples, using various types of mergingoperations.
+We start, in subsection 6.1, with an overview of existing methods for gen-
+eralizing examples in memory-based learning. Subsequently, in subsection 6.2,we present Fambl, a memory-based learning algorithm variant that merges sim-ilar same-class nearest-neighbor examples into ‘families.’ In subsection 6.3 wecompare Fambl to pure memory-based learning on a range of NLP tasks.
+6.1 Careful abstraction in memory-based learning
+Paths in decision trees can be seen as generalized examples. In IGTREE (Daelemans
+et al., 1997b) and C4.5 (Quinlan 1993) this generalization is performed up to the
+point where no actual example is left in memory; all is converted to nodes andarcs. Counter to this decision tree compression, approaches exist that start withstoring individual examples in memory, and carefully merge some of these exam-ples to become a single, more general example, only when there is some evidencethat this operation is not harmful to generalization performance. Although overallmemory is compressed, the memory still contains individual items on which thesame k-nearest neighbor classiﬁcation can be performed. The abstraction occurring
+in this approach is that after a merge, the merged examples incorporated in thenew generalized example are deleted individually, and cannot be reconstructed.Example approaches to merging examples are
+NGE (Salzberg 1991) and its batch
+variant BNGE (Wettschereck & Dietterich 1995), and RISE (Domingos 1996). We
+provide brief discussions of two of these algorithms: NGE and RISE .
+NGE (Salzberg 1991), an acronym for Nested Generalized Exemplars ,i sa ni n c r e -
+mental learning theory for merging instances (or exemplars, as Salzberg prefersto refer to examples stored in memory) into hyper-rectangles , a geometrically
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 168 — #15
+168 Walter Daelemans and Antal van den Bosch
+Figure 6.2 Two examples of the generation of a new hyper-rectangle in NGE :f r o m
+a new example and an individual exemplar (top) and from a new example and thehyper-rectangle from the top example (bottom).
+motivated term for merged exemplars. NGE adds examples to memory in an
+incremental fashion (at the onset of learning, the memory is seeded with a smallnumber of randomly picked examples). Every time a new example is presented,it is matched with all exemplars in memory, which can be individual or mergedexemplars (hyper-rectangles). When it is classiﬁed correctly by its nearest neigh-bor (an individual exemplar or the smallest matching hyper-rectangle), the newexample is merged with it, yielding a new, more general hyper-rectangle.
+Figure 6.2 illustrates two mergings of examples of a morphological task
+(German plural) with exemplars. On the top of Figure 6.2, the example -urSrIftF
+(from the female-gender word Urschrift), labeled with class en(representing the
+plural form Urschriften), is merged with the example t@rSrIftF (from the female-
+gender word Unterschrift), also of class en, to form the generalized exemplar
+displayed on the right-hand side. On the ﬁrst two features, a disjunction is formedof, respectively, the values -and t,a n d uand @. This means that the generalized
+example matches on any other example that has value -or value ton the ﬁrst fea-
+ture, and any other example that has value uor value @on the second feature.
+The lower part of Figure 6.2 displays a subsequent merge of the newly general-ized example with another same-class example, forSrIftF (the female-gender word
+Forschrift), which leads to a further generalization of the ﬁrst two features.
+In nested generalized examples, abstraction occurs because it is not possible to
+retrieve the individual examples nested in the generalized example; new gener-alization occurs because the generalized example not only matches fully with itsnested examples, but would also match perfectly with potential examples withfeature-value combinations that were not present in the nested examples; thegeneralized example in Figure 6.2 would also match torSrIft, f@rSrIft, furSrIft,
+-orSrIft. These examples do not necessarily match existing German words, butthey might – and arguably they would be labeled with the correct plural inﬂectionclass.
+RISE (Rule Induction from a Set of Exemplars ) (Domingos 1995; 1996) is a
+multi-strategy learning method that combines memory-based learning with rule
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 169 — #16
+Memory-Based Learning 169
+Figure 6.3 An example of an induced rule in RISE , displayed on the right, with the set of
+examples that it covers (and from which it was generated) on the left.
+induction (Michalski 1983; Clark & Niblett 1989; Clark & Boswell 1991). As in NGE ,
+the basic method is that of a memory-based learner and classiﬁer, only operatingon a more general type of example.
+RISE learns a memory ﬁlled with rules which
+are all derived from individual examples. Some rules are example-speciﬁc, andother rules are generalized over sets of examples.
+RISE inherits parts of the rule induction method of CN2 (Clark & Niblett 1989;
+Clark & Boswell 1991). CN2 is an incremental rule-induction algorithm that
+attempts to ﬁnd the ‘best’ rule governing a certain amount of examples in theexample base that are not yet covered by a rule. ‘Goodness’ of a rule is estimatedby computing its apparent accuracy, i.e., class prediction strength (Cost & Salzberg1993) with Laplace correction (Niblett 1987; Clark & Boswell 1991).
+RISE induces rules in a careful manner, operating in cycles. At the onset of learn-
+ing, all examples are converted to example-speciﬁc rules. During a cycle, for eachrule a search is made for the nearest example not already covered by it that hasthe same class. If such an example is found, rule and example are merged into amore general rule. Instead of disjunctions of values,
+RISE generalizes by inserting
+wild-card symbols (that match with any other value) on positions with differingvalues. At each cycle, the goodness of the rule set on the original training mate-rial (the individual examples) is monitored.
+RISE halts when this accuracy measure
+does not improve (which may already be the case in the ﬁrst cycle, yielding a plainmemory-based learning algorithm).
+Figure 6.3 illustrates the merging of individual examples into a rule. The rule
+contains seven normally valued conditions, and two wild cards, ‘*’. The rule nowmatches on every female-gender example ending in SrIft (Schrift). When process-
+ing new examples,
+RISE classiﬁes them by searching for the best-matching rule.
+6.2 Fambl: merging example families
+Fambl, for FAMily-Based Learning, is a variant of MBL that constitutes an alterna-
+tive approach to careful abstraction over examples. The core idea of Fambl, in thespirit of
+NGE and RISE , is to transform an example base into a set of example family
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 170 — #17
+170 Walter Daelemans and Antal van den Bosch
+expressions . An example family expression is a hyper-rectangle, but the procedure
+for merging examples differs from that in NGE or in RISE . First, we outline the
+ideas and assumptions underlying Fambl. We then give a procedural descriptionof the learning algorithm.
+Classiﬁcation of an example in memory-based learning involves a search for
+the nearest neighbors of that example. The value of kink-NN determines how
+many of these neighbors are used for extrapolating their (majority) classiﬁcationto the new example. A ﬁxed kignores (smoothes) the fact that an example is often
+surrounded in example space by a number of examples of the same class that isactually larger or smaller than k. We refer to such a variable-sized set of same-class
+nearest neighbors as an example’s family. The extreme cases are on the one hand
+examples that have a nearest neighbor of a different class, i.e., they have no familymembers and are a family on their own, and on the other hand examples that haveas nearest neighbors all other examples of the same class.
+Thus, families represent same-class clusters in example space, and the number
+and sizes of families in a data set reﬂect the disjunctivity of the data set: the degree
+of scatteredness of classes into clusters. In real-world data sets, the situation isgenerally somewhere between the extremes of total disjunctivity (one exampleper cluster) and no disjunctivity (one cluster per class). Many types of languagedata appear to be quite disjunct (Daelemans et al., 1999b). In highly disjunct data,classes are scattered among many small clusters, which means that examples havefew nearest neighbors of the same class on average.
+Figure 6.4 illustrates how Fambl determines the family of an example in a sim-
+ple two-dimensional example space. All nearest neighbors of a randomly picked
+Figure 6.4 An example of a family in a two-dimensional example space (left). The family,
+at the inside of the circle, spans the focus example (marked with number 1) and the threenearest neighbors labeled with the same class (indicated by their color). When ranked inthe order of distance (right), the family boundary is put immediately before the ﬁrstexample of a different class, the gray example with number 5.
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 171 — #18
+Memory-Based Learning 171
+Figure 6.5 An example of family creation in Fambl. Five German plural examples (left)
+are merged into a family expression (right).
+starting example (marked by the black dot) are searched and ranked in the orderof their distance to the starting example. Although there are ﬁve examples of thesame class in the example space, the family of the starting example contains onlythree examples, since its fourth-nearest example is of a different class.
+Families are converted in Fambl to family expressions, which are hyper-
+rectangles, by merging all examples belonging to that family simultaneously.Figure 6.5 illustrates the creation of a family expression from an example family.In contrast with
+NGE ,
+•family expressions are created in one non-incremental operation on the entireexample base, rather than by step-wise nesting of each individual familymember;
+•a family is abstracted only once and is not merged later on with other examplesor family expressions;
+•families cannot contain ‘holes,’ i.e., examples with different classes, since thedeﬁnition of family is such that family abstraction halts as soon as the nearestneighbor with a different class is met in the local neighborhood.
+The general mode of operation of Fambl is that it randomly picks examples from
+an example base one by one from the set of examples that are not already part of afamily. For each newly picked example, Fambl determines its family, generates afamily expression from this set of examples, and then marks all involved examplesas belonging to a family (so that they will not be picked as a starting point or mem-ber of another family). Fambl continues determining families until all examplesare marked as belonging to a family.
+Families essentially reﬂect the locally optimal ksurrounding the example
+around which the family is created. The locally optimal kis a notion that is also
+used in locally weighted learning methods (Vapnik & Bottou 1993; Wettschereck &Dietterich 1994; Wettschereck 1994; Atkeson et al., 1997); however, these methodsdo not abstract from the learning material. In this sense, Fambl can be seen as alocal abstractor.
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 172 — #19
+172 Walter Daelemans and Antal van den Bosch
+Procedure FAMBL FAMILY -EXTRACTION :
+Input: A training set TSof examples I1...n, each example being labeled with a family-membership
+ﬂag set to FALSE
+Output: A family set FSof family expressions F1...m,m≤n
+i=f=0
+1 Randomize the ordering of examples in TS
+2 While not all family-membership ﬂags are TRUE,D o
+•While the family-membership ﬂag of IiisTRUE Do increase i
+•Compute NS, a ranked set of nearest neighbors to Iiwith the same class as Ii,a m o n ga l l
+examples with family-membership ﬂag FALSE. Nearest-neighbor examples of a different
+class with family-membership ﬂag TRUE are still used for marking the boundaries of the
+family
+•Set the membership ﬂags of Iiand all remaining examples in NStoTRUE
+•Merge Iiand all examples in NSinto the family expression Ffand store this expression along
+with a count of the number of examples merged in it
+•f=f+1
+Figure 6.6 Pseudo-code of the family extraction procedure in Fambl.
+The Fambl algorithm converts any training set of labeled examples to a set of
+family expressions, following the procedure given in Figure 6.6. After learning,the original example base is discarded, and further classiﬁcation is based only onthe set of family expressions yielded by the family-extraction phase. Classiﬁcationin Fambl works analogously to classiﬁcation in pure memory-based learning (withthe same similarity and weighting metrics as we used so far with
+MBL): a match
+is made between a new test example and all stored family expressions. When afamily expression contains a disjunction of values for a certain feature, a match iscounted when one of the disjunctive values matches the value at that feature in thenew example. How the match is counted exactly depends on the similarity metric.With the overlap metric, the feature weight of the matching feature is counted,while with the MVDM metric the smallest MVDM distance among the disjunctedfeature values is also incorporated in the count.
+6.3 Experiments with Fambl
+We performed experiments with Fambl on four language processing tasks. Weﬁrst introduce these four tasks, ranging from morpho-phonological tasks tosemanto-syntactic tasks, varying in scope (word level and sentence level) andbasic type of example encoding (non-windowing and windowing). We brieﬂydescribe the four tasks here and provide some basic data set speciﬁcations inTable 6.2. At the same time, we also provide results for standard
+MBLP for
+comparison.(1)
+GPLURAL , the formation of the plural form of German nouns. The task is to
+classify a noun as mapping to one out of eight classes, representing the noun’splural formation. We collected 25,753 German nouns from the German part of
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 173 — #20
+Memory-Based Learning 173
+the CELEX-2 lexical database.2We removed from this data set cases without
+plurality marking, cases with Latin plural in -a, and a miscellaneous class offoreign plurals. From the remaining 25,168 cases, we extracted or computedfor each word the plural sufﬁx, the gender feature, and the syllable structureof the last two syllables of the word in terms of onsets, nuclei, and codasexpressed using a phonetic segmental alphabet. We use a 50–50 percent splitin 12,584 training examples and 12,584 test instances. Generalization perfor-mance is measured in accuracy, namely the percentage of correctly classiﬁedtest instances.
+(2)
+DIMIN , Dutch diminutive formation, uses a similar scheme to the one used in
+the GPLURAL task to represent a word as a single example. The task and data
+were introduced by Daelemans et al. (1997a). A noun, or more speciﬁcallyits phonemic transcription, is represented by its last three syllables, whichare each represented by four features: (1) whether the syllable is stressed(binary), (2) the onset, (3) the nucleus, and (4) the coda. The class label rep-resents the identity of the diminutive inﬂection, which is one out of ﬁve (-je,-tje, -etje, -pje,o r -kje). For example, the diminutive form of the Dutch noun
+beker (cup) is bekertje (small cup). Its phonemic representation is [’bek@r].T h e
+resulting example is ____+ be_−k@rt j e . The data are extracted from
+the CELEX-2 lexical database (Baayen et al., 1993). The training set contains2,999 labeled examples of nouns; the test set contains 950 instances. Again,generalization performance is measured in accuracy, namely the percentageof correctly classiﬁed test instances.
+(3)
+PP, prepositional-phrase attachment, is the classical benchmark data set intro-
+duced by Ratnaparkhi et al. (1994). The data set is derived from the Wall Street
+Journal Penn Treebank (Marcus et al., 1993). All sentences containing the pat-
+tern ‘VP NP PP’ with a single NP in the PP were converted to four-featureexamples, where each feature contains the headword of one of the four con-stituents, yielding a ‘V N1 P N2’ pattern such as ‘each pizza with Eleni,’ or‘eat pizza with pineapple.’ Each example is labeled by a class denoting whetherthe PP is attached to the verb or to the N1 noun in the treebank parse. Weuse the original training set of 20,800 examples, and the test set of 3,097instances. Noun attachment occurs slightly more frequently than verb attach-ment; 52 percent of the training examples and 59 percent of the test examplesare noun attachment cases. Generalization performance is measured in termsof accuracy (the percentage of correctly classiﬁed test instances).
+(4)
+CHUNK is the task of splitting sentences into non-overlapping syntactic
+phrases or constituents, e.g., to analyze the sentence ‘ He reckons the current
+account deﬁcit will narrow to only $ 1.8 billion in September.’a s
+[He] NP[reckons ]VP[the current account deﬁcit ]NP[will narrow] VP[to]PP[only $ 1.8
+billion] NP[in]PP[September ]NP.
+The data set, extracted from the WSJ Penn Treebank through a ﬂattened,
+intermediary representation of the trees (Tjong Kim Sang & Buchholz 2000),contains 211,727 training examples and 47,377 test instances. The examples
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 174 — #21
+174 Walter Daelemans and Antal van den Bosch
+represent seven-word windows of words and their respective part-of-speechtags computed by the Brill tagger (Brill 1992) (which is trained on a disjointpart of the WSJ Penn Treebank), and each example is labeled with a class
+using the IOB type of segmentation coding as introduced by Ramshaw &Marcus (1995). Generalization performance is measured by the F-score oncorrectly identiﬁed and labeled constituents in test data, using the evaluationmethod originally used in the ‘shared task’ subevent of the CoNLL-2000 con-ference (Tjong Kim Sang & Buchholz 2000) in which this particular trainingand test set were used.
+As a ﬁrst experiment, we varied both the normal kparameter (which sets
+the number of equidistant neighbors in the nearest neighbor set used ink-NN classiﬁcation), and the Fambl-speciﬁc parameter that sets the maximum k
+distances in the family extraction stage, which we will refer to as K.T h et w o
+parameters are obviously related – the Kcan be seen as a pre-processing step
+that ‘pre-compiles’ the kfor the k-NN classiﬁer. The k-nearest neighbor classiﬁer
+that operates on the set of family expressions can be set to 1, hypothetically,since the complete example space is pre-partitioned in many small regions ofvarious sizes (with maximally Kdifferent distances) that each represent a locally
+appropriate k.
+If the empirical results would indeed show that kcan be set to 1 safely when
+Kis set at an appropriately large value, then Fambl could be seen as a means
+to factor the important kparameter out of MBL. We performed comparative
+experiments with normal MBL and Fambl on the four benchmark tasks, inwhich we varied both the kparameter in MBL, and the Kparameter in Fambl
+while keeping k=1. Both kand Kwere varied in the pseudo-exponential series
+[0, 1,..., 9, 10, 15, ..., 45, 50, 60, ..., 90, 100]. The results of the experiments are
+illustrated in Figure 6.7.
+A very large value of Kmeans that Fambl incorporates virtually any same-class
+nearest neighbor at any furthest distance in creating a family, as long as thereare no different-class nearest neighbors in between. It would be preferable to beable to ﬁx Kat a very high value without generalization performance loss, since
+this would effectively factor out not only the kparameter, but also the Kparam-
+eter. This situation is represented in the graph displaying the results of
+GPLURAL
+(top left corner of Figure 6.7). While a larger ki nI B 1l e a d st oas t e a d yd e c l i n ei n
+generalization accuracy on test data of the GPLURAL task, Fambl’s accuracy
+remains very much at the same level regardless of the value of K. The results with
+the other three tasks also show a remarkably steady generalization accuracy (orF-score, with
+CHUNK ) of Fambl, with increasing K, but in all three cases Fambl’s
+score is not higher than IB1’s. Especially with the DIMIN and PPtasks, matching
+on families rather than on examples leads to less accurate classiﬁcations at wideranges of K.
+While it retains a similar performance to MBL, Fambl also attains a certain level
+of compression. This can be measured in at least two ways. First, in Figure 6.8the amount of compression (in terms of percentages) is displayed of the number
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 175 — #22
+Memory-Based Learning 175
+80859095100
+10 100German plural
+IB1
+Fambl
+1Accuracy
+9293949596979899100
+1 10 100Dutch diminutives
+IB1
+Fambl
+72747678808284
+Covera ge (k or F)IB1
+Fambl
+ 100  10 1AccuracyEnglish PP attachment
+8688909294
+1 10 100
+Covera ge (k or F)English base phrase chunking
+IB1Fambl
+Figure 6.7 Generalization accuracies (in terms of percentage of correctly classiﬁed test
+instances) and F-scores, where appropriate, of MBL with increasing kparameter, and
+Fambl with k=1 and increasing Kparameter.
+020406080100
+1 10 100% Families vs. examples compression
+Maximum famil y sizeGPLURAL
+DIMIN
+PP
+CHUNK
+Figure 6.8 Compression rates (percentages) of families as opposed to the original
+number of examples, produced by Fambl at different maximal family sizes (representedby the x-axis, displayed at a log scale).
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 176 — #23
+176 Walter Daelemans and Antal van den Bosch
+Table 6.2 Number of extracted families at a maximum fam-
+ily size of 100, the average number of family members, andthe raw memory compression, for four tasks
+Number of Av. number of Memory
+Task families members compression (%)
+GPLURAL 1,749 7.2 62.0
+DIMIN 233 12.9 73.4
+PP 3,613 5.8 23.4
+CHUNK 17,984 11.8 51.9
+of families versus the original number of examples, with increasing values of K,
+for four of our tasks. As Figure 6.8 shows, the compression rates converge forall four tasks at similar and very high levels; from 77 percent for
+GPLURAL to
+92 percent for DIMIN . Apparently, setting Kat a large enough value ensures that
+at that point even the largest families are identiﬁed; typically there will be 100different distances or less in any found family.
+Some more detailed statistics on family extraction are listed in Table 6.2,
+measured for four tasks at the K=100 mark. The actual number of families varies
+widely among the tasks, but this correlates with the number of training examples.The average number of members lies at about the same order of magnitude forthe four tasks – between 6 and 13. The table also shows the raw memory compres-sion when compared with a straightforward storage of the ﬂat example base. Inthe straightforward implementation of Fambl, storing a family with one exampleuses more memory than storing one example because of the bookkeeping infor-mation associated with storing possible disjunctions at each feature. The net gainsof the high compression rates displayed in Figure 6.8 are still positive: from 23percent to 73 percent compression. This is, however, dependent on the particularimplementation.
+Two example families, one for the
+PPand the other for the CHUNK task, are
+displayed in Table 6.3. The ﬁrst example family, labeled with the Verb attachmentclass, represents the attributed ...to...pattern, but also includes the example bring
+focus to opportunities, which is apparently the closest neighbor to the other fourexamples having the same class. The second family represents cases of the begin-ning of a noun phrase starting with most of. The context left of most of deviates
+totally between the four examples making up the family, while the right contextrepresents a noun phrase beginning with theorhis. This family would also per-
+fectly match sentence fragments inside the family hyper-rectangle, such as because
+computers do most of the top,o r he still makes most of the 50, and many more recom-
+binations. Analogously, the
+PPfamily example displayed in Table 6.3 would also
+perfectly match attributed decline to increases, bring focus to demand ,e t c .
+Overall, the comparison between Fambl and MBL shows that Fambl does not
+proﬁt from the relatively large generalizing capacity of family expressions that
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 177 — #24
+Memory-Based Learning 177
+Table 6.3 Two example families (represented by their members)
+extracted from the PPand CHUNK data sets respectively. The
+part-of-speech tags in the CHUNK example family are left out for
+legibility. The bold words in the CHUNK example are the focus
+words in the windows
+Task Example family Class
+PP attributed gains to demand Verb attachment
+attributed improvement to demandattributed performance to increasesattributed decline to demandbring focus to opportunities
+NP because computers do most of the work B-NP
+demand rights to most of the 50
+he still makes most of his furs
+screens, said most of the top
+in principle would allow some unseen examples to attain a higher score in thesimilarity function. Apart from the question of whether this relative re-ranking ofexamples would have any effect on classiﬁcation, it is obvious that many examplescovered by family expressions are unlikely to occur — consider, for example,because computers do most of his furs .
+We conclude that Fambl has two main merits. First, Fambl can compress an
+example base down to a smaller set of family expressions (or a generalizing hyper-rectangle), attaining various compression rates in the same ballpark as attained byediting methods, but with a steady generalization accuracy that is very close toIB1’s. Second, Fambl almost factors out the kparameter. Fairly constant perfor-
+mance was observed while keeping k=1 and varying K, the maximal number of
+family members, across a wide range of values. To sum up, Fambl is a successfullocal kpre-compiler.
+In this section, we discussed the fundamental eager–lazy dimension in machine
+learning from the point of view of lazy learning approaches such as MBL. Weargued that it makes sense to keep all training data available (including ‘excep-tional’ cases) in learning language tasks because they may be good models toextrapolate from. At the same time, while being the cheapest possible learningapproach, it is also an inherently expensive strategy during classiﬁcation. Thereare several ways in which this problem can be alleviated: by using fast approxi-mations of MBL such as
+IGTREE (Daelemans et al., 1997b; Daelemans & van den
+Bosch 2005), special optimized algorithms (Liu et al., 2003), or even use of spe-cial hardware (Yeh et al., 2007). In this section, we showed that an alternativeway to approach this problem is to develop algorithms for weak, bottom-upgeneralization from the original instance space, making possible an efﬁciency
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 178 — #25
+178 Walter Daelemans and Antal van den Bosch
+increase while keeping generalization accuracy at the same levels as withnormal MBL.
+7 Further Reading
+General introductions to memory-based learning (lazy learning, k-nearest neigh-
+bor classiﬁcation, instance-based learning) and its relation to other strands ofmachine learning can be found in (Mitchell 1997). Key historic publications on k-
+nearest neighbor classiﬁcation are Fix and Hodges (1951), Cover and Hart (1967),Dudani (1976), Dasarathy (1991). The ﬁeld of machine learning adopted andadapted the k-nearest neighbor algorithm under different names, such as memory-
+based reasoning (Stanﬁll & Waltz 1986), instance-based learning (Aha et al., 1991),and locally weighted learning (Atkeson et al., 1997). An important developmentin these latter publications has been the introduction of similarity functions fornon-numeric features (Aha et al., 1991; Cost & Salzberg 1993), which enabled theapplication to be used in symbolic language tasks. Stanﬁll (1987) and Weijters(1991) both showed that the neural network approach to grapheme–phoneme con-version of Sejnowski and Rosenberg (1987) could be emulated and improved byusing a k-nearest neighbor classiﬁer. From the beginning of the 1990s onwards,
+memory-based learning has been applied to virtually all areas of natural lan-guage processing. Daelemans and van den Bosch (2005) is a book-length treatiseon memory-based language processing.
+Sections 3 and 4 already pointed to studies using MBL and alternative memory-
+based approaches in various areas of computational linguistics and computationalpsycholinguistics. More references can be found in the regularly updated referenceguide to the TiMBL software (Daelemans et al., 2007).
+Relations to statistical language processing, in particular the interesting equiva-
+lence relations with back-off smoothing in probabilistic classiﬁers, are discussedin Zavrel and Daelemans (1997). Relations between classiﬁcation-based wordprediction and statistical language modeling are identiﬁed in van den Bosch (2005;2006b).
+In machine translation, k-nearest neighbor classiﬁcation bears a close relation
+with example-based machine translation (EBMT). A ﬁrst EBMT-implementationusing TiMBL is described in van den Bosch et al. (2007b).
+The ﬁrst dissertation-length study devoted to the approach is van den Bosch
+(1997), in which the approach is compared to alternative learning methods forNLP tasks related to English word pronunciation (stress assignment, syllabiﬁ-cation, morphological analysis, alignment, grapheme-to-phoneme conversion).TiMBL is also central in the PhD theses of Buchholz (2002), Lendvai (2004),Hendrickx (2005), and Hoste (2005). In 1999 a special issue of the Journal for Exper-
+imental and Theoretical Artiﬁcial Intelligence (Vol. 11.3), was devoted to memory-
+based language processing. In this special issue, the approach was related also toexemplar-based work in the data-oriented parsing (DOP) framework (Scha et al.,1999) and analogy-based reasoning in NLP research (Pirrelli & Yvon 1999).
+
+“9781405155816_4_006” — 2010/5/8 — 11:46 — page 179 — #26
+Memory-Based Learning 179
+ACKNOWLEDGMENT
+Parts of this chapter are based on Daelemans and van den Bosch (2005), Memory-Based
+Language Processing. Cambridge: Cambridge University Press. Reprinted with permission.
+NOTES
+1 The software, reference guide, and instructions on how to install it can be down-loaded
+from http://ilk.uvt.nl/timbl
+2 Available from the Linguistic Data Consortium (www.ldc.upenn.edu/).
+

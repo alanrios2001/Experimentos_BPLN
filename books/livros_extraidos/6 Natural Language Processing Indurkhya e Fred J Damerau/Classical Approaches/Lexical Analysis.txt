@@ -1,0 +1,814 @@
+3
+Lexical Analysis
+Andrew Hippisley
+UniversityofKentucky3.1 Introduction ........................................................... 313.2 FiniteStateMorphonology...........................................33
+ClosingRemarksonFiniteStateMorphonology
+3.3 FiniteStateMorphology..............................................37
+DisjunctiveAﬃxes,InﬂectionalClasses,andExceptionality •Further
+RemarksonFiniteStateLexicalAnalysis
+3.4 “Diﬃcult”MorphologyandLexicalAnalysis......................42
+IsomorphismProblems •ContiguityProblems
+3.5 Paradigm-BasedLexicalAnalysis....................................47
+ParadigmaticRelationsandGeneralization •TheRoleofDefaults •
+Paradigm-BasedAccountsofDiﬃcultMorphology •FurtherRemarkson
+Paradigm-BasedApproaches
+3.6 ConcludingRemarks..................................................54Acknowledgments ...........................................................55References.....................................................................55
+3.1 Introduction
+Wordsarethebuildingblocksofnaturallanguagetexts.Asaproportionofatext’swordsaremorpholog-icallycomplex,itmakessensefortext-orientedapplicationstoregisteraword’sstructure.Thischapterisaboutthetechniquesandmechanismforperformingtextanalysisattheleveloftheword, lexicalanalysis.
+Awordcanbethoughtofintwoways,eitherasastringinrunningtext,forexample,theverb delivers;or
+as a more abstract object that is the cover term for a set of strings. So the verb DELIVER names the set{delivers, deliver, delivering, delivered }. A basic task of lexical analysis is to relate morphological variants
+totheirlemmathatliesinalemmadictionarybundledupwithitsinvariantsemanticandsyntacticinfor-
+mation.Lemmatizationisusedindiﬀerentwaysdependingonthetaskofthenaturallanguageprocessing(NLP)system.Inmachinetranslation(MT),thelexicalsemanticsofwordstringscanbeaccessedviathelemma dictionary. In transfer models, it can be used as part of the source language linguistic analysis toyield the morphosyntactic representation of strings that can occupy certain positions in syntactic trees,theresult of syntacticanalyses. Thisrequires thatlemmas arefurnished not only with semanticbut alsowithmorphosyntactic information. So deliversisreferenced by the item DELIVER +{3rd, Sg, Present}.
+Inwhatfollowswewillseehowthemappingbetween deliverandDELIVER,andthesubstring sand{3rd,
+Sg,Present}canbeelegantlyhandledusingﬁnitestatetransducers(FSTs).
+We can think of the mapping of string to lemma as only one side of lexical analysis, the parsing
+side. Theothersideismappingfromthelemmatoastring, morphologicalgeneration. StayingwithourMT example, once we have marphosyntactically analyzed a string in the source language, we can thenuse the resulting information to generate the equivalent morphologically complex string in the targetlanguage.Translationatthislevelamountstoaccessingthemorphologicalruleofthetargetlanguagethat
+31
+
+32 HandbookofNaturalLanguageProcessing
+introduces the particular set of features found from the source language parse. In information retrieval(IR),parsingandgenerationservediﬀerentpurposes.Fortheautomaticcreationofalistofkeyterms,itmakessensetonotionallycollapsemorphologicalvariantsunderonelemma.Thisisachievedinpracticeduringstemming, a text preprocessing operation where morphologically complex strings are identiﬁed,
+decomposedintoinvariantstem(= lemma’scanonicalform)andaﬃxes,andtheaﬃxesarethendeleted.
+The result is texts as search objects that consist of stems only so that they can be searched via a lemmalist. Morphological generation also plays a role in IR, not at the preprocessing stage but as part of querymatching.Giventhatalemmahasinvariantsemantics,ﬁndinganoccurrenceofoneofitsmorphologicalvariants satisﬁes the semantic demands of a search. In languages with rich morphology it is moreeconomicaltouserulestogeneratethesearchtermsthanlistthem.Moreover,sincemorphologyisusedtocreatenewwordsthroughderivation,atextthatusesanewlycoinedwordwouldnotbemissedifthestringwasoneofmanyoutputsofaproductivemorphologicalruleoperatingoveragivenlemma.Spellingdictionariesalsomakeuseofmorphologicalgenerationforthesamereason,toaccountforbothlistedand‘potential’ words. Yet another application of lexical analysis is text preprocessing for syntactic analysiswhere parsing a string into morphosyntactic categories and subcategories furnishes the string with POStagsfortheinputofasyntacticparse.Finallytokenization,thesegmentationofstringsintowordforms,isanimportantpreprocessingtaskrequiredforlanguageswithoutwordboundariessuchasChinesesinceamorphologicalparseofthestringsrevealsmorphologicalboundaries,includingwordsboundaries.
+It is important from the start to lay out three main issues that any lexical analysis has to confront in
+some way. First, as we have shown, lexical analysis may be used for generation or parsing. Ideally, themechanism used for parsing should be available for generation, so that a system has the ﬂexibility to gobothways. Mostlexicalanalysisisperformed using FSTs, aswewillsee. Oneof thereasonsisthatFSTsprovideatrivialmeansfromﬂippingfromparsing(analysis)togeneration.AnyalternativetoFSTlexicalanalysisshouldatleastdemonstrateithasthissameﬂexibility.Twofurtherissuesconcernthelinguisticobjectsoflexicalanalysis,morphologicallycomplexwords.Thenotionthattheyarestructuresconsistingofaninvariantstemencodingthemeaningandsyntacticcategoryofaword,joinedtogetherwithanaﬃxthat encodes grammatical properties such as number, person, tense, etc is actually quite idealistic. Forsome languages, this approach takes you a long way, for example, Kazakh, Finnish, and Turkish. But itneeds reﬁnement for the languages more often associated with large NLP applications such as English,French,German,andRussian.
+One of the reasons that this is a somewhat idealized view of morphology is that morphosyntactic
+properties do not have to be associated with an aﬃx. Compare, for example, the string lookedwhich is
+analyzedasLOOK +{Past}with sang,alsoasimplepast.Howdoyougetfromthestring sangtothelemma
+SING+{Past,Simple}?Thereisnoaﬃxbutinsteadanalternationinthecanonicalstem’svowel.Arelatedproblem is that the aﬃx may be associated with more than one property set: lookedmay correspond to
+either LOOK +{Past, Simple} or LOOK +{Past, Participle}. How do you know which lookedyou have
+encountered? The second problem is that in the context of a particular aﬃx, the stem is not guaranteedto be invariant, in other words equivalent to the canonical stem. Again not straying beyond English,the string associated with the lemma FLY +{Noun, Plural} is not
+∗ﬂysbutﬂies. At some level the parser
+needstoknowthat ﬂieispartoftheFLYlemma,notsomeasyetunrecordedFLIElemma;moreoverthis
+variantformofthestemisconstrainedtoaparticularcontext,combinationwiththesuﬃx −s.Afurther
+complication is changesto the canonical aﬃx. If we propose that −sis the(orthographic) plural aﬃx in
+Englishwehavetoaccountfortheoccasionswhenitappearsinatextas −es,forexample,in foxes.
+In what follows we will see how lexical analysis models factor in the way a language assigns structure
+to words. Morphologists recognize three main approaches to word structure, ﬁrst discussed in detailin Hockett (1958) but also in many recent textbooks, for example, Booij (2007: 116–117). All threeapproaches ﬁnd their way into the assumptions that underlie a given model. An item and arrangementapproach(I&A)viewsanalysisascomputingtheinformationconveyedbyaword’sstemmorphemewiththatofitsaﬃxmorpheme.Finitestatemorphology(FSM)incorporatesthisviewusingFSTs.Thisworkswellforthe‘ideal’situationoutlinedabove: lookedisastemplusasuﬃx, andinformationthattheword
+
+LexicalAnalysis 33
+conveysissimplyamatterofcomputingtheinformationconveyedbybothmorphemes.Itemandprocessapproaches(I&P)accountforthekindofstemandaﬃxvariationthatcanhappeninsideacomplexword,forexample, singbecomessangwhenitispasttense,andavowelisaddedtothesuﬃx −swhenattached
+fox. The emphasis is on possible phonological processes that are associated with aﬃxation (or othermorphological operations), what is known as morphonology. Finally, in word and paradigm approaches
+(W&P), a lemma is associated with a table, or paradigm, that associates a morphological variant of thelemma with a morphosyntactic property set. So lookedoccupies the cell in the paradigm that contains
+thepairingofLOOKwith{Past,Simple}.Andbythesametoken sangoccupiestheequivalentcellinthe
+SINGparadigm.Meaningisderivedfromthedeﬁnitionofthecell,notthemeaningofstemplusmeaningofsuﬃx,hencenospecialstatusisgiventoaﬃxes.
+FSTs have been used to handle morphonology, expressed as spelling variation in a text, and morpho-
+tactics,howstemsandaﬃxescombine,andhowthemeaningbehindthecombinationcanbecomputed.
+We begin with FSTs for morphonology, the historic starting point for FSM. This leaves us clear to lookat lexical analysis as morphology proper. We divide this into two main parts, the model that assumestheI&AapproachusingFSTs(Section3.3)andthealternativeW&Pmodel(Section3.5).Section3.4isabriefoverviewofthetypesof‘diﬃcult’morphologythattheparadigm-basedapproachesaredesignedtohandlebutwhichFSMusingtheI&Aapproachcannegotiatewithsomesuccesstoo.
+3.2 Finite State Morphonology
+Phonologyplaysanimportantroleinmorphologicalanalysis,asaﬃxationistheadditionofphonologicalsegmentstoastem.Thisisphonologyas exponent ofsomepropertyset.Butthereisanother‘exponent-
+less’ way in which phonology is involved, a kind of phonology of morpheme boundaries. This area oflinguistics is known as morphophonology ormorphonology : “the area of linguistics that deals with the
+relationsandinteractionofmorphologywithphonology”(AronoﬀandFudeman2005:240).Morphemeboundaryphonologymayormaynotbereﬂectedintheorthography.Forexample,inRussianwordﬁnalvoiced obstruents become voiceless—but they are spelled as if they stay as they are, unvoiced. A goodexample of morphonology in English is plural aﬃxation. The plural aﬃx can be pronounced in threediﬀerent ways, depending on the stem it attaches to: as /z/ in ﬂags,a s/
+/invez/ inglassesand as /s/ in cats.
+B u to n l yt h e/ /invez/ alternation is consequential because it shows up as a variant of orthographic −s. Note
+thattexttospeechprocessinghastopaycloserattentiontomorphonologysinceithastohandlethetwodiﬀerentpronunciationsoforthographic −s,andfortheRussiansituationithastohandlethewordﬁnal
+devoicingrule.Forlexicalanalysistocopewithmorphonologicalalternations,thesystemhastoprovideameansofmappingthe‘basic’formwithitsorthographicvariant.Asthevariationis(largely)determinedbycontext,themappingcanberulegoverned.Forexample,thesuﬃx −syougetinapluralwordshows
+up as−es(the mapping) when the stem it attaches to ends in a −s- (speciﬁcation of the environment).
+As we saw in the previous section, stems can also have variants. For ﬂiewe need a way of mapping it to
+basicﬂy,andastatementthatwedothiseverytimeweseethisstringwitha −ssuﬃx.Notethatthisisan
+exampleoforthographicvariationwithnophonologicalcorrelate(ﬂie andﬂyarepronouncedthesame).
+Thefavoredmodelforhandlingmorphonologyintheorthography,ormorphology-basedorthographic
+spelling variation, is a speciﬁc type of ﬁnite state machine known as a ﬁnite state transducer (FST). It isassumed that the reader is familiar with ﬁnite state automata. Imagine a ﬁnite state transition network(FSTN) which takes two tapes as input, and transitions are licensed not by arcs notated with a singlesymbol but a pair of symbols. The regular language that the machine represents is the relationbetween
+the language that draws from one set of symbols and the language that draws from the set of symbols itispairedwith.AnFSTthatdeﬁnestherelationbetweenunderlying glass
+∧s(where∧marksamorpheme
+boundary)andsurface glassesisgiveninFigure3.1.
+Transitionfromonestatetoanotherislicensedbyaspeciﬁccorrespondencebetweensymbolsbelonging
+to two tapes. Underlying, more abstract representations are conventionally the upper tape. The colon
+
+34 HandbookofNaturalLanguageProcessing
+g:g
+12345678 9l:l a:a s:s s:s ^:ε :e s:s
+FIGURE3.1 AspellingruleFSTfor glasses.
+f:f
+1234567l:l y:i ^:ε ε:e s:s
+FIGURE3.2 AspellingruleFSTfor ﬂies.
+between symbols labeling the arcs declares the correspondence. The analysis of the surface string into
+its canonical morphemes is simply reading the lower language symbol and printing its upper language
+correspondent.Andgenerationistheinverse.Morphemeboundariesdonothavesurfacerepresentations;
+theyaredeletedingenerationbyallowingthealphabetofthelowerlanguagetoincludetheemptystring
+symbol ε.Thiscorrespondenceof∧toεlabelsthetransitionfromState6toState7.Thestring glassesisan
+exampleof insertion-basedorthographicvariationwhereacharacterhastobeinsertedbetweenstemand
+suﬃx. Since εcan also belong to the upper language its correspondence with lower language eprovides
+fortheinsertion(State7toState8).Inasimilarvein,anFSTcanencodetherelationbetweenunderlying
+ﬂy∧sandsurface ﬂies(Figure3.2). Thisisacombinationof substitution basedvariation(thesymbol yis
+substituted by i) and insertion based variation, if we treat the presence of eas the same as in the glasses
+example.Variationtakesplacebothinthestemandinthesuﬃx.
+A practical demonstration of an FST treatment of English orthographic variation, i.e., spelling rules
+helps to show these points. To do this we will use the lexical knowledge representation language DATR
+(Evans and Gazdar 1996). DATR notation for FSTs is a good expository choice since its syntax is
+particularly transparent, and has been shown to deﬁne FSTs in an economical way (Evans and Gazdar
+1996: 191–193).∗And as we will be using DATR anyway when we discuss an alternative to ﬁnite state–
+based lexical analysis, it makes sense to keep with the same notation throughout. But the reader should
+note that there are alternative FST notations for lexical analysis, for example, in Koskenniemi (1983),
+Beesley and Karttunen (2003), and Sproat (1997). DATR expresses the value for some attribute, or a set
+ofattributes,asanassociationofthevaluewithapathatsomenode.ADATRdeﬁnitionisgivenin(3.1).
+(3.1)State_n:
+<g> == g.
+Basically, (3.1)saysthatataparticularnode, State_n , theattribute <g>hasthevalue g. Nodesarein
+(initial)uppercase, attributesetsarepathsofoneormoreatomsdelimitedbyanglebrackets. Wecould
+thinkof(3.1)asatrivialsinglestateFSTthattakesaninputstring g,representedbyanattributepath,and
+generatestheoutputstring g,representedbythevalue.DATRvaluesdonotneedtobeexplicitlystated,
+they can be inherited via another path. And values do not need to be simple; they can be a combination
+of atom(s) plus inheriting path(s). Imagine you are building a transducer to transliterate words in the
+Cyrillic alphabet into their Roman alphabet equivalents. For example, you want the FST to capture
+the proper name CaXatransliterated as Sasha. So we would have <C> == S,<a> == a . ForX
+we need two glyphs and to get them we could associate <X>with the complex value s<h>,a n d
+somewhereelseprovidetheequation <h> == h .So<X> == s <h> implies<X>= =sh .Wewill
+∗Gibbon (1987) is an FST account of tone morphonology in Tem and Baule, African languages spoken in Togo and the
+Ivory Coast. In a later demonstration, Gibbon showed how DATR could be used to considerably reduce the number of
+statesneededtodescribethesameproblem(Gibbon1989).
+
+LexicalAnalysis 35
+see the importance of including a path as part of the value to get (3.1) to look more like a more serioustransducerthatmaps glass
+∧stoglasses.Thisisgivenin(3.2).
+(3.2)Glasses_FST:
+<g> == g <><l> == l <><a> == a <><s> == s <><s> == s <><ˆ> == e <><s> == s <><> == .
+The input string is the path < glassˆs > .T h ep a t h<g>that we see in the second line of (3.2)
+is in fact the leading subpath of this path. The leading subpath expresses the ﬁrst symbol of the input
+string.Itisassociatedwiththeatom g,asymboloftheoutputstring.Sofar,wehavemodeledatransition
+fromtheinitialstatetoanotherstate,andtransduced gtog.Furthertransitionsarebymeansofthe <>
+and this needs careful explanation. In DATR, any extensions of a subpath on the left of an equation areautomaticallytransferredtoapathontherightoftheequation.Sotheextensionsof <g>aretransferred
+into the path <>as< lassˆs > . This path then needs to be evaluated by linking it to a path on
+thelefthandside. Thepath <l>inthethirdlineissuitablebecauseitistheleadingsubpathofthisnew
+path.Aswecanseethevalueassociatedwith <l>istheatom l, soanothersymbolhasbeenconsumed
+on the input string and a corresponding symbol printed onto the output string. The extensions of< lassˆs > ﬁll the path <>on the right side. To take stock: at this point the evaluation of
+< glassˆs > isgltogether with the extended path <a s s ˆ s>. As we continue down
+the equation list the leading subpaths are always the next attribute atom in the input string path, andthis path is given the equivalent value atom. But something more interesting happens when we get tothe point where the leading subpath is <ˆ>. Here a nonequivalent value atom is given, the atom e.
+This of course expresses the einsertion that is the essence of the spelling rule. The deletion of the ˆis
+representedverystraightforwardlyassayingnothingaboutit,i.e.,notransduction.Finally,theequationatthebottomofthelistfunctionstoassociateanysubpathnotalreadyspeciﬁed,expressedas <>,withanull
+value. Suppose we represent input strings with an end of word boundary #, so we have the lexical entry
+< glassˆes# > . Through the course of the evaluation <#>will ultimately be treated as a
+leading subpath. As this path is not explicitly stated anywhere else at the node, it is implied by <>.S o
+<> ==is interpreted as the automatic deletion of any substring for which there is no explicit mapping
+statement. This equation also expresses the morphologically simple input string < glass# >
+mappingto glass .Thetheorem,expressinginputandoutputstringcorrespondenceslicensedby
+theFSTin(3.2)isgivenin(3.3).
+(3.3)< glass# >=glass< glassˆs# >=glasses
+The FST in (3.2) is very useful for a single word in the English language but says nothing about otherwords,such class:classes, mass:masses,or fox:foxes.Nordoesitprovidefor‘regular’pluralssuchas cat:cats.
+FSTsaresetuptomanagetheregularsituationaswellasproblemsthataregeneraltoentireclasses.Todothis,
+symbolscanbereplacedby symbolclasses.(3.4)replaces(3.3)byusingasymbolclassrepresentedby
+theexpression $abc,anabbreviatoryvariablerangingoverthe26lowercasealphabeticcharactersused
+inEnglishorthography(seeEvansandGazdar1996:192–193fortheDATRFSTonwhichthisisbased).
+(3.4)Glasses&Classes:
+<$abc> == $abc <><ˆ> == e <><> == .
+
+36 HandbookofNaturalLanguageProcessing
+Foraninputstringconsistingofastemcomposedofalphabeticsymbols,theﬁrstequationtakesthisstring
+represented as a path and associates whatever character denotes its leading subpath with the equivalent
+character as an atomic value. Equivalence is due to the fact that $abcis a bound variable. If the string
+is the path < glassˆs# > then the leading subpath <g>is associated with the atomic value
+g; by the same token for the string < catˆs > the subpath <c>would be associated with c.T h e
+extensionofthispathﬁlls <>ontherighthandsideasin(3.2),andjustincasethenewleadingsubpath
+belongsto$abc,itwillbeevaluatedas <$abc> == &abc <> .Thisrepresentsaself-loop,atransition
+whose source and destination state is the same. In case we hit a morpheme boundary, i.e., we get to the
+pointwheretheleadingsubpathis <ˆ>,thenasin(3.2)thevaluegivenis e.Whateverappearsafterthe
+morphemeboundaryisthenewleadingsubpath.Andsinceitis <s>,thepluralaﬃx,itbelongsto $abc
+sothrough <$abc> == $abc <> willmapto s.Asbefore,the #willbedeletedthrough <> ==since
+thissymboldoesnotbelongto $abc.
+Whereas (3.2) undergeneralizes, we now have an FST in (3.4) which overgeneralizes. If the input is
+< catˆs > theoutputwillbeincorrect cates .Amorphonologicalruleorspellingrule(the
+orthographiccounterpart)hastosaynotonly(a)whatchangesfromonelevelrepresentationtoanother,
+and(b)whereinthestringthechangetakesplacebutalso(c)underwhatcircumstances.The contextof
+einsertionisan sfollowedbythesymbolsequence ˆs.Butifwewanttowidenthecontextsothat foxes
+$abc:$abc
+1
+$sx^:ε
+FIGURE 3.3 An FST with
+symbolclasses.isincludedintherule,thentheruleneedstospecify einsertionwhennot
+justsbut alsoxis followed by ˆs.W ec a nt h i n ko ft h i sa sac l a s so f
+contexts,asubsetofthestemsymbolclassabove.Figure3.3isagraphical
+representationofatransitionlabeledbythesymbolclassofallstemchar-
+acters, and another transition labeled by the class of just those symbols
+providingtheleftcontextforthespellingrule.
+Our(ﬁnal)FSTforthe −esspellingruleinEnglishisgivenin(3.5)with
+itstheoremin(3.6).Thecontextof einsertionisexpressedbythevariable
+$sx(left context) followed by the morpheme boundary symbol (right
+context). As ‘regular’ input strings such as <catˆs>,<dogˆs>,
+< chairˆs > do not have pre-morpheme boundary sorxthey
+avoidthepathleadingto einsertion.
+(3.5)Es_Spelling_Rule:
+<$abc> == $abc <>
+<$sx ˆ> == $sx e <>
+<ˆ> == <>
+<> == .
+(3.6)< glass# >=glass .
+< glassˆs# >=glasses .
+< fox# >=fox .
+< foxˆs >=foxes .
+< cat# >=cat .
+< catˆs# >=cats .
+AﬁnalcommentonthespellingruleFSTisinorder.In(3.5)howdoweensurethatthesubpath <x>for
+< foxˆs > will not be evaluated by the ﬁrst equation since xbelongs to$abcas well as$sx?I n
+otherwords,howdowe‘lookahead’toseeifthenextsymbolontheinputstringisa ˆ?InDATR,look
+aheadiscapturedbythe‘longestpathwins’principlesothatanyextensionofasubpathtakesprecedence
+over the subpath. As <x ˆ>is an extension of <x>,t h e<x ˆ>path ‘wins’ and gets evaluated, i.e., it
+overrides the shorter path and its value. We look more closely at this principle when we use DATR to
+representdefaultinheritancehierarchiesinSection5.
+
+LexicalAnalysis 37
+3.2.1 Closing Remarks on Finite State Morphonology
+Morphonological alternations at ﬁrst glance seem marginal to word structure, or morphology ‘proper.’In the previous discussion, we have barely mentioned a morphosyntactic feature. But their importancein lexical analysis should not be overlooked. On the one hand, text processors have to somehow handleorthographicvariation.Andontheother,itwasearlierattemptsatcomputationallymodelingtheoreticalaccounts of phonological and morphonological variations that suggested FSTs were the most eﬃcientmeans of doing this. Kaplan and Kay in the 1980s, belatedly published as Kaplan and Kay (1994),demonstrated that the (morph)phonological rules for English proposed by Chomsky and Halle (1968)could be modeled in FSTs. Their work was taken up by Koskenniemi (1983) who used FSTs for themorphonology of Finnish, which went beyond proof of concept and was used in a large-scale text-processingapplication.IndeedKoskenniemi’sTwo-LevelMorphologymodelistherealstartingpointforﬁnite state–based analysis. Its motivation was to map the underlying lexical ( =lemma) representation
+to the surface representation without the need to consult an intermediary level. Indeed, intermediarylevels can be handled by cascading FSTs so that the output of FST1 is the input of FST2, and theoutputofFST2isintheinputofFST3. Butthentheorderingbecomescrucialforgettingthefactsright.Koskenniemi had the FSTs operate in parallel. An FST requires a particular context that could be anunderlyingorsurfacesymbol(class)andspeciﬁesaparticularmappingbetweenunderlyingandsurfacestrings. It thus acts as a constraint on the mapping of underlying and surface representations, and thespeciﬁcenvironmentofthismapping.AllFSTssimultaneouslyscanbothunderlyingandsurfacestrings.AmappingisacceptedbyalltheFSTsthatdonotspecifyaconstraint.Forittoworktheunderlyingandsurface strings have to be equal length, so the mapping is one to one. One rule maps underlying yto
+surfaceiprovidedthatasurface ecomesnext;sothecontextisthesurfacestring.Theotherissensitiveto
+theunderlyingstringwhereitensuresasurface eappearswheneveryprecedesthemorphemeboundary,
+shownin(3.6).
+(3.6)
+fly0ˆs
+flie0s
+Koskenniemi’smodellaunchedFST-basedmorphologybecause,asKarttunen(2007:457)observes,it
+was “the ﬁrst practical model in the history of computational linguistics for analysis of morphologicallycomplex languages.” Despite its title, the framework was essentially for morphonology rather thanmorphology proper, as noted in an early review (Gazdar 1985: 599). Nonetheless, FST morphonologypavedthewayforFSTmorphologyproperwhichwenowdiscuss.
+3.3 Finite State Morphology
+Intheprevioussectionweshowedhowlexicalanalysishastoaccountforsurfacevariationofacanonicalstring.Butthecanonicalstringwithmorphemeboundariesisitselfthelowerstringofitsassociatedlemma.For example, foxˆshas the higher-level representation as the (annotated) lemma fox+nounˆplural .F S T s
+are used to translate between these two levels to model what we could think of as morphology ‘proper.’To brieﬂy highlight the issues in FSM let us consider an example from Turkish with a morphosyntactictranslation,orinterlineargloss,aswellasastandardtranslation.
+(3.7) gör-mü-yor-du-k
+see-
+NEG-PROGR-PAST-1PL
+‘Weweren’tseeing’(Mel’čuk2006:299)
+InTurkish,themorphologicalcomponentsofawordareneatlydivisibleintostemandcontiguousaﬃxeswhere each aﬃx is an exponent of a particular morphosyntactic property. Lexical analysis treats theinterlineargloss(secondline)asthelemmaandmapsitontoamorphologicallydecomposedstring.The
+
+38 HandbookofNaturalLanguageProcessing
+languageoftheupper,orlexical,languagecontainssymbolsformorphosyntacticfeatures.Theorderingofthemorphemesisimportant:NegationprecedesAspectwhichprecedesTensewhichinturnprecedesSubject Agreement information. For a correct mapping, the FST must encode morpheme ordering, ormorphotactics .ThisisclassicI&Amorphologicalanalysis.Asintheprevioussection,wecandemonstrate
+withanFSTforEnglishnotatedinDATR(3.8).EnglishdoesnotmatchTurkishforrichnessininﬂectionalmorphology but does better in derivational morphology. The lexical entries for the derivational familyindustry,industrial,industrialize,industrialization aregivenin(3.8b).
+(3.8)DERIVATION:
+<$abc> == $abc <><+noun> == Noun_Stem:<>.
+Noun_Stem:
+<> == \#
+<ˆ +adj> == ˆ a l Adj_Stem:<>.
+Adj_Stem:
+<> == \#
+<ˆ +vb> == ˆ i z e Verb_Stem:<>.
+Verb_Stem:
+<> == \#
+<ˆ +noun> == ˆ a t i on <>.
+(3.8b)< industry+noun>< industry+noun ˆ +adj>< industry+noun ˆ +adj ˆ +vb>< industry+noun ˆ +adj ˆ +vb ˆ +noun>.
+TheFSTmapsthelemmalexicalentriesin(3.8b)totheircorresponding(intermediary)forms,thenounindustry#,theadjective industryˆal#,theverb industryˆalˆize#,andthenoun industryˆalˆizeˆation# .Asin
+themorphonologicaldemonstrationintheprevioussection,thetrivialalphabeticalmappingisperformedthroughavariableexpressingasymbolclassandpathextensionsforarctransitioning.Theﬁrstdiﬀerenceis a path with a morphosyntactic feature as its attribute, <+noun> showing that in this FST we have
+lemmas and features as input. We see that this feature licenses the transition to another set of statesgatheredroundthenode Noun_Stem.InFSM,lemmasareclassiﬁedaccordingtofeaturessuchasPOS
+to enable appropriate aﬃx selection, and hence capture the morphotactics of the language. Three nodesrepresenting three stem classes are associated with the three aﬃxes –al, -ize, -ation . Forˆalto be a
+possible aﬃx value the evaluation must be at the Noun_Stem node. Once the aﬃx is assigned, further
+evaluation must be continued at a speciﬁed node, here Adj_Stem. This is because the continuation
+to–alaﬃxation is severely restricted in English. We can think of the speciﬁed ‘continuation’ node as
+representinga continuationclass, alistofjustthoseaﬃxesthatcancomeafter –al. Inthisway, alemma
+is guided through the network, outputting an aﬃx and being shepherded to the subnetwork where thenextaﬃxwillbeavailable.So(3.8)accountsfor industyˆalˆizeˆation# butfailsfor
+∗industryˆationˆalˆize#
+or∗industy-ize-al-ation# .Italsoaccountsfor industry# andindustyˆalˆize# bymeansoftheequation <>
+==\#ateachcontinuationclassnode. Notethat #isareservedsymbolinDATR,hencetheneedfor
+escape \.
+LetusquicklystepthroughtheFSTtoseehowitdoesthemapping < industry+noun ˆ
++adj ˆ +vb> = i n d ustryˆalˆize# . The ﬁrst path at DERIVATION
+mapstheentirestemofthelemmatoitssurfaceform,inthemannerdescribedforthespellingruleFST.Afterthis,theleadingsubpathis <+noun>;thepathextensionsarepassedovertothenode Noun_Stem.
+Theﬁrstlineat Noun_Stem coversthemorphologicallysimple < industry +noun>.For
+this string, there is no further path to extend, i.e., no morphological boundaries, and transductionamounts to appending to the output string the word boundary symbol. Similar provision is made at all
+
+LexicalAnalysis 39
+nodesjustincasethederivationstopsthere.If,however,thelemmaisannotatedasbeingmorphologicallycomplex, and speciﬁcally as representing adjectival derivation, <ˆ +adj>, the output is a morpheme
+boundary plus –alaﬃx (second line at the Adj_Stem node). At this point the path can be extended
+as<ˆ +vb> in the case of derivative industrialize orindustrialization, or not in the case of industrial.
+With no extensions, evaluation will be through <> == \#yieldingindustryˆal# .
+Otherwise an extension with leading subpath <ˆ + vb> outputs suﬃx ˆize and is then passed
+ontothenode Verb_Stem forfurtherevaluation.Asthereisnonewsubpaththeendofwordboundary
+is appended to the output string value. But if the input path happened to extend this path any furtherevaluationwouldhavetobeat Verb_Stem,e.g.,addingtheaﬃx –ation.
+3.3.1 Disjunctive Afﬁxes, Inﬂectional Classes, and Exceptionality
+Aﬃxcontinuationclassesareimportantforgettingthemorphotacticsrightbuttheyalsoallowformorethan one aﬃx to be associated with the same morphosyntactic feature set. This is very common ininﬂectionally rich languages such as Russian, French, Spanish, and German. To illustrate, consider theparadigm of the Russian word karta‘map.’ I am giving the forms in their transliterated versions for
+expository reasons, so it should be understood that kartais the transliteration of κapτa. Note the suﬃx
+usedforthegenitiveplural −Ø.Thisdenotesa‘zeroaﬃx,’i.e.,thewordisjustthestem kart(orκap
+T)in
+agenitivepluralcontext.
+(3.9) Karta
+Singular Plural
+Nominative kart-a kart-y
+Accusative kart-u kart-y
+Genitive kart-y kart-Ø
+Dative kart-e kart-am
+Instrumental kart-oj kart-ami
+Locative kart-e kart-ax
+TheFSTin(3.10)mapslexicalentriessuchas < kart +noun ˆ sg nom> toitscorresponding
+surfaceform kartˆa# .
+(3.10)RUSSIAN:
+<$abc> == $abc <><+noun> == Noun_Stem:<>.
+Noun_Stem:
+<> == \#
+<ˆ sg nom> == ˆ a <><ˆ sg acc> == ˆ u <><ˆ sg gen> == ˆ y <><ˆ sg dat> == ˆ e <><ˆ sg inst> == ˆoj< >
+<ˆ sg loc> == ˆ e <><ˆ pl nom> == ˆ y <><ˆ pl acc> == ˆ y <><ˆ pl gen> == ˆ 0 <><ˆ pl dat> == ˆ am <><ˆ pl inst> == ˆami< >
+<ˆ pl loc> == ˆ a x <>.
+This FST accounts for anyRussian noun. But this makes it too powerful as not all nouns share the
+inﬂectional pattern of karta. For example, zakon‘law’ has a diﬀerent way of forming the genitive
+
+40 HandbookofNaturalLanguageProcessing
+TABLE3.1 RussianInﬂectionalClasses
+I II III IV
+Zakon Karta Rukopis’ Boloto
+Singular
+Nom zakon-ø kart-a rukopis’-ø bolot-o
+Acc zakon-ø kart-u rukopis’-ø bolot-o
+Gen zakon-a kart-y rukopis-i bolot-a
+Dat zakon-u kart-e rukopis-i bolot-u
+Inst zakon-om kart-oj rukopis-ju bolot-om
+Loc zakon-e kart-e rukopis-i bolot-e
+Plural
+Nom zakon-y kart-y rukopis-i bolot-a
+Acc zakon-y kart-y rukopis-i bolot-a
+Gen zakon-ov kart-ø rukopis-ej bolot-ø
+Dat zakon-am kart-am rukopis-jam bolot-am
+Inst zakon-ami kart-ami rúkopis-jami bolot-ami
+Loc zakon-ax kart-ax rukopis-jax bolot-ax
+singular: it aﬃxes −ato the stem and not −y(zakon-a). And bolot-o‘swamp’ diﬀers in its nominative
+singular. Finally rukopis’‘manuscript’ has a distinct dative singular rukopisi.B e c a u s eo ft h e s ea n do t h e r
+distinctions, Russian can be thought of as having four major inﬂectional patterns, or inﬂectional classes,
+thatareshowninTable3.1.
+Tohandlesituationswherethereisa choiceofaﬃxcorrespondingtoagivenmorphosyntacticproperty
+set, an FST encodes subclasses of stems belonging to the same POS class. (3.11) is a modiﬁed version oftheFSTin(3.10)thatincorporatesinﬂectionalclassesassetsofdisjunctiveaﬃxes. Forreasonsofspace,onlytwoclassesarerepresented.Samplelexicalentriesaregivenin(3.12).
+(3.11)RUSSIAN_2:
+<$abc> == $abc <><+noun> == Noun_Stem:<>.
+Noun_Stem:
+<1>== Stem_1:<>
+<2>== Stem_2:<>
+<3>== Stem_3:<>
+<4>== Stem_4:<>.
+Stem_1:
+<> == \#
+<ˆ sg nom> == ˆ 0 <><ˆ sg acc> == ˆ 0 <><ˆ sg gen> == ˆ a <><ˆ sg dat> == ˆ u <><ˆ sg inst> == ˆ o m <><ˆ sg loc> == ˆ e <><ˆ pl nom> == ˆ y <><ˆ pl acc> == ˆ y <><ˆ pl gen> == ˆ o v <><ˆ pl dat> == ˆ a m <><ˆ pl inst> == ˆ a m i <><ˆ pl loc> == ˆ a x <>.
+
+LexicalAnalysis 41
+Stem_2:
+<> == \#
+<ˆ sg nom> == ˆ a <><ˆ sg acc> == ˆ u <><ˆ sg gen> == ˆ y <><ˆ sg dat> == ˆ e <><ˆ sg inst> == ˆ o j <><ˆ sg loc> == ˆ e <><ˆ pl nom> == ˆ y <><ˆ pl acc> == ˆ y <><ˆ pl gen> == ˆ 0 <><ˆ pl dat> == ˆ am <><ˆ pl inst> == ˆ a m i <><ˆ pl loc> == ˆ a x <>.
+(3.12)< kart+noun 2 ˆ sg nom>< kart+noun 2 ˆ sg acc>< zakon+noun 1 ˆ sg nom>< zakon+noun 1 ˆ sg acc>
+What is diﬀerent about the partial lexicon in (3.12) is that stems are annotated for stem class (1, 2, 3,4) as well as POS. The node Noun_Stem assigns stems to appropriate stem class nodes for aﬃxation.
+Eachofthefourstemclassnodesmapsagivenmorphosyntacticfeaturesequencetoanaﬃx.Inthisway,separate aﬃxes that map to a single feature set do not compete as they are distributed across the stemclassnodes.EvenEnglishhassomethinglikeinﬂectionalclasses.Thereareseveralwaysofformingapastparticiple:suﬃx–ed asin‘havelooked,’suﬃx– enasin‘havegiven,’andnoaﬃx(-Ø)asin‘haveput.’An
+EnglishverbFSTwouldencodethisarrangementassubclassesofstems,asinthemoreelaborateRussianexample.
+Classifyingstemsalsoallowsforafairlystraightforwardtreatmentofexceptionality.Forexample,the
+ClassInoun soldatisexceptionalinthatitsgenitivepluralisnot
+∗soldat-ov aspredictedbyitspattern,but
+soldat-∅‘soldier.’ ThisisthegenitivepluralyouexpectforaClass2noun(seeTable3.1). Tohandlethis
+weannotate soldatlexicalentriesasClass1forallforms exceptthegenitiveplural,whereitisannotated
+asClass2.Thisisshownin(3.13)whereasmallsubsetofthelemmasaregiven.
+(3.13)< soldat+noun 1 ˆ sg nom>< soldat+noun 1 ˆ sg gen>< soldat+noun 1 ˆ pl nom>< soldat+noun 2 ˆ pl gen>
+Anothertypeofexceptionisrepresentedby pal’to‘overcoat.’Whatisexceptionalaboutthisitemisthatit
+doesnotcombinewithanyinﬂectionalaﬃxes,i.e.,itisanindeclinablenoun.Thereareanumberofsuchitems in Russian. An FST assigns them their own class and maps all lexical representations to the sameaﬃxlesssurfaceform,asshownin(3.14).
+(3.14)Stem_5:
+<> == \#.
+Ourlasttypeofexceptioniswhatiscalleda pluraliatantum word,suchas scissorsinEnglish,or trousers,
+wherethereisnomorphologicalsingularform.TheRussianfor‘trousers’isalsopluraliatantum: brjuk-i.
+We provide a node in the FST that carries any input string singular features to a node labeled for inputpluralfeatures.Thisisshownin(3.15)asthepath <ˆ sg> inheritingfromanotherpathatanothernode,
+i.e.,<ˆ pl> atStem_2.Thisisbecausebrjuki sharespluralaﬃxeswithotherClass2nouns.
+
+42 HandbookofNaturalLanguageProcessing
+(3.15)Stem_6:
+<> == \#
+<ˆ sg> == Stem_2:<ˆ pl>.
+FSTs for lexical analysis are based on I&A style morphology that assumes a straightforward mapping offeaturetoaﬃx.AﬃxrivalryofthekindexempliﬁedbyRussianupsetsthismappingsincemorethanoneaﬃxisavailableforonefeature.Butbyincorporatingstemclassesandcontinuationaﬃxclassestheycanhandle such cases and thereby operate over languages with inﬂectional classes. The subclassiﬁcation ofstemsalsoprovidesFSMwithawayofincorporatingexceptionalmorphologicalbehavior.
+3.3.2 Further Remarks on Finite State Lexical Analysis
+FSTscanbecombinedinvariouswaystoencodelargerfragmentsofalanguage’swordstructuregrammar.Through unionan FST for, say Russian nouns, can be joined with another FST for Russian verbs. We
+havealreadymentionedthatFSTscanbecascadedsuchthattheoutputofFST1istheinputtoFST2.Thisoperationisknownas composition.TheFSTsformorphologypropertakelemmasasinputandgivemor-
+phologicallydecomposedstringasoutput. Thesestringsarethentheinputofmorphonological/spellingrules FSTs that are sensitive to morpheme boundaries, i.e., where the symbols ˆ and # deﬁne contextsfor a given rule as we saw with the English plural spelling rule. So, for example, the lemma <k a r t
++ noun ˆ sg nom> mapsontoanintermediatelevelofrepresentation kartˆa# .Another
+transducertakesthisasinputpath kartˆa# andmapsitontothesurfaceform karta ,
+stripping away the morpheme boundaries and performing any other (morphonological) adjustments.Intermediatelevelsofrepresentationaredispensedwithaltogetheriftheseriesoftransducersis composed
+into a single transducer, as detailed in Roark and Sproat (2007) where <x, y> representing the upperand lower tape of transducer 1 and <y, z> the upper and lower tapes of transducer 2 are composedinto a single transducer T as <x, z>, i.e., intermediary <y, z> is implied. As we saw in the previoussection,Two-LevelMorphologydoesnotcomposethemorphonologicalFSTsbutintersectsthem.Thereis no intermediary level of representation because the FSTs operate orthogonally to a simple ﬁnite stateautomatonrepresentinglexicalentriesintheirlexical(lemma)forms.
+FinitestateapproacheshavedominatedlexicalanalysisfromKoskenniemi’s(1983)implementationof
+asubstantialfragmentofFinnishmorphology. Inthemorphologychaptersofcomputationallinguisticstextbookstheﬁnitestateapproachtakescentrestage,forexample,Daleetal.(2000),Mitkov(2004),andJurafsky and Martin (2007), where it takes center stage for two chapters. In Roark and Sproat (2007)computational morphology isFSM. From our demonstration it is not hard to see why this is the case.
+Implementations of FSTNs are relatively straightforward and extremely eﬃcient, and FSTs provide thesimultaneous modeling of morphological generation and analysis. They also have an impressive trackrecord in large-scale multilingual projects, such as the Multext Project (Armstrong 1996) for corpusanalysis of many languages including Czech, Bulgarian, Swedish, Slovenian, and Swahili. More recenttwo-level systems include Ui Dhonnchadha et al. (2003) for Irish, Pretorius and Bosch (2003) for Zulu,and Yona and Wintner (2007) for Hebrew. Finite state morphological environments have been createdforuserstobuildtheirownmodels,forexample,Sproat’s(1997) lextoolsandmorerecentlyBeesleyand
+Karttunen’s(2003) xeroxﬁnitesstatetools.TheinterestedreadershouldconsulttheaccompanyingWeb
+siteforthischapterforfurtherdetailsoftheseenvironments,aswellasDATRstyleFSTs.
+3.4 “Difﬁcult” Morphology and Lexical Analysis
+Sofarwehaveseenlexicalanalysisasmorphologicalanalysiswheretherearetwoassumptionsbeingmadeaboutmorphologicallycomplexword:(1)onemorphosyntacticfeatureset,suchas‘SingularNominative,’maps onto one exponent, for example, a suﬃx or a preﬁx; and (2) the exponent itself is identiﬁable as a
+
+LexicalAnalysis 43
+sequenceofsymbolslyingcontiguoustothestem,eitheronitsleft(asapreﬁx)oritsright(asasuﬃx).Butin many languages neither (1) nor (2) necessarily hold. As NLP systems are increasingly multilingual, itbecomesmoreandmoreimportanttoexplorethechallengesotherlanguagesposeforﬁnitestatemodels,whichareideallysuitedtohandledatathatconformtoassumptions(1)and(2).Inthissection, welookatvarioussetsofexamplesthatdonotconformtoaneatI&Aanalysis.Therearesometimeswaysaroundthese diﬃcult cases, as we saw with the Russian case where stem classes were used to handle multipleaﬃxesbeingassociatedwithasinglefeature.ButourdiscussionwillleadtoanalternativetoI&Aanalysisthatﬁnitestatemodelsentail.AswewillseeinSection3.5,thealternativeW&Papproachappearstooﬀeramuchmorenaturalaccountofwordstructurewhenitincludesthediﬃcultcases.
+3.4.1 Isomorphism Problems
+Itturnsoutthatfewlanguageshaveamorphologicalsystemthatcanbedescribedasonefeature(orfeatureset)expressedasonemorpheme,theexponentofthatfeature.Inotherwords, isomorphism turnsoutnot
+to be the common situation. In Section 3.3, I carefully chose Turkish to illustrate FSTs for morphologyproperbecauseTurkishseemstobeisomorphic,apropertyofagglutinativelanguages.Atthesametimederivational morphology tends to be more isomorphic than inﬂection, hence an English derivationalexample.Butevenagglutinativelanguagescandisplaynon-isomorphicbehaviorintheirinﬂection(3.16)isthepasttensesetofformsfortheverb‘tobe’(Haspelmath2002:33).
+(3.16) ol-i-n ‘Iwas’
+ol-i-t ‘you(singular)were’ol-i ‘he/shewas’ol-i-mme ‘wewere’ol-i-tte ‘you(plural)were’ol-i-vat ‘theywere’
+A lexical entry for ‘I was’ would be <o l +verb ˆ past ˆ 1stSg> mapping to olˆiˆn# .
+Similarly for ‘we were,’ <o l +verb ˆ past ˆ 1stSPL> maps toolˆiˆm m e# .B u t
+what about ‘he/she was’? In this case there is no exponent for the feature set ‘3rd Person Singular’ tomap onto; we have lost isomorphism. But in a sense we had already lost it since for all forms in (3.16)we are really mapping a combination of features to a single exponent: a Number feature (plural) and a
+Person feature (1st) map to the single exponent - mme, etc. Of course the way out is to use a symbol on
+the lexical string that describes a feature combination. This is what we did with the Russian examplesin Section 3.3.2 to avoid the diﬃculty, and it is implicit in the Finnish data above. But back to theproblem we started with: where there is a ‘missing’ element on the surface string we can use a Øa‘ z e r o
+aﬃx,’ for the upper string feature symbol to map to. Indeed, in Tables 3.1 and 3.2 I used Øto repre-
+sent the morphological complexity of some Russian word-forms. So the Russian FST maps the lemma< zakon+noun ˆ sg ˆ nom> ontozakonˆØ# .T og e tr i do ft h e Ø, a mor-
+phonological FST can use empty transitions in the same way it does to delete morpheme boundaries.Variations of this problem can be met with variations of the solution. The French adverb ‘slowly’ islentement wherelent-i st h es t e ma n d– mentexpresses ‘adverb.’ This leaves the middle −e- without
+anything to map onto. The mapping is one upper string symbol to two lower string symbols. The solu-tion is to squeeze in a zero feature, or ‘empty morpheme’ between the stem and the ‘adverb’ feature:< lentˆØˆadverb>. The converse, two features with a single exponent, is collapsing thetwo features into a feature set, as we discussed. The alternative is to place zeros on the lower string:<o l +verb Past ˆ 1
+stPerson ˆ Singular> mapsto< olˆiˆmmeˆØ# .But
+thenthechoiceofwhatfeaturehasthezeroaﬃxisarbitrary.
+Finally, we can think of the competition of exponents for a particular feature as a similar kind of
+isomorphism problem: one feature, several exponents. In Section 3.3.1, we showed how Russian hasinﬂectional classes, where nouns are grouped according to the choice of suﬃx they make for a given
+
+44 HandbookofNaturalLanguageProcessing
+TABLE3.2 RussianInﬂectionalClasses
+I II III IV
+Zakon Karta Rukopis’ Boloto
+Singular
+Nom zakon-ø kart-a rukopis’-ø bolot-o
+Acc zakon-ø kart-u rukopis’-ø bolot-o
+Gen zakon-a kart-y rukopis-i bolot-a
+Dat zakon-u kart-e rukopis-i bolot-u
+Inst zakon-om kart-oj rukopis-ju bolot-om
+Loc zakon-e kart-e rukopis-i bolot-e
+Plural
+Nom zakon-y kart-y rukopis-i bolot-a
+Acc zakon-y kart-y rukopis-i bolot-a
+Gen zakon-ov kart-ø rukopis-ej bolot-ø
+Dat zakon-am kart-am rukopis-jam bolot-am
+Inst zakon-ami kart-ami rúkopis-jami bolot-ami
+Loc zakon-ax kart-ax rukopis-jax bolot-ax
+feature. To handle this we used aﬃx classes together with stem classes such that diﬀerent stem classeswerelicensedtonavigateoverdiﬀerentpartsofthenetworkwheretheappropriateaﬃxesarestored.
+3.4.2 Contiguity Problems
+Aswellasisomorphism,I&Aapproachesrelyoncontiguity:theexponentofafeatureshouldbefoundatthe left or right edge of the stem of the lower string, mirroring the position of the feature relative to thestem on the upper lexical string. But one does not need to look far to ﬁnd examples of ‘noncontiguous’morphology. In Section 3.1, I discussed the potential problem of sang,p a s tt e n s eo f sing.T h i si sa n
+exampleofafeaturemappingontoanexponent,whichisreallythechangewemaketothestem’svowel.How can an FST map the correct lower string to the upper string <s i n g ˆ past> ?T oa c c o u n t
+forthefeature notmappingontoanaﬃx, itcanusethe Øaswedid(extensively)withtheisomorphism
+problemsabove.Thisthenleavesthevowelalternationastheexponentofthefeature.Onewayistotargetthestemvowelsothatlexical imapsonto surface a; andallow navigationthrough thesubnetwork just
+forthoseitemsthatbehavethisway(sing/sang ,ring/rang,spin/span).Thisisrepresentedin(3.17).Lexical
+entriesforregular cookandirregular singandringaregivenin(3.18).
+(3.17)Ablaut_FST:
+<$abc> == $abc <><s i n g ˆ past> == Past_Stem<r i n g ˆ past> == Past_Stem<ˆ present> == ˆ 0 <><ˆ past> == ˆ e d <><> == \#.
+Past_Stem:
+<$abc> == $abc <><$vow> == a <><ˆ past> == ˆ 0 <><> == \#.
+(3.18)< singˆpresent>< s i n g ˆ past>
+< ringˆpresent>< r i n g ˆ past>
+< cookˆpresent>< c o o k ˆ past>
+
+LexicalAnalysis 45
+Theﬁrstnodeprovidesforthetrivialstemstringmappingsrequiredbyregularnon-ablautingverbs.Thefourthequationexpresses lexical‘present’mappingtoØ(wherenoaccountistakenof −s aﬃxationfor
+‘3rdpersonsingular’). Theﬁfthequationhandlesregularpastformationin –ed,a si ncooked.B u tj u s ti n
+casethepathtoevaluateis < singˆpast> or<r i n g ˆ past>,anextranodeisprovided
+for the evaluation, the node Past_Stem. At this node, the symbol class for all stem characters is used
+to perform the normal upper to lower stem mapping, as in previous DATR examples. The diﬀerence isthat there is a new symbol class expressed as the variable $vow, ranging over vowels that alternate withain the past. The path equation <$vow> == a <> takes the vowel in the stem and maps it to a,t h e
+vowelalternationthatistheexponentof‘past.’Anyothercharacterbelongingtotheinput(stem)stringmaps onto itself on the lower string (through <$abc> == $abc <>). Finally <ˆ past> == ˆ 0
+<>representsthefactthatforthisclassofverbsthezeroaﬃxisusedasexponentof‘past.’Thetheorem
+isgivenin(3.19).
+(3.19)< singˆpresent> = s ingˆ0# .
+<s i n g ˆ past> = s a n g ˆ 0 #.<r i n g ˆ present> = r i n g ˆ 0 #.<r i n g ˆ past> = r a n g ˆ 0 #.<c o o k ˆ present> = c o o k ˆ 0 #.<c o o k ˆ past> = c o o k ˆ e d #.
+Anotherexampleofnoncontiguous morphologyis inﬁxation , whereanaﬃxattachesnottotherightor
+left edges but within the stem itself. (3.20) is an inﬁxation example from Tagolog, a language spoken inthePhilippineswithnearlysixteenmillionspeakersworldwide( Ethnologue).ThedataarefromMel’čuk
+(2006:300).
+(3.20) Sulat‘write’ Patay‘kill’
+ACTIVE s-um-ulat p-um-atay
+PASSIVE s-in-ulat p-in-atay
+A way of handling inﬁxation with FSTs is to add an intermediary level of representation, as outlinedin Roark and Sproat (2007: 29–31, 39–40). A ﬁrst transducer maps the location of the aﬃxation to an‘anchor’ symbol within the stem. A second transducer operates over intermediate representations andmaps the anchor with either ˆi nˆ orˆu mˆ depending on the voice feature (Active or Passive).
+Note that features need to be preserved from the lexical to intermediate levels. This is because the onlydiﬀerence between the two string types is the anchor; and as it is an aﬃx it needs boundaries, and asit is an inﬁx the boundaries need to be on both left and right. This is important in case there are anymorphonologicalconsequencestotheinﬁxation.ThisapproachinformstheDATRtransducersin(3.21)and(3.23).
+(3.21)Itermediate_FST:
+<$features> == $features <><$abc> == $abc <><ˆ $abc $vow> == ˆ $abc & $vow <><> == .
+(3.22)<activeˆsulat ><passive ˆ sulat >
+<active ˆ p a t a y>< passiveˆpatay >
+Asfeatureannotationsareneededintheoutputstring,weneedasymbolclassforthem,expressedasthevariable$features;thenidentitymappingistreatedasinthepreviousFSTs.Thesecondequationisthe
+(bynow)familiartrivialstemcharactermapping.Notethatlexicalentriescomewithfeaturestotheleftofthecanonicalstem(3.22).Thethirdequationin(3.21)representsthewaytheFSTtargetstheﬁrstcharacterfollowedbytheﬁrstvowelofastem.Therighthandsideexpressesthetransduction:theboundarysymbol
+
+46 HandbookofNaturalLanguageProcessing
+is preserved, as is the ﬁrst letter of the stem and the ﬁrst vowel of the stem. But at the same time asymbol&is inserted between them. This is our anchor. The output of the transducer is therefore:
+active ˆ s & u l a t,and passiveˆs&ulat .Thesestringsarethentheinputtoa
+secondtransducerin(3.23)byrecastingthemaspaths.
+(3.23)Infixation_FST:
+<active ˆ> == Active:<><passive ˆ> == Passive:<>.
+Active:
+<$abc> == $abc <>< &>= =ˆu mˆ< ><> == \#.
+Passive:
+<$abc> == $abc <>< &>= =ˆi nˆ< ><> == \#.
+Herethefeaturesymbolsareusedtodecodetheanchor &.Pathsbeginning <active ˆ> areevaluated
+attheActive node,andpathsbeginning <passive ˆ> atthePassive node.Theﬁrstlineateach
+nodemapsstemletterstothemselvesinthenormalway.Thesecondlinemaps &toaboundarydelimited
+umattheActivenodeand inatthePassivenode.Endofwordboundariesareinsertedwhenthereisno
+morepathtoextend,aspreviously.Thetheoremisgivenin(3.24).
+(3.24)<active ˆ s &ulat >=sˆu mˆulat#
+<passive ˆ s &ulat >=sˆi nˆulat#
+Our ﬁnal example of noncontiguous morphology is where the root is interrupted, and at the same timeso is the exponent: “where aﬃxes interrupt roots and are interrupted by elements of roots themselves.”(Mel’čuk 2006: 300). Mel’čuk uses the term ‘transﬁxation’ but in the FST literature this type is usuallycalled ‘root and template,’ ‘root and pattern,’ or simply ‘non-concatenative’ morphology. In Arabic, therootfor‘draw’istheconsonanttemplate,orskeleton, r-s-m.Theexponentistheﬂesh.For‘activeperfect,’
+theexponentisthevowelseries -a–a-, for‘passiveperfect,’ thereisanotherexponent –u-i-.S orasam(a)
+‘he has drawn,’ and rusim(a) ‘it has been drawn’ (where the bracketed –a is the more normal suﬃx
+exponent): the root is interrupter and interrupted, as is the exponent. Another way of thinking aboutsituationsofthissortistohavediﬀerent tiersofstructuralinformation.Booij(2007:37)givesaModern
+Hebrewexample.Therootoftheverbgrowistheconsonantseries g-d-l.Therootoccupiesonetier.The
+formaldistinctionbetweentheword‘grow’ gadalanditsnominalization‘growth’ gdilaisexpressedbya
+patternofconsonantsandvowelsoccupyingseparatetiers.Thisisrepresentedin(3.25).
+(3.25) gadal
+Tier1 a aTier2 C V C V CTier3 g d l
+gdila
+Tier1 i aTier2 C C V C VTier3 g d l
+Therearethereforethreeseparatepiecesofsurfaceinformation:theroot(consonants)astier3informa-tion, the exponent (vowels) as tier 1, and the instruction for how they interleave as tier 2. How is thismodeled as ﬁnite state machine? A method reported in Kiraz (2000) for Arabic and widely discussedin the FSM literature is to have an n-t a p eF S Tw h e r e n>1. Each tier has representation on one of
+
+LexicalAnalysis 47
+several lower tapes. Another tape is also provided for concomitant preﬁxation or suﬃxation. Ratheringeniously,anoncontiguousproblemisturnedintoacontiguousonesothatitcanreceiveacontiguoussolution. RoarkandSproat(2007)proposeafamilyoftransducersfordiﬀerentCVpatterns(whereVisspeciﬁed)andthemorphosyntacticinformationtheyexpress.Theunionofthesetransducersiscomposedwith a transducer that maps the root consonants to the Cs. The intermediate level involving the patterndisappears.
+3.5 Paradigm-Based Lexical Analysis
+The various morphological forms of Russian kartain (3.9) were presented in such a way that we could
+associate form and meaning diﬀerence among the word-forms by consulting the cell in the table, theplace where case and number information intersect with word-form. The presentation of a lexeme’sword-formsasa paradigm providesanalternativewayofcapturingwordstructurethatdoesnotrelyon
+either isomorphism or contiguity. For this reason, the W&P approach has been adopted by the mainstream of morphological theorists with the view that “paradigms are essential to the very deﬁnition ofa language’s inﬂectional system” (Stewart and Stump 2007: 386). A suitable representation languagethat has been used extensively for paradigm-based morphology is the lexical knowledge representationlanguageDATR,whichupuntilnowwehaveusedtodemonstrateﬁnitestatemodels.Inthissection,wewill outline some of the advantages of paradigm-based morphology. To do this we will need to slightlyextendourdiscussionoftheDATRformalismtoincorporatetheideaof inheritance anddefaults.
+3.5.1 Paradigmatic Relations and Generalization
+The FSM demonstrations above have been used to capture properties not only about single lexicalitems but whole classes of items. In this way, lexical analysis goes beyond simple listing and attemptsgeneralizations. It may be helpful at this point to summarize how generalizations have been captured.Using symbol classes, FSTs can assign stems and aﬃxes to categories, and encode operations over thesecategories.Inthisway,theycaptureclassesofenvironmentsandchangesformorphonologicalrules,andmorphemeorderingsthatholdforclassesofitems,aswellasselectionswhenthereisachoiceofaﬃxesforagivenfeature.Butthereareothergeneralizationsthatarepropertiesofparadigmaticorganizationitself,whatwecouldthinkofas paradigmaticrelations .ToillustrateletuslookagainattheRussianinﬂectional
+classparadigmsintroducedearlierinTable3.1,andpresentedagainhereasTable3.3.
+TABLE3.3 RussianInﬂectionalClasses
+I II III IV
+Zakon Karta Rukopis’ Boloto
+Singular
+Nom zakon-ø kart-a rukopis’-ø bolot-o
+Acc zakon-ø kart-u rukopis’-ø bolot-o
+Gen zakon-a kart-y rukopis-i bolot-a
+Dat zakon-u kart-e rukopis-i bolot-u
+Inst zakon-om kart-oj rukopis-ju bolot-om
+Loc zakon-e kart-e rukopis-i bolot-e
+Plural
+Nom zakon-y kart-y rukopis-i bolot-a
+Acc zakon-y kart-y rukopis-i bolot-a
+Gen zakon-ov kart-ø rukopis-ej bolot-ø
+Dat zakon-am kart-am rukopis-jam bolot-am
+Inst zakon-ami kart-ami rúkopis-jami bolot-ami
+Loc zakon-ax kart-ax rukopis-jax bolot-ax
+
+48 HandbookofNaturalLanguageProcessing
+MOR_NOUN
+N_O
+N_I
+Zakon Boloto Gazeta´ Rukop´isN_IV N_II N_III
+FIGURE3.4 Russiannounsclassesasaninheritancehierarchy(basedonCorbett,C.G.andFraser,N.M.,Network
+Morphology:ADATRaccountofRussianinﬂectionalmorphology.InKatamba,F.X.(ed),pp.364–396.2003).
+One might expect that each class would have a unique set of forms to set them apart from the other
+class. So looking horizontally across a particular cell pausing at, say, the intersection of Instrumental
+andSingular,therewouldbefourdiﬀerentvalues,i.e.,fourdiﬀerentwaysofformingaRussiansingular
+instrumentalnoun.Rathersurprisingly,thisdoesnothappenhere:forClass1thesuﬃx –omisused,for
+Class II–oj, for Class III –ju, but Class IV does the same as Class I. Even more surprising is that there
+isnotasinglecellwhereafour-waydistinctionismade. Anotherexpectationisthatwithinaclass, each
+cellwouldbediﬀerentfromtheother,so,forexample,forminganominativesingularisdiﬀerentfroma
+nominativeplural.Whilethereisatendencyfor verticaldistinctionsacrosscells,itisonlyatendency.So
+for Class II, dative singular is in – e, but so is locative singular. In fact, in the world’s languages it is very
+rare to see fully horizontal and fully vertical distinctions. Recent work by Corbett explores what he calls
+‘canonicalinﬂectionalclasses’andshowsthatthedeparturesfromthecanonarethenorm,socanonicity
+does not correlate with frequency (Corbett 2009). Paradigm-based lexical analysis takes the departures
+fromthecanonasthestartingpoint.Itthenattemptstocapturedeparturesbytreatingthemas horizontal
+relationsandverticalrelations ,aswellasacombinationofthetwo.Soanidenticalinstrumentalsingular
+for Classes I and IV is a relation between these classes at the level of this cell. And in Class II there is a
+relationshipbetweenthedativeandlocativesingular. Tocapturetheseandotherparadigmaticrelations
+inRussian, theinﬂectionalclassesinTable3.2canbegivenanalternativepresentationasahierarchyof
+nodesdownwhichareinheritedinstructionsforformingmorphologicallycomplexwords(Figure3.4).
+Horizontalrelationsareexpressedasinheritanceoftwodaughternodesfromamothernode.Thenode
+N_Ostores the fact about the instrumental singular, and both Classes I and IV, represented as N_Iand
+N_IV,inheritit. Theyalsoinheritgenitivesingular, dativesingular, andlocativesingular. Thiscaptures
+the insight of Russian linguists that these two classes are really versions of each other, for example,
+Timberlake (2004: 132–141) labels them 1a and 1b. Consulting Table 3.2, we see that all classes in the
+plural form the dative, instrumental, and locative in the same way. The way these are formed should
+thereforebestatedattherootnode MOR_NOUN andfromthereinheritedbyallclasses.Inthehierarchy,
+leaf nodes are the lexical entries themselves, each a daughter of an appropriate inﬂectional class node.
+TheDATRrepresentationofthelexicalentry Kartaandthenodeformthatitinheritsisgivenin(3.25).
+The ellipsis ‘ ....’ indicates here and elsewhere that the node contains more equations, and is not part
+oftheDATRlanguage.
+
+LexicalAnalysis 49
+(3.25)Karta:
+<mor> == N_II<stem> == kart.
+N_II:
+<mor sg nom> == “<stem>” ˆa<mor sg acc> == “<stem>” ˆu<mor sg dat> == “<stem>” ˆe<mor sg loc> == “<stem>” ˆe
+....
+Theﬁrstequationexpressesthatthe Kartanodeinheritspathvalueequationsfromthe N_IInode.
+Recall that in DATR a subpath implies any extension of itself. So the path <mor>implies any path that
+isanextensionof <mor>including<mor sg nom>, <mor sg acc>, <mor sg dat>, <mor sg
+loc>, etc. These are all paths that are speciﬁed with values at N_II. So the ﬁrst equation in (3.25) is
+equivalenttotheequationsin(3.26).Butwewantthesefactstobeinheritedby Kartaratherthanbeing
+explicitlystatedat Kartatocapturethefactthattheyaresharedbyother(ClassII)nouns.
+(3.26)Karta:
+<mor sg nom> == “<stem>” ˆa<mor sg acc> == “<stem>” ˆu<mor sg dat> == “<stem>” ˆe<mor sg loc> == “<stem>” ˆe....
+The value of these paths at N_IIis complex: the concatenation of the value of another path and an
+exponent.Thevalueoftheotherpathisthestringexpressingalexicalentry’sstem.Infact,thisrepresentshowparadigm-basedapproachesmodelwordstructure:theformal realization ofasetofmorphosyntactic
+features by a rule operating over stems. The value of “<stem>” depends on what lexical entry is the
+object of the morphological query. If it is Karta, then it is the value for the path <stem> at the node
+Karta(3.25).Thequotedpathnotationmeansthatinheritanceissettothecontextoftheinitialquery,
+herethenode Karta,andisnotalteredeveniftheevaluationof <stem> ispossiblelocally.Sowecould
+imaginea node (3.27)similar to (3.25) N_IIbut adding an eccentriclocal fact about itself, namely that
+ClassIInounsalwayshave zakonastheirstem,nomatterwhattheirrealstemis.
+(3.27)N_II:
+<mor sg nom> == “<stem>” ˆa<stem> == zakon...
+Nonetheless, the value of <mor sg nom> will not involve altering the initial context of <stem> to
+the local context. By quoting <stem> the value will be kartˆa and notzakonˆa. There are equally
+occasions where local inheritance of paths is precisely what is needed. Equation 3.25 fails to capture thevertical relation that for Class II nouns the dative singular and the locative singular are the same. Localinheritanceexpressesthisrelation,shownin(3.28).
+(3.28)N_II:
+<mor sg dat> == “<stem>” ˆe<mor sg loc> == <mor sg dat>....
+The path<mor sg loc> locally inherits from <mor sg dat> , so that both paths have the value
+kartˆe whereKartais
+thequerylexicalentry.
+
+50 HandbookofNaturalLanguageProcessing
+Horizontal relations are captured by hierarchical relations. (3.29) is the partial hierarchy involving
+MOR_NOUN, N_O,N_IandN_IV.
+(3.29)MOR_NOUN:
+<mor pl loc> == “<stem>” ax<mor sg dat> == “<stem>” e...
+N_0:
+<> == MOR_NOUN<mor sg gen> == “<stem>” a<mor sg dat> == “<stem>” u<mor sg inst > == “<stem>” om<mor sg loc > == “<stem>” e.
+N_IV:
+<> == N_O<mor sg nom > == “<stem>” o<mor pl nom > == “<stem>” a...
+N_I:
+<> == N_O<mor sg nom > == “<stem>”<mor pl nom > == “<stem>” y...
+Facts about cells that are shared by inﬂectional classes are stated as path: value equations gathered atMOR_NOUN. These include instructions for forming the locative singular and the locative plural. Factsthat are shared only by Classes I and IV are stored at an intermediary node N_O: the genitive, dative,
+instrumental,andlocativesingular.NodesforClassesIandIVinheritfromthisnode,andviathisnodethey inherit the wider generalizations stated at the hierarchy’s root node. The passing of informationdownthehierarchyisthroughtheemptypath <>,whichistheleadingsubpathofeverypaththatisnot
+deﬁned at the local node. So at N_Ithe empty path implies <mor gen sg> at its mother node N_0
+butnot<mor sg nom> becausethispathisalreadydeﬁnedatN_I.
+FromFigure3.4,wecanobserveaspecialtypeofrelationthatisatonceverticalandhorizontal.Inthe
+plural,theaccusativeisthesameasthenominativeinClassI,butthissameverticalrelationextendstoallthe other classes: they all have an accusative/nominative identity in the plural. To capture this we storetheverticalrelationattherootnodesothatallinﬂectionalclassnodescaninheritit(3.30).
+(3.30)MOR_NOUN:
+<mor pl acc > == “<mor pl nom >”...
+Itneedstobeclearfrom(3.30)thatwhatisbeinghierarchicallyinheritedisnotanexponentofafeaturesetbutawayofgettingtheexponent.Thequotedpathattherighthandsideexpressesthatthenominativeplural value depends on the global context, i.e., what noun is being queried: if it is a Class I noun it willbestemplus– y,andifitisaClassIVnounitwillbestemplus–a.Thesewillthereforebetherespective
+values for Class I and Class IV accusative singular forms. In other words, the horizontal relation beingcaptured is the vertical relation that the accusative and nominative plural for a given class is the same,althoughinprinciplethevalueitselfmaybediﬀerentforeachclass.
+
+LexicalAnalysis 51
+3.5.2 The Role of Defaults
+Interestingly the identity of accusative with nominative is not restricted to the plural. From Figure 3.4we see that for Classes I, III, and IV the singular accusative is identical to the nominative but Class IIhas separate exponents. If inheritance from MOR_NOUN is interpreted as default inheritance then (3.31)
+capturesastrongtendencyfortheaccusativeandnominativetobethesame. Theboundvariable $num
+rangesover sgandplatoms.
+(3.31)MOR_NOUN
+<mor $num acc > == “<mor $num nom>”...
+This vertical relation does not, however, extend to Class II which has a unique accusative singularexponent. Class II inherits facts from MOR_NOUN, as any other class does. But it needs to override the
+factabouttheaccusativesingular(3.32).
+(3.32)N_II:
+<> == MOR_NOUN<mor sg nom> == “<stem>” a<mor sg acc> == “<stem>” u...
+Apathimpliesanyextensionofitself,butthevalueassociatedwiththeimpliedpathisbydefaultandcanbeoverriddenbyanexplicitlystatedextendedpath.In(3.32)theemptypathimpliesallofitsextensionsand their values held at MOR_NOUN, including <mor sg acc> == <mor sg nom>. But because
+<mor sg acc> is stated locally at N_II, the explicitly stated local evaluation overrides the (implied)
+inheritedone.Insimilarveinwecancapturethelocativesingularin– easageneralizationoverallclasses
+exceptClassIII(seeTable3.2)bystating <mor sg loc> == “<stem>” e attherootnode,butalso
+stating<mor sg loc> == “<stem>” i atthenode N_III.
+Defaults also allow for a straightforward account of exceptional or semi-regular lexical entries. In
+Section 3.3.1, I gave several examples from Russian to show how exceptionality could be captured inFSM. Let us brieﬂy consider their treatment in a paradigm-based approach. Recall that the item soldat
+‘soldier’isaregularClass1nounineveryrespectexceptforthewayitformsitsgenitiveplural.Insteadof
+∗soldatovitissimply soldat. AsintheFSMaccount, itcanbeassignedClassIIstatusjustforitsgenitive
+pluralbyoverridingthedefaultforitsclass,andinheritingthedefaultfromanotherclass.
+(3.33)Soldat:
+<mor> == N_I<stem> == soldat<mor pl gen> == N_II.
+Theotherexamplewasapluraliatantumnoun, brjuki‘trousers.’Herethesingularhadpluralmorphology.
+Thisissimplyamatterofoverridingtheinheritanceof <mor sg> pathsfrom N_IIwiththeequation
+<mor sg> == <mor pl>.Ofcourse <mor pl> anditsextensionswillbeinheritedfromthemother
+nodeinthesamewayitisforallotherClassIInouns.
+(3.34)Brjuki:
+<mor> == N_II<stem> == brjuk<mor sg> == <mor pl>.
+Finally, indeclinable pal’tocan be speciﬁed as inheriting from a ﬁfth class that generalizes over all
+indeclinables. It is not pal’tothat does the overriding but the class itself. All extensions of <mor>are
+overriddenandassignedthevalueofthelexicalentry’sstemalone,withnoexponent.
+
+52 HandbookofNaturalLanguageProcessing
+(3.35)N_V:
+<> == MOR_NOUN<mor> == “<stem>”.
+3.5.3 Paradigm-Based Accounts of Difﬁcult Morphology
+In Section 3.4, we described ‘diﬃcult’ morphology as instances where isomorphism, one feature (set)mapping to one exponent, breaks down. The Russian demonstration of the paradigm-based approachhas run into this almost without noticing. We have already seen how more than one feature can mapontoasingleexponent. First,anexponentisavalueassociatedwithanattributepaththatdeﬁnes setsof
+features: Number and Case in our running example of Russian. Second, the whole idea behind verticalrelations is that two diﬀerent feature sets can map onto a single exponent: the −esuﬃx maps onto two
+feature sets for Class II nouns, the singular dative and the singular locative, similarly the accusative andnominative mapping onto a single exponent for all but Class II. This is handled by setting one attributepath to inherit from another attribute path. In paradigm-based morphology, this is known as a rule of
+referral(Stump 1993, 2001: 52–57). Then the reverse problem of more than exponent realizing a singe
+feature(set)ishandledthroughthestipulationofinﬂectionalclasses, sothataﬃxesforthesamefeaturearenotincompetition.Finally,afeaturethatdoesnotmapontoanyexponentwetreatas zeroexponence
+rather than a zero aﬃx. For example, the genitive plural of a Russian Class II noun is the stem plusnothing.Theattributepathisassociatedwiththequerylexicalentry’sstem,andnothingmore.
+(3.36)N_II
+<> == MOR_NOUN<mor pl gen> == “<stem>”...
+In paradigm-based accounts, a stem of a word in a given cell of a particular set of features is in contrastwithstemsofthesamewordindiﬀerentcells. Morphologicalstructureisthenthecomputationofwhatmakesthestemcontrastivetogetherwiththefeaturecontentofthecell.Forthisreason,aﬃxationisnotgivenanyspecialstatus:contrastcouldbethroughablaut,stressshift,orzeroexponenceasshownabovesinceitalsocanmarkacontrast:byhavingnoexponence,thegenitivepluralisopposedtoallothercellssince they do have an exponent. Noncontiguous morphology does not pose a problem for paradigm-basedapproaches,asStump(2001)demonstrates.Theexponentaruleintroducesdoesnothavetotargetstem edges (aﬃxation) but can target any part of the stem: for example, singhas the past tense form
+sang. Cahill and Gazdar (1999) handle ablaut morphological operations of this kind in German plural
+nouns by deﬁning stems as syllable sequences where the syllable itself has internal structure: an onsetconsonant, vowel, andacodaconsonant. Thetargetoftheruleisdeﬁnableasstem-internal, thesyllablevowel.Withaninheritancehierarchy,ablautoperationsarecapturedassemi-regularbydrawingtogetheritems with the similar ablaut patterns under a node that houses the non-concatenative rule: which partof the syllable is modiﬁed, and how it is modiﬁed. Many nouns undergo ablaut and simultaneously useregularsuﬃxation,forexample, Mann‘man’hasplural Männer.Thehierarchicalarrangementallowsfor
+alessregularablauttogetherwithinheritanceofthemoreregularsuﬃxationrule, -eraddedtotheright
+edge of stem, i.e., after the coda of rightmost syllable. Default inheritance coupled with realization rulessimultaneouslycapturesmultipleexponence,semi-regularity,andnonlinearmorphology.
+In more recent work, Cahill (2007) used the same ‘syllable-based morphology’ approach for
+root-and-pattern morphological description that we discussed in Section 3.4 with reference toHebrew. The claim is that with inheritance hierarchies, defaults and the syllable as a unit ofdescription, Arabic verb morphology lies more or less within the same problem (and solution)space as German (and English) ablaut cases. A morphologically complex verb such as kutibhas
+the default structural description: <mor word> == “<agr prefix>” “<tense prefix>”
+“<ph root form>” “<agr suffix>”. Each quoted path expresses the value of an exponent
+
+LexicalAnalysis 53
+inferable from the organization of the network. These exponents can appear as preﬁxes and suﬃxes,which are by default null. But an exponent can be a systematic internal modiﬁcation of the root: “<ph
+root form>”. Just as for German, the root (or stem) is syllable deﬁned, and more speciﬁcally as aseriesofconsonants,e.g., ktb‘write.’Insyllableterms,theseare(bydefault)theonsetoftheﬁrst(logical
+order) syllable and the onset and coda of the second. The vowels that occupy nucleus positions of thetwo syllables can vary and these variations are exponents of tense and mood. So one possible perfectpassiveformis kutibthatcontrastswithperfectpassive katab.Therearemanysuchrootalternationsand
+associatedmorphosyntacticpropertysets.Tocapturesimilaritiesanddiﬀerences,theyareorganizedintodefaultinheritancehierarchies.
+ThisisnecessarilyanoversimpliﬁedcharacterizationofthecomplexitythatCahill’saccountcaptures,
+but the important point is that defaults and W&P morphology can combine to give elegant accounts ofnoncontiguous morphology. In Soudi et al. (2007), the collection of computational Arabic morphologypaperswhereCahill’sworkappears,itissigniﬁcantthatmostofthesymbolicaccountsarelexeme-basedand make use of inheritance; two are DATR theories. Finkel and Stump (2007) is another root-and-pattern account, this time of Hebrew. It also is W&P morphology with default inheritance hierarchies.Its implementation is in KATR, a DATR with ‘enhancements,’ including a mechanism for expressingmorphosyntactic features as unordered members of sets as well as ordered lists to better generalize theHebrew data. Kiraz (2008) and Sproat (2007) note that Arabic computational morphology has beenneglected; this is because “root-and-pattern morphology deﬁes a straightforward implementation intermsofmorphemeconcatenation”(Sproat2007: vii). Cahill(2007), andFinkelandStump(2007)oﬀeran alternative W&P approach, which suggests that perhaps Arabic is not really “speciﬁcally engineeredtomaximizethediﬃcultiesforautomaticprocessing.”
+3.5.4 Further Remarks on Paradigm-Based Approaches
+Many computational models of paradigm-based morphological analysis are represented in the DATRlexical knowledge representation language. These include analyses of major languages, for example,Russian in Corbett and Fraser (2003), the paper which the W&P demonstration in this chapter is basedon, and more recently in Brown and Hippisley (forthcoming); also Spanish (Moreno-Sandoval andGoñi-Menoyo 2002), Arabic as we have seen (Cahill 2007), German (Cahill and Gazder 1999, Kilbury2001), Polish (Brown 1998), as well as lesser known languages, for example, Dalabon (Evans et al.2000), Mayali (Evans et al. 2002), Dhaasanac (Baerman et al. 2005: Chapter 5), and Arapesh (Fraserand Corbett 1997). The paradigm-based theory Network Morphology (Corbett and Fraser 2003, Brownand Hippisley forthcoming) is formalized in DATR. The most well articulated paradigm-based theoryis Paradigm Function Morphology (Stump 2001, 2006), and DATR has also been used to representParadigm Function Morphology descriptions (Gazdar 1992). DATR’s mechanism for encoding defaultinference is central to Network Morphology and Paradigm Function Morphology. Defaults are used inothertheoreticalworkonthelexiconaspartoftheoverallsystemoflanguage.Forexample,HPSG(PollardandSag1994,Sagetal.2003),usesinheritancehierarchiestocapturesharedinformation;inheritance by
+defaultis used for speciﬁcally lexical descriptions in some HPSG descriptions, for example, Krieger and
+Nerbonne(1992)andmorerecentlyBonamiandBoyé(2006).
+∗
+We close this section with a comment about DATR. Throughout our discussion of FSM and the
+paradigm-based alternative, we have used DATR as the demonstration language. But it is importantto note that DATR theories are ‘one way’ as they start with the lexical representation and generate the
+∗HPSGhasbeenambivalentovertheincorporationofdefaultsforlexicalinformationbutBonamiandBoyé(2006)arequite
+clearaboutitsimportance:
+Intheabsenceofanexplicitalternative,wetakeitthattheuseofdefaultsistheonlyknownwaytomodelregularityinanHPSGimplementationofthestemspace.
+ThelatestHPSGtextbookappearstoendorsedefaultsforthelexicon(Sagetal.2003:229–236).
+
+54 HandbookofNaturalLanguageProcessing
+surface representation; they do not start with the surface representation and parse out the lexical string.Inandofitself, thisrestrictionhasnothamperedadiscussionofthemajorlexicalanalysisissues, whichisthemotivationforusingDATRinthischapterbutitisimportanttobearinmindthisaspectofDATR.There are ways round this practical restriction. For example, a DATR theory could be compiled into adatabase so that its theorem is presented as a surface string to lexical string look up table. Earlier workhasexperimentedwithextendingDATRimplementationstoprovideinferenceinreverse.Langer(1994)proposesanimplementationofDATRthatallowsfor‘reversequeries,’orinferenceoperatinginreverse.Standardly,thequeryisaspeciﬁcnode/path/valuecombination,forexample, Karta:<mor nom sg>.
+Thevalueiswhatisinferredbythiscombination.BytreatingaDATRdescriptionasbeinganalogoustoa context free phrase structure grammar (CF-PSG), with left hand sides as nonterminal symbols, whichrewriteasrighthandsidesthatincludenonterminalandterminalsymbols, reversequerycanbetackledas a CF-PSG bottom-up parsing problem. You start with the value string ( kartˆa) and discover how
+ithasbeeninferred( Karta:<mor nom sg>).Finally,aDATRdescriptioncouldbeusedtogenerate
+thepairingoflexicalstringtosurfacestring,andthesepairingscouldthenbetheinputtoanFSTinducertoperformanalysis.Forexample,GildeaandJurafsky(1995,1996)useanaugmentedversionofOncinaet al.’s (1993) OSTIA algorithm (Onward Subsequential Transducer Inference Algorithm) to inducephonological rule FSTs. More recently, Carlson (2005) reports on promising results of an experimentinducingFSTsfromparadigmsofFinnishinﬂectionalmorphologyinProlog.
+3.6 Concluding Remarks
+If the building blocks of natural language texts are words, then words are important units of informa-tion, and language-based applications should include some mechanism for registering their structuralproperties. Finite state techniques have long been used to provide such a mechanism because of theircomputational eﬃciency, and their invertibility: they can be used both to generate morphologicallycomplexformsfromunderlyingrepresentations,andparsemorphologicallycomplexformsintounder-lying representations. The linguistic capital of the FSM is an I&A model of word structure. Thoughmanylanguages,includingEnglish,containmorphologicallycomplexobjectsthatresistanI&Aanalysis,FSM handles these situations by recasting these problems as I&A problems: isomorphism is retainedtrough empty transitions, collecting features into symbol sets, and introducing stem classes and aﬃxclasses. For nonlinear morphology, inﬁxation, and root-and-template, the problem is recast as a linearone and addressed accordingly. FSM can capture morphological generalization, exceptionality, and theorganization of complex words into inﬂectional classes. An alternative to FSM is an approach based onparadigmaticorganizationwherewordstructureiscomputedbythestem’splaceinacellinaparadigm,the unique clustering of morphologically meaningful elements, and some phonologically contrastingelement,notnecessarilyanaﬃx,andfeasiblynothing.W&PapproachesappeartooﬀerabetteraccountofwhatIhavecalleddiﬃcultmorphology.Theyalsogetattheheartofmorphologicalgeneralization.
+Both approaches to lexical analysis are strongly rule based. This puts lexical analysis at odds with
+most ﬁelds of NLP, including computational syntax where statistics plays an increasingly importantrole. But Roark and Sproat (2007: 116–117) observe that hand-written rules can take you a long wayin a morphologically complex language; at the same time ambiguity does not play such a major role inmorphologicalanalysisasitdoesinstatisticalanalysiswheretherecanbeverymanycandidateparsetreesfor a single surface sentence. That is not to say that ambiguity is not a problem in lexical analysis: giventhe prominence we have attached to inﬂectional classes in this chapter, it is not hard to ﬁnd situationswhere a surface string has more than one structure. This is the case for all vertical relations, discussedin the previous section. In Russian, the string kartecan be parsed as a dative or locative, for example.
+A worse case is rukopisi. Consulting Table 3.2 you can see that this form could be a genitive, dative, or
+locativesingular;ornominativeoraccusativeplural.RoarkandSproatgoontonotethatresolvingtheseambiguitiesrequirestoobroadacontextforprobabilityinformationtobemeaningful.Thatisnottosay
+
+LexicalAnalysis 55
+thatmorphologicalanalysisdoesnotbeneﬁtfromstatisticalmethods.RoarkandSproatgiveasexamplesGoldsmith(2001), amethodforinducingfromcorporamorphonologicalalternationsofagivenlemma(Goldsmith2001),andYarowskiandWicentowski(2001),whousepairingsofmorphologicalvariantstoinducemorphologicalanalyzers.
+It should be noted that the important place of lexical/morphological analysis in a text-based NLP
+system is not without question. In IR, there is a view that symbolic, rule-based models are diﬃcult toaccommodate within a strongly statistically oriented system, and the symbolic statistical disconnect ishard to resolve. Furthermore, there is evidence that morphological analysis does not greatly improveperformance: indeed stemming can lower precision rates (Tzoukerman et al. 2003). A rather strongpositionistakeninChurch(2005),whichamountstoleavingoutmorphologicalanalysisaltogether.Hispaper catalogues the IR community’s repeated disappointments with morphological analysis packages,primarilyduetothefactthatmorphologicalrelatednessdoesnotalwaysequatewithsemanticrelatedness:forexample, awfulhasnothingtodowith awe.Heconcludesthatsimplelistingispreferabletoattempting
+lexical analysis. One response is that inﬂectional morphologically complex words are more transparentthan derivational, so less likely to be semantically disconnected from related forms. Another is thatChurch’s focus is English which is morphologically poor anyway, whereas with other major languagessuchasRussian,Arabic,andSpanishlistingmaynotbecomplete,andwillcertainlybehighlyredundant.
+Lexical analysis is in fact increasingly important as NLP reaches beyond English to other languages,
+manyofwhichhaverichmorphologicalsystems.ThemainlexicalanalysismodelisFSMthathasagoodtrackrecordforlarge-scalesystems,Englishaswellasmultilingual.Theparadigm-basedmodelisfavoredby linguists as an elegant way of describing morphologically complex objects. Languages like DATRcan provide a computable lexical knowledge representation of paradigm-based theories. Communitiesworking within the two frameworks can beneﬁt from one another. Kay (2004) observes that earlylanguage-basedsystemsweredeliberatelybasedonscientiﬁcprinciples,i.e.,linguistictheory.Atthesametime, giving theoretical claims some computational robustness led to advances in linguistic theory. Thefact that many DATR theories choose to implement the morphonological variation component of theirdescriptions as FSTs shows the intrinsic value of FSM to morphology as a whole. The fact that there isagrowingawarenessoftheparadigm-basedmodelwithintheFSMcommunity,forexample,RoarkandSproat(2007)andKarttunen(2003)haveimplementationsofParadigmFunctionMorphologyaccountsinFSTs,mayleadtoanincreasingawarenessoftheroleparadigmrelationsplayinmorphologicalanalysis,whichmayleadtoenhancementsinconventionalFSTlexicalanalysis.Langer(1994)givestwomeasuresof adequacy of lexical representation: declarative expressiveness and accessing strategy. While a DATRformalizedW&Ptheorydeliversontheﬁrst,FSMbyvirtueofgenerationandparsingscoreswellonthesecond.Lexicalanalysiscanonlybeneﬁtwithhighscoresinboth.
+Acknowledgments
+I am extremely grateful to Roger Evans and Gerald Gazdar for their excellent comments on an earlierdraftofthechapterwhichIhavetriedtotakefulladvantageof.AnyerrorsItakefullresponsibilityfor.IwouldalsoliketothankNitinIndurkhyaforhiscommitmenttothisprojectandhisgentleencouragementthroughouttheprocess.
+References
+Armstrong,S.1996.Multext:Multilingualtexttoolsandcorpora.In:Feldweg,H.andHinrichs,W.(eds).
+LexikonundText.Tübingen,Germany:Niemeyer.
+Aronoﬀ,M.andFudeman,K.2005. WhatisMorphology?Oxford,U.K.:Blackwell.
+
+56 HandbookofNaturalLanguageProcessing
+Arpe,A.etal.(eds).2005. InquiriesintoWords,ConstraintsandContexts(FestschriftinHonourofKimmo
+Koskenniemionhis60thBirthday) .Saarijärvi,Finland:Gummerus.
+Baerman,M.,Brown,D.,andCorbett,G.G.2005. TheSyntax-MorphologyInterface:AStudyofSyncretism .
+Cambridge,U.K.:CambridgeUniversityPress.
+Beesley,K.andKarttunen,L.2003. FiniteStateMorphology.Stanford,CA:CSLI.
+Bonami, O. and Boyé, G. 2006. Deriving inﬂectional irregularity. In: Müller, S. (ed). Proceedings of the
+HPSG06Conference.Stanford,CA:CSLI.
+Booij,G.2007. TheGrammarofWords.Oxford,U.K.:OxfordUniversityPress.
+Brown,D.andHippisley,A.Underreview. DefaultMorphology.Cambridge:CambridgeUniversityPress.
+Brown,D.1998.Deﬁning‘subgender’:VirileanddevirilizednounsinPolish. Lingua104(3–4).187–233.
+Cahill,L.2007.Asyllable-basedaccountofArabicmorphology.In:Soudi,A.(eds).pp.45–66.Cahill,L.andGazdar,G.1999.Germannouninﬂection. JournalofLinguistics 35(1).1–42.
+Carlson,L.2005.Inducingamorphologicaltransducerfrominﬂectionalparadigms.In:Arpeetal.(eds).
+pp.18–24.
+Chomsky,N.andHalle,M.1968. TheSoundPatternofEnglish .NewYork:Harper&Row.
+Church,K.W.2005.TheDDIapproachtomorphology.InArpeetal.(eds).pp.25–34.Corbett, G.G. 2009. Canonical inﬂection classes. In: Montermini, F., Boyé, G. and Tseng, J. (eds).
+SelectedProceedingsoftheSixthDecembrettes:MorphologyinBordeaux ,Somerville,MA:Cascadilla
+ProceedingsProject.www.lingref.com,document#2231,pp.1–11.
+Corbett, G.G. and Fraser, N.M. 2003. Network morphology: A DATR account of Russian inﬂectional
+morphology.In:Katamba,F.X.(ed).pp.364–396.
+Dale, R., Moisl, H., and Somers, H. (eds). 2000. Handbook of Natural Language Processing.N e wY o r k :
+MarcelDekker.
+Evans, N., Brown, D., and Corbett, G.G. 2000. Dalabon pronominal preﬁxes and the typology of
+syncretism: A network morphology analysis. In: Booij, G. and van Marle, J. (eds). Yearbook of
+Morphology2000 .Dordrecht,theNetherlands:Kluwer.pp.187–231.
+Evans, N., Brown, D., and Corbett, G.G. 2002. The semantics of gender in Mayali: Partially parallel
+systemsandformalimplementation. Language 78(1).111–155.
+Evans, R.andGazdar, G.1996. DATR:Alanguageforlexicalknowledgerepresentation. Computational
+Linguistics 22.167–216.
+Finkel,R.andStump,G.2007.AdefaultinheritancehierarchyforcomputingHebrewverbmorphology.
+LiteraryandLinguisticsComputing 22(2).117–136.
+Fraser,N.andCorbett,G.G.1997.DefaultsinArapesh. Lingua103(1).25–57.
+Gazdar,G.1985.Reviewarticle:FiniteStateMorphology. Linguistics 23.597–607.
+Gazdar, G. 1992. Paradigm-function morphology in DATR. In: Cahill, L. and Coates, R. (eds). Sussex
+Papers in General and Computational Linguistics . Brighton: University of Sussex, CSRP 239.
+pp.43–53.
+Gibbon, D. 1987. Finite state processing of tone systems. Proceedings of the Third Conference, European
+ACL,Morristown,NJ:ACL.pp.291–297.
+Gibbon, D. 1989. ‘tones.dtr’. Located at ftp://ftp.informatics.sussex.ac.uk/pub/nlp/DATR/dtrﬁles/
+tones.dtr
+Gildea,D.andJurafsky,D.1995.Automaticinductionofﬁnitestatetransducersforsinglephonological
+rules.ACL33.95–102.
+Gildea,D.andJurafsky,D.1996.Learningbiasandphonologicalruleinduction. ComputationalLinguistics
+22(4).497–530.
+Goldsmith, J. 2001. Unsupervised acquisition of the morphology of a natural language. Computational
+Linguistics 27(2).153–198.
+Haspelmath,M.2002. UnderstandingMorphology. Oxford,U.K.:OxfordUniversityPress.
+Hockett, C. 1958. Two models of grammatical description. In: Joos, M. (ed). Readings in Linguistics .
+Chicago,IL:UniversityofChicagoPress.
+
+LexicalAnalysis 57
+Jurafsky, D. and Martin, J.H. 2007. Speech and Language Processing . Upper Saddle River, NJ:
+Pearson/PrenticeHall.
+Kaplan,R.M.andKay,M.1994.Regularmodelsofphonologicalrulesystems. ComputationalLinguistics
+20.331–378.
+Karttunen, L. 2003. Computing with realizational morphology. In: Gelbukh, A. (ed). CICLing 2003
+LectureNotesinComputerScience2588 .Berlin,Germany:Springer-Verlag.pp.205–216.
+Karttunen,L.2007.Wordplay. ComputationalLinguistics 33(4).443–467.
+Katamba, F.X. (ed). 2003. Morphology: Critical Concepts in Linguistics, VI: Morphology: Its Place in the
+WiderContext .London,U.K.:Routledge.
+Kay,M.2004.IntroductiontoMitkov(ed.).xvii–xx.Kiraz, G.A. 2000. Multitiered nonlinear morphology using multitape ﬁnite automata. Computational
+Linguistics 26(1).77–105.
+Kiraz, G. 2008. Book review of Arabic Computational Morphology: Knowledge-Based and Empirical
+Methods. ComputationalLinguistics 34(3).459–462.
+Koskenniemi, K. 1983. Two-Level Morphology: A General Computational Model for Word-Form Recog-
+nition and Production. Publication 11, Department of General Linguistics, Helsinki, Finland:UniversityofHelsinki.
+Krieger,H.U.andNerbonne,J.1992.Feature-basedinheritancenetworksforcomputationallexicons.In:
+Briscoe,E.,dePaiva,V.,andCopestake,A.(eds). Inheritance,DefaultsandtheLexicon .Cambridge,
+U.K.:CambridgeUniversityPress.pp.90–136.
+Kilbury,J.2001.Germannouninﬂectionrevisited. JournalofLinguistics 37(2).339–353.
+Langer,H.1994.ReversequeriesinDATR. COLING-94 .Morristown,NJ:ACL.pp.1089–1095.
+Mel’čuk. I. 2006. Aspects of the Theory of Morphology . Trends in Linguistics 146. Berlin/New York:
+MoutondeGruyter.
+Mitkov, R. (ed). 2004. The Oxford Handbook of Computational Linguistics. Oxford, U.K.: Oxford
+UniversityPress.
+Moreno-Sandoval,A.andGoñi-Menoyo,J.M.2002.SpanishinﬂectionalmorphologyinDATR. Journal
+ofLogic,LanguageandInformation.11(1).79–105.
+Oncina, J., Garcia, P., and Vidal, P. 1993. Learning subsequential transducers for pattern recognition
+tasks.IEEETransactionsonPatternAnalysisandMachineIntelligence 15.448–458.
+Pollard, C. and Sag, I.A. 1994. Head-Driven Phrase Structure Grammar . Chicago, IL: University of
+ChicagoPress.
+Pretorius, L. and Bosch, S.E. 2003. Finite-sate morphology: An analyzer for Zulu. Machine Translation
+18(3).195–216.
+Roark, B. and Sproat, R. 2007. Computational Approaches to Syntax . Oxford, U.K.: Oxford
+UniversityPress.
+Sag, I., Wasow, T., and Bender, E.M. (eds). 2003. Syntactic Theory: A Formal Introduction . Stanford,
+CA:CSLI.
+Soudi,A.etal.(eds).2007. ArabicComputationalMorphology:Knowledge-BasedandEmpiricalMethods .
+Dordrecht:Springer.
+Sproat,R.1997. MultilingualTexttoSpeechSynthesis:TheBellLabsApproach .Dordrecht,theNetherlands:
+Kluwer.
+Sproat,R.2000.Lexicalanalysis.InDale,R.etal.(eds).pp.37–58.Sproat, R. 2007. Preface. In: Soudi, A. et al (eds). Arabic Computational Morphology: Knowledge-Based
+andEmpiricalMethods.Dordrecht,theNetherlands:Springer.pp.vii–viii.
+Stewart, T. and Stump, G. 2007. Paradigm function morphology and the morphology-syntax interface.
+In:Ramchand,G.andReiss,C.(eds). LinguisticInterfaces .Oxford, U.K.:OxfordUniversityPress.
+pp.383–421.
+Stump,G.2001. InﬂectionalMorphology.Cambridge,U.K.:CambridgeUniversityPress.
+Stump,G.1993.Onrulesofreferral. Language 69.449–79.
+
+58 HandbookofNaturalLanguageProcessing
+Stump,G.2006.Heteroclisisandparadigmlinkage. Language 82,279–322.
+Timberlake,A.A.2004. AReferenceGrammarofRussian.Cambridge,U.K.:CambridgeUniversityPress.
+Tzoukermann,E.,Klavans,J.,andStrzalkowski,T.2003.Informationretrieval.In:Mitkov(ed.)529–544.UiDhonnchadha,E.,NicPhaidin,C.,andvanGenabith,J.2003.Design,implementationandevaluation
+ofaninﬂectionalmorphologyﬁnite-statetransducerforIrish. MachineTranslation 18(3).173–193.
+Yarowski, D. and Wicentowski, R. 2001. Minimally supervised morphological analysis by multimodal
+alignment. Proceedingsofthe38thACL .Morristown,NJ:ACL.pp.207–216.
+Yona, S. and Wintner, S. 2007. A ﬁnite-state morphological grammar of Hebrew. Natural Language
+Engineering 14.173–190.
+

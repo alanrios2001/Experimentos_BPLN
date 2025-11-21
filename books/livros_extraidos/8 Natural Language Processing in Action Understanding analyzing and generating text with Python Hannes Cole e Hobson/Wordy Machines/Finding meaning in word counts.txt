@@ -1,0 +1,2272 @@
+97Finding meaning in word
+counts (semantic analysis)
+You’ve learned quite a few natural language  processing tricks. But now may be the
+first time you’ll be able to do a little bit of magic. This is the first time we talk about
+a machine being able to understand the “meaning” of words.
+ The TF-IDF vectors (term frequency–in verse document frequency vectors) from
+chapter 3 helped you estimate the import ance of words in a chunk of text. You
+used TF-IDF vectors and matrices to tell you how important each word is to the
+overall meaning of a bit of text in a document collection.This chapter covers
+Analyzing semantics (meaning) to create topic 
+vectors
+Semantic search using the similarity between topic vectors
+Scalable semantic analysis and semantic search for large corpora
+Using semantic components (topics) as features in your NLP pipeline
+Navigating high-dimensional vector spaces
+ 
+
+98 CHAPTER  4Finding meaning in word counts (semantic analysis)
+ These TF-IDF “importance” scores worked  not only for words, but also for short
+sequences of words, n-grams. These importance scores for n-grams are great for
+searching text if you know the exact words or n-grams you’re looking for.
+ Past NLP experimenters found an algo rithm for revealing the meaning of word
+combinations and computing vectors to represent this meaning. It’s called latent
+semantic analysis (LSA) . And when you use this tool, not only can you represent the
+meaning of words as vectors, but you can use them to represent the meaning of entiredocuments.
+ In this chapter, you’ll learn about these semantic  or topic vectors.
+1 You’re going to
+use your weighted frequency scores from TF-IDF vectors to compute the topic “scores”
+that make up the dimensions of your topic vectors. You’re going to use the correlation
+of normalized term frequencies with each other to group words together in topics to
+define the dimensions of your new topic vectors.
+ These topic vectors will help you do a lot of interesting things. They make it possible
+to search for do cuments based on their meaning— semantic search . Most of the time,
+semantic search returns search  results that are much bett er than keyword search (TF-
+IDF search). Sometimes semantic search re turns documents that are exactly what the
+user is searching for, even when they can’t think of the right words to put in the query.
+ And you can use these semantic vectors to identify the words and n-grams that best
+represent the subject (topic) of a statement,  document, or corpus (collection of docu-
+ments). And with this vector  of words and their relative importance, you can provide
+someone with the most meaningful words for a document—a set of keywords that
+summarizes its meaning.
+ And you can now compare any two statem ents or documents and tell how “close”
+they are in meaning  to each other.
+TIP The terms “topic,” “semantic,” and “meaning” have similar meaning and
+are often used interchangeably when talking about NLP. In this chapter,you’re learning how to build an NLP pi peline that can figure out this kind of
+synonymy, all on its own. Your pipeline might even be able to find the similar-
+ity in meaning of the phrase “figur e it out” and the word “compute.”
+Machines can only “compute” meaning, not “figure out” meaning.
+You’ll soon see that the linear combinations  of words that make up the dimensions of
+your topic vectors are pretty powerful representations of meaning.
+4.1 From word counts to topic scores
+You know how to count the frequency of words. And you know how to score theimportance of words in a TF-IDF vector or matrix. But that’s not enough. You want to
+score the meanings, the topics , that words are used for.
+1We use the term “topic vector” in this chapter about topi c analysis and we use the term “word vector” in chapter
+6 about Word2vec. Formal NLP texts such as  the NLP bible by Jurafsky and Martin ( https:/ /web.stanford.edu/
+~jurafsky/slp3/ed3book.pdf#chapter.15 ) use “topic vector.” Others, like the authors of Semantic Vector
+Encoding and Similarity Search ( https:/ /arxiv.org/pdf/1706.00957.pdf ), use the term “semantic vector.”
+ 
+
+99 From word counts to topic scores
+4.1.1 TF-IDF vectors and lemmatization
+TF-IDF vectors count the exact spellings of terms in a document. So  texts that restate
+the same meaning will have completely diff erent TF-IDF vector representations if they
+spell things differently or use different wo rds. This messes up se arch engines and doc-
+ument similarity comparisons that rely on counts of tokens.
+ In chapter 2, you normalized word endings so that words that differed only in their
+last few characters were collected together  under a single token. You used normaliza-
+tion approaches such as stemming and le mmatization to create small collections of
+words with similar spellings, and often simi lar meanings. You labeled each of these
+small collections of words, with their lemm a or stem, and then you processed these new
+tokens instead of the original words.
+ This lemmatization approach kept similarly *spelled*2 words together in your anal-
+ysis, but not necessarily words with similar meanings. And it definitely failed to pair up
+most synonyms. Synonyms usually differ in mo re ways than just the word endings that
+lemmatization and stemming deal with. Even worse, lemmatization and stemming
+sometimes erroneously lump  together antonyms, word s with opposite meaning.
+ The end result is that two chunks of text  that talk about the same thing but use dif-
+ferent words will not be “close” to each other in your lemmatized TF-IDF vector spacemodel. And sometimes two lemmatized TF-IDF  vectors that are close to each other
+aren’t similar in meaning at all. Even a st ate-of-the-art TF-IDF similarity score from
+chapter 3, such as Okapi BM25 or cosine similarity , would fail to connect these syn-onyms or push apart these antonyms. Syno nyms with different spellings produce TF-
+IDF vectors that just aren’t close to each other in the vector space.
+ For example, the TF-IDF vector for this chapter in NLPIA , the chapter that you’re
+reading right now, may not be at all close to  similar-meaning passages in university text-
+books about latent semantic indexing. But that ’s exactly what this chapter is about. But
+we use modern and colloquial  terms in this chapter. Professors and researchers use
+more consistent, rigorous language in thei r textbooks and lectures. Plus, the terminol-
+ogy that professors used a decade ago has li kely evolved with the rapid advances of the
+past few years. For example, te rms such as “latent semantic indexing ” were more popu-
+lar than the term “latent semantic analysis” that researchers now use.
+3
+4.1.2 Topic vectors
+When you do math on TF-IDF vectors, such  as addition and su btraction, these sums
+and differences only tell you about the fr equency of word uses in the documents
+whose vectors you combined or differenced.  That math doesn’t tell you much about
+the meaning behind those words. You ca n compute word-to-word TF-IDF vectors
+(word co-occurrence or correla tion vectors) by multiplying your TF-IDF matrix by
+2Both stemming and lemmatization remove or alter the word endings and prefixes, the last few characters of
+a word. Edit-distance calculations are better for identifying simila rly spelled (or misspelled) words.
+3I love Google Ngram Viewer for visualizing trends like this ( http:/ /mng.bz/7Jnm ).
+ 
+
+100 CHAPTER  4Finding meaning in word counts (semantic analysis)
+itself. But “vector reasoning”  with these sparse, high-dim ensional vectors doesn’t work
+well. When you add or subtract these vector s from each other, they don’t represent an
+existing concept or word or topic well.
+ So you need a way to extract some addi tional information, meaning, from word
+statistics. You need a better estimate of wh at the words in a document “signify.” And
+you need to know what th at combination of words means  in a particular document.
+You’d like to represent that meaning with a vector that’s like a TF-IDF vector, butmore compact and more meaningful.
+ We call these compact meaning vectors “word-topic vectors.” We call the document
+meaning vectors “document-topi c vectors.” You can call either of these vectors “topic
+vectors,” as long as you’re clear on what the topic vectors are fo r, words or documents.
+ These topic vectors can be as compact or  as expansive (high-dimensional) as you
+like. LSA topic vectors can have as few as one dimension, or they can have thousands
+of dimensions.
+ You can add and subtract the topic vectors you’ll compute in this chapter just like
+any other vector. Only this time the sums and differences mean a lot more than they
+did with TF-IDF vectors (chapter 3). And the distances between topic vectors is useful
+for things like clustering documents or se mantic search. Before, you could cluster and
+search using keywords and TF-IDF vector s. Now you can cluster and search using
+semantics, meaning!
+ When you’re done, you’ll have one docu ment-topic vector for each document in
+your corpus. And, even more importantly, you won’t have to reprocess the entire cor-pus to compute a new topic vector for a new document or phrase. You’ll have a topic
+vector for each word in your vocabulary, and you can use these word topic vectors to
+compute the topic vector for any docume nt that uses some of those words.
+TIP Some algorithms for creating topic vect ors, such as latent Dirichlet allo-
+cation, do require you to reprocess th e entire corpus, every time you add a
+new document.
+You’ll have one word-topic vector for each word in your lexicon (vocabulary). So you
+can compute the topic vector for any new do cument by just addi ng up all its word
+topic vectors.
+ Coming up with a numerical representati on of the semantics (meaning) of words
+and sentences can be tricky. This is especial ly true for “fuzzy” la nguages like English,
+which has multiple dialects and many diff erent interpretations of the same words.
+Even formal English text written by an Engl ish professor can’t avoid the fact that most
+English words have multiple meanings, a challenge for any new learner, including
+machine learners. This concept of words with multiple meanings is called polysemy :
+Polysemy —The existence of words and phra ses with more than one meaning
+Here are some ways in which polysemy can affect the semantics of a word or state-
+ment. We list them here for you to appreciate the power of LSA. You don’t have toworry about these challenges. LSA takes care of all this for us:
+ 
+
+101 From word counts to topic scores
+Homonyms —Words with the same spelling an d pronunciation, but different
+meanings
+Zeugma —Use of two meanings of a word si multaneously in the same sentence
+And LSA also deals with some of the challe nges of polysemy in a voice interface—a
+chatbot that you can talk to, like Alexa or Siri:
+Homographs —Words spelled the same, but with  different pronunciations and
+meanings
+Homophones —Words with the same pronunciat ion, but different spellings and
+meanings (an NLP challenge with voice interfaces)
+Imagine if you had to deal with a statement like the following, if you didn’t have tools
+like LSA to deal with it:
+She felt … less. She felt tamped down. Di m. More faint. Feint. Feigned. Fain.
+Patrick Rothfuss
+Keeping these challenges in mind, can you imagine how you might squash a TF-IDF vec-
+tor with one million dimensions (terms) down  to a vector with 200 or so dimensions
+(topics)? This is like identifying the right mi x of primary colors to try to reproduce the
+paint color in your apartment so you can cover over those nail holes in your wall.
+ You’d need to find those word dimensions that “belong” together in a topic and add
+their TF-IDF values together to create a new number to represent the amount of that
+topic in a document. You might even weight  them for how important they are to the
+topic, how much you’d like each word to contribute to the “mix.” And you could have
+negative weights for words that reduce the like lihood that the text is about that topic. 
+4.1.3 Thought experiment
+Let’s walk through a thought experiment. Le t’s assume you have some TF-IDF vector
+for a particular document and you want to co nvert that to a topic vector. You can think
+about how much each word co ntributes to your topics.
+ Let’s say you’re processing  some sentences about pets in Central Park in New York
+City (NYC). Let’s create three topics: one about pets, one about animals, and another
+about cities. Call these topics “petness,” “ani malness,” and “cityne ss.” So your “petness”
+topic about pets will score words like “cat” and “dog” significantly, but probably ignore
+words like “NYC” and “apple.” The “cityness” topic will ignore words like “cat” and “dog,”but might give a little weight to “apple,” ju st because of the “Big Apple” association.
+ If you “trained” your topic model like this, without using a computer, only your
+common sense, you migh t come up with some weights like this:
+>>> topic = {}
+>>> tfidf = dict(list(zip('cat dog apple lion NYC love'.split(),... np.random.rand(6))))
+This tfidf vector is just a random example, as if it 
+were computed for a single document that contained these words in some random proportion.
+ 
+
+102 CHAPTER  4Finding meaning in word counts (semantic analysis)
+>>> topic['petness'] = (.3 * tfidf['cat'] +\
+... .3 * tfidf['dog'] +\
+... 0 * tfidf['apple'] +\... 0 * tfidf['lion'] -\
+... .2 * tfidf['NYC'] +\
+... .2 * tfidf['love'])>>> topic['animalness'] = (.1 * tfidf['cat'] +\
+... .1 * tfidf['dog'] -\
+... .1 * tfidf['apple'] +\... .5 * tfidf['lion'] +\
+... .1 * tfidf['NYC'] -\
+... .1 * tfidf['love'])>>> topic['cityness'] =(0* tfidf['cat'] -\
+... .1 * tfidf['dog'] +\
+... .2 * tfidf['apple'] -\... .1 * tfidf['lion'] +\
+... .5 * tfidf['NYC'] +\
+... .1 * tfidf['love'])
+In this thought experiment, you added up th e word frequencies that might be indica-
+tors of each of your topics. You weighted the word frequencies (TF-IDF values) by how
+likely the word is associated with a topic. You did the same, but subtracted, for wordsthat might be talking about something that  is in some sense the opposite of your
+topic. This isn’t a real al gorithm walk-through, or exam ple implementation, just a
+thought experiment. You’re just trying to  figure out how you can teach a machine to
+think like you do. You arbitrarily chose to  decompose your word s and documents into
+only three topics (“petness,” “animalness,” and “cityness”). And your vocabulary is lim-
+ited; it has only six words in it.
+ T h e  n e x t  s t e p  i s  t o  t h i n k  t h r o u g h  how a human might decide mathematically
+which topics and words are connected, an d what weights those connections should
+have. Once you decided on three topics to model, you then had to decide how muchto weight each word for those topics. You blended words in proportion to each otherto make your topic “color mix.” The to pic modeling transformation (color mixing
+recipe) is a 3 x 6 matrix of proportions (w eights) connecting three topics to six words.
+You multiplied that matrix by an imaginary 6 x 1 TF-IDF vector to get a 3 x 1 topic vec-
+tor for that document.
+ You made a judgment call that the ter ms “cat” and “dog” shou ld have similar con-
+tributions to the “petness” topic (weight of .3). So the two values in the upper left of
+the matrix for your TF-IDF-to- topic transformation are both 
+.3. Can you imagine ways
+you might “compute” these proportions with  software? Remember , you have a bunch
+of documents your computer can read, toke nize, and count tokens for. You have TF-
+IDF vectors for as many documents as you like. Keep thinking about how you might
+use those counts to compute topic weights for a word as you read on.
+ You decided that the term “NYC” should have a negative weight for the “petness”
+topic. In some sense, city names, and prop er names in general, and abbreviations, and
+acronyms, share little in common with word s about pets. Think about what “sharing in“Hand-crafted” weights 
+(.3, .3, 0, 0, -.2, .2) are multiplied 
+by imaginary tfidf values to create 
+topic vectors for your imaginary random document. You’ll compute 
+real topic vectors later.
+ 
+
+103 From word counts to topic scores
+common” means for words. Is there something in a TF-IDF matrix that represents the
+meaning that words share in common?
+ You gave the word “love” a positive weight  for the “pets” topic. This may be because
+you often use the word “love” in the same se ntence with words about pets. After all, we
+humans tend to love our pets. We can only ho pe that our AI overlords will be similarly
+loving toward us.
+ Notice the small amount of the word “app le” into the topic vector for “city.” This
+could be because you’re doing this by hand  and we humans know that “NYC” and “Big
+Apple” are often synonymous. Our semantic analysis algori thm will hopefully be able
+to calculate this synonymy between “app le” and “NYC” based on how often “apple”
+and “NYC” occur in the same documents.
+ As you read the rest of the weighted su ms in the example “cod e,” try to guess how
+you came up with these weights for these three topics and six words. How might you
+change them? What could you use as an objective measure of these proportions
+(weights)? You may have a different “corpus ” in your head than the one we used in
+our heads. So you may have a different op inion about these words and the weights you
+gave them. What could you do to come to  a consensus about your opinions about
+these six words and three topics?
+NOTE We chose a signed weighting of wo rds to produce the topic vectors.
+This allows you to use negative weights for words that are the “opposite” of atopic. And because you’re doing this manually by hand, we chose to normal-ize your topic vectors by the easy-to-compute L
+1-norm (Manhattan, taxicab, or
+city-block distance). Nonetheless, the real LSA you’ll use later in this chapternormalizes topic vectors by the more useful L
+2-norm. L2-norm is the conven-
+tional Euclidean distance or length th at you’re familiar with from geometry
+class. It’s the Pythagorean theorem solv ed for the length of the hypotenuse of
+a right triangle.
+You might have realized in reading these ve ctors that the relati onships between words
+and topics can be “flipped.” The 3 x 6 matrix  of three topic vectors can be transposed
+to produce topic weights for each word in your vocabulary. These vectors of weights
+would be your word vect ors for your  six words:
+>>> word_vector = {}
+>>> word_vector['cat'] = .3*topic['petness'] +\... .1*topic['animalness'] +\
+... 0*topic['cityness']
+>>> word_vector['dog'] = .3*topic['petness'] +\... .1*topic['animalness'] -\
+... .1*topic['cityness']
+>>> word_vector['apple']= 0*topic['petness'] -\... .1*topic['animalness'] +\
+... .2*topic['cityness']
+>>> word_vector['lion'] = 0*topic['petness'] +\... .5*topic['animalness'] -\
+... .1*topic['cityness']
+ 
+
+104 CHAPTER  4Finding meaning in word counts (semantic analysis)
+>>> word_vector['NYC'] = -.2*topic['petness'] +\
+... .1*topic['animalness'] +\
+... .5*topic['cityness']>>> word_vector['love'] = .2*topic['petness'] -\
+... .1*topic['animalness'] +\
+... .1*topic['cityness']
+These six topic vectors (shown in Figure 4. 1), one for each word , represent the mean-
+ings of your six words as 3D vectors.
+Figure 4.1 3D vectors for a thought experiment about six words about pets and NYC
+Earlier, the vectors for each topic, with weights for each word, gave you 6-D vectors
+representing the linear combination of words in your three topics. In your thoughtexperiment, you hand-crafted a three-topic mo del for a single natural language docu-
+ment! If you just count up o ccurrences of these six words and multiply them by your
+weights you get the 3D topic vector for an y document. And 3D vectors are fun because
+they’re easy for humans to visualize. You can plot them and share insights about your
+corpus or a particular document in graphi cal form. 3D vectors (or any low-dimensional
+vector space) are great for ma chine learning classification problems, too. An algorithm
+can slice through the vector space with a pl ane (or hyperplane) to divide up the space
+into classes.
+ The documents in your corpus might us e many more words, but this particular
+topic vector model will only be influenced by the use of these six words. You could
+extend this approach to as many words as you had the patience (o r an algorithm) for..5
+.1
+z = “cityness”NYC
+[–.2, .1, .5]
+apple
+[0, –.1, .2]love
+[0, –.1, .2].3cat
+[.3, .1, 0]dog
+[.3, .1, –.1]lion
+[0, .5, –.1]y = “animalness”
+x = “petness ”
+ 
+
+105 From word counts to topic scores
+As long as your model only needed to sepa rate documents according to three different
+dimensions or topics, your vocabulary could keep growing as much as you like. In the
+thought experiment, you co mpressed six dimensions (T F-IDF normalized frequen-
+cies) into three dimensions (topics).
+ This subjective, labor-intensive approach  to semantic analysis relies on human
+intuition and common sense to break down documents into topics. Common sense is
+hard to code into an algorithm.4 So it isn’t repeatable—you’d probably come up with
+different weights than we did. And obviously  this isn’t suitable for a machine learning
+pipeline. Plus it doesn’t scale well to more topics and words. A human couldn’t allo-
+cate enough words to enough topics to pr ecisely capture the meaning in any diverse
+corpus of documents you might wa nt your machine to deal with.
+ So let’s automate this manual procedure.  Let’s use an algorithm that doesn’t rely
+on common sense to select topic weights for us.5
+ If you think about it, each of these weig hted sums is just a do t product. And three
+dot products (weighted sums) is just a matr ix multiplication, or inner product. You
+multiply a 3 x n weight matrix with a TF-IDF vector (one value for each word in a doc-
+ument), where n is the number of terms in your vo cabulary. The output of this multi-
+plication is a new 3 x 1 topic vector fo r that document. What you’ve done is
+“transform” a vector from one vector space (TF-IDFs) to another lower-dimensionalvector space (topic vect ors). Your algorithm should create a matrix of n terms by m
+topics that you can multiply by a vector of the word frequencies in a document to get
+your new topic vector for that document.
+NOTE In mathematics, the size of a vocabu lary (the set of all possible words
+in a language) is usually written as | V|. And the variable V alone is used to rep-
+resent the set of possible wo rds in your vocabulary. So if you’re writing an aca-
+demic paper about NLP, use |V| wherever we’ve used n to describe the size
+of a vocabulary.
+4.1.4 An algorithm for scoring topics
+You still need an algorithmic way to determ ine these topic vectors. You need a trans-
+formation from TF-IDF vectors into topic vectors. A machine can’t tell which words
+belong together or what any of them signify, can it? J. R. Firth, a 20th century British
+4Doug Lenat at Stanford is trying to do just that, code common sense into an algorithm. See the Wired Maga-
+zine article “Doug Lenat’s Artificial Intelligence Common Sense Engine” ( https:/ /www.wired.com/2016/03/
+doug-lenat-artificial-intell igence-common-sense-engine ).
+5The Wikipedia page for topic models has a video that shows how this might work for many more topics and
+words. The darkness of the pixels represents the weight or value or score for a topic and a word, like theweights in your manual example. And the video shows a particular algorithm, called SVD, that reorders the
+words and topics, to put as much of the “weight” as possible along the diagonal. This helps identify patterns
+that represent the meanings of both the topics and the words. https:/ /upload.wikimedia.org/wikipedia/
+commons/7/70/Topic_model_scheme.webm#t=00:00:01,00:00:17.600.
+ 
+
+106 CHAPTER  4Finding meaning in word counts (semantic analysis)
+linguist, studied the ways you can estimate what a word or morpheme6 signifies. In
+1957 he gave you a clue about how to compute the topics for words. Firth wrote
+You shall know a word by the company it keeps.
+                                                                       J. R. Firth
+So how do you tell the “company” of a wo rd? Well, the most straightforward approach
+would be to count co-occurrences in the same document. And you have exactly what
+you need for that in your bag-of-words (BOW) and TF-IDF vectors from chapter 3.
+This “counting co-occurrences” approach le d to the development of several algo-
+rithms for creating vectors to represent the statistics of word usage within documents
+or sentences.
+ LSA is an algorithm to analyze your TF-I DF matrix (table of TF-IDF vectors) to
+gather up words into topics. It works on bag- of-words vectors, too, but TF-IDF vectors
+give slightly better results.
+ LSA also optimizes these topics to maintain diversity in the topic dimensions; when
+you use these new topics instead of the orig inal words, you still capture much of the
+meaning (semantics) of the documents. Th e number of topics you need for your
+model to capture the meaning of your docume nts is far less than the number of words
+in the vocabulary of your TF-IDF vectors. So LSA is often referred to as a dimension
+reduction technique. LSA redu ces the number of dimensions you need to capture the
+meaning of your documents.
+ Have you ever used a dimension reduct ion technique for a large matrix of num-
+bers? What about pixels? If you’ve done ma chine learning on images or other high-
+dimensional data, you may have run across a technique called principal component
+analysis (PCA). As it turns out, PCA is exactly the same math as LSA. PCA, however, is
+what you say when you’re reducing the di mensionality of images or other tables of
+numbers, rather than bag-of-words vectors or TF-IDF vectors.
+ Only recently did researchers discover that you could use PCA for semantic analysis
+of words. That’s when they gave this pa rticular application its own name, LSA. Even
+though you’ll see the scikit-learn  PCA model used shortly, the output of this fit and
+transform process is a vector representing the semantics of  a document. It’s still LSA.
+ And here’s one more synonym for LSA you may run across. In the field of informa-
+tion retrieval, where the focus is on creating  indexes for full text search, LSA is often
+referred to as latent semantic indexing (LSI). But this term has fallen out of favor. It
+doesn’t produce an index at all. In fact, the topic vectors it produces are usually too highdimensional to ever be indexed perfectly. So we use the term “LSA” from here on out.
+TIP Indexing is what databases do to be ab le to retrieve a particular row in a
+table quickly based on some partial info rmation you provide it about that row.
+A textbook’s index works like this. If yo u’re looking for a particular page, you
+6A morpheme  is the smallest meaningful parts of a word. See Wikipedia article “Morpheme” ( https:/ /en.wikipe-
+dia.org/wiki/Morpheme ).
+ 
+
+107 From word counts to topic scores
+can look up words in the index that should be on the page. Then you can go
+straight to the page or pages that co ntain all the words you’re looking for.
+LSA “ COUSINS ”
+Two algorithms are similar to LSA, with si milar NLP applications, so we mention them
+here:
+Linear discriminant analysis (LDA)
+Latent Dirichlet allocation (LDiA)7
+LDA breaks down a document into only on e topic. LDiA is mo re like LSA because it
+can break down documents into as many topics as you like.
+TIP Because it’s one dimensional, LDA doesn’t require singular value
+decomposition (SVD). You can just comp ute the centroid (average or mean)
+of all your TF-IDF vectors for each side  of a binary class, like spam and non-
+spam. Your dimension then becomes the line between those two centroids.The further a TF-IDF vector is along th at line (the dot product of the TF-IDF
+vector with that line) tells you how close you are to one class or another.
+Here’s an example of this simple LDA appr oach to topic analysis first, to get you
+warmed up before you tackle LSA and LDiA. 
+4.1.5 An LDA classifier
+LDA is one of the most straightforward an d fast dimension reduction and classifica-
+tion models you’ll find. But this book may be  one of the only places you’ll read about
+it, because it’s not very flashy.8 But in many applications, you’ll find it has much better
+accuracy than the fancier state-of-the art algorithms published in the latest papers. An
+LDA classifier is a supervis ed algorithm, so you do need labels for your document
+classes. But LDA requires far fewe r samples than fancier algorithms.
+ For this example, we show  you a simplified implementation of LDA that you can’t
+find in scikit-learn . The model “training” has only three steps, so you’ll just do
+them all directly in Python:
+1Compute the average position (centroid) of all the TF-IDF vectors within the
+class (such as spam SMS messages).
+2Compute the average position (centroid) of all the TF-IDF vectors not in theclass (such as nonspam SMS messages).
+3Compute the vector difference between the centroids (the line that connects
+them).
+7We use the acronym LDiA for latent Dirichlet alloca tion. Perhaps Panupong (Ice) Pasupat would approve.
+Panupong was an instructor at Stanfo rd’s online CS NLP class about LDiA ( https:/ /ppasupat.github.io/
+a9online/1140.html#latent- dirichlet-allocation-lda- ).
+8You can find it mentioned in papers back in the 1990s, when people had to be efficient with their use of com-
+puting and data resources ( https:/ /www.researchgate.net/profile/ Georges_Hebrail/publication/221299406
+_Automatic_Document_Classi fication_Natural_Language_Processing_S tatistical_Analysis_and_Expert_Syste
+m_Techniques_used_together/links/0c960516cf4968b29e000000.pdf ).
+ 
+
+108 CHAPTER  4Finding meaning in word counts (semantic analysis)
+All you need to “train” an LDA model is to find the vector (line) between the two cen-
+troids for your binary class. LDA is a superv ised algorithm, so you need labels for your
+messages. To do inference  or prediction with that model, you just need to find out if a
+new TF-IDF vector is closer to the in-class (s pam) centroid than it is to the out-of-class
+(nonspam) centroid. First let’s “train” an LDA model to classify SMS messages as spam
+or nonspam (see the following listing). 
+>>> import pandas as pd
+>>> from nlpia.data.loaders import get_data
+>>> pd.options.display.width = 120
+>>> sms = get_data('sms-spam')>>> index = ['sms{}{}'.format(i, '!'*j) for (i,j) in\
+... zip(range(len(sms)), sms.spam)]
+>>> sms = pd.DataFrame(sms.values, columns=sms.columns, index=index)>>> sms['spam'] = sms.spam.astype(int)
+>>> len(sms)
+4837>>> sms.spam.sum()638
+>>> sms.head(6)
+spam text
+sms0 0 Go until jurong point, crazy.. Available only ...
+sms1 0 Ok lar... Joking wif u oni...
+sms2! 1 Free entry i n 2 a wkly comp to win FA Cup fina...
+sms3 0 U dun say so early hor.. . U c already then say...
+sms4 0 Nah I don't think he goes to usf, he lives aro...
+sms5! 1 FreeMsg Hey there darling it's been 3 week's n...
+So you have 4,837 SMS messages, and 638 of  them are labeled with the binary class
+label “spam.”
+ Now let’s do our tokenization and TF-IDF  vector transformation on all these SMS
+messages:
+>>> from sklearn.feature_extraction.text import TfidfVectorizer
+>>> from nltk.tokenize.casual import casual_tokenize
+>>> tfidf_model = TfidfVectorizer(tokenizer=casual_tokenize)
+>>> tfidf_docs = tfidf_model.fit_transform(\... raw_documents=sms.text).toarray()
+>>> tfidf_docs.shape
+(4837, 9232)>>> sms.spam.sum()
+638
+The nltk.casual_tokenizer  gave you 9,232 words in your vocabulary. You have
+almost twice as many words as you have messages. And you have almost ten times as
+many words as spam messages. So your mo del won’t have a lot of information about
+the words that will indicate whether a message  is spam or not. Usually, a Naive Bayes
+classifier won’t work well when your vocabu lary is much larger than the number ofListing 4.1 The SMS spam dataset 
+This line helps display the wide 
+column of SMS text within a Pandas DataFrame printout.
+This is just for display. You’ve flagged
+spam messages by appending an
+exclamation point, “! ”, to their label.
+ 
+
+109 From word counts to topic scores
+labeled examples in your dataset. That’s where the semantic analysis techniques of
+this chapter can help.
+ Let’s start with the simple st semantic analysis technique, LDA. You could use
+the LDA model in sklearn.discriminant_analysis.LinearDiscriminant-
+Analysis . But you only need compute the centro ids of your binary class (spam and
+nonspam) in order to “train” this model, so you’ll do that directly:
+>>> mask = sms.spam.astype(bool).values
+>>> spam_centroid = tfidf_docs[mask].mean(axis=0)>>> ham_centroid = tfidf_docs[~mask].mean(axis=0)
+>>> spam_centroid.round(2)
+array([0.06, 0. , 0. , ..., 0. , 0. , 0. ])
+>>> ham_centroid.round(2)
+array([0.02, 0.01, 0. , ..., 0. , 0. , 0. ])
+Now you can subtract one centroid from the other to get the line between them:
+>>> spamminess_score = tfidf_docs.dot(spam_centroid -\
+... ham_centroid)
+>>> spamminess_score.round(2)array([-0.01, -0.02, 0.04, ..., -0.01, -0. , 0. ])
+This raw spamminess_score  is the distance along the li ne from the ha m centroid to
+the spam centroid. We calcul ated that score by projecting each TF-IDF vector onto
+that line between the centroids using the dot product. And you did those 4,837 dotproducts all at once in a “v ectorized” numpy oper ation. This can speed things up 100
+times compared to a Python loop.
+ Figure 4.2 shows a view of the TF-IDF ve ctors in 3D and where these centroids are
+for your SMS messages.You can use this mask to select only the spam rows
+from a numpy.array or pandas.DataFrame.
+Because your TF-IDF vectors
+are row vectors, you need to
+make sure numpy computes
+the mean for each column
+independently using axis=0.
+The dot product computes 
+the “shadow” or  projection of 
+each vector on the line between the centroids.
+Figure 4.2 3D scatter plot (point cloud)
+of your TF-IDF vectors
+ 
+
+110 CHAPTER  4Finding meaning in word counts (semantic analysis)
+The arrow from the nonspam centroid to th e spam centroid is the line that defines
+your trained model. You can see how some of the green dots are on the back side of
+the arrow, so you could get a negative sp amminess score when you project them onto
+this line between the centroids.
+ Ideally, you’d like your score to rang e between 0 and 1, like a probability. The
+sklearnMinMaxScaler  can do that for you:
+>>> from sklearn.preprocessing import MinMaxScaler
+>>> sms['lda_score'] = MinMaxScaler().fit_transform(\
+... spamminess_score.reshape(-1,1))>>> sms['lda_predict'] = (sms.lda_score > .5).astype(int)
+>>> sms['spam lda_predict lda_score'.split()].round(2).head(6)
+spam lda_predict lda_score
+sms0 0 0 0.23
+sms1 0 0 0.18
+sms2! 1 1 0.72sms3 0 0 0.18
+sms4 0 0 0.29
+sms5! 1 1 0.55
+That looks pretty good. All of the first six messages were classified correctly when you
+set the threshold at 50%. Let’s see how it  did on the rest of the training set:
+>>> (1. - (sms.spam - sms.lda_predict).abs().sum() / len(sms)).round(3)
+0.977
+Wow! 97.7% of the messages we re classified correctly with this simple model. You’re
+not likely to achieve this result in the re al world, because you haven’t separated out a
+test set. This A+ score is on  test “questions” that the cla ssifier has already “seen.” But
+LDA is a very simple model, with few parameters, so it sh ould generalize well, as long
+as your SMS messages are representative of the messages you intend to classify. Try it
+on your own examples to find out. Or ev en better, check out appendix D and learn
+how to do what’s called “cross validation.”
+ This is the power of semantic analysis approaches. Unlike Naive Bayes or logistic
+regression models, semantic analysis  doesn’t rely on individual words.9 Semantic anal-
+ysis gathers up words with similar semantic s (such as spamminess) and uses them all
+together. But remember that this training set has a limited vocabulary and some non-
+English words in it. So your test messages need to use similar wo rds if you want them
+to be classified correctly.
+ Let’s see what the training set confusion matrix looks like. This shows you the SMS
+messages that it labeled as spam that weren’ t spam at all (false positives), and the ones
+that were labeled as ham that should ha ve been labeled spam  (false negatives):
+>>> from pugnlp.stats import Confusion
+>>> Confusion(sms['spam lda_predict'.split()])
+lda_predict 0 1
+9Actually, a Naive Bayes classifier and a logistic regression model are both equivalent to this simple LDA model.
+Dig into the math and the sklearn code if you want to see.
+ 
+
+111 Latent semantic analysis
+spam
+0 4135 64
+1 45 593
+That looks nice. You could adjust the 0.5 thre shold on your score if the false positives
+(64) or false negatives (45) were out of ba lance. Now you’re ready to learn about mod-
+els that can compute multidimensional  semantic vectors instead of just 1D semantic
+scores. So far, the only thing your 1D vect ors “understand” is th e spamminess of words
+and documents. You’d like them to learn a lot more word nuances and give you a
+multidimensional vector that  captures a word’s meaning.
+ B e f o r e  y o u  d i v e  i n t o  S V D ,  t h e  m a t h  b e h i n d  m u l t i d i m e n s i o n a l  L S A ,  w e  s h o u l d
+mention some other approaches first.
+THE OTHER  “COUSIN ”
+LSA has another “cousin.” And it has an abbr eviation similar to LDA. LDiA stands for
+latent Dirichlet allocation.10 LDiA can also be used to generate vectors that capture
+the semantics of a word or document.
+ LDiA takes the math of LSA in a different direction. It uses a nonlinear statistical
+algorithm to group words together. As a result , it generally takes much longer to train
+than linear approaches like LSA. Often this  makes LDiA less practical for many real-
+world applications, and it should rarely be the first approach you try. Nonetheless, the
+statistics of the topics it creates sometime s more closely mirror human intuition about
+words and topics. So LDiA topics will often be easier for you to explain to your boss.
+ And LDiA is useful for some single-d ocument problems such as document summa-
+rization. Your corpus becomes the docume nt, and your documents become the sen-
+tences in that “corpus.” This is how gensim  and other packages use LDiA to identify
+the most “central” sentence s of a document. These sentences can then be strung
+together to create a machine-generated summary.11
+ For most classification or regression problems, you’re usually better off using LSA.
+So we explain LSA and its underl ying SVD linear algebra first. 
+4.2 Latent semantic analysis
+Latent semantic analysis is based on th e oldest and most commonly-used technique
+for dimension reduction, singular value de composition. SVD was in widespread use
+long before the term “machi ne learning” even existed.12 SVD decomposes a matrix
+into three square matrices, one of which is diagonal.
+ One application of SVD is matrix invers ion. A matrix can be inverted by decom-
+posing it into three simpler square matrices, transpos ing matrices, and then multiply-
+ing them back together. You can imagine al l the applications for an algorithm that
+10We chose the nonstandard LDiA acronym to di stinguish it from the acronym LDA, which usually  means linear
+discriminant analysis, but not always. At least in this b ook, you won’t have to guess what we mean by that algo-
+rithm. LDA will always mean linear discriminant analysis . LDiA will always mean latent Dirichlet allocation.
+11We generated some of the text in the “About this book” section using similar math, but implemented in a
+neural network (see chapter 12).
+12Google Ngram Viewer ( http:/ /mng.bz/qJEA ) is a great way to learn about the history of words and concepts.
+ 
+
+112 CHAPTER  4Finding meaning in word counts (semantic analysis)
+gives you a shortcut for inverting a large,  complicated matrix. SVD is useful for
+mechanical engineering problems such as tru ss structure stress and strain analysis. It’s
+also useful for circuit analysis  in electrical engineering. An d it’s even used in data sci-
+ence for behavior-based recommendation engines that run alongside content-based
+NLP recommendation engines.
+ Using SVD, LSA can break down your TF -IDF term-document matrix into three
+simpler matrices. And they can be multiplie d back together to produce the original
+matrix, without any changes. This is like factorization of a large integer. Big whoop.
+But these three simpler matrices from SVD reveal properties a bout the original TF-
+IDF matrix that you can exploi t to simplify it. You can truncate those matrices (ignore
+some rows and columns) before multiplyin g them back together, which reduces the
+number of dimensions you have to de al with in your vector space model.
+ These truncated matrices don’t give th e exact same TF-IDF matrix you started
+with—they give you a better one. Your ne w representation of the documents contains
+the essence, the “latent semantics” of th ose documents. That’s why SVD is used in
+other fields for things such as compression . It captures the essence of a dataset and
+ignores the noise. A JPEG image is ten ti mes smaller than the original bitmap, but it
+still contains all the inform ation of the original image.
+ When you use SVD this way in natural language processing, you call it latent
+semantic analysis. LSA uncovers the semantic s, or meaning, of words that is hidden
+and waiting to be uncovered.
+ Latent semantic analysis is a mathematic al technique for finding the “best” way to
+linearly transform (rotate and stretch) any set of NLP vector s, like your TF-IDF vectors
+or bag-of-words vectors. And the “best” way fo r many applications is to line up the axes
+(dimensions) in your new vect ors with the greatest “spread” or variance in the word
+frequencies.13 You can then eliminate those dimens ions in the new vector space that
+don’t contribute much to th e variance in the vectors fr om document to document.
+ Using SVD this way is called truncated singular value decomposition  (truncated SVD).
+In the image processing and image compression world, yo u might have heard of this
+as principal component analysis  (PCA). And we show you some  tricks that help improve
+the accuracy of LSA vectors. These tricks are also useful when you’re doing PCA for
+machine learning and feature engi neering problems in other areas.
+ If you’ve taken linear algebra, you proba bly learned the algebr a behind LSA called
+singular value decomposition. And if you’ ve done machine learning on images or
+other high-dimensional data, like time se ries, you’ve probably used PCA on those
+high-dimensional vectors. LSA on natural language documents is equivalent to PCA
+on TF-IDF vectors.
+ LSA uses SVD to find the combinations of  words that are responsible, together, for
+the biggest variation in the data. You can ro tate your TF-IDF vectors so that the new
+13There are some great visualizations and explanations in chapter 16 of Jurafsky and Martin’s NLP textbook
+(https:/ /web.stanford.edu/~jurafsky/slp3/ed3book.pdf#chapter.16 ).
+ 
+
+113 Latent semantic analysis
+d i m e n s i o n s  ( b a s i s  v e c t o r s )  o f  y o u r  r o t a ted vectors all align with these maximum
+variance directions. The “basis vectors” are the axes of your new vector space and are
+analogous to your topic vectors in the th ree 6-D topic vectors from your thought
+experiment at the beginning of this chapter.  Each of your dimens ions (axes) becomes
+a combination of word frequenc ies rather than a single wo rd frequency. So you think
+of them as the weighted combinations of words that make up various “topics” used
+throughout your corpus.
+ The machine doesn’t “understand” what the combinations of words means, just
+that they go together. When it sees words lik e “dog,” “cat,” and “love” together a lot, it
+puts them together in a topic. It doesn’t kn ow that such a topic is  likely about “pets.” It
+might include a lot of words like “domesticate d” and “feral” in that  same topic, words
+that mean the opposite of each other. If they occur together a lot in the same docu-ments, LSA will give them high scores for the same topics together. It’s up to ushumans to look at what words have a high weight in each topic and give them a name.
+ But you don’t have to give the topics a name to make use of them. Just as you
+didn’t analyze all the 1,000s  of dimensions in your stemmed bag-of-words vectors or
+TF-IDF vectors from previous chapters, you don’t have to know what all your topics
+“mean.” You can still do vector math with these new topic vectors, just like you did
+with TF-IDF vectors. You can add and su btract them and estimate the similarity
+between documents based on th eir topic vectors instead of  just their word counts.
+ LSA gives you another bit of  useful information. Like the “IDF” part of TF-IDF, it
+tells you which dimensions in your vector  are important to the semantics (meaning)
+of your documents. You can discard those dimensions (topics) that have the least
+amount of variance between documents. These low-variance  topics are usually distrac-
+tions, noise, for any machine learning algo rithm. If every document has roughly the
+same amount of some topic and that topi c doesn’t help you tell the documents apart,
+then you can get rid of it. And that will help generalize your vector representation soit will work better when you use it with do cuments your pipeline hasn’t yet seen, even
+documents from a different context.
+ This generalization and compression th at LSA performs accomplishes what you
+attempted in chapter 2 when you ignored stop words. But the LSA dimension reduc-
+tion is much better, because it’s optimal. It retains as much in formation as possible,
+and it doesn’t discard any words, it only discards dimensions (topics).
+ LSA compresses more meaning into fewer di mensions. We only have to retain the
+high-variance dimensions, the major topics th at your corpus talks about in a variety of
+ways (with high variance). And each of th ese dimensions become s your “topics,” with
+some weighted combination of all the words captured in each one.
+4.2.1 Your thought experiment made real
+Let’s use an algorithm to compute some topi cs like “animalness,” “petness,” and “city-
+ness” from your thought experiment. You can’ t tell the LSA algorithm what you want the
+ 
+
+114 CHAPTER  4Finding meaning in word counts (semantic analysis)
+topics to be about.14 But let’s just try it and see what happens. For a small corpus of short
+documents such as tweet s, chat messages, and lines of po etry, it takes only a few dimen-
+sions (topics) to capture th e semantics of those document s. See the following listing.
+>>> from nlpia.book.examples.ch04_catdog_lsa_3x6x16\
+... import word_topic_vectors>>> word_topic_vectors.T.round(1)
+cat dog apple lion nyc love
+top0 -0.6 -0.4 0.5 -0.3 0.4 -0.1top1 -0.1 -0.3 -0.4 -0.1 0.1 0.8
+top2 -0.3 0.8 -0.1 -0.5 0.0 0.1
+The rows in this topic-word matrix are the “word topic vect ors” or just “topic vectors”
+for each word. This is like the word scor es used in the sentiment analysis model in
+chapter 2. These will be the vectors you can use to represent the meaning of a word in
+any machine learning pipeline; they are al so sometimes called word “semantic vec-
+tors.” And the topic vectors for each word can be added up to compute a topic vector
+for a document.
+ Surprisingly SVD created topic vectors an alogous to the ones you pulled from your
+imagination in the thought experi ment. The first topic, labeled topic0 , is a little like
+your “cityness” topic earlier. The topic0  weights have larger weights for “apple” and
+“NYC.” But topic0  came first in the LSA ordering of topics and last in your imagined
+topics. LSA sorts the topics in order of im portance, how much in formation or variance
+they represent for your dataset. The topic0  dimension is along the axis of highest vari-
+ance in your dataset. You can see the high variance in the cities when you notice severalsentences about “NYC” and “apple,” and se veral that don’t use those words at all.
+ And 
+topic1  looks different from all the th ought experiment topics. The LSA
+algorithm found that “love” was a more impo rtant topic than “animalness” for captur-
+ing the essence of the documents that  you ran it on. The last topic, topic2 , appears
+to be about “dog”s, with a little “love” thro wn into the mix. The word “cat” is relegated
+to the “anti-cityness” topic (negative city ness), because cats and cities aren’t men-
+tioned together much.
+ One more short thought experiment shou ld help you appreciate how LSA works—
+how an algorithm can create topic vect ors without knowing what words mean.
+MAD LIBS
+Can you figure out what the word “awas” means from its context in the following
+statement?
+Awas! Awas! Tom is behind you! Run!
+14There is an area of research into something called “learned metrics,” which you can use to steer the topics
+t o w a r d  w h a t  y o u  w a n t  t h e m  t o  b e  a b o u t .  S e e  NIPS paper “Learning Low-Dimensional Metrics” ( https:/ /
+papers.nips.cc/paper/7002-learn ing-low-dimensional-metrics.pdf ) by Lalit Jain, Blak e Mason, and Robert
+Nowak.Listing 4.2 Topic-word matrix for LSA on 16 short sentences about cats, dogs, and NYC
+ 
+
+115 Latent semantic analysis
+You might not guess that Tom is the alpha orangutan in Leakey Park, in Borneo. And
+you might not know that Tom has been “conditioned” to humans but is territorial,sometimes becoming dangerousl y aggressive. And your inte rnal natural language pro-
+cessor may not have time to consciously fi gure out what “awas” means until you have
+run away to safety.
+ But once you catch your breath and th ink about it, you might guess that “awas”
+means “danger” or “watch out”  in Indonesian. Ignoring the real world, and just focus-
+ing on the language context, the words, yo u can often “transfer” a lot of the signifi-
+cance or meaning of words you do know to words that you don’t.
+ Try it sometime, with yourself or with a friend. Like a Mad Libs game,
+15 just replace
+a word in a sentence with a foreign word, or even a made-up word. Then ask a friend
+to guess what that word means,  or ask them to fill in the blank with an English word.
+Often your friend’s guess won’t be too far off from a valid translation of the foreignword, or your intended me aning for the made-up word.
+ Machines, starting with a clean slate, don’ t have a language to build on. So it takes
+much more than a single example for them to figure out what the words in it mean.It’ s like when you look at a sentence full of foreign words. But machines can do itquite well, using LSA, even with just a random sampling of documents containing at
+least a few mentions of the words you’re interested in.
+ Can you see how shorter documents, like se ntences, are better for this than large
+documents such as articles or books? This is because the meaning of a word is usually
+closely related to the meanings of the words in the sentence that contains it. But thisisn’t so true about the words that ar e far apart within a longer document.
+16
+ LSA is a way to train a machine to recognize the meaning (semantics) of words and
+phrases by giving the machine some exampl e usages. Like people, machines can learn
+better semantics from example usages of wo rds much faster and easier than they can
+from dictionary definitions. Extracting meaning from example usages requires less
+logical reasoning than reading all the possible definitions and forms of a word in adictionary and then encoding that into some logic.
+ The math you use to uncover the meaning of  words in LSA is called singular value
+decomposition. SVD, from your linear algebra class, is what LSA uses to create vectors
+like those in the word-topic  matrices just discussed.
+17
+ Finally some NLP in action: we now show you how a machine is able to “play Mad
+Libs” to understand words. 
+15See the web page titled “Mad Libs” ( https:/ /en.wikipedia.org/wiki/Mad_Libs ).
+16When Tomas Mikolov was thinking about this as he came up with Word2vec , he realized he could tighten up
+the meaning of word vectors if he tightened up the cont ext even further, limiting the distance between con-
+text words to five.
+17Check out the examples in nlpia/book/examples/ch04_ *.py if you want to see the documents and vector
+math behind this “actualization” of the thought expe riment. This was a thought experiment before SVD was
+used on real natural language sentences. We we re lucky that the topics were at all similar.
+ 
+
+116 CHAPTER  4Finding meaning in word counts (semantic analysis)
+4.3 Singular value decomposition
+Singular value decomposition is  the algorithm behind LSA. Let’s start with a corpus of
+only 11 documents and a vocabulary of 6 wo rds, similar to what you had in mind for
+your thought experiment:18
+>>> from nlpia.book.examples.ch04_catdog_lsa_sorted\
+... import lsa_models, prettify_tdm
+>>> bow_svd, tfidf_svd = lsa_models()
+>>> prettify_tdm(**bow_svd)
+cat dog apple lion nyc love
+text
+0 1 1 NYC is the Big Apple.1 1 1 NYC is known as the Big Apple.
+2 1 1 I love NYC!
+3 1 1 I wore a hat to the Big Apple party in NYC.4 1 1 Come to NYC. See the Big Apple!
+5 1 Manhattan is called the Big Apple.
+6 1 New York is a big city for a small cat.7 1 1 The lion, a big cat, is the king of the jungle.
+8 1 1 I love my pet cat.
+9 1 1 I love New York City (NYC).10 1 1 Your dog chased mycat.
+This is a document-ter m matrix where each row is a ve ctor of the bag-of-words for a
+document.
+ You’ve limited the vocabulary to matc h the thought experiment. And you limited
+the corpus to only a few (11) documents that use the 6 words in your vocabulary.
+Unfortunately, the sorting algorithm and th e limited vocabulary created several iden-
+tical bag-of-words vectors (NYC, apple). But SV D should be able to “see” that and allo-
+cate a topic to that pair of words.
+ You’ll first use SVD on the term-document matrix (the transpose of the document-
+term matrix above), but it works on TF-IDF  matrices or any other vector space model:
+>>> tdm = bow_svd['tdm']
+>>> tdm
+01234567891 0
+c a t 0000001110 1
+d o g 0000000000 1apple 1101110000 0
+lion 0000000100 0
+n y c 1111100001 0love 0010000011 0
+SVD is an algorithm for decomposing any matrix into three “factors,” three matrices
+that can be multiplied together  to recreate the original matrix. This is analogous to
+finding exactly three integer factors for a la rge integer. But your factors aren’t scalar
+integers, they are 2D real matrices with special properties. The three matrix factors
+18We just chose 11 short sentences to keep the print vers ion short. You could learn a lot by checking out the
+ch04 examples in nplpia and running SVD on larger and larger corpora.This performs LSA on the cats_and_dogs corpus 
+using the vocabulary  from the thought 
+experiment. You’ll soon peak  inside this black box.
+ 
+
+117 Singular value decomposition
+you compute with SVD have some useful ma thematical properties you can exploit for
+dimension reduction and LSA. In linear alge bra class you may have used SVD to find
+the inverse of a matrix. Here you’ll use it for LSA to figure out what your topics
+(groups of related words) need to be.
+ Whether you run SVD on a BOW term-document matrix or a TF-IDF term-
+document matrix, SVD will find combinatio ns of words that belong together. SVD
+finds those co-occurring words by calcul ating the correlation between the columns
+(terms) of your term-document matrix.19 SVD simultaneously finds the correlation of
+term use between documents and the correlat ion of docume nts with each other. With
+these two pieces of information SVD also computes the linear combinations of termsthat have the greatest variation across the corpus. These linear combinations of term
+frequencies will become your topics. And you’ ll keep only those topics that retain the
+most information, the most variance in your  corpus. It also give s you the linear trans-
+formation (rotation) of your term-docum ent vectors to convert those vectors into
+shorter topic vectors for each document.
+ SVD will group terms together that have high correlation with each other (because
+they occur in the same documents together a lot) and also vary together a lot over the
+set of documents. We think of  these linear combinations of words as “topics.” These
+topics turn your BOW vectors (or TF-IDF vect ors) into topic vectors that tell you the
+topics a document is about. A topic vector is kind of like a summary, or generalization,
+of what the document is about.
+ It’s unclear who came up with the idea to apply SVD to word counts to create topic
+vectors. Several linguists were working on  similar approaches simultaneously. They
+were all finding that the semantic similari ty between two natural language expressions
+(or individual words) is prop ortional to the similarity be tween the contexts in which
+words or expressions are used. These rese archers include Harris, Z. S. (1951),
+20 Koll
+(1979),21 Isbell (1998),22 Dumais et al. (1988),23 Salton and Lesk (1965),24 and Deer-
+wester (1990).25
+ Here’s what SVD (the heart of LSA) looks like in math notation:
+Wmxn  Umxp Spxp VpxnT
+19This is equivalent to the square root of the dot pro duct of two columns (term-document occurrence vectors),
+but SVD provides you additional information that co mputing the correlation di rectly wouldn’t provide.
+20Jurafsky and Schone cite “Methods in structural linguistics” by Harris, Z. S., 1951 in their 2000 paper
+“Knowledge-Free Induction of Morphology  Using Latent Semantic Analysis” ( https:/ /dl.acm.org/ft_gateway
+.cfm?id=1117615&ftid=570935&dwn=1&#URLTOKEN# ) as well as in their slides ( https:/ /slidegur.com/doc/
+3928417/knowledge-free-induction -of-morphology-using-latent ).
+21Koll, M. (1979) “Generalized vector spaces model in information retrieval” ( https:/ /dl.acm.org/cita-
+tion.cfm?id=253506 ) and “Approach to Concept Based Inform ation Retrieval” by Koll, M. (1979).
+22“Restructuring Sparse High-Dimensional Data for Effective Retrieval” ( http:/ /papers.nips.cc/paper/1597
+-restructuring-sparse-high-dimensional-data-for-effective-retrieval.pdf ) by Charles Lee Isbell, Jr., 1998.
+23“Using latent semantic analysis to improve access to textual information” by Dumais et al., 1988 ( https:/ /
+dl.acm.org/citation.cfm?id=57214 ).
+24Salton, G., (1965) “The SMART auto matic document retrieval system.”
+25Deerwester, S. et al. “Indexing by Latent Semantic Indexing.”
+ 
+
+118 CHAPTER  4Finding meaning in word counts (semantic analysis)
+In this formula, m is the number of terms in your vocabulary, n is the number of docu-
+ments in your corpus, and p is the number of topics in your corpus, and this is the
+same as the number of words. But wait, weren’t you trying to end up with fewer
+dimensions? You want to eventually end up with fewer topics than words, so you can
+use those topic vectors (rows of the topic-document matrix) as a reduced-dimension
+representation of the original TF-IDF vector s. You eventually get to that. But at this
+first stage, you retain all the dimensions in your matrices.
+ The following sections show yo u what those three matrices ( U, S, and V) look like.
+4.3.1 U—left singular vectors
+The U matrix contains the term-topic matrix that tells you about “the company a word
+keeps.”26 This is the most important matrix for semantic analysis in NLP. The U matrix
+is called the “left singular vectors” because it contains row vectors that should be mul-
+tiplied by a matrix of column vectors from the left.27 U is the cross-correlation between
+words and topics based on word co-occurre nce in the same document. It’s a square
+matrix until you start truncating it (del eting columns). It has the same number of
+rows and columns as you have words in your vocabulary ( m): six. You still have six top-
+ics (p), because you haven’t truncated this matrix… yet.
+>>> import numpy as np
+>>> U, s, Vt = np.linalg.svd(tdm)
+>>> import pandas as pd
+>>> pd.DataFrame(U, index=tdm.index).round(2)
+012345
+cat -0.04 0.83 -0.38 -0.00 0.11 -0.38
+dog -0.00 0.21 -0.18 -0.71 -0.39 0.52apple -0.62 -0.21 -0.51 0.00 0.49 0.27
+lion -0.00 0.21 -0.18 0.71 -0.39 0.52
+nyc -0.75 -0.00 0.24 -0.00 -0.52 -0.32love -0.22 0.42 0.69 0.00 0.41 0.37
+Notice that the SVD algorithm is a brea d-and-butter numpy math operation, not a
+fancy scikit-learn machine learning algorithm.
+ The U matrix contains all the to pic vectors for each word in your corpus as columns.
+This means it can be used as a transformati on to convert a word-document vector (a TF-
+IDF vector or a BOW vector) into a topic-docu ment vector. You just multiply your topic-
+word U matrix by any word-document column  vector to get a new topic-document
+26If you try to duplicate these results with the PCA model in sklearn, you’ll notice that it gets this term-topic
+matrix from the VT matrix because the input dataset is transposed  relative to what you did here. scikit-learn
+always arranges data as row vectors so your term-document matrix in tdm is transposed into a document-term
+matrix when you use PCA.fit()  or any other sklearn model training.
+27Mathematicians call these vectors “left eigenvectors” or “row eigenvectors.” See the Wikipedia article “Eigen-values and eigenvectors” ( https:/ /en.wikipedia.org/wiki/Eigenvalues_and_eigenvectors#Left_and_right_
+eigenvectors ).Listing 4.3 U mxp
+You’re reusing the tdm term-
+document matrix from the earlier code sections.
+ 
+
+119 Singular value decomposition
+vector. This is because the weights or scores in each cell of the U matrix represent how
+important each word is to each topic. This is exactly what you did in the thought exper-
+iment that started this whole cats and dogs adventure in NYC.
+ Even though you have wh at you need to map word frequencies to topics, we
+explain the remaining factors that SV D gives you and how they are used. 
+4.3.2 S—singular values
+The Sigma or S matrix contains the topic “singular values” in a square diagonal matrix.28
+The singular values tell you how much information is captured by each dimension in
+your new semantic (topic) ve ctor space. A diagonal matrix has nonzero values only
+along the diagonal from the upper left to the lower right. Everywhere else the S matrix
+will have zeros. So numpy save s space by returning the singul ar values as an array, but
+you can easily convert it to a diagonal matrix with the numpy.diag  function, as shown
+in the following listing.
+>>> s.round(1)
+array([3.1, 2.2, 1.8, 1. , 0.8, 0.5])
+>>> S = np.zeros((len(U), len(Vt)))>>> pd.np.fill_diagonal(S, s)
+>>> pd.DataFrame(S).round(1)
+01234567891 0
+0 3.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+1 0.0 2.2 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+2 0.0 0.0 1.8 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.03 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+4 0.0 0.0 0.0 0.0 0.8 0.0 0.0 0.0 0.0 0.0 0.0
+5 0.0 0.0 0.0 0.0 0.0 0.5 0.0 0.0 0.0 0.0 0.0
+Like the U matrix, your S matrix for your 6-word, 6- topic corpus has six rows ( p). But
+it has many more columns ( n) filled with zeros. It ne eds a column for every docu-
+ment so you can multiply it by VT, the document-document ma trix, that you’ll learn
+about next. Because you haven’t yet reduce d the dimensionality by truncating this
+diagonal matrix, you have as many topics ( p) as you have terms in your vocabulary
+(m), six. And your dimensions (topics) are constructed such that the first dimension
+contains the most information (“explained variance”) about your  corpus. That way
+when you want to truncate your topic mo del, you can start zeroing out the dimen-
+sions at the lower right and work your way up and to the left. You can stop zeroing
+out these singular values when the error in your topic model starts to contribute sig-
+nificantly to the overall NLP pipeline error.
+TIP Here’s the trick we mentioned earlier. For NLP, and most other applica-
+tions, you don’t want to retain the va riance information in your topic model.
+The documents you process in the future  might not be about the same topics.
+28Mathematicians call these eigenvalues.Listing 4.4 S pxp
+ 
+
+120 CHAPTER  4Finding meaning in word counts (semantic analysis)
+In most cases you’re better off setting the diagonal elements of your S matrix
+to ones, creating a rectangular identi ty matrix that just reshapes the VT
+document-document matrix to be compatible with your U word-topic matrix.
+That way if you multiply this S matrix by some new set of document vectors you
+won’t skew the topic vectors toward yo ur original topic mix (distribution). 
+4.3.3 VT—right singular vectors
+The VT matrix contains the “right singular ve ctors” as the column s of the document-
+document matrix. This gives you the shar ed meaning between documents, because it
+measures how often documents use the same  topics in your new semantic model of
+the documents. It has the same number of rows ( p) and columns as you have docu-
+ments in your small corpus, 11. See the following listing.
+>>> pd.DataFrame(Vt).round(2)
+01234567891 0
+0 -0.44 -0.44 -0.31 -0.44 -0.44 -0.20 -0.01 -0.01 -0.08 -0.31 -0.01
+1 -0.09 -0.09 0.19 -0.09 -0.09 -0.09 0.37 0.47 0.56 0.19 0.47
+2 -0.16 -0.16 0.52 -0.16 -0.16 -0.29 -0.22 -0.32 0.17 0.52 -0.32
+3 0.00 -0.00 -0.00 0.00 0.00 0.00 -0.00 0.71 0.00 -0.00 -0.714 -0.04 -0.04 -0.14 -0.04 -0.04 0.58 0.13 -0.33 0.62 -0.14 -0.33
+5 -0.09 -0.09 0.10 -0.09 -0.09 0.51 -0.73 0.27 -0.01 0.10 0.27
+6 -0.57 0.21 0.11 0.33 -0.31 0.34 0.34 -0.00 -0.34 0.23 0.007 -0.32 0.47 0.25 -0.63 0.41 0.07 0.07 0.00 -0.07 -0.18 0.00
+8 -0.50 0.29 -0.20 0.41 0.16 -0.37 -0.37 -0.00 0.37 -0.17 0.00
+9 -0.15 -0.15 -0.59 -0.15 0.42 0.04 0.04 -0.00 -0.04 0.63 -0.0010 -0.26 -0.62 0.33 0.24 0.54 0.09 0.09 -0.00 -0.09 -0.23 -0.00
+Like the S matrix, you’ll ignore the VT matrix whenever you’re transforming new
+word-document vectors into your topic vector space. You’ll only use it to check theaccuracy of your topic vectors for recreati ng the original word -document vectors that
+you used to “train” it. 
+4.3.4 SVD matrix orientation
+If you’ve done machine learning with na tural language documents before, you may
+notice that your term-document matrix is  “flipped” (transposed) relative to what
+you’re used to seeing in scikit-learn and other packages. In the Naive Bayes sentiment
+model at the end of chapter 2, and the TF-I DF vectors of chapter 3, you created your
+training set as a document-ter m matrix. This is the orientation that scikit-learn models
+require. Each row of your training set in  the sample-feature matrix for a machine
+learning sample is a document. And each column represented a word or feature of
+those documents. But when you do the SVD linear algebra directly, your matrix needs
+to be transposed into term-document format.29Listing 4.5 V pxnT
+29Actually, within the sklearn.PCA model they leave the document-term matrix unfli pped and just flip the SVD
+matrix math operations. So the PCA model in scikit-learn ignores the U and S matrix and uses only the VT
+matrix for its transformation of new document-term row vectors into document-topic row vectors.
+ 
+
+121 Singular value decomposition
+IMPORTANT Matrices are named and sized by their rows first, then the col-
+umns. So a “term-document” matrix is a matrix where the rows are the words,
+and the columns are the documents. Ma trix dimensions (sizes) work the
+same way. A 2 x 3 matrix will have tw o rows and three columns, which means
+it has an np.shape()  of (2, 3) and a len()  of two.
+Don’t forget to transpose your term-docum ent or topic-document matrices back to
+the scikit-learn orientation be fore training a machine learni ng model. In scikit-learn,
+each row in an NLP training set should cont ain a vector of the fe atures associated with
+a document (an email, SMS message, sentence , web page, or any other chunk of text).
+In NLP training sets, your vectors are row vectors. In traditional linear algebra opera-
+tions, vectors are usually thought of as column vectors.
+ I n  t h e  n e x t  s e c t i o n ,  w e  g o  t h r o u g h  a l l  t h i s  w i t h  y o u  t o  t r a i n  a  s c i k i t - l e a r n T r u n -
+catedSVD transformer to tran sform bag-of-words vectors into topic-document vectors.
+You’ll then transpose those vectors back to cr eate the rows of your training set so you
+can train a scikit-learn (sklearn) classi fier on those document-topic vectors.
+WARNING If you’re using scikit-learn, you must transp ose the feature-
+document matrix (usually called X in sklearn) to create a document-feature
+matrix to pass into your .fit()  and .predict()  methods of a model. Each
+row in a training set matrix  should be a feature vector for a particular sample
+text, usually a document.30
+4.3.5 Truncating the topics
+You now have a topic model, a way to tran sform word frequency vectors into topic
+weight vectors. But because you have just as many topics as words, your vector spacemodel has just as many dimensions as the original BOW vectors. You’ve just created
+some new words and called them “topics” because they each combine words together
+in various ratios. You haven’t reduced the number of dimensions… yet.
+ You can ignore the S matrix, because the rows and columns of your U matrix are
+already arranged so that the most important topics (with the largest singular values)
+are on the left. Another reason you can ignore S is that most of the word-document
+vectors you’ll want to use with this model, like TF-IDF vectors, have already been nor-
+malized. Finally, it just produces better topic models if you set it up this way.
+31
+ So let’s start lopping off colu mns on the right-hand side of U. But wait. How many
+topics will be enough to capture the esse nce of a document? One way to measure the
+accuracy of LSA is to see how accurately  you can recreate a term-document matrix
+from a topic-document matrix. The followin g listing plots the reconstruction accuracy
+for the 9-term, 11-document matrix yo u used earlier to demonstrate SVD.
+30See the scikit-learn documentation on LSA ( http:/ /scikit-learn.org/st able/modules/decomposition
+.html#lsa ).
+31Levy, Goldberg, and Dagan, Improving Distributional Similarity with Lessons Learned from Word Embed-
+dings, 2015.
+ 
+
+122 CHAPTER  4Finding meaning in word counts (semantic analysis)
+ 
+>>> err = []
+>>> for numdim in range(len(s), 0, -1):
+... S[numdim - 1, numdim - 1] = 0... reconstructed_tdm = U.dot(S).dot(Vt)
+... err.append(np.sqrt(((\
+... reconstructed_tdm - tdm).values.flatten() ** 2).sum()... / np.product(tdm.shape)))
+>>> np.array(err).round(2)
+array([0.06, 0.12, 0.17, 0.28, 0.39, 0.55])
+When you reconstruct a term-document matr ix for your 11 docu ments using the sin-
+gular vectors, the more you truncate, the more the error grows. The 3-topic model
+from earlier would have about 28% error if you used it to reconstruct BOW vectors for
+each document. Figure 4.3 shows a plot of that accuracy drop as you drop more and
+more dimensions in your topic model.
+ As you can see, the accuracy drop is pret ty similar, whether you use TF-IDF vectors
+or BOW vectors for your model. But TF-IDF vectors will perform sl ightly better if you
+plan to retain only a few topics in your model.
+ This is a simple example, but you can see how you might use a plot like this to
+decide how many topics (dimensions) you wa nt in your model. In some cases you mayListing 4.6 Term-document matrix reconstruction error
+00.50.60.70.80.91.0Reconstruction accuracyLSA model accuracy
+Number of dimensions eliminatedBOW word-document matrix
+TE-IDF term-document matrix
+123456
+Figure 4.3 Term-document matrix reconstr uction accuracy decreases as you ignore 
+more dimensions.
+ 
+
+123 Principal component analysis
+find that you get perfect accuracy, after el iminating several of the dimensions in your
+term-document matrix. Can you guess why?
+ The SVD algorithm behind LSA “notices” if words are always used together and
+puts them together in a topic. That’s how it can get a few dimensions “for free.” Even
+if you don’t plan to use a topic model in your pipeline, LSA (SVD) can be a great way
+to compress your word-docum ent matrices and identify potential compound words or
+n-grams for your pipeline. 
+4.4 Principal component analysis
+Principal component analysis is another na me for SVD when it’s used for dimension
+reduction, like you did to accomplish your latent semantic analysis earlier. And the
+PCA model in scikit-learn has some tweaks  to the SVD math that will improve the
+accuracy of your NLP pipeline.
+ For one, sklearn.PCA auto matically “centers” your data by subtracting off the
+mean word frequencies.  Another, more subtle trick is that PCA uses a function called
+flip_sign  to deterministically compute th e sign of the singular vectors.32
+ Finally, the sklearn implementation of PCA implements an optional “whitening”
+step. This is similar to your trick of igno ring the singular valu es when transforming
+word-document vectors into topic-document ve ctors. Instead of just  setting all the sin-
+gular values in S to one, whitening divides your data by these variances just like the
+sklearn.StandardScaler  transform does. This helps spread out your data and
+makes any optimization algorith m less likely to get lost in “half pipes” or “rivers” of
+your data that can arise when features in your dataset are correlated with each other.33
+ Before you apply PCA to real-world, high -dimensional NLP data, let’s take a step
+back and look at a more visual representati on of what PCA and SVD do. This will also
+help you understand the API for the scikit -learn PCA implementation. PCA is useful
+for a wide range of applications, so this in sight will be helpful for more than just NLP.
+You’re going to do PCA on a 3D point clo ud before you try it out on high-dimensional
+natural language data.
+ For most “real” problems, you’ll want to  use the sklearn.PCA model for your latent
+semantic analysis. The one exception is if  you have more documents than you can
+hold in RAM. In that case, you’ll need to  use the IncrementalPCA model in sklearn or
+some of the scaling techniques we talk about in chapter 13.
+TIP If you have a huge corpus and you urgently need to pic vectors (LSA),
+skip to chapter 13 and check out gensim.models.LsiModel ( https:/ /radimre-
+hurek.com/gensim/models/lsimodel.html ). If a single machine still isn’t
+enough to get the work done quickly, check out RocketML’s parallelization of
+the SVD algorithm ( http:/ /rocketml.net ).
+32You can find some experiments with these functions with in PCA that you used to understand all these subtle-
+ties in nlpia.book.examples.ch04_sklearn_pca_source.
+33See the web page titled “Deep Learning Tutorial - PCA and Whitening” ( http:/ /mccormickml.com/2014/06/
+03/deep-learning-tutorial-pca-and-whitening/ ).
+ 
+
+124 CHAPTER  4Finding meaning in word counts (semantic analysis)
+You’re going to start with a set of real-world 3D vectors, rather than 10,000+ dimen-
+sional document-wor d vectors. It’s a lot easier to visu alize things in 3D than it is in
+10,000-D. Because you’re only dealing with  three dimensions, it’s straightforward to
+plot them using the Axes3D  class in Matplotlib. See the nlpia ( http:/ /github.com/
+totalgood/nlpia ) package for the code to create rotatable 3D plots like this.
+ In fact, the point cloud shown in Figure 4. 4 is from the 3D scan of the surface of a
+real-world object, not the pointy tips of a se t of BOW vectors. But this will help you get
+a feel for how LSA works. And you can see how to manipulate and plot small vectors
+before you tackle higher-dimensional vectors such as do cument-word vectors.
+ Can you guess what this 3D object is that created these 3D vectors? You only have a
+2D projection printed in this book to go  on. Can you think of how you would program
+a machine to rotate the object around so th at you could get a better view? Are there
+statistics about the data points that you could use to optimally align the X and Y axes
+with the object? As you rotate the 3D bl ob in your mind, imagine how the variance
+along the X, Y, and Z axes might change as you rotate it.
+Figure 4.4 Looking up from below the “belly” at the point cloud for a real object
+ 
+
+125 Principal component analysis
+4.4.1 PCA on 3D vectors
+We manually rotated the point cloud in to this particular orientation to minimize  the
+variance along the axes of th e window for the plot. We did that so that you’d have a
+hard time recognizing what it is. If SVD (LSA) did this to your document-word vec-
+tors, it would “hide” the information in th ose vectors. Stacking the points on top of
+each other in your 2D projection preven ts human eyes, or machine learning algo-
+rithms, from separating the points into meaningful clusters. But SVD preserves the
+structure, information cont ent, of your vectors by maximizing  the variance along the
+dimensions of your lower-dimensional “sha dow” of the high-dimensional space. This
+is what you need for machine learning so that each low-dimensional vector captures
+the “essence” of whatev er it represents. SVD maximizes  the variance along each axis.
+And variance turns out to be a pretty g ood indicator of “information,” or that
+“essence” you’re looking for:
+>>> import pandas as pd
+>>> pd.set_option('display.max_columns', 6)
+>>> from sklearn.decomposition import PCA
+>>> import seaborn>>> from matplotlib import pyplot as plt
+>>> from nlpia.data.loaders import get_data
+>>> df = get_data('pointcloud').sample(1000)
+>>> pca = PCA(n_components=2)
+>>> df2d = pd.DataFrame(pca.fit_transform(df), columns=list('xy'))>>> df2d.plot(kind='scatter', x='x', y='y')
+>>> plt.show()
+If you run this script, the orientation of yo ur 2D projection may randomly “flip” left to
+right, but it never tips or twists to a new angle. The orientation of the 2D projection is
+computed so that the maximum variance is always aligned with the x axis, the first
+axis. The second largest variance is always  aligned with the y axis, the second dimen-
+sion of your “shadow” or “projection.” But the polarity  (sign) of these axes is arbitrary
+because the optimization has two remainin g degrees of freedom. The optimization is
+free to flip the polarity of the vectors (points) along the x or y axis, or both.
+ There’s also a horse_plot.py script in the nlpia/data directory if you’d like to play
+around with the 3D orientation of the horse. There may indeed be a more optimal
+transformation of the data that eliminates  one dimension without reducing the infor-
+mation content of that data (to your eye). And Picasso’s cubist “eye” might come up
+with a nonlinear transformation that main tains the information content of views from
+multiple perspectives all at once. And th ere are “embedding” algorithms to do this,
+like the one we talk about in chapter 6.
+ But don’t you think good old linear SVD and PCA do a pretty good job of preserv-
+ing the “information” in the point cloud ve ctor data? Doesn’t your 2D projection of
+the 3D horse provide a good view of the da ta? Wouldn’t a machin e be able to learnEnsure that your 
+pd.DataFrame printouts fit within the width of a page.
+Even though it’s called PCA in 
+scikit-learn, this is SVD.
+You’re reducing a 3D point cloud to a 2D 
+“projection” for display in a 2D scatter plot.
+ 
+
+126 CHAPTER  4Finding meaning in word counts (semantic analysis)
+something from the statistics of these 2D ve ctors computed from the 3D vectors of the
+surface of a horse (see figure 4.5)?
+4.4.2 Stop horsing around and get back to NLP
+Let’s see how SVD will do on some natural language documents. Let’s find the princi-
+pal components using SVD on the 5,000 SMS messages labeled as spam (or not). Thevocabulary and variety of topics discussed in this limited set of SMS messages from a
+university lab should be relatively small. So let’s limit the number of topics to 16.
+You’ll use both the scikit-learn PCA model as well as the truncated SVD model to see ifthere are any differences.
+ The truncated SVD model is designed  to work with sparse matrices. Sparse matrices
+are matrices that have the same value (usua lly zero or NaN) in a lot of the cells. NLP
+bag-of-words and TF-IDF matrices are almo st always sparse, because most documents
+don’t contain many of the words in your vo cabulary . Most of your word counts are
+zero (before you add a “ghost” count to them all to smooth your data out).
+ Sparse matrices are like sp readsheets that are mostly empty, but have a few mean-
+ingful values scattered arou nd. The sklearn PCA model may provide a faster solution
+than 
+TruncatedSVD  by using dense matrices with all those zeros filled in. But
+sklearn.PCA wastes a lot of RAM trying to “remember” all those zeros that are dupli-
+cated all over the place. The TfidfVectorizer  in scikit-learn out puts sparse matrices,
+so you need to convert those to dense matrices before you compare the results to PCA.
+ First, let’s load the SMS messages from a DataFrame  in the nlpia  package:
+>>> import pandas as pd
+>>> from nlpia.data.loaders import get_data
+>>> pd.options.display.width = 120
+>>> sms = get_data('sms-spam')
+Figure 4.5 Head-to-head horse point clouds upside-down
+This helps the wide Pandas 
+DataFrames print out a bit prettier.
+ 
+
+127 Principal component analysis
+>>> index = ['sms{}{}'.format(i, '!'*j)
+➥ for (i,j) in zip(range(len(sms)), sms.spam)]
+>>> sms.index = index>>> sms.head(6)
+spam text
+sms0 0 Go until jurong point, crazy.. Available only ...
+sms1 0 Ok lar... Joking wif u oni...
+sms2! 1 Free entry i n2aw k l y comp to win FA Cup fina...
+sms3 0 U dun say so early hor.. . U c already then say...
+sms4 0 Nah I don't think he goes to usf, he lives aro...
+sms5! 1 FreeMsg Hey there darling it's been 3 week's n...
+Now you can calculate the TF-IDF ve ctors for each of these messages:
+>>> from sklearn.feature_extraction.text import TfidfVectorizer
+>>> from nltk.tokenize.casual import casual_tokenize
+>>> tfidf = TfidfVectorizer(tokenizer=casual_tokenize)
+>>> tfidf_docs = tfidf.fit_transform(raw_documents=sms.text).toarray()
+>>> len(tfidf.vocabulary_)
+9232
+>>> tfidf_docs = pd.DataFrame(tfidf_docs)
+>>> tfidf_docs = tfidf_docs - tfidf_docs.mean()
+>>> tfidf_docs.shape(4837, 9232)
+>>> sms.spam.sum()
+638
+So you have 4,837 SMS messages with 9,232 different 1-gram tokens from your
+tokenizer ( casual_tokenize ). Only 638 of these 4,837 messages (13%) are labeled
+as spam. So you have an unbalanced trai ning set with about 8:1 ham (normal SMS
+messages) to spam (unwanted so licitations and advertisements).
+ You might deal with this ham sampling bias by reducing the “reward” for any model
+that classifies ham correctly. But the large vocabulary size, | V|, is trickier to deal with.
+The 9,232 tokens in your vocabulary is greater than the 4,837 messages (samples) you
+have to go on. So you have many more unique words in your vocabulary (or lexicon)
+than you have SMS messages. And of those SMS messages only a sma ll portion of them
+(1/8th) are labeled as spam. Th at’s a recipe for overfitting.34 Only a few unique words
+out of your large vocabulary will be labeled as “spammy” words in your dataset.
+ Overfitting means that you will “key” off of only a few words in your vocabulary. So
+your spam filter will be dependent on those spammy words being somewhere in the
+spammy messages it filters out. Spammers co uld easily get around your filter if they
+just used synonyms for those spammy words.  If your vocabulary doesn’t include the
+spammer’s new synonyms, then your filter wi ll mis-classify those cleverly constructed
+SMS messages as ham.
+34See the web page titled “Overfitting” ( https:/ /en.wikipedia.org/wiki/Overfitting ).You’re adding an exclamation mark 
+to the sms message index numbers 
+to make them easier to spot.
+This centers yo ur vectorized 
+documents (BOW vectors) by 
+subtracting the mean.
+The .shape attribute tells 
+you the length of each of the 
+dimensions for any numpy array.
+The .sum() method on a Pandas Series
+acts just like a spreadsheet column
+sum, adding up all the elements.
+ 
+
+128 CHAPTER  4Finding meaning in word counts (semantic analysis)
+ And this overfitting problem is an inherent problem in NLP . It’ s hard to find a
+labeled natural language dataset that includes  all the ways that people might say some-
+thing that should be labeled that way. We  couldn’t find a big database of SMS mes-
+sages that included all the different ways  people say spammy and nonspammy things.
+And only a few corporations have the resource s to create such a dataset. So all the rest
+of you need to have “count ermeasures” for overfitting. Yo u have to use algorithms that
+“generalize” well on just a few examples.
+ Dimension reduction is the primary counte rmeasure for overfitting. By consolidat-
+ing your dimensions (words) into a smaller number of dimensions (topics), your NLP
+pipeline will become more “general.” Your spam filter will work on a wider range ofSMS messages if you reduce your  dimensions, or “vocabulary.”
+ That’s exactly what LSA does—it reduce s your dimensions and therefore helps
+prevent overfitting.
+35 It generalizes from your small da taset by assuming a linear rela-
+tionship between word counts. So if the wo rd “half” occurs in  spammy messages con-
+taining words like “off” a lot (as in “Half off!”), LSA helps you make those connections
+between words and sees how strong they are so  it will generalize from the phrase “half
+off” in a spammy message to phrases like “8 0% off.” And it might even generalize fur-
+ther to the phrase “80% discount” if th e chain of connections in your NLP data
+includes “discount” associated with the word “off.”
+TIP Some think of generalization as the core challenge of machine learning
+and artificial intelligence. “One-shot learning” is often used to describeresearch into models that take this to  the extreme, requiring orders of magni-
+tude less data to accomplish the same  accuracy as conventional models.
+Generalizing your NLP pipeline helps ensure that it applies to a broader set of real-
+world SMS messages instead of just this particular set of messages. 
+4.4.3 Using PCA for SMS message semantic analysis
+Let’s try the PCA model from scikit-learn firs t. You’ve already seen it in action wran-
+gling 3D horses into a 2D pen; now let’s wrangle your dataset of 9,232-D TF-IDF vec-tors into 16-D topic vectors:
+>>> from sklearn.decomposition import PCA
+>>> pca = PCA(n_components=16)
+>>> pca = pca.fit(tfidf_docs)>>> pca_topic_vectors = pca.transform(tfidf_docs)
+>>> columns = ['topic{}'.format(i) for i in range(pca.n_components)]
+>>> pca_topic_vectors = pd.DataFrame(pca_topic_vectors, columns=columns,\... index=index)
+>>> pca_topic_vectors.round(3).head(6)
+topic0 topic1 topic2 ... topic13 topic14 topic15
+sms0 0.201 0.003 0.037 ... -0.026 -0.019 0.039
+sms1 0.404 -0.094 -0.078 ... -0.036 0.047 -0.036
+35More on overfitting and generalization in appendix D.
+ 
+
+129 Principal component analysis
+sms2! -0.030 -0.048 0.090 ... -0.017 -0.045 0.057
+sms3 0.329 -0.033 -0.035 ... -0.065 0.022 -0.076
+sms4 0.002 0.031 0.038 ... 0.031 -0.081 -0.021sms5! -0.016 0.059 0.014 ... 0.077 -0.015 0.021
+If you’re curious about these topics, you can find out how much of each word they
+“contain” by examining their weights. By lo oking at the weights, you can see how often
+“half” occurs with the word “off” (as in “h alf off”) and then figure out which topic is
+your “discount” topic.
+TIP You can find the weights of any fitted sklearn transformation by examin-
+ing its .components_  attribute.
+First let’s assign words to all the dimensio ns in your PCA transformation. You need to
+get them in the right order because your TF IDFVectorizer stores the vocabulary as a
+dictionary that maps each term to  an index number (column number):
+>>> tfidf.vocabulary_
+{'go': 3807,
+'until': 8487,'jurong': 4675,
+'point': 6296,
+...>>> column_nums, terms = zip(*sorted(zip(tfidf.vocabulary_.values(),\
+... tfidf.vocabulary_.keys())))
+>>> terms('!',
+'"',
+'#','#150',
+...
+Now you can create a nice Pandas DataFrame containing the weight s, with labels for
+all the columns and rows in the right place:
+>>> weights = pd.DataFrame(pca.components_, columns=terms,
+➥index=['topic{}'.format(i) for i in range(16)])
+>>> pd.options.display.max_columns = 8
+>>> weights.head(4).round(3)
+! " # ... … ? ?ud ?
+topic0 -0.071 0.008 -0.001 ... -0.002 0.001 0.001 0.001
+topic1 0.063 0.008 0.000 ... 0.003 0.001 0.001 0.001topic2 0.071 0.027 0.000 ... 0.002 -0.001 -0.001 -0.001
+topic3 -0.059 -0.032 -0.001 ... 0.001 0.001 0.001 0.001
+Some of those columns (terms) aren’t th at interesting, so let’s explore your
+tfidf.vocabulary. Let’s see if you can find so me of those “half off” terms and which top-
+ics they’re a part of:
+>>> pd.options.display.max_columns = 12
+>>> deals = weights['! ;) :) half off free crazy deal only $ 80 %'.split()].r
+ound(3) * 100
+>>> dealsSort the vocabulary by term count. This
+“zip(*sorted(zip()))” pattern is useful when you want
+to unzip something to sort by an element that
+isn’t on the far left, and th en rezip it after sorting.
+ 
+
+130 CHAPTER  4Finding meaning in word counts (semantic analysis)
+! ;) :) half off free crazy deal only $ 80 %
+topic0 -7.1 0.1 -0.5 -0.0 -0.4 -2.0 -0.0 -0.1 -2.2 0.3 -0.0 -0.0topic1 6.3 0.0 7.4 0.1 0.4 -2.3 -0.2 -0.1 -3.8 -0.1 -0.0 -0.2topic2 7.1 0.2 -0.1 0.1 0.3 4.4 0.1 -0.1 0.7 0.0 0.0 0.1topic3 -5.9 -0.3 -7.1 0.2 0.3 -0.2 0.0 0.1 -2.3 0.1 -0.1 -0.3topic4 38.1 -0.1 -12.5 -0.1 -0.2 9.9 0.1 -0.2 3.0 0.3 0.1 -0.1topic5 -26.5 0.1 -1.5 -0.3 -0.7 -1.4 -0.6 -0.2 -1.8 -0.9 0.0 0.0topic6 -10.9 -0.5 19.9 -0.4 -0.9 -0.6 -0.2 -0.1 -1.4 -0.0 -0.0 -0.1topic7 16.4 0.1 -18.2 0.8 0.8 -2.9 0.0 0.0 -1.9 -0.3 0.0 -0.1topic8 34.6 0.1 5.2 -0.5 -0.5 -0.1 -0.4 -0.4 3.3 -0.6 -0.0 -0.2topic9 6.9 -0.3 17.4 1.4 -0.9 6.6 -0.5 -0.4 3.3 -0.4 -0.0 0.0...>>> deals.T.sum()topic0 -11.9topic1 7.5topic2 12.8topic3 -15.5topic4 38.3topic5 -33.8topic6 4.8topic7 -5.3topic8 40.5topic9 33.1...
+Topics 4, 8, and 9 appear to all contain positive “deal” topic sentiment. And topics 0, 3,
+and 5 appear to be “anti-deal ” topics, messages about stuff th at’s the opposite of “deals”:
+negative deals. So word s associated with “deals” can have a positive impact on some top-
+ics and a negative impact on others. There’s no single obvious “deal” topic number.
+IMPORTANT The casual_tokenize  tokenizer splits "80%"  into ["80",
+"%"]  and "$80 million"  into ["$",  80",  "million"] . So unless you use
+LSA or a 2-gram tokenizer, your NLP pi peline wouldn’t notice the difference
+between 80% and $80 million. They’d both share the token “80.”
+This is one of the challenges of LSA, making sense of the topics. LSA only allows for
+linear relationships between words. And you usually only have a small corpus to work
+with. So your topics tend to combine word s in ways that humans don’t find all that
+meaningful. Several words from different to pics will be crammed together into a sin-
+gle dimension (principle component) in or der to make sure the model captures as
+much variance in usage of yo ur 9,232 words as possible. 
+4.4.4 Using truncated SVD for SMS message semantic analysis
+Now you can try the TruncatedSVD  model in scikit-learn. This is a more direct
+approach to LSA that by passes the scikit-learn PCA model so you can see what’s going
+on inside the PCA wrapper. It can handle sparse ma trices, so if you’re working with
+large datasets you’ll want to use TruncatedSVD  instead of PCA anyway. The SVD part
+of TruncatedSVD  will split your TF-IDF matrix into three matrices. The Truncated
+ 
+
+131 Principal component analysis
+part of TruncatedSVD  will discard the dimensions that  contain the least information
+about your TF-IDF matrix. These discarded dimensions represent the “topics” (linear
+combinations of words) that vary the least within your document set. These discarded
+topics would likely be meaningless to the overall semantics of your corpus. They’d
+likely contain a lot of stop words and othe r words that are unifor mly distributed across
+all the documents.
+ You’re going to use TruncatedSVD to retain only the 16 most interesting topics,
+the topics that account for the most  variance in your TF-IDF vectors:
+>>> from sklearn.decomposition import TruncatedSVD
+>>> svd = TruncatedSVD(n_components=16, n_iter=100)
+>>> svd_topic_vectors = svd.fit_transform(tfidf_docs.values)
+>>> svd_topic_vectors = pd.DataFrame(svd_topic_vectors, columns=columns,\... index=index)>>> svd_topic_vectors.round(3).head(6)
+topic0 topic1 topic2 ... topic13 topic14 topic15
+sms0 0.201 0.003 0.037 ... -0.036 -0.014 0.037sms1 0.404 -0.094 -0.078 ... -0.021 0.051 -0.042
+sms2! -0.030 -0.048 0.090 ... -0.020 -0.042 0.052
+sms3 0.329 -0.033 -0.035 ... -0.046 0.022 -0.070sms4 0.002 0.031 0.038 ... 0.034 -0.083 -0.021
+sms5! -0.016 0.059 0.014 ... 0.075 -0.001 0.020
+These topic vectors from TruncatedSVD are exactly the same as what PCA produced!
+This result is because you were careful to use a large number of iterations ( n_iter ),
+and you also made sure all your TF-IDF fr equencies for each term (column) were cen-
+tered on zero (by subtracting the mean for each term).
+ Look at the weights for each topic for a moment and try to make sense of them.
+Without knowing what these topics are about,  or the words they weight heavily, do you
+think you could classify these six SMS message s as spam or not? Perhaps looking at the
+“!” label next to the spammy SMS message row labels will help. It would be hard, but it
+is possible, especially for a machine that ca n look at all 5,000 of  your training exam-
+ples and come up with thresholds on each topic to separate the topic space for spam
+and nonspam. 
+4.4.5 How well does LSA work for spam classification?
+One way to find out how well a vector space mo del will work for classification is to see
+how cosine similarities between vectors corr elate with membership in the same class.
+Let’s see if the cosine simi larity between corresponding pairs of documents is useful
+for your particular binary classification. Let’s compute the dot product between theJust like in PCA, you’ll compute 16 topics but will
+iterate through the data 10 0 times (default is 5) to
+ensure that your answer is almost as exact as PCA.fit_transpose
+decomposes your
+TF-IDF vectors and
+transforms them
+into topic vectors
+in one step.
+ 
+
+132 CHAPTER  4Finding meaning in word counts (semantic analysis)
+first six topic vectors for the first six SM S messages. You should see larger positive
+cosine similarity (dot  products) between any spam message (“sms2!”):
+>>> import numpy as np
+>>> svd_topic_vectors = (svd_topic_vectors.T / np.linalg.norm(\
+... svd_topic_vectors, axis=1)).T>>> svd_topic_vectors.iloc[:10].dot(svd_topic_vectors.iloc[:10].T).round(1)
+sms0 sms1 sms2! sms3 sms4 sms5! sms6 sms7 sms8! sms9!
+sms0 1.0 0.6 -0.1 0.6 -0.0 -0.3 -0.3 -0.1 -0.3 -0.3sms1 0.6 1.0 -0.2 0.8 -0.2 0.0 -0.2 -0.2 -0.1 -0.1
+sms2! -0.1 -0.2 1.0 -0.2 0.1 0.4 0.0 0.3 0.5 0.4
+sms3 0.6 0.8 -0.2 1.0 -0.2 -0.3 -0.1 -0.3 -0.2 -0.1sms4 -0.0 -0.2 0.1 -0.2 1.0 0.2 0.0 0.1 -0.4 -0.2
+sms5! -0.3 0.0 0.4 -0.3 0.2 1.0 -0.1 0.1 0.3 0.4
+sms6 -0.3 -0.2 0.0 -0.1 0.0 -0.1 1.0 0.1 -0.2 -0.2sms7 -0.1 -0.2 0.3 -0.3 0.1 0.1 0.1 1.0 0.1 0.4
+sms8! -0.3 -0.1 0.5 -0.2 -0.4 0.3 -0.2 0.1 1.0 0.3
+sms9! -0.3 -0.1 0.4 -0.1 -0.2 0.4 -0.2 0.4 0.3 1.0
+Reading down the “sms0” column (or acro ss the “sms0” row), th e cosine similarity
+between “sms0” and the spam messages (“sms2!,” “sms5!,” “sms8 !,” “sms9!”) is signifi-
+cantly negative. The topic ve ctor for “sms0” is significan tly different from the topic
+vector for spam messages. A nonspam messa ge doesn’t talk about the same thing as
+spam messages.
+ Doing the same for the “sms2!” column should show a positi ve correlation with
+other spam messages. Spam messages share si milar semantics; they talk about similar
+“topics.”
+ This is how semantic search works as well. You can use the cosine similarity
+between a query vector and all the topic vectors for your database of documents tofind the most semantically similar message  in your database. The closest document
+(smallest distance) to the vector for th at query would correspond to the document
+with the closest meaning. Spaminess is ju st one of the “meanings” mixed into your
+SMS message topics.
+ Unfortunately, this similarity between topic vectors within each class (spam and
+nonspam) isn’t maintained for all the me ssages. “Drawing a line” between the spam
+and nonspam messages would be hard for this set of topic vectors. You’d have a hard
+time setting a threshold on the similarity to an individual spam  message that would
+ensure that you’d always be able to classi fy spam and nonspam correctly. But, gener-
+ally, the less spammy a message is, the further aw ay it is (less similar it is) from another
+spam message in the dataset. That’s what yo u need if you want to build a spam filter
+using these topic vectors. And a machine lear ning algorithm can look at all the topics
+individually for all the spam and nonspam labels and perhaps draw a hyperplane orother boundary between the sp am and nonspam messages.
+ When using truncated SVD, you should discard the eigenvalues before computing
+the topic vectors. You tricked the scikit-l earn implementation of TruncatedSVD intoNormalizing each topic vector by its length
+(L2-norm) allows you to compute the
+cosine distances with a dot product.
+ 
+
+133 Principal component analysis
+ignoring the scale information within the eigenvalues (the Sigma  or S matrix in your
+diagrams) by
+Normalizing your TF-IDF ve ctors by their length (L2-norm)
+Centering the TF-IDF term frequencies by subtracting the mean frequency for
+each term (word)
+The normalization process eliminates any “s caling” or bias in the eigenvalues and
+focuses your SVD on the rotation part of the transformation of your TF-IDF vectors.
+By ignoring the eigenvalues (vector scale or length), you can “square up” the hyper-
+cube that bounds the topic vector space, whic h allows you to treat all topics as equally
+important in your model. If you want to us e this trick within your own SVD implemen-
+tation, you can normalize all the TF-IDF vectors by the L2-norm before computing the
+SVD or truncated SVD. The scikit-learn im plementation of PCA does this for you by
+“centering” and “whitening” your data.
+ Without this normalization, infrequent to pics will be given slightly more weight
+than they would otherwise. Because “spamine ss” is a rare topic, occurring only 13% of
+the time, the topics that measure it would be  given more weight by this normalization
+or eigenvalue discarding. The resulting topics are more corr elated with subtle charac-
+teristics, like spaminess, by taking this approach.
+TIP Whichever algorithm or implementation you use for semantic analysis
+(LSA, PCA, SVD, truncated SVD, or LDiA), you should normalize your BOW orTF-IDF vectors first. Otherwise, you ma y end up with large scale differences
+between your topics. Scale differences between topics can reduce the ability of
+your model to differentiate between su btle, infrequent topics. Another way to
+think of it is that scale variation can cr eate deep canyons and rivers in a contour
+plot of your objective function, making it hard for other machine learning algo-
+rithms to find the optimal thresholds on your topics in this rough terrain.
+LSA AND SVD ENHANCEMENTS
+The success of singular va lue decomposition for semantic analysis and dimension
+reduction has motivated researchers to ex tend and enhance it. These enhancements
+are mostly intended for non- NLP problems, but we mentio n them here in case you
+run across them. They’re sometimes used  for behavior-based recommendation
+engines alongside NLP content-based recommendation engines. And they’ve been
+used on natural language part-of-speech statistics.36 Any matrix factorization or
+dimension reduction approach can be used with natural language term frequencies.
+So you may find use for them in your semantic analysis pipeline:
+Quadratic discriminant analysis (QDA)
+Random projection 
+Nonnegative matrix factorization (NMF)
+36See the paper titled “Part-of-speech Histograms for Genre Classification of Text” by S. Feldman, M. A. Marin,
+M. Ostendorf, and M. R. Gupta ( http:/ /citeseerx.ist.psu.edu/viewdoc /download?doi=10. 1.1.332.629&rep
+=rep1&type=pdf ).
+ 
+
+134 CHAPTER  4Finding meaning in word counts (semantic analysis)
+QDA is an alternative to LDA. QDA crea tes quadratic polynomi al transformations,
+rather than linear transformations. These transformations define  a vector space that
+can be used to discriminate between cla sses. And the boundary between classes in a
+QDA vector space is quadratic, curved, like a bowl or sphere or halfpipe.
+ Random projection is a matrix decompos ition and transformati on approach simi-
+lar to SVD, but the algorithm is stochastic, so you get a different answer each time you
+run it. But the stochastic natu re makes it easier to run it on parallel machines. And in
+some cases (for some of those random runs ), you can get transformations that are bet-
+ter than what comes out of SVD (and LSA). But random projection is rarely used for
+NLP problems, and there aren’t widely used  implementations of it in NLP packages
+such as Spacy or NLTK. We leave it to you to explore this one further, if you think it
+might apply to your problem.
+ In most cases, you’re be tter off sticking with LSA, which uses the tried and true
+SVD algorithm under the hood.37
+4.5 Latent Dirichlet allocation (LDiA)
+We’ve spent most of this chapter talking ab out latent semantic analysis and various
+ways to accomplish it using scikit-learn or  even just plain numpy. LSA should be your
+first choice for most topic modeling, sema ntic search, or cont ent-based recommenda-
+tion engines.38 Its math is straightforward and ef ficient, and it produces a linear
+transformation that can be applied to new batches of natural language without train-
+ing and with little loss in accuracy. But LD iA can give slightly better results in some
+situations.
+ LDiA does a lot of the things you did to create your topic models with LSA (and
+SVD under the hood), but unlike LSA, LDiA  assumes a Dirichlet distribution of word
+frequencies. It’s more precise about the statistics of allocating words to topics than the
+linear math of LSA.
+ LDiA creates a semantic vector space model (like your topic vectors) using an
+approach similar to how your brain worked  during the thought experiment earlier in
+the chapter. In your thought experiment , you manually allocated words to topics
+based on how often they occurred together in the same document. The topic mix for
+a d oc um e nt c an t hen b e  de t er mi ne d b y the  w or d m ix tu re s  in e ach t o pi c b y whi chtopic those words were assigned to. This makes an LDiA topic model much easier to
+understand, because the words assigned to topics and topics a ssigned to documents
+tend to make more sense than for LSA.
+ LDiA assumes that each document is a mi xture (linear combination) of some arbi-
+trary number of topics that you select wh en you begin training the LDiA model. LDiA
+37SVD has traditionally been used to compute the “pseudo-inverse” of nonsquare matrices, and you can imagine
+how many applications exist for matrix inversion.
+38A 2015 comparison of content-based movie recommendat ion algorithms by Sonia Bergamaschi and Laura Po
+found LSA to be approximately twice as accurate as  LDiA. See “Comparing LDA and LSA Topic Models for
+Content-Based Movie Recommendation System s” by Sonia Bergamaschi and Laura Po ( https:/ /www.dbgroup
+.unimo.it/~po/pubs/LNBI_2015.pdf ).
+ 
+
+135 Latent Dirichlet allocation (LDiA)
+also assumes that each topic can be repres ented by a distribution of words (term fre-
+quencies). The probability or weight for ea ch of these topics within a document, as
+well as the probability of a word being assign ed to a topic, is assumed to start with a
+Dirichlet probability distribution (the prior if you remember your statistics). This is
+where the algorithm gets its name.
+4.5.1 The LDiA idea
+The LDiA approach was developed in 2000 by geneticists in the UK to help them
+“infer population structure”  from sequences of genes.39 Stanford Researchers (includ-
+ing Andrew Ng) popularized the approach for NLP in 2003.40 But don’t be intimi-
+dated by the big names that came up with this approach. We explain the key points of
+it in a few lines of Python shortly. You only  need to understand it enough to get a feel
+for what it’s doing (an intuition), so you know what you can use it for in your pipeline.
+ Blei and Ng came up with the idea by flipping your thought experiment on its
+head. They imagined how a machine that co uld do nothing more than roll dice (gen-
+erate random numbers) could write the docu ments in a corpus you want to analyze.
+And because you’re only working with bags  of words, they cut out the part about
+sequencing those words together to make se nse, to write a real document. They just
+modeled the statistics for the mix of words that would become a part of a particular
+BOW for each document.
+ They imagined a machine that only had tw o choices to make to get started generat-
+ing the mix of words for a particular do cument. They imagined that the document
+generator chose those words randomly, with  some probability distribution over the
+possible choices, like choosing the number of  sides of the dice and the combination
+of dice you add together to create a D&D character sheet. Your document “character
+sheet” needs only two rolls of the dice. But the dice are large and there are several of
+them, with complicated rules about how th ey are combined to produce the desired
+probabilities for the different values you wa nt. You want particular probability distri-
+butions for the number of word s and number of topics so th at it matches the distribu-
+tion of these values in real documents an alyzed by humans for their topics and words.
+ The two rolls of the dice represent the
+1Number of words to generate for the document (Poi sson distribution)
+2Number of topics to mix together for the document (Dirichlet distribution)
+After it has these two numbers, the hard part begins, choosing the words for a docu-
+ment. The imaginary BOW generating machine iterates over those topics and ran-domly chooses words appropriate to that topic until it hits the number of words that it
+had decided the document should contain in  step 1. Deciding the probabilities of
+39“Inference of Popluation Structure Using Multilocus Ge notype Data,” by Jonathan K. Pritchard, Matthew Ste-
+phens, and Peter Donnelly” ( http:/ /www.genetics.org/content/155/2/945 ).
+40See the PDF titled “Latent Dirichlet Allocation” by David M. Blei, Andrew Y. Ng, and Michael I. Jordan
+(http:/ /www.jmlr.org/papers/v olume3/blei03a/blei03a.pdf ).
+ 
+
+136 CHAPTER  4Finding meaning in word counts (semantic analysis)
+those words for topics—the appropriateness of  words for each topic—is the hard part.
+But once that has been determined, your “ bot” just looks up the probabilities for the
+words for each topic from a matrix of term -topic probabilities. If you don’t remember
+what that matrix looks like, glance back at  the simple example earlier in this chapter.
+ So all this machine needs is a single para meter for that Poisson distribution (in the
+dice roll from step 1) that tells it what the “average” document length should be, and
+a couple more parameters to define that Dirichlet distribution that sets up the num-
+ber of topics. Then your document generati on algorithm needs a term-topic matrix of
+all the words and topics it likes to use, its vocabulary. And it needs a mix of topics that
+it likes to “talk” about.
+ Let’s flip the document generation (wri ting) problem back around to your origi-
+nal problem of estimating the topics and words from an existing document. You need
+to measure, or compute, those parameters about words and topics for the first twosteps. Then you need to compute the term -topic matrix from a collection of docu-
+ments. That’s what LDiA does.
+ Blei and Ng realized that they could determine the parameters for steps 1 and 2 by
+analyzing the statistics of the documents in a corpus. For example, for step 1, they
+could calculate the mean number of words (or n-grams) in all the bags of words for
+the documents in their cor pus; something like this:
+>>> total_corpus_len = 0
+>>> for document_text in sms.text:
+... total_corpus_len += len(casual_tokenize(document_text))>>> mean_document_len = total_corpus_len / len(sms)
+>>> round(mean_document_len, 2)
+21.35
+Or, in a one-liner
+>>> sum([len(casual_tokenize(t)) for t in sms.text]) * 1. / len(sms.text)21.35
+Keep in mind, you should calculate this stat istic directly from your BOWs. You need to
+make sure you’re counting th e tokenized and vectorized ( Counter() -ed) words in
+your documents. And make sure  you’ve applied any stop wo rd filtering, or other nor-
+malizations before you count up your unique terms. That way your count includes allthe words in your BOW vect or vocabulary (all the n-grams you’re counting), but only
+those words that your BOWs use (not stop words, for example). This LDiA algorithmrelies on a bag-of-words vector space model, like the other algorithms in this chapter.
+ The second parameter you need to specify for an LDiA model, the number of top-
+ics, is a bit trickier. The number of topics  in a particular set of documents can’t be
+measured directly until after you’ve assigned words to those topics. Like k-means  and
+KNN  and other clustering algori thms, you must tell it the k ahead of time. You can
+guess the number of topics (analogous to the k in k-means, the nu mber of “clusters”)
+and then check to see if that works for your  set of docume nts. Once you’ve told LDiA
+ 
+
+137 Latent Dirichlet allocation (LDiA)
+how many topics to look for, it will find th e mix of words to put in each topic to opti-
+mize its objecti ve function.41
+ You can optimize this “hyperparameter” ( k, the number of topics)42 by adjusting it
+until it works for your application. You can automate this optimization if you can mea-sure something about the quality of your LDiA language model for representing the
+meaning of your documents. One “cost func tion” you could use for this optimization
+is how well (or poorly) that LDiA model perf orms in some classifi cation or regression
+problems, like sentiment analysis, document keyword tagging, or topic analysis. You
+just need some labeled do cuments to test yo ur topic model or  classifier on.
+43
+4.5.2 LDiA topic model for SMS messages
+The topics produced by LDiA tend to be  more understandable and “explainable” to
+humans. This is because words that freque ntly occur together are assigned the same
+topics, and humans expect that to be the case. Where LSA (PCA) tries to keep things
+spread apart that were spread  apart to start with, LDiA tries to keep things close
+together that started out close together.
+ This may sound like it’s the same thing, but it’s not. The math optimizes for differ-
+ent things. Your optimizer has a different objec tive function so it will reach a different
+objective. To keep close high-dimensional  vectors close together in the lower-
+dimensional space, LDiA has to twist and co ntort the space (and the vectors) in non-
+linear ways. This is a hard thing to visualize until you do it on something 3D and take“projections” of the resultant vectors in 2D.
+ If you want to help out your fellow readers and learn something in the process,
+submit some additional code to the horse example ( https:/ /github.com/totalgood/
+nlpia/blob/master/src/nlpia/ book/examples/ch04_horse.py ) in nlpia ( https:/ /
+github.com/totalgood/nlpia ). You can create word-document vectors for each of the
+thousands of points in the horse by converting them to integer counts of the words“x,” “y,” and “z,” the dimensions of the 3D vector space. You could then generate syn-
+thetic documents from these counts and pa ss it through all the LDiA and LSA exam-
+ples from earlier in the chapter. Then yo u’d be able to directly visualize how each
+approach produces a different 2D “s hadow” (projection) of the horse.
+ Let’s see how that works for a dataset of  a few thousand SMS messages, labeled for
+spaminess. First compute the TF-IDF vector s and then some topics vectors for each
+SMS message (document). We assume the use of  only 16 topics (components) to clas-
+41You can learn more about the particulars of the LDiA ob jective function here in the original paper “Online
+Learning for Latent Dirichlet Allocation” by Matthew D. Hoffman, David M. Blei, and Francis Bach ( https:/ /
+www.di.ens.fr/%7Efbach/mdhnips2010.pdf ).
+42The symbol used by Blei and Ng for this parameter was theta rather than k.
+43Craig Bowman, a librarian at the University of Miami in Ohio ( http:/ /www.lib.miamioh.edu/people/ ),
+is using the Library of Congress classification system as the topic labels for Gutenberg Project books. This
+has to be the most ambitious and pro-social open-science NLP project ( https:/ /github.com/craigboman/
+gutenberg ) I’ve run across so far.
+ 
+
+138 CHAPTER  4Finding meaning in word counts (semantic analysis)
+sify the spaminess of messages, as before. Keeping the number of topics (dimensions)
+low can help reduce overfitting.44
+ LDiA works with raw BOW count vectors rather than normalized TF-IDF vectors.
+Here’s an easy way to comput e BOW vectors in scikit-learn:
+>>> from sklearn.feature_extraction.text import CountVectorizer
+>>> from nltk.tokenize import casual_tokenize
+>>> np.random.seed(42)
+>>> counter = CountVectorizer(tokenizer=casual_tokenize)
+>>> bow_docs = pd.DataFrame(counter.fit_transform(raw_documents=sms.text)\
+... .toarray(), index=index)>>> column_nums, terms = zip(*sorted(zip(counter.vocabulary_.values(),\
+... counter.vocabulary_.keys())))
+>>> bow_docs.columns = terms
+Let’s double-check that your counts make  sense for that first SMS message labeled
+“sms0”:
+>>> sms.loc['sms0'].text
+'Go until jurong point, crazy.. Available only in bugis n great world la e
+buffet... Cine there got amore wat...'
+>>> bow_docs.loc['sms0'][bow_docs.loc['sms0'] > 0].head(),1
+.. 1
+... 2amore 1
+available 1
+Name: sms0, dtype: int64
+And here’s how to use LDiA to create  topic vectors for your SMS corpus:
+>>> from sklearn.decomposition import LatentDirichletAllocation as LDiA
+>>> ldia = LDiA(n_components=16, learning_method='batch')
+>>> ldia = ldia.fit(bow_docs)>>> ldia.components_.shape
+(16, 9232)
+So your model has allocated your 9,232 wo rds (terms) to 16 to pics (components).
+Let’s take a look at the first few words and how they’re allocated to your 16 topics.Keep in mind that your counts and topics will be different from mine. LDiA is a sto-
+chastic algorithm that relies on the random number generator to make some of the
+statistical decisions it has to make about al locating words to topics. So your topic-word
+weights will be different from those shown, but they should have  similar magnitudes.
+Each time you run 
+sklearn.LatentDirichletAllocation  (or any LDiA algo-
+rithm), you will get different results unless you set the random seed to a fixed value:
+44See appendix D if you want to learn more about why overfitting is a bad thing and how generalization  can help.LDiA takes a bit longer  than PCA or SVD, 
+especially for a large number of topics and 
+a large number of wo rds in your corpus.
+ 
+
+139 Latent Dirichlet allocation (LDiA)
+>>> pd.set_option('display.width', 75)
+>>> components = pd.DataFrame(ldia.components_.T, index=terms,\
+... columns=columns)>>> components.round(2).head(3)
+topic0 topic1 topic2 ... topic13 topic14 topic15
+! 184.03 15.00 72.22 ... 297.29 41.16 11.70" 0.68 4.22 2.41 ... 62.72 12.27 0.06
+# 0.06 0.06 0.06 ... 4.05 0.06 0.06
+So the exclamation point term (!) was allocated to most of the topics, but is a particu-
+larly strong part of topic3  where the quote symbol (") is hardly playing a role at all.
+Perhaps “topic3” might be about emotional intensity or emphasis and doesn’t care
+much about numbers or quotes. Let’s see:
+>>> components.topic3.sort_values(ascending=False)[:10]
+! 394.952246. 218.049724
+to 119.533134
+u 118.857546call 111.948541£ 107.358914
+, 96.954384
+* 90.314783your 90.215961
+is 75.750037
+So the top ten tokens for this topic seem to be the type of words that might be used in
+emphatic directives requesting someone to do something or pay something. It will be
+interesting to find out if this topic is us ed more in spam messages rather than non-
+spam messages. You can see that the allocati on of words to topics can be rationalized
+or reasoned about, even with this quick look.
+ Before you fit your LDA classifier, you need to compute these LDiA topic vectors
+for all your documents (SMS messages). And let’s see how they are different from the
+topic vectors produced by SVD and PCA for those same documents:
+>>> ldia16_topic_vectors = ldia.transform(bow_docs)
+>>> ldia16_topic_vectors = pd.DataFrame(ldia16_topic_vectors,\
+... index=index, columns=columns)
+>>> ldia16_topic_vectors.round(2).head()
+topic0 topic1 topic2 ... topic13 topic14 topic15
+sms0 0.00 0.62 0.00 ... 0.00 0.00 0.00
+sms1 0.01 0.01 0.01 ... 0.01 0.01 0.01sms2! 0.00 0.00 0.00 ... 0.00 0.00 0.00
+sms3 0.00 0.00 0.00 ... 0.00 0.00 0.00
+sms4 0.39 0.00 0.33 ... 0.00 0.00 0.00
+You can see that these topics are more clea nly separated. There are a lot of zeros in
+your allocation of topics to messages. This is one of the things that makes LDiA topics
+easier to explain to coworkers when maki ng business decisions based on your NLP
+pipeline results.
+ 
+
+140 CHAPTER  4Finding meaning in word counts (semantic analysis)
+ So LDiA topics work well for humans , but what about machines? How will your
+LDA classifier fare with these topics?
+4.5.3 LDiA + LDA = spam classifier
+Let’s see how good these LDiA topics are at predicting something useful, such as
+spaminess. You’ll use your LDiA topic vect ors to train an LDA model again (like you
+did with your PCA topic vectors):
+>>> from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+>>> X_train, X_test, y_train, y_test =
+➥train_test_split(ldia16_topic_vectors, sms.spam, test_size=0.5,
+➥random_state=271828)
+>>> lda = LDA(n_components=1)>>> lda = lda.fit(X_train, y_train)
+>>> sms['ldia16_spam'] = lda.predict(ldia16_topic_vectors)
+>>> round(float(lda.score(X_test, y_test)), 2)0.94
+The algorithms for train_test_split()  and LDiA are stochastic. So each time you
+run it you will get different results and diffe rent accuracy values. If you want to make
+your pipeline repeatable, look for the seed  argument for these models and dataset
+splitters. You can set the seed to the same  value with each run to get reproducible
+results.
+ One way a “collinear” warning can occur is if your text has a few 2-grams or 3-
+grams where their component words only ev er occur together. So the resulting LDiA
+model had to arbitrarily split the weights among these equivalent term frequencies.
+Can you find the words in your SMS messages that are causing this “collinearity” (zero
+determinant)? You’re looking for a word th at, whenever it occurs, another word (its
+pair) is always in the same message.
+ You can do this search with Python rather than by hand. First, you probably just
+want to look for any identical bag-of-words  vectors in your corpus. These could occur
+for SMS messages that aren’t identical, li ke “Hi there Bob!” or “Bob, Hi there,”
+because they have the same word counts. You can iterate through all the pairings of
+the bags of words to look for identical vector s. These will definitely cause a “collinear-
+ity” warning in either LDiA or LSA.
+ If you don’t find any exact BOW vector duplicates, you could iterate through all
+the pairings of the words in your vocabulary . You’d then iterate through all the bags of
+words to look for the pairs of SMS message s that contain those exact same two words.
+If there aren’t any times that those wo rds occur separately in the SMS messages,Your ldia_topic_vectors matr ix has a determinant close to
+zero so you will likely get the warning “Variables are
+collinear.” This can happen with  a small corpus when using
+LDiA because your topic vector s have a lot of zeros in them
+and some of your messages co uld be reproduced as a linear
+combination of the other messa ge topics. Or there are some
+SMS messages with similar (or identical) topic mixes.94% accuracy on the test set
+is pretty good, but not quite as
+good as LSA (PCA) in section 4.7. 1.
+ 
+
+141 Latent Dirichlet allocation (LDiA)
+you’ve found one of the “collinearities” in  your dataset. Some common 2-grams that
+might cause this are the first and last na mes of famous people that always occur
+together and are never used se parately, like “Bill Gates” (as long as there are no other
+Bills in your SMS messages).
+TIP Whenever you need to iterate through all the combinations (pairs or trip-
+lets) of a set of objects, you can use the built-in Python product()  function:
+>>> from itertools import product
+>>> all_pairs = [(word1, word2) for (word1, word2) in product(word_list,
+➥word_list) if not word1 == word2]
+You got more than 90% accuracy on your te st set, and you only had to train on half
+your available data. But you did get a warning about your features being collinear due
+to your limited dataset, which gives LDA an “under-determined” problem. The deter-
+minant of your topic-document matrix is close to zero, once you discard half the doc-uments with 
+train_test_split . If you ever need to, you can turn down the LDiA
+n_components  to “fix” this issue, but it would tend to combine those topics together
+that are a linear combinatio n of each other (collinear).
+ But let’s find out how your LDiA mode l compares to a much higher-dimensional
+model based on the TF-IDF vectors. Your TF-IDF vectors have many more features
+(more than 3,000 unique ter ms). So you’re likely to experience overfitting and poor
+generalization. This is where the generalization of LDiA and PCA should help:
+>>> from sklearn.feature_extraction.text import TfidfVectorizer
+>>> from nltk.tokenize.casual import casual_tokenize>>> tfidf = TfidfVectorizer(tokenizer=casual_tokenize)
+>>> tfidf_docs = tfidf.fit_transform(raw_documents=sms.text).toarray()
+>>> tfidf_docs = tfidf_docs - tfidf_docs.mean(axis=0)
+>>> X_train, X_test, y_train, y_test = train_test_split(tfidf_docs,\
+... sms.spam.values, test_size=0.5, random_state=271828)>>> lda = LDA(n_components=1)
+>>> lda = lda.fit(X_train, y_train)
+>>> round(float(lda.score(X_train, y_train)), 3)1.0
+>>> round(float(lda.score(X_test, y_test)), 3)
+0.748
+The training set accuracy for your TF-IDF ba sed model is perfect! Bu t the test set accu-
+racy is much worse than when you traine d it on lower-dimensional topic vectors
+instead of TF-IDF vectors.
+ And test set accuracy is the only accuracy  that counts. This is exactly what topic
+modeling (LSA) is supposed to do. It help s you generalize your  models from a small
+training set, so it still wo rks well on messages using diffe rent combinations of words
+(but similar topics). You’re going to “pretend”
+that there is only one topic
+in all the SMS messages,
+because you’re only
+interested in a scalar score
+for the “spamminess” topic.Fitting an LDA model to all these thousands of features
+will take quite a long time. Be patient; it’s slicing up
+your vector space with a 9,332-dimension hyperplane!
+ 
+
+142 CHAPTER  4Finding meaning in word counts (semantic analysis)
+4.5.4 A fairer comparison: 32 LDiA topics
+Let’s try one more time with more dimensions, more topics. Perhaps LDiA isn’t as effi-
+cient as LSA (PCA), so it needs more topics to allocate words to. Let’s try 32 topics
+(components):
+>>> ldia32 = LDiA(n_components=32, learning_method='batch')
+>>> ldia32 = ldia32.fit(bow_docs)
+>>> ldia32.components_.shape
+(32, 9232)
+Now let’s compute your ne w 32-D topic vectors for all your documents (SMS
+messages):
+>>> ldia32_topic_vectors = ldia32.transform(bow_docs)
+>>> columns32 = ['topic{}'.format(i) for i in range(ldia32.n_components)]>>> ldia32_topic_vectors = pd.DataFrame(ldia32_topic_vectors, index=index,\... columns=columns32)>>> ldia32_topic_vectors.round(2).head()
+topic0 topic1 topic2 ... topic29 topic30 topic31
+sms0 0.00 0.5 0.0 ... 0.0 0.0 0.0sms1 0.00 0.0 0.0 ... 0.0 0.0 0.0sms2! 0.00 0.0 0.0 ... 0.0 0.0 0.0sms3 0.00 0.0 0.0 ... 0.0 0.0 0.0sms4 0.21 0.0 0.0 ... 0.0 0.0 0.0
+You can see that these topics are even  more sparse, more cleanly separated.
+ And here’s your LDA model (classifier) tr aining, this time using 32-D LDiA topic
+vectors:
+>>> X_train, X_test, y_train, y_test =
+➥train_test_split(ldia32_topic_vectors, sms.spam, test_size=0.5,
+➥random_state=271828)
+>>> lda = LDA(n_components=1)
+>>> lda = lda.fit(X_train, y_train)
+>>> sms['ldia32_spam'] = lda.predict(ldia32_topic_vectors)>>> X_train.shape
+(2418, 32)
+>>> round(float(lda.score(X_train, y_train)), 3)0.924
+>>> round(float(lda.score(X_test, y_test)), 3)
+0.927
+Don’t confuse this optimization of the number  of “topics” or components with the col-
+linearity problem earlier. Increasing or decr easing the number of topics doesn’t fix or
+create the collinearity problem. That’s a problem with the underlying data. If you
+want to get rid of that warning, you need to add “noise” or metadata to your SMS
+messages as synthetic words, or you need to delete those duplicate word vectors. If you
+have duplicate word vectors or word pairings  that repeat a lot in  your documents, no
+amount of topics is going to fix that..shape is another way to check 
+the number of dimensions in your topic vectors.
+Test accuracy is what matters, and 92.7% 
+is comparable to the 94% score you got 
+with 16-D LDiA topic vectors.
+ 
+
+143 Distance and similarity
+ The larger number of topics allows it to be more precise about topics, and, at least
+for this dataset, product topics that linearl y separate better. But this performance still
+isn’t quite as good as the 96% accuracy of PCA + LDA. So PCA is keeping your SMStopic vectors spread out more  efficiently, allowing for a wider gap between messages
+to cut with a hyperplane to separate classes.
+ Feel free to explore the source code for the Dirichlet allocation models available
+in both scikit-learn as well as gensim. They have an API similar to LSA (sklearn.Trun-catedSVD and gensim.LsiModel). We show you an example application when we talk
+about summarization in later chapters. Findin g explainable topics, like those used for
+summarization, is what LDiA is good at. An d it’s not too bad at creating topics useful
+for linear classification.
+4.6 Distance and similarity
+We need to revisit those similarity scores we talked about in chapters 2 and 3 to make
+sure your new topic vector space works with them. Remember that you can use similar-
+ity scores (and distances) to tell how si milar or far apart two documents are based on
+the similarity (or distance) of the vectors you used to represent them.Digging deeper into your toolbox
+You can find the source code path in the __file__ attribute on any Python module,
+such as sklearn.__file__ . And in ipython (jupyter console), you can view the
+source code for any function, class, or object with ??, like LDA?? :
+>>> import sklearn
+>>> sklearn.__file__
+'/Users/hobs/anaconda3/envs/conda_env_nlpia/lib/python3.6/site-packages/sklearn/__init__.py'
+>>> from sklearn.discriminant_analysis\
+... import LinearDiscriminantAnalysis as LDA>>> LDA??
+Init signature: LDA(solver='svd', shrinkage=None, priors=None, n_components
+=None, store_covariance=False, tol=0.0001)Source:
+class LinearDiscriminantAnalysis(BaseEstimator, LinearClassifierMixin,
+TransformerMixin):
+"""Linear Discriminant Analysis
+A classifier with a linear decision boundary, generated by fitting
+class conditional densities to the data and using Bayes' rule.
+The model fits a Gaussian density to each class, assuming that all
+classes share the same covariance matrix.
+...
+This won’t work on functions and classes that are extensions, whose source code is
+hidden within a compiled C++ module. 
+ 
+
+144 CHAPTER  4Finding meaning in word counts (semantic analysis)
+ You can use similarity scores (and distan ces) to see how well your LSA topic model
+agrees with the higher-dimensional TF-IDF model of chapter 3. You’ll see how good
+your model is at retaining those distances after having eliminated a lot of the informa-
+tion contained in the much higher-dimension al bags of words. You can check how far
+away from each other the topic vectors ar e and whether that’s a good representation
+of the distance between the documents' subj ect matter. You want to check that docu-
+ments that mean similar things are close to each other in your new topic vector space.
+ LSA preserves large distances, but it do esn’t always preserve close distances (the
+fine “structure” of the relationships betw een your documents). The underlying SVD
+algorithm is focused on maximizing the va riance between all yo ur documents in the
+new topic vector space.
+ Distances between feature ve ctors (word vectors, topic vectors, document context
+vectors, and so on) drive the performance of an NLP pipeline, or any machine learn-ing pipeline. So what are your options fo r measuring distance in high-dimensional
+space? And which ones should you chose fo r a particular NLP problem? Some of these
+commonly used examples may be familiar fr om geometry class or linear algebra, but
+many others are probably new to you:
+Euclidean or Cartesian distance, or ro ot mean square error (RMSE): 2-norm
+or L 2
+Squared Euclidean distance, sum of squares distance (SSD): L 22
+Cosine or angular or projected distance: normalized dot product
+Minkowski distance: p-norm or L p
+Fractional distance, fracti onal norm: p-norm or L p for 0 < p < 1
+City block, Manhattan, or taxicab dist ance; sum of absolu te distance (SAD):
+1-norm or L 1
+Jaccard distance, in verse set similarity
+Mahalanobis distance 
+Levenshtein or edit distance 
+The variety of ways to calculate distance is a testament to how import ant it is. In addition
+to the pairwise distance implementations in Scikit-learn, many others are used in math-ematics specialties such as topo logy, statistics, and engineering.
+45 For reference, the fol-
+lowing listing shows the distances you can fi nd in the sklearn.metrics.pairwise module.46
+'cityblock', 'cosine', 'euclidean', 'l1', 'l2', 'manhattan', 'braycurtis',
+'canberra', 'chebyshev', 'correlation', 'dice', 'hamming', 'jaccard','kulsinski', 'mahalanobis', 'matching', 'minkowski', 'rogerstanimoto',
+'russellrao', 'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean',
+'yule'
+45See Math.NET Numerics for more distance metrics ( https:/ /numerics.mathdotnet.com/Distance.html ).Listing 4.7 Pairwise distances available in sklearn
+46See the documentation for sklearn.metrics.pairwise ( http:/ /scikit-learn.org/stable/modules/generated/
+sklearn.metrics.pairwise_distances.html ).
+ 
+
+145 Distance and similarity
+Distance measures are often computed from si milarity measures (sco res) and vice versa
+such that distances are inversel y proportional to similarity scores. Similarity scores are
+designed to range between 0 and 1. Typical conversion formulas look like this:
+>>> similarity = 1. / (1. + distance)
+>>> distance = (1. / similarity) - 1.
+But for distances and si milarity scores that range betw een 0 and 1, like probabilities,
+it’s more common to use a formula like this:
+>>> similarity = 1. - distance
+>>> distance = 1. - similarity
+And cosine distances have their own convention for the range of values they use. The
+angular distance between two vectors is ofte n computed as a fraction of the maximum
+possible angular separation between two vect ors, which is 180 degrees or pi radians.47
+As a result, cosine similarity and dist ance are the reciproc al of each other:
+>>> import math
+>>> angular_distance = math.acos(cosine_similarity) / math.pi
+>>> distance = 1. / similarity - 1.
+>>> similarity = 1. - distance
+The terms “distance” and “length” are often confused with the term “metric,” because
+many distances and lengths are valid and useful metrics. But unfortunately not all dis-tances can be called metrics. Even more confusing, metrics are also sometimes called
+“distance functions” or “dista nce metrics” in formal math ematics and set theory texts.
+48
+A related mathematical term, measure , has both a natural English meaning and a rigor-
+ous mathematical definition. You’ll find “measure” in both a Merriam-Webster dic-
+tionary and a math textbook glossary, with completely different definitions. So be
+careful when talking to your math professor.
+47See the web page titled “Cosine similarity” ( https:/ /en.wikipedia.org/wiki/Cosine_similarity ).Metrics
+A true metric must have four  mathematical properties that distances or “scores” don’t:
+Nonnegativity: metrics can never be negative. metric(A,  B) >= 0
+Indiscerniblity: two objects are identical if the metric between them is zero. if
+metric(A,  B) == 0: assert(A == B)
+Symmetry: metrics don’t care about direction. metric(A,  B) = metric(B,  A)
+Triangle inequality: you can’t get from A to C faster by going through B in-
+between. metric(A,  C) <= metric(A,  B) + metric(B, C)
+48See the Wikipedia article titled “Metric (mathematics)” ( https:/ /en.wikipedia.org/wiki/Metric_
+(mathematics) ).
+ 
+
+146 CHAPTER  4Finding meaning in word counts (semantic analysis)
+ To a math professor, a measure is the size  of a set of mathematical objects. You can
+measure a Python set by its length, but many mathematical sets are infinite. And in
+set theory, things can be infinite in differ ent ways. And measures are all the different
+ways to calculate the len()  or size of a mathematical set, the ways things are infinite.
+DEFINITION Like metric, the word “measure” has a precise mathematical defi-
+nition, related to the “size” of a collec tion of objects. So the word “measure”
+should also be used carefu lly in describing any scores or statistics derived
+from an object or combin ation of objects in NLP.49
+But in the real world, you measure all sorts of things. When you use it as a verb you
+might mean using a measuring tape, or a ruler,  or a scale or a score, to measure some-
+thing. That’s how you use the word “measure” in this book, but we try not to use it atall, so that our math pr ofessors don’t scold us. 
+4.7 Steering with feedback
+All the previous approaches to LSA failed to take into account information about the
+similarity between docu ments. We created topics that were optimal for a generic set of
+rules. Our unsupervised learning of these feature (topic) extraction models didn’thave any data about how “close” the topic ve ctors should be to each other. We didn’t
+allow any “feedback” about where the topi c vectors ended up, or how they were
+related to each other. Steering or “learned distance metrics”
+50 are the latest advance-
+ment in dimension reduction and feature ex traction. By adjustin g the distance scores
+reported to clustering and embedding algorithms, you can “steer” your vectors so that
+they minimize some cost function. In this  way you can force your vectors to focus on
+some aspect of the information co ntent that you’re interested in.
+ In the previous sections about LSA, yo u ignored all the meta information about
+your documents. For example, with the SM S messages you ignored the sender of the
+message. This is a good indication of topic similarity and could be used to inform your
+topic vector transformation (LSA).
+ At Talentpair, we experimented with ma tching resumes to jo b descriptions using
+the cosine distance between topic vectors for each document. This worked OK. But we
+learned quickly that we got mu ch better results when we started “steering” our topic
+vectors based on feedback from candidat es and account manage rs responsible for
+helping them find a job. Vectors for “good pairings” were steered closer together than
+all the other pairings.
+ One way to do this is to calculate the mean difference between your two centroids
+(like you did for LDA) and add some portion of this “bias” to all the resume or job
+description vectors. Doing so  should take out the average topic vector difference
+between resumes and job descri ptions. Topics such as beer on tap at lunch might
+49See the Wikipedia article titled “Measure (mathematics)” ( https:/ /en.wikipedia.org/wiki/Measure_
+(mathematics) ).
+50See the web page titled “Superpixel Graph Label Transfer with Learned Distance Metric” ( http:/ /
+users.cecs.anu.edu.au/~sgould/papers/eccv14-spgraph.pdf ).
+ 
+
+147 Steering with feedback
+appear in a job description bu t never in a resume. Similarl y, bizarre hobbies, such as
+underwater scuplture, might appear in some resumes but never a job description.
+Steering your topic vectors can help you focu s them on the topics you’re interested in
+modeling.
+ If you’re interested in refining topi c vectors, taking out bias, you can search
+Google Scholar ( http:/ /scholar.google.com/ ) for “learned distance/similarity metric”
+or “distance metrics fo r nonlinear embeddings.”51 Unfortunately, no scikit-learn mod-
+ules implement this feature yet. You’d be a hero if you found the time to add some
+“steering” feature suggestions or co de to the Scikit-Learn project ( http:/ /github
+.com/scikit-learn/ scikit-learn/issues ).
+4.7.1 Linear discriminant analysis
+Let’s train a linear discrimina nt analysis model on your  labeled SMS messages. LDA
+works similarly to LSA, except it requires classification labels or other scores to be able
+to find the best linear combination of the dimensions in high-dimensional space (the
+terms in a BOW or TF-IDF vector). Rather than maximizing the separation (variance)
+between all vectors in the new space, LD A maximizes the distance between the cen-
+troids of the vectors within each class.
+ Unfortunately, this means you have to te ll the LDA algorithm what “topics” you’d
+like to model by giving it examples (lab eled vectors). Only th en can the algorithm
+compute the optimal tr ansformation from your high-d imensional space to the lower-
+dimensional space. And the resulting lower-dimensional vector can’t have any more
+dimensions than the number of class labels or scores you’re able to provide. Because
+you only have a “spaminess” topic to train on, let’s see how accurate your 1D topic
+model can be at classifying spam SMS messages:
+>>> lda = LDA(n_components=1)
+>>> lda = lda.fit(tfidf_docs, sms.spam)>>> sms['lda_spaminess'] = lda.predict(tfidf_docs)>>> ((sms.spam - sms.lda_spaminess) ** 2.).sum() ** .50.0>>> (sms.spam == sms.lda_spaminess).sum()4837>>> len(sms)4837
+It got every single one of them right! Oh , wait a minute. What did you say earlier
+about overfitting? With 10,000 terms in your TF-IDF vectors it’s no t surprising at all
+that it could just “memorize”  the answer. Let’s do some cross validation this time:
+>>> from sklearn.model_selection import cross_val_score
+>>> lda = LDA(n_components=1)>>> scores = cross_val_score(lda, tfidf_docs, sms.spam, cv=5)>>> "Accuracy: {:.2f} (+/-{:.2f})".format(scores.mean(), scores.std() * 2)'Accuracy: 0.76 (+/-0.03)'
+51See the web page titled “Distance Metric Learning: A Comprehensive Survey” ( https:/ /www.cs.cmu.edu/
+~liuy/frame_survey_v2.pdf ).
+ 
+
+148 CHAPTER  4Finding meaning in word counts (semantic analysis)
+Clearly this isn’t a good model. This should  be a reminder to never get excited about
+a model’s performance on your training set.
+ Just to make sure that 76% accuracy numb er is correct, let’s reserve a third of your
+dataset for testing:
+>>> from sklearn.model_selection import train_test_split
+>>> X_train, X_test, y_train, y_test = train_test_split(tfidf_docs,\
+... sms.spam, test_size=0.33, random_state=271828)>>> lda = LDA(n_components=1)
+>>> lda.fit(X_train, y_train)
+LinearDiscriminantAnalysis(n_components=1, priors=None, shrinkage=None,
+solver='svd', store_covariance=False, tol=0.0001)
+>>> lda.score(X_test, y_test).round(3)
+0.765
+Again, poor test set accuracy. So it doesn’t look like you’re unlucky with your data sam-
+pling. It’s a poor, overfitting model.
+ Let’s see if LSA combined with LDA will he lp you create an accurate model that is
+also generalized well so that ne w SMS messages don’t trip it up:
+>>> X_train, X_test, y_train, y_test =
+➥train_test_split(pca_topicvectors.values, sms.spam, test_size=0.3,
+➥random_state=271828)
+>>> lda = LDA(n_components=1)
+>>> lda.fit(X_train, y_train)
+LinearDiscriminantAnalysis(n_components=1, priors=None, shrinkage=None,
+solver='svd', store_covariance=False, tol=0.0001)
+>>> lda.score(X_test, y_test).round(3)
+0.965>>> lda = LDA(n_components=1)
+>>> scores = cross_val_score(lda, pca_topicvectors, sms.spam, cv=10)
+>>> "Accuracy: {:.3f} (+/-{:.3f})".format(scores.mean(), scores.std() * 2)'Accuracy: 0.958 (+/-0.022)'
+So with LSA, you can characterize an SMS message with only 16 dimensions and still
+have plenty of information to classify them as s pam (or not). And your low-dimen-
+sional model is much less likely to overfit. It should generalize well and be able to clas-
+sify as-yet-unseen SM S messages or chats.
+ You’ve now come full circle back to your  “simple” model at the beginning of this
+chapter. You got better accura cy with your simple LDA model before you tried all that
+semantic analysis. But the advantage of this  new model is that you now can create vec-
+tors that represent the semantics of a statem ent in more than just  a single dimension. 
+4.8 Topic vector power
+With topic vectors, you can do things lik e compare the meaning of words, documents,
+statements, and corpora. You can find “clust ers” of similar documents and statements.
+You’re no longer comparing the distance between documents based merely on their
+word usage. You’re no longer limited to keyword search and relevance ranking basedentirely on word choice or vocabulary. Yo u can now find documents that are relevant
+to your query, not just a good matc h for the word statistics themselves.
+ 
+
+149 Topic vector power
+ This is called “semantic search,” not to be confused with the “semantic web.”52
+Semantic search is what stro ng search engines do when they give you documents that
+don’t contain many of the words in your qu ery, but are exactly what you were looking
+for. These advanced search engines use LSA topic vectors to tell the difference
+between a Python  package in “The Cheese Shop” an d a python in a Florida pet shop
+aquarium, while still recognizing its similarity to a “Ruby gem.”53
+ Semantic search gives you a tool for finding and generating meaningful text. But
+our brains aren’t good at de aling with high-dimensional ob jects, vectors,  hyperplanes,
+hyperspheres, and hypercubes. Our intuitio ns as developers and machine learning
+engineers breaks down above three dimensions.
+ For example, to do a query on a 2D ve ctor, like your lat/lon location on Google
+Maps, you can quickly find all the coffee shop s nearby without much searching. You can
+just scan (with your eyes or with code) near  your location and sp iral outward with your
+search. Alternatively, you can create bigger and bigger bounding boxes with your code,checking for longitudes and la titudes within some range. Doing this in hyperspace with
+hyperplanes and hypercubes to form the boundaries of your search is impossible.
+ As Geoffry Hinton says, “To deal with hy perplanes in a 14-dimen sional space, visu-
+alize a 3D space and say 14 to yourse lf loudly.” If you read Abbott’s 1884 Flatland  when
+you were young and impressionab le, you might be able to do a little bit better than this
+hand waving. You might even be able to po ke your head partway out of the window of
+your 3D world into hyperspace, enough to catch a glimpse of that 3D world from theoutside. Like in Flatland , you used a lot of 2D visualizations in this chapter to help you
+explore the shadows that words in hyperspace leave in your 3D world. If you’re anxiousto check them out, skip ahead to the sectio n showing “scatter matrices” of word vectors.
+You might also want to glance back at the 3D  bag-of-words vector in the previous chap-
+ter and try to imagine what those points wo uld look like if you added just one more
+word to your vocabulary to create a 4-D world of language meaning.
+ If you’re taking a moment to think de eply about four dimensions, keep in mind
+that the explosion in complexity you’re tr ying to wrap your head around is even
+greater than the complexity growth from 2D  to 3D and exponentially greater than the
+growth in complexity from a 1D world of nu mbers to a 2D world of  triangles, squares,
+and circles.
+NOTE The explosive growth in possibilities  from 1D lines, 2D rectangles, 3D
+cubes, and so on passes through bizarre universes with non-integer fractal
+dimensions, like a 1.5-dimension fracta l. A 1.5D fractal has infinite length
+and completely fills a 2D plane whil e having less than two dimensions!54 But
+52The semantic web is the practice of structuring natural language text with the use of tags in an HTML docu-
+ment so that the hierarchy of tags and their conten t provide information about the relationships (web of
+connections) between elements (text, images, videos) on a web page.
+53Ruby is a programming language with a package called gem.
+54fractional dimensions, http:/ /www.math.cornell.edu/~ erin/docs/research-talk.pdf
+ 
+
+150 CHAPTER  4Finding meaning in word counts (semantic analysis)
+fortunately these aren’t “real” dimensions.55 So you don’t have to worry about
+them in NLP… unless you get interested in fractional distance metrics, like
+p-norm , which have noninteger ex ponents in their formulas.56
+4.8.1 Semantic search
+When you search for a document based on a word or partial word it contains, that’s
+called full text search . This is what search engines do. They break a document into
+chunks (usually words) that can be indexed with an inverted index  like you’d find at the
+back of a textbook. It takes a lot of book keeping and guesswork to deal with spelling
+errors and typos, but it works pretty well.57
+ Semantic search  is full text search that takes into account the meaning of the words
+in your query and the documents you’re search ing. In this chapter, you’ve learned two
+ways— LSA and LDiA—to compute topic vect ors that capture the semantics (mean-
+ing) of words and documents in a vector. One of the reasons that latent semantic anal-
+ysis was first called latent semantic indexing  was because it promised to power semantic
+search with an index of numerical values, like BOW and TF-IDF tables. Semanticsearch was the next big thing in information retrieval.
+ But unlike BOW and TF-IDF tables, tables of semantic vectors can’t be easily dis-
+cretized and indexed using traditional inve rted index techniques. Traditional index-
+ing approaches work with binary word occurrence vectors, di screte vectors (BOW
+vectors), sparse continuous vectors (TF-IDF vectors), an d low-dimensional continuous
+vectors (3D GIS data). But high-dimensional continuous vectors, su ch as topic vectors
+from LSA or LDiA, are a challenge.
+58 Inverted indexe s work for discrete vectors or
+binary vectors, like tables of binary or  integer word-document vectors, because the
+index only needs to maintain an entry fo r each nonzero discrete dimension. Either
+that value of that dimension is present or not present in the referenced vector or doc-
+ument. Because TF-IDF vectors are sparse, mostly zero, you don’t need an entry in
+your index for most dimens ions for most documents.59
+ LSA (and LDiA) produce topic vectors th at are high-dimensional, continuous, and
+dense (zeros are rare). And the semantic an alysis algorithm doesn’t produce an effi-
+cient index for scalable search. In fact, th e curse of dimensionality that we talked
+about in the previous section makes an exac t index impossible. The “indexing” part of
+latent semantic indexing was a hope, not a reality, so the LSI term is a misnomer.
+55“Fractal dimensions, ( http:/ /www.askamathematician.com/2012/12 /q-what-are-fractional-dimensions-can-
+space-have-a-fractional-dimension/ ).
+56“The Concentration of Fractional Distances” ( https:/ /perso.uclouvain.be/michel.verleysen/papers/tkde
+07df.pdf ).
+57A full text index in a database like PostgreSQL is usuall y based on trigrams of characters, to deal with spelling
+errors and text that doesn’t parse into words.
+58Clustering high-dimensional data is equivalent to discretizing  or indexing high-dimensional data with bound-
+ing boxes and is described in the Wikipedia article “Clustering high dimensional data” ( https:/ /en.wikipedia
+.org/wiki/Clustering_high-dimensional_data ).
+59See the web page titled “Inverted index” ( https:/ /en.wikipedia.org/wiki/Inverted_index ).
+ 
+
+151 Topic vector power
+Perhaps that’s why LSA has be come the more popu lar way to describe semantic analy-
+sis algorithms that pr oduce topic vectors.
+ One solution to the challeng e of high-dimensional vectors is to index them with a
+locality sensitive hash  (LSH). A locality sensitive hash is like a ZIP code (postal code) that
+designates a region of hyperspa ce so that it can easily be found again later. And like a
+regular hash, it’s discrete and depends only on the values in the vector. But even this
+doesn’t work perfectly once you exceed abou t 12 dimensions. In figure 4.6, each row
+represents a topic vector size (dimensionalit y), starting with 2 dimensions and working
+up to 16 dimensions, like the vectors yo u used earlier for the SMS spam problem.
+Figure 4.6 Semantic search accuracy deteriorates at around 12-D.
+The table shows how good your search result s would be if you used locality sensitive
+hashing to index a large number  of semantic vectors. Once your vector had more than
+16 dimensions, you’d have a hard time retu rning 2 search results that were any good.
+ So how can you do semantic search on 100-D vectors without an index? You now
+know how to convert the query string into a topic vector using LSA. And you knowhow to compare two vectors for similarity us ing the cosine similarity score (the scalar
+product, inner product, or dot product) to  find the closest match. To find precise
+semantic matches, you need to  find all the closest document topic vectors to a particu-
+lar query (search) topic vector. But if you have n documents, you have to do n compar-
+isons with your query topic vector. That’s a lot of dot products.Dimensions100th 
+cosine distanceTop 1  
+correctTop 2  
+correctTop 10  
+correct 
+Top 100 correct
+2 .00 TRUE TRUE TRUE TRUE
+3 .00 TRUE TRUE TRUE TRUE
+4 .00 TRUE TRUE TRUE TRUE
+5 .01 TRUE TRUE TRUE TRUE
+6 .02 TRUE TRUE TRUE TRUE
+7 .02 TRUE TRUE TRUE FALSE
+8 .03 TRUE TRUE TRUE FALSE
+9 .04 TRUE TRUE TRUE FALSE
+10 .05 TRUE TRUE FALSE FALSE
+11 .07 TRUE TRUE TRUE FALSE
+12 .06 TRUE TRUE FALSE FALSE
+13 .09 TRUE TRUE FALSE FALSE
+14 .14 TRUE FALSE FALSE FALSE
+15 .14 TRUE TRUE FALSE FALSE
+16 .09 TRUE TRUE FALSE FALSE
+ 
+
+152 CHAPTER  4Finding meaning in word counts (semantic analysis)
+ You can vectorize the operation in numpy using matrix multiplication, but that
+doesn’t reduce the number of operations; it only makes them 100 times faster.60 Fun-
+damentally, exact semantic se arch still requires O(N) mu ltiplications and additions
+for each query. So it scales only linearly with the size of your corpus. That wouldn’t
+work for a large corpus, such as Google Se arch or even Wikipedia semantic search.
+ The key is to settle for “good enough” rather than striving for a perfect index or
+LSH algorithm for our high-dimensional ve ctors. There are now several open source
+implementations of some efficient and accurate approximate nearest neighbors  algo-
+rithms that use LSH to efficiently implement semantic search. A couple of the easiest
+to use and install are
+Spotify’s Annoy package 61
+Gensim’s gensim.models.KeyedVector  class62
+Technically these indexing or hashing soluti ons cannot guarantee that you will find all
+the best matches for your semantic search query. But they can get you a good list of
+close matches almost as fast as with a conv entional reverse index on a TF-IDF vector or
+bag-of-words vector, if you’re willing to give up a little precision.63
+4.8.2 Improvements
+In the next chapters, you’ll learn how to fine  tune this concept of topic vectors so that
+the vectors associated with words are more pr ecise and useful. To do this we first start
+learning about neural nets. This will improv e your pipeline’s ability to extract mean-
+ing from short texts or even solitary words. 
+Summary
+You can use SVD for semantic analysis to decompose and transform TF-IDF and
+BOW vectors into topic vectors.
+Use LDiA when you need to compute explainable topic vectors.
+No matter how you create your topic vectors, they can be used for semanticsearch to find documents based on their meaning.
+Topic vectors can be used to predict whethe r a social post is spam or is likely to
+be “liked.”
+Now you know how to sidestep around the curse of dimensionality to find
+approximate nearest neighbors in  your semantic vector space.
+60Vectorizing your Python code , especially doubly-nested for loops, for pairwise distance calculations can
+speed your code by almost 100-fold. See Hacker N oon article “Vectorizing the Loops with Numpy” ( https:/ /
+hackernoon.com/speeding-up-your-code-2-vec torizing-the-loops-with-numpy-e380e939bed3 ).
+61Spotify’s researchers compared their annoy  performance to that of several alternative algorithms and imple-
+mentations on their github repo ( https:/ /github.com/spotify/annoy ).
+62The approach used in gensim  for hundreds of dimensions in word ve ctors will work fine for any semantic or
+topic vector. See gensim’s “K eyedVectors” documentation ( https:/ /radimrehurek.com/gensim/models/
+keyedvectors.html ).
+63If you want to learn about faster ways to find a high -dimensional vector’s nearest neighbors, check out appen-
+dix F, or just use the Spotify annoy  package to index your topic vectors.
+ 
+

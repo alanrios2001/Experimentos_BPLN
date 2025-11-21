@@ -1,0 +1,831 @@
+20
+Question Answering
+Diego Mollá-Aliod
+MacquarieUniversity
+José-Luis Vicedo
+UniversidaddeAlicante20.1 Introduction ..........................................................48520.2 HistoricalContext ....................................................487
+20.3 AGenericQuestion-AnsweringSystem...........................488
+QuestionAnalysis •DocumentorPassageSelection •Answer
+Extraction •VariationsoftheGeneralArchitecture
+20.4 EvaluationofQASystems...........................................497
+EvolutionoftheTRECQATrack •EvaluationMetrics
+20.5 MultilingualityinQuestionAnswering............................50120.6 QuestionAnsweringonRestrictedDomains .....................50320.7 RecentTrendsandRelatedWork ..................................504Acknowledgment ...........................................................505References....................................................................506
+20.1 Introduction
+DescribingpreciselywhatwearetalkingaboutwhenwerefertoQuestionAnswering(QA)isprobablynotaseasyasitcouldbeexpected.FromaverygeneralperspectiveQAcanbedeﬁnedasanautomaticprocesscapable of understanding questions formulated in a natural language such as English and respondingexactlywiththerequestedinformation.
+However, this apparently simple deﬁnition turns very complex when we analyze in detail which are
+the characteristics and functionality an “ideal” QA system should have. This system should be ableto determine the information need expressed in a question, locate the required information, extractit, and then generate an answer and present it according to the requirements expressed in the question.Moreover,thisidealsystemshouldbeabletointerpretquestionsandprocessdocumentsthatarewritteninunrestricted-domainnaturallanguages,whichwouldallowforacomfortableandappropriateinteractionby users. Unfortunately, although research has advanced in this direction, the current state of the artremainsquitefarawayfromfulﬁllingalltheserequirements.
+IntheprocesstoproducetheidealQAsystem,boththediﬃcultiesoftheresearchproblemsencountered
+andagrowingnecessityforapplicationsthatcanfacilitateaccesstoandmanipulationoflargequantitiesof information have led the scientiﬁc community to simplify the requirements of ideal QA systems andconcentrate its eﬀorts on the resolution of more specialized and more manageable problems such asselecting documents based upon certain information needs (aka Information Retrieval—IR), retrievingspeciﬁc information from structured data to user queries (Natural Language Interfaces to Databases—NLIDB (Androutsopoulos et al. 1995)), and ﬁnding information in large document collections as ananswertoarbitraryuserqueries(QuestionAnswering—QA,thefocusofthischapter).
+Thischapterfocusesontheworkdevelopedaroundtheso-called Open-Domain Question, Answering
+wheresystemsdealwithquestionsposedinnaturallanguage,andanswersareextractedfromaverylargedocumentcollection.
+485
+
+486 HandbookofNaturalLanguageProcessing
+Interestinopen-domainQAemergedfromtheassumptionthatuserswouldpreferpreciseanswersto
+their questions rather than having to inspect all the available documentation related to the search topicinordertosatisfytheirinformationneeds.
+As an answer to this increasing interest, two documents attempted to organize research around
+QA:the“VisionStatementtoGuideResearchinQuestionAnswering(Q&A)andTextSummarization”(Carbonelletal.2000)andthe“Issues,TasksandProgramStructurestoRoadmapResearchinQuestion&Answering(Q&A)”(Burgeretal.2000).
+The ﬁrst document devised the scope and future capabilities of QA systems trying to satisfy the
+expectations and requirements of a wide spectrum of diﬀerent potential users: from casual users to
+professionalinformationanalysts .Whilecasualusersaskforconcreteinformationusuallyexpressedina
+singleshortphrasewithinadocument(e.g., HowmanyinhabitantsdoesChinahave? ),theproﬁleforthe
+information analysts is that of the professional consumer of information about very specialized topics.As an example, a professional police analyst who investigates the connections between two terroristgroups might pose these questions to the QA system: Is there any connecting evidence, communication,
+orcontactbetweenthesetwoterroristgroupsortheirbest-knownmembers?,Isthereanyevidencethattheyare planning a combined action?, And if so, when and where?. The QA system should be able to acceptquestions whose answers will be based on decisions carried out by the system. In order to provide suchanswers, information obtained from diﬀerent sources would need to be synthesized, and it should thenbepresentedtotheuserinanappropriateform.Moreover,thesystemshouldbeabletoutilizepowerfulmultimedia navigation tools that will allow it to check all possible information sources (answer supportinformation,interpretations,summaries,anddecisions)andtofacilitateuser—systeminteraction.
+Theseconddocumentdeﬁnedatight5-yearresearchroadmapintendedtoaddressandmakepossible
+the vision for research envisaged in the ﬁrst document. It included detailed research challenges that theQA community should confront in the near future such as interactive QA, integration of informationfromdiﬀerentsources,multilingualinformationprocessing,oranswergenerationandpresentation.ThisagendawassoambitiousthatitwouldeﬀectivelysolveallaspectsofQAby2005.However,mostoftheseissuesstillremainunsolved.
+In this chapter, we will cover the current state of the art in QA. Research in open-domain QA has
+mainly focused on processing questions requiring simple entities or properties as answers since timesavings for these so-called factualorfactoidquestions are very high. Furthermore, validating answers
+to these questions becomes an easy task that allows deﬁning and establishing evaluation frameworkswithouttoomuchdiﬃculty.Besidesfactoidquestions,currentQAresearchalsoaddressesotherkindsofquestionssuchasdeﬁnitions,procedures,relations,oropinions.
+Inthiscontext,researchinopen-domainQAhasbeenimpulsedbyfruitfulcollaborationbetweentwo
+diﬀerent but complementary research ﬁelds: IR and Natural Language Processing (NLP). Not in vain,QAactivityreliesmainlyonacombinationofIRandNLPtechniquestryingtomatchanaturallanguagequerytotextsnippetslocatedandextractedfromhugetextcollections.
+This chapter is intended to serve readers as a basic but up-to-date guide in their diving into the
+ﬁeld of open-domain QA. Starting with a brief historical approach to the ﬁeld, it introduces thebasic principles and techniques of open-domain QA and its evaluation, and summarizes the eﬀortsaccomplishedinthemainresearchlinescurrentlyopeninrestricted-domainQA,MultilingualQA,andcomplexQA.
+The work is organized as follows: Section 20.2 presents the historical context in which the research
+of QA technology is being developed and depicts the diﬀerent directions the work on QA is following.Section 20.3 introduces the main characteristics of current QA systems and details some of the mostsalientmethodologiesusedinthevariousstagesofthesesystems.Section20.4analyzesproblemsrelatedto the evaluation of these kinds of systems and reviews the progress that has been achieved as a resultof the TREC evaluations and other evaluation frameworks. Section 20.5 focuses on the issues that arisefrom asking questions in a language and searching for answers on documents of a diﬀerent language.
+
+QuestionAnswering 487
+Section20.6mentionsthekeyaspectsofhandlingdocumentsofrestricteddomains.Finally,Section20.7presentscurrentmainlinesofresearchinthisﬁeld.
+20.2 Historical Context
+Research in QA is not new. In 1965, Simmons performed the ﬁrst survey of the ﬁeld, reviewing theinitialattemptsatperformingQAtasksintheEnglishlanguage(Simmons1965). Thissurveypresentedand discussed the basic principles and methods of operation for a wide range of QA systems, includingfront-endstostructureddatabasesandsystemsthatattemptedtoﬁndanswersfromordinaryEnglishtext.
+Includingtheseearlyattempts,researchinQAhasdevelopedfromtwodiﬀerentscientiﬁcperspectives,
+artiﬁcialintelligence(AI)andIR.
+Work in QA since the early stages of AI has led to systems that respond to questions using the
+knowledge encoded in databases as an information source. Obviously, these systems can only provideanswers concerning the information previously encoded in the database. The beneﬁt of this approachis that having a conceptual model of the application domain represented in the database structureallows the use of advanced techniques such as theorem proving and deep reasoning in order to addresscomplexinformationneeds.
+∗LUNAR(Woods1971)andBASEBALL(Greenetal.1961)arewell-known
+examples of NLIDB. These interfaces understand questions expressed in natural language and retrievetherequestedinformationbytranslatinguserquestionsintoaseriesofdatabase-understandablequeries.Ontheotherhand,QUALM(Lehnert1977)answeredquestionsfromaknowledgebasepreviouslybuiltfromtextualdocuments.
+In the late 1990s we witnessed a surge of activity in the area from the perspective of IR, initiated
+by the QA track of TREC
+†in 1999 (Voorhees 2001b). Since then, increasingly powerful systems have
+participated in TREC and other evaluation fora such as CLEF‡(Vallin et al. 2005) and NTCIR§(Kando
+2005). From this perspective, QA focuses on ﬁnding text excerpts that contain the answer within hugecollectionsofdocuments.ThetaskssetintheseconferenceshavemoldedaspeciﬁckindofQAthatiseasytoevaluateandthatfocusesonthecombinationofIRandNLPtechniquesthataregenerallyindependentoftheapplicationdomain.Inotherwords,thisresearchfocusesontext-based open-domainQA .
+Inparticular,MURAX(Kupiec1993)isconsideredtheﬁrstopen-domainQAsystemsinceitcombined
+traditionalIRtechniqueswithshallowNLPtoobtainwhatitsauthorcharacterizedashigh-precisionIR.Using the Grolier encyclopedia (Grolier 1990) as a document database, the MURAX system acts as aninterface between a traditional IR system and the user. MURAX understands and interprets the user’squestions, generates queries to an IR system for the localization of those extracts in the encyclopediathatarelikelytocontaintheexpectedanswers,andﬁnally,appliesbasicNLPtechniques(part-of-speechtagging and comparison of syntactic patterns) over these selected text fragments in order to locate andextracttheexpectedanswers.
+Both AI and IR trends have developed in parallel and represent the opposite ends of a spectrum
+connectingwhatwemightlabelas structuredknowledge-based andfreetext-based QA.Whilestructured
+knowledge-based QA systems are well adapted to applications managing complex queries in a verystructured information environment, the kind of research developed in TREC, CLEF, and NTCIR is
+∗IntheQAliteratureitisdiﬃculttoﬁndaconsensustodeﬁnewhatdiﬀerentiatessimplequestionsfromcomplexquestions.
+In the context of this chapter a question is considered to be simpleif the answer is a piece of information that has been
+locatedandretrieveddirectlyasitappearsintheinformationsource.Ontheotherhand,aquestionisconsidered complex
+if its answer needs some kind of elaboration. For instance, pieces of information may come from multiple documents indiﬀerentcorporaandtheyneedtobemergedorpossiblysummarizedtobuildtherequiredanswer.
+†TextREtrievalConference(http://trec.nist.gov/).
+‡CrossLanguageEvaluationForum(http://clef.iei.pi.cnr.it/).
+§NII-NACSISTestCollectionforIRSystems(http://research.nii.ac.jp/ntcir/).
+
+488 HandbookofNaturalLanguageProcessing
+probably more well suited to broad-purpose generic applications dealing with simple factual questionssuchasWeb-basedQA.
+Theevolutionofresearchinopen-domainQAhasbeenmainlydirectedbytheTRECQAevaluations.
+Theseevaluationsinitiallyfocusedonfactoidquestions,thatis,questionsrequiringsimplefacts,entities,or properties easily expressed in few words (e.g., When did the Jurassic Period end? orWhere is the Taj
+Mahal?). Movingfurther, TRECevaluationshaveadditionalquestiontypessuchasdeﬁnitionquestions
+(WhoisPicasso? ),listquestions(WhatmoviesdidJamesDeanappearin? ),andrelationshipquestionsthat
+try to ﬁnd relations between entities (What is Suresh Premachandran’s connection to the Tamil Tigers? ).
+Finally, TREC QA evaluations included the complex interactive QA task aiming at investigating howsystems could interact with users with the objective of guiding them to the information they need incomplexcontexts.
+The TREC evaluations ended in 2007 but interest in QA has fostered other evaluation fora. The Text
+AnalysisConference(TAC)
+∗continuestheTRECevaluationswithanewtrackfortheevaluationofQA
+systemswithshortseriesofopinionquestions.
+NTCIRandCLEFdevelopTREC-likeQAevaluationsonAsianandEuropeanlanguagesrespectively.
+They promote QA in languages diﬀerent from English by introducing monolingual and cross-lingualtasks. For monolingual tasks, documents andquestions areinthesamelanguage. Incross-lingual tasks,incontrast,documentsandquestionsareindiﬀerentlanguages.Althoughtheseevaluationsstillmaintaintheiroriginalorientation,existingtasksarecontinuouslyevolvingandnewtasksappear.Amongothers,itisworthtoemphasizetheAnswerValidationExercise(AVE)andtheQuestionAnsweringoverspeechtranscriptions(QAST)tracksatCLEF,andtheMulti-lingualOpinionAnalysisTask(MOAT)atNTCIR.
+20.3 A Generic Question-Answering System
+In this section we will describe the generic architecture of factoid question-answering systems based onfreetext.Mostsystemsusethefollowingcomponents:
+•Questionanalysis
+•Documentorpassageselection
+•Answerextraction
+Thesecomponentsallworktogether,processingquestionsanddocumentsatdiﬀerentlevels,untilthe
+ﬁnal answer is obtained. Figure 20.1 illustrates graphically the interaction and data ﬂow between thesecomponents.
+20.3.1 Question Analysis
+In the question analysis module, questions posed to the system are processed to detect and extractinformation that might be useful to the other modules. This is carried out by two main tasks: (1) aclassiﬁcation of the question to determine the type of information that the question expects as answer(a date, a quantity, etc.), and (2) the selection of those elements that will allow the system to locatethe documents that are likely to contain the answer. This initial process is very important since theperformanceoftheremainingmodules(andbyextension,oftheentiresystem)willdependgreatlyonthequality of the information extracted from the question. In fact, faulty derivation of the expected answertypeisthemainsourceoferrorsincurrentQAsystems.Forexample,Moldovanetal.(2003,p.143)foundthat36.4%oftheerrorsintheirsystemwasduetothewrongderivationoftheexpectedanswertype.
+∗http://www.nist.gov/tac/
+
+QuestionAnswering 489
+Question
+Question analysis
+Document or 
+passage
+selection
+Answer
+extractionRelevant
+documents or
+passages
+Answers
+FIGURE20.1 GenericQAsystemarchitecture.
+20.3.1.1 Question Classiﬁcation
+An important part of question analysis is the classiﬁcationof the question into categories thatrepresent
+thetypeofanswerexpected.Thequestion InwhatyeardidIrelandelectitsﬁrstfemalepresident? seeksa
+dateasananswer,forexample,whereasthequestion HowfarisYaroslavlfromMoscow? seeksadistance
+asananswer.Theclassiﬁcationoftheanswertypeinsomequestionsiscomplicatedbythefactthatthere
+mightbeambiguityinthetypeofexpectedanswer.Thus,thequestion Howlongdoesittaketotravelfrom
+TokyotoNiigata? canaccepteitheratimeoradistanceasananswer.
+Question and answer types are categories in taxonomies. One of the ﬁrst taxonomies was used in
+the Lasso system (Moldovan et al. 1999) and deﬁnes a two-level hierarchy of questions. Each type of
+questionindicatesasetofpossibleanswertypes(Table20.1).Lasso’staxonomywasbasedonthesortof
+news-related domain of TREC 1999. Other systems use more complex hierarchies, such as Breck et al.
+(1999)whousesthetaxonomyintroducedbyLiandRoth(2002)withaﬁnalsetofover50answertypes
+includingtypessuchascolors,religions,andmusicalinstruments.TheISItaxonomy(Hovyetal.2002)is
+anotherexampleofalargetaxonomywith140diﬀerentanswertypes,whichwasusedbytheWebclopedia
+QAsystem(Hovyetal.2000).
+The simplest method to classify questions is the use of a set of rules that map patterns of questions
+intoquestiontypes.Thepatternsareexpressedbymeansofregularexpressionsonthesurfaceform.The
+identiﬁcationoftheanswertypeisusuallyperformedbyanalyzingtheinterrogativetermsofthequestion
+(wh-terms). For example, given the question Where is the Taj Mahal? the termwhereindicates that the
+question is looking for a location or a place. This approach may give acceptable results with little eﬀort
+foracoarse-grainedquestiontaxonomy.Furthermore,thehuman-producedclassiﬁcationrulesareeasy
+toreadbyhumans, thusprovidinghelpintheunderstandingoftheclassiﬁcationprocess. However, the
+development of such rules can be very time-consuming when the question taxonomy is ﬁne-grained or
+when very high accuracy is required. Furthermore, a change in the domain of application will typically
+requireanewsetofclassiﬁcationrulesthatneedtobebuiltalmostfromscratch.
+
+490 HandbookofNaturalLanguageProcessing
+TABLE20.1 TheQuestionTaxonomyUsedbyLassoinTREC1999
+Class Subclass ExpectedAnswerType
+What basicwhat MONEY/NUMBER/DEFINITION/TITLE/NNP/
+UNDEFINED
+what-who PERSON/ORGANIZATION
+what-when DATE
+what-where LOCATION
+Who PERSON/ORGANIZATION
+How basichow MANNER
+how-many NUMBER
+how-long TIME/DISTANCE
+how-much MONEY/PRICE
+how-much- <modiﬁer> UNDEFINED
+how-far DISTANCE
+how-tall NUMBER
+how-rich UNDEFINED
+how-large NUMBER
+Where LOCATION
+When DATE
+Which which-who PERSON
+which-where LOCATION
+which-when DATE
+which-what NNP/ORGANIZATION
+Name name-who PERSON/ORGANIZATION
+name-when LOCATION
+name-what TITLE/NNP
+Why REASON
+Whom PERSON/ORGANIZATION
+Analternativeapproachtoquestionclassiﬁcationistheuseofmachine-learningtechniques.Withthis
+approach, question classiﬁcation is treated as a “standard” classiﬁcation task that can be tackled withstatistical packages of classiﬁcation. Provided that there is a corpus of questions available together withannotationsindicatingthecorrectclassofeachquestion,thisapproachisfairlystraightforwardonceasetof features has been identiﬁed. Thus, Li and Roth (2002, 2006) used the SNoW learning method pairedwith a two-level classiﬁcation system that ﬁrst performed a classiﬁcation on a coarse-grained taxonomyand then was ﬁne-tuned by classiﬁcation on a ﬁne-grained taxonomy. Their question taxonomy andtrainingcorpusarefreelyavailable.
+∗Ananalysisofseveralmachine-learningmethodshasbeendescribed
+byZhangandLee(2003).Theauthorscomparedtheuseofdecisiontrees,nearestneighbors,naïveBayes,and support vector machines (SVM). SVM obtained better results than the other methods, other thingsbeingequal.
+A key step in the use of machine learning methods is the selection of features that represent the
+questions. Li and Roth (2002), for example, used a varied range of features including words, PoStags,chunks(nonoverlappingphrases),namedentities,headchunks(theﬁrstnounchunkinasentence),semanticallyrelatedwords(wordsthatoftenoccurwithaspeciﬁcquestionclass),andn-grams(sequencesof n words). The study by Zhang and Lee (2003) incorporated features based on syntactic information.Thesefeaturesrepresentedtreefragmentsofasyntactictreeanditssub-trees,creatingahighdimensionalspacethatwasprocessedbySVMmethods. Theresultingclassiﬁerproducedanaccuracyof90%,whichisslightlybetterthantheirmethodusingn-graminformation(87.4%).
+∗http://l2r.cs.uiuc.edu/∼cogcomp/Data/QA/QC/
+
+QuestionAnswering 491
+20.3.1.2 Query GenerationQuestion-analysisalsoextractstheinformationinthequestionthatallowsthegenerationofqueriesthat,processedbyanIRsystem,willfacilitatetheselectionoftheanswer-bearingtextextractsfromtheentiredocumentcollection.Thesequeriesarecommonlyobtainedusingoneoftwodiﬀerentprocesses: keyword
+selectionandanswer-patterngeneration .
+Keywordselectionconsistsofselectingthosequestiontermswhoseappearanceinatextindicatesthe
+existenceofacandidateanswerinthesurroundingtext.Forthequestion WhatcountrybordersSpainto
+thenorth?,thekeywordgroupwouldbeformedbytheterms borders,north,andSpain.
+Answerpatterngeneration,ontheotherhand,attemptsamoreelaborateprocess.Inthiscase,queries
+constituteoneorseveralcombinationsofquestionterms,insuchawaythateachresultingqueryexpressesa form in which the answer might be found. The following possible queries could be derived from theprevious example question: X borders Spain to the north ,Xis the country that shares its northern border
+with Spain ,The northern border of Spain is X,...,where Xrefers to the expected answer. In this case,
+the IR system would locate verbatim text extracts that contain any of the candidate answer expressionsassociatedwitheachquestiontype(Hermjacobetal.2002,SoubbotinandSoubbotin2002).Thegeneratedqueryexpressionsdonotneedtobelinguisticallyperfect, sincetheyarefedtoanIRsystemthatusuallytreatstheexpressionsasbagsofwords.
+These strategies, keyword generation and answer-pattern generation, are not mutually exclusive and
+someapproachescombinebothofthem.BothBrilletal.(2001)andLinetal.(2002),forexample,useverysimple answer patterns that generate search queries that might or might not be linguistically accurate.Those that would not be accurate would retrieve few documents and therefore their negative impact isrelativelysmall.
+Allapproachesdescribedhereareabletoprocessquestionsformulatedinfreenaturallanguage.There
+are also examples of systems that constrain the input language so that the questions are expressed bysubsetsofnaturallanguageswitharestrictedvocabularyandsyntax(controlledlanguages).Moreover,inseveral cases, users are required to express their queries by completing ad hoctemplates (Buchholz and
+Daelemans 2001). In both cases, users’ expressiveness is restricted in the service of easier and probablymoreaccuratequestioninterpretation.
+20.3.2 Document or Passage Selection
+The document or passage selection module uses part of the information extracted during the questionanalysismoduletoperformaninitialselectionofanswer-bearingcandidatetexts.Giventhegreatvolumeofdocumentsthesesystemsareexpectedtomanage,andthelimitationsimposedbyareasonableresponsetime, this task is carried out using IR or paragraph retrieval (PR) systems. According to Roberts andGaizauskas(2004),thereasonforusingIRtechniquesinsteadofNLPtechniquesinthisstageisthespeedofprocessing. Thiswaythesystemreducestheentiredocumentdatabasetoasmallsubsetthatincludesthosetextsthatarelikelytocontaintherequiredanswer.
+After the documents or paragraphs are extracted, a ﬁltering component is usually introduced. This
+ﬁltering component consults the expected answer type returned by the question analysis module, andﬁltersoutorpenalizesthosetextfragmentsthatdonotcontaininstancesoftheexpectedanswertype.
+Passage-orientedapproachesarepreferredtodocument-orientedones.Asimpletechniqueofpassage
+retrieval consists of using a sliding window of ﬁxed size and retrieving the most relevant paragraphs bymeansoftraditionalIRapproaches.
+AmongtheIRapproachesused, rankedmethodsaremostcommonlyemployed, eventhoughseveral
+authors argue that the characteristics of Boolean engines make them more suitable for QA purposes(Moldovanetal.1999,Tellexetal.2003).
+The number of documents selected is usually predetermined and depends on the retrieval strategies
+applied. Although several researchers have directed their research toward minimizing the number of
+
+492 HandbookofNaturalLanguageProcessing
+450
+400
+350
+300
+250
+200
+150
+100
+50
+Number of docs preselectedNumber of correct answers
+0
+1
+28
+55
+82
+109
+136
+163
+190
+217
+244
+271
+298
+325
+352
+379
+406
+433
+460
+487
+FIGURE 20.2 Number of TREC 2003 questions that have an answer in the preselected documents using TREC’s
+searchengine.Thetotalnumberofquestionswas413.
+selected documents (Ferret et al. 2000), this issue still needs to be addressed. Figure 20.2 shows the
+numberofquestionsthatcanbeansweredbythepreselecteddocumentsinthestudypresentedbyMollá
+(2004), who compromised on a number of 50 documents given the little improvement obtained with
+largernumbersofpreselecteddocuments.
+Finally, since the same concepts can be expressed using diﬀerent—but equivalent—terms, forms,
+and expressions, question keywords are usually expanded using morphological, lexical, or semantic
+alternations. This process permits the retrieval of text extracts that contain key concepts that are not
+expressed exactly as they appear in the question. Such expansion may be accomplished using statistical
+techniques (Yang and Chua 2002) or semantic knowledge bases such as WordNet (Vicedo 2002). As
+reported by Moldovan et al. (2003), this issue is very important since wrong question expansion is the
+secondmostprevalentcauseoferrorsintheperformanceofQAsystems.
+When NLP techniques are used, they are typically incorporated at the indexing stage. For example,
+Chu-Carrolletal.(2002)includeNEinformationintheindex.Theirsystempreprocessesalldocuments
+in the document collection with NE taggers and associates respective semantic classes to all the entities
+found.Theresultingsemanticclassesareallindexedtogetherwiththedocuments,therebyfacilitatingthe
+retrievalofonlythosedocumentextractscontainingentitieswhosesemanticclassesmatchtheexpected
+answersemanticclasses.
+A reduced number of systems incorporate word relations during the indexing stage. For example,
+Litkowski (2000) indexes on word pairs instead of on isolated words. More recently, Pizzato and Mollá
+(2008) produced an indexing system that directly incorporates word dependencies and have evaluated
+theuseofsyntacticdependencyandsemanticrolelabelinginformation.Theyobservedanimprovement
+ofresultswhensemanticrolelabelinginformationwasaddedtotheindex.
+20.3.3 Answer Extraction
+Theanswerextractionmodulecarriesoutadetailedanalysisoftherelevanttextsselectedbythedocument-
+selection module in order to locate and extract the answer. To achieve this, the representation of the
+question and therepresentationof relevant textsare matchedagainsteachother in order to obtain a set
+of candidateanswers. Thesecandidateanswers are subsequently rankedaccording to theirlikelihood of
+correctnessandtheyarepresentedtotheuser.
+Providedthatonehasanamedentityrecognizer,thesimplestmethodtobuildalistofanswercandidates
+istocollectallthenamedentitiesappearinginthepreselectedpassagesandremovethosenamedentities
+
+QuestionAnswering 493
+thatarenotcompatiblewiththetypeoftheexpectedanswer. Sincetheanswerisneverexplicitlysaidinthequestion,thosenamedentitiesthatappearinthequestionareremovedaswell.
+Methods to rank the list of answer candidates are as numerous as the number of QA systems. These
+methodsaretypicallyacombinationofthefollowingtypesofmethods:
+Similarity: Rankhigheranswercandidateswhichareinacontextthatissimilartothequestion.
+Popularity: Rankhigheranswercandidatesthatappearmorefrequently.
+Patterns: Rankhigheranswercandidatesthatmatchquestion-speciﬁcpatterns.
+Answervalidation: Rankhigheranswercandidatesthathaveacceptablevalues.
+20.3.3.1 Similarity with the QuestionIfasentenceisverysimilartothequestionanditcontainsastringthatiscompatiblewiththetypeoftheexpectedanswer,thenitisreasonabletoconcludethattheanswercandidateisthecorrectanswer.
+To determine the similarity of two sentences one can compute the number of words in common, or
+onecanusemorecomplexsimilaritymeasuresbasedonsyntacticorsemanticinformation.
+Toaccountforthepossibilityofvariationsinwording,somesystemsuseadditionallinguisticresources
+suchasWordNet(Miller1995)anddeterminewhethertwowordsarerelatedbymeansofsynonymyorotherrelations.
+The problem of detecting whether two sentences are similar is related to the problem of detecting
+paraphrases. For this reason, some systems have developed rules that encode paraphrase equivalents(Boumaetal.2005).Othersystemshavedevelopedmethodsto learnparaphrasingrules(LinandPantel
+2001).
+Other approaches compare syntactic information, taking into account the similarity between the
+syntactic structures of the question and the candidate-answer-bearing sentences, which is then givengreatweightintheﬁnal-answer-extractionprocess(Oardetal.1999,Leeetal.2001).
+Some systems go deeper in the use of linguistic information and attempt to use logical forms. The
+university of Pisa (Attardi et al. 2002) and CLR (Litkowski 2002) systems use the concept of semantic
+triplesto represent this information. A semantic triple is formed by a discourse entity, its semantic role
+inthetext,andthetermtowhichthisentityisrelated.Questionsandrelevantsentencesarerepresentedusingthisnotation.Theanswer-extractionprocessisaccomplishedbycomparingandmeasuringthelevelofrelationmatchingbetweenthequestionsemanticstructuresandthetargetsentencesrepresentation.
+Logicalformstructurescanbeexpressedasgraphstructures.ThisledMacquarieUniversity’sCenterfor
+Language Technology to compare questions and sentences by ﬁnding the minimum common subgraphoftheircorrespondinggraphs(Mollá2006).
+Although they are scarce, other systems delve even further into the natural language analysis by
+applying contextual analysis techniques. Such systems incorporate common world knowledge that isassociated to inferential mechanisms that support the answer-extraction process. Thus, The Universityof Sheﬃeld (Greenwood et al. 2002) uses logical formulae (LFs) to represent questions and candidate-answer-bearing passages and incorporates these representations in a discourse model. The discoursemodel is a specialization of a semantic net that encodes the common world knowledge and is enrichedwiththespeciﬁcknowledgecodedintheLFsofthequestionandcandidatepassages.20.3.3.2 Answer PopularityInabalancedcorpus,itisreasonabletoassumethatthenumberoftimesastringisfoundasthepossibleanswer to a given sentence is directly related to the likelihood of that string being the answer. Thus, asimplemethodtorankanswercandidatesistocounthowmanytimestheyappear.
+However, it is necessary to determine if two strings are actually referring to the same entity. This is
+whathasbeencalled answermerging.Thetaskofdetectingvariationsofananswerisrelatedtothatofthe
+
+494 HandbookofNaturalLanguageProcessing
+co-reference task in information extraction (MUC-6 1996, MUC-7 1998) and methods similar to thoseusedinMUChavebeenappliedtothetaskofanswermerging.
+A method that has gained popularity exploits the availability of increasingly large electronic data,
+notablyviatheWorldWideWeb.Suchamountofinformationproducesasituationof dataredundancy ,
+wherebytheanswertoaquestionmayappearalargenumberoftimesandinvariouscontexts.Methodsof data redundancy are based on the assumption that, as the number of variations of manners to justifyananswergrows,thelikelihoodofﬁndingasimplejustiﬁcationincreases.Forexample,Brilletal.(2001)noted that the ﬁrst sentence is easier to detect than the second as containing the answer to the sentenceWhokilledAbrahamLincoln?
+1.JohnWilkesBoothkilledAbrahamLincoln.
+2.John Wilkes Booth is perhaps America’s most infamous assassin. He is best known for having ﬁredthebulletthatendedAbrahamLincoln’slife.
+The method developed by Brill et al. (2001) exploits this principle of data redundancy to produce a
+system that uses very limited linguistic information and very few rules, whereas still producing resultsbetter than the average (their best run ranked ninth in TREC 2001). They achieved this by convertingeachquestionintoaseriesofqueriestotheWWW,collectingsnippetsoftextthatareclosetothequerywords,andtaggingstringsthatappearfrequentlyinthesnippetsaspossibleanswers.
+InTRECandotherenvironmentswherethereisaﬁxeddocumentsetwheretosearchtheanswers,the
+Internet is used to carry out a parallel process of answer-search that allows the gathering of additionalinformation in order to either expand the original question (Attardi et al. 2002, Yang and Chua 2002),ortoobtainredundancydataforcandidateanswersandthusvalidatetheanswersthatareobtainedfromthe system document collection (Clarke et al. 2002, Chu-Carroll et al. 2002, Magnini et al. 2002). Thistendency isincreasing, sincetheexperiments developed thus far havedemonstrated thatusing theWebthiswaybringsaboutaremarkableimprovementinsystemperformance.
+DataredundancybecomesakeytooltoﬁndtheanswerinWeb-basedQAsystemswherethesheersize
+ofthedataavailablecancompensateforitsirregularqualityandconsistency.20.3.3.3 Patterns that Resemble AnswersA popular method to extract the exact answer is to develop a set of patterns indicating typical waysof answering speciﬁc questions. With a number of patterns large enough, it is theoretically possible todispensewithothermethods.
+AsystemthatsuccessfullyusedanswerpatternswasdevelopedbyInsigthSoft(SoubbotinandSoubbotin
+2002). The InsightSoft approach consists of the identiﬁcation and construction of a series of patterns(indicative patterns) that depend on the question type. An indicative pattern is deﬁned as a sequence,or certain combination, of characters, punctuation marks, spaces, digits, or words. These patterns areobtained manually by studying the expressions that are usually answers to certain types of questions.For example, the string “Mozart (1756–1791) ” contains the answers to questions related to the dates of
+Mozart’sbirthanddeath.Fromthisobservation,onecanbuildthefollowingpattern:
+“[wordwith1stletterinuppercase;parenthesis;fourdigits;script;fourdigits;parenthesis] ”
+Each one of the patterns is manually assigned a certainty value. This way, the system can choose
+among several candidate answers, depending on the reliability level of each matched pattern to aquestion.
+Someresearchershavedevelopedpatternsbasedondeeperlinguisticinformation.Forexample,Kwok
+et al. (2001) uses transformation grammars, and Jijkoun et al. (2004) combines surface patterns withsyntactic patterns to extract relevant information. Mollá and Gardiner (2004) develops a small set ofrulesbasedonpatternsoflogicalforms.Aproblemencounteredwiththismethod,however,wasthatthe
+
+QuestionAnswering 495
+TABLE20.2 PatternsforQuestionsofType
+WhenWasNAMEborn?
+Precision Rule
+1.0 <NAME>( <ANSWER> - )
+0.85 <NAME> was born on <ANSWER>,
+0.6 <NAME> was born in <ANSWER>
+0.59 <NAME> was born <ANSWER>
+0.53 <ANSWER> <NAME> was born
+0.50 - <NAME> ( <ANSWER>
+0.36 <NAME> ( <ANSWER> -
+processofmanuallydevelopingthepatternswasverytime-consuming.Sincethepatternsaredependentofthedomainofthetext,thisapproachhasthereforeproblemsofportabilitytootherdomainsorgenres.
+Several systems have experimented with the use of machine learning techniques to avoid the burden
+ofhandcraftingthequestion-answerrules.RavichandranandHovy(2002)learnedrulesbasedonsimplesurfacepatterns.Giventhatsurfacepatternsignoremuchlinguisticinformation,itisnecessarytogatheralargecorpusofquestionstogetherwiththeiranswersandsentencescontainingtheanswers.Toobtainsuch a corpus, Ravichandran and Hovy (2002) mine the Web to gather the relevant data. The generalprocessisrelativelysimpleandisbasedontheassumptionthatspeciﬁcpatternsofquestionsareansweredwithspeciﬁcpatternsofanswers.Thus,toﬁndsentencesansweringquestionsfollowingthepattern When
+wasXborn?,asetofpairs(X ,Answer)isgatheredfromknownquestion/answerpairs,andaseriesofWeb
+searchesisdonewiththesepairs.Forexample,asearchwiththeterms Gandhiand1869wouldbedone.
+Since the variable element in the question (Gandhi) is known together with the answer (1869 ), the text
+strings found containing these terms are converted into patterns by replacing the terms into variables.Oncethepatternsarefound,theirprecisioniscomputedbyapplyingnewWebsearches,thistimewithouttheanswer,andcheckinghowofteneachpatternsucceedsinﬁndingtheanswer.ByapplyingsuchmethodpatternslikethoseofTable20.2canbelearnt.
+Othermethodslearnpatternsbasedondeeperlinguisticinformation.Forexample,Shenetal.(2005)
+developamethodofextractingdependencypathsconnectinganswerswithwordsfoundinthequestion.Onasimilarline,Mollá(2006)developamethodtoproducegraphrepresentationsofthelogicalcontentsof sentences, and then automatically learn the path between question words and their correspondinganswers by applying algorithms based on graphs. This approach requires the use of a corpus annotatedwiththecorrectanswers.Sincethepatternslearnedaremoreprecisethanpatternsbasedonsurfacetext,thetrainingcorpuscanbemuchsmallerthanthecorpususedbyRavichandranandHovy(2002).
+Finally,therearesystemssuchastheonebyHermjacobetal.(2002),whocombineautomaticlearning
+techniqueswithamanualreviewoftheresultingpatterns.20.3.3.4 Answer ValidationAnswer validation is another method that has been used to determine if an answer candidate is a goodanswer.Amethodofanswervalidationthatwehaveseenalreadyisthatofdeterminingwhethertheanswerisanamedentitycompatiblewiththeexpectedanswertype.Butwithinananswertypeitispossibletodomore detailed validation checking. For example, negative numbers cannot be used to answer questionsaboutdistancesorages.Inthissectionwewillfocusonmethodsofanswervalidationbasedonlogic.
+Methods using logic convert the question and the sentence containing the answer into logical forms
+that are passed on to a logic prover to determine whether the answer sentence can prove the question.ThesemethodsareanevolutionofearlyQAsystemsthatwereentirelybasedonlogictoﬁndtheanswerto a question. For example, Green (1969) envisaged the use of techniques of resolution to ﬁnd answerstoaquestion. InGreen’ssystem, thecompleteinformationwassupposedtobestoredasasetofaxiomssuchas:
+
+496 HandbookofNaturalLanguageProcessing
+1.SmithisamanMAN(Smith)
+2.Manisananimal∀xMAN(x)=⇒ANIMAL(x )
+Thequestion,inturn,wasconvertedintoapropositionthatneedstobeproved:
+•Whoisananimal??∃yANIMAL(y )
+Toprovethequestion, Greenproposedtheuseofresolution, wherebythenegationofthequestionis
+introducedandthelogicproverneedstoﬁndacontradictioninordertoprovethequestion.Figure20.3showsthestepsrequiredtoprovetheabovequestion.
+Current QA systems produce the axioms automatically from the sentence containing the answer.
+To achieve this, expressiveness and correctness of the resulting logical forms need to be sacriﬁced toensureresultsinshorttime.Thus,Harabagiuetal.(2000)andMolláandGardiner(2004)useﬂatlogicalforms that are inspired on Hobb’s semantic notation (Hobbs et al. 1993), but without attempting tocover all the semantic nuances of sentences. Leidner et al. (2003)use an enriched form of the DiscourseRepresentation Theory (Kamp and Reyle 1993) that combines semantic information with syntactic andsortalinformation,whereasstillsimplifyingsomeaspectsofitsrepresentationtomakeitsproductionandhandlingcomputationallytractable.
+The axioms need to be extended with further information that is generally assumed but rarely said
+explicitlyinthetext.Thisiswhathasbeencalledtheprocessof abduction (Hobbsetal.1993).Figure20.4
+illustrates an example where abduction is used to prove a question (Harabagiu et al. 2000). To avoidthe use of spurious data, the axioms to abduce are directly connected to the speciﬁc information of thequestionandanswersentencesuchas(Moldovanetal.2003):
+We want to prove:
+1. MAN(Smith)2.∀x¬MAN( x)∨ANIMAL(x)
+3.∀y¬ANIMAL(y) ∨ANSW(y)
+From (1) and (2) we can deduce:
+4. ANIMAL(Smith)
+From (3) and (4) we can deduce the answer:
+5. ANSW(Smith)
+FIGURE20.3 Methodofresolution.
+Question Who was the ﬁrst Russian astronaut to walk in space?
+ﬁrst(x) ∧astronaut(x) ∧Russian(x) ∧space(z) ∧walk(y z x) ∧HUMAN(x)
+Answer The broad-shouldered but paunchy Leonov, who in 1965 became the ﬁrst man to walk
+in space, signed autographspaunchy(y) ∧shouldered(e1 y x) ∧broad(x) ∧Leonov(x) ∧ﬁrst(z) ∧man(z) ∧space(t) ∧
+walk(e2 t z) ∧became(e3 z u x) . . . ∧HUMAN(x)
+Assumption Leonov is a Russian astronaut
+Leonov(x) ∧Russian(x) ∧astronaut(x)
+FIGURE20.4 AnexampleofabductionforQA.
+
+QuestionAnswering 497
+Linguisticinformation: Compoundnouns,conjunctions,appositions,etc.
+Namedentities: Informationlinkinginstancesofnamedentitieswiththeirnamedentitytypes
+Lexicalresources: WordNetglosses,lexicalchains
+20.3.4 Variations of the General Architecture
+The general problem of building a QA system can be viewed as a problem of software engineeringsince the various modules need to be executed in the most eﬃcient manner to improve speed andaccuracy. There are numerous variations of the general architecture described above, but generally theyarereducedtotwotypes:introductionoffeedbackloops,andparallelization.20.3.4.1 Feedback LoopsThegeneralstrategytoQAistoapplyasequenceofﬁlterstograduallyreducetheamountofdata.Eachﬁlterisincreasinglysophisticated,untilﬁnallythelastﬁlterisabletodetectandextracttheexactanswer.However,quiteoftensomeoftheintermediateﬁltersareeithertoorestrictiveortoolenient.Iftheﬁltersaretoorestrictive,toomanyanswercandidatesmaybeﬁlteredout.However,iftheﬁltersaretoolenient,thelatestﬁltersareﬂoodedwithtoomuch(noisy)dataandtheyareunabletoreturnananswerwithinanacceptabletimeframe.
+By introducing feedback loops, the intermediate ﬁlters can automatically adjust their parameters and
+provide an optimal amount of information. This is the approach followed by Harabagiu et al. (2000),whichusedthreefeedbackloops:
+1. IfthePRcomponent returns anumber of documents outside therangeof acceptabledocuments,
+thenadjusttheinitialdocumentretrievalsearchquerybydeletingsearchtermsorbyintroducingadditionalterms.
+2. If the logical forms of the question and the answer sentence are not compatible (e.g., by using
+uniﬁcationmethods),theninstructthedocumentretrievalmoduletoincludelexicalalternations.
+3. Iftheanswervalidationmodulefailstovalidateallanswercandidates,theninstructthedocument
+retrievalmoduletoincludeWordNet-basedsemanticalternations.
+20.3.4.2 ParallelismGiven the possibility of trying alternative methods in the various modules of the general architecture,severalresearchershaveproducedsystemsthatcontainmodulesthatworkinparalleltoproduceinforma-tionataspeciﬁclevel,andthencombinetheoutputs.Forexample,Brilletal.(2001)developedasystemthat used two independent QA systems in parallel and combined their answers in a ﬁnal result that wasreturnedtotheuser.Themostdiﬃcultaspectofsystemsusingparallelmethodsisthecombinationoftheresultsoftheindependentmodules,sincetheirscoringsystemsarenotnecessarilycompatible.Brilletal.(2001)combinedtheresultsbyapplyingaformulawhoseparameterswereautomaticallylearnt.
+20.4 Evaluation of QA Systems
+Research into open-domain QA systems has fostered a parallel, growing interest in the developmentof techniques for evaluating these kinds of systems. Automatic QA evaluation has been studied from anumber of diﬀerent perspectives such as the use of test collections (Voorhees and Tice 2000), readingcomprehension tests (Hirschman et al. 1999, Charniak et al. 2000), and the application of automatic
+
+498 HandbookofNaturalLanguageProcessing
+systems that evaluate the correction of the answers returned by comparing them with human-proposedanswerstothesamesetofquestions(Brecketal.2000).
+Themostimportanttestcollectionscurrentlyavailablehavebeengeneratedfromthedataandresults
+of the QA evaluations developed at the TREC conferences.
+∗Organized by the U.S. National Institute
+for Standards and Technology (NIST),the TREC conferences centered on various tasksrelated with IR.For each task, an evaluation method and a speciﬁc corpus were deﬁned such that all the participantsshouldprovidetheresultoftheirsystemsonthecommoncorpus.NISTevaluatedthesubmissionsoftheparticipantsandorganizedtheconferenceswheretheresultswerediscussed.
+In 1999, the TREC conference presented the ﬁrst speciﬁc task for the evaluation of QA systems: The
+ﬁrstQAtrack.ForthisexerciseQATrack,coordinatorsdevelopedanevaluationframeworkconstitutedbyatestcollectionandevaluationmetricscapableofmeasuringtheglobalperformanceofasystem.
+Thistestcollectionwascomprisedofacollectionofdocumentsalongwithasetofquestions.Documents
+consisted of 528,000 newspaper/newswire articles and they contained information on a wide variety ofsubjects. On the other hand, 200 test questions were ﬁnally obtained by combining a log of questionssubmitted to the FAQ Finder system (Burke et al. 1997) with queries developed manually by TRECassessors.
+Participants were required to ﬁnd the answers to the question set in the document collection and
+provideTRECorganizationwiththeseanswerstobeevaluated.
+To determine the correct answers, the TREC QA track used the technique of pooling. With this
+technique,alltheanswersreturnedbythesystemsparticipatingandjudgedbyhumanrefereesascorrectareaddedtoapoolofanswers,togetherwithpointerstothedocumentscontainingtheanswersreturnedby the systems. This method does not guarantee that all correct answers are found but it allows thegathering of all correct answers found by state-of-the-art systems. The resulting list of answers is latermadeavailabletogetherwithautomaticevaluationscripts.
+Subsequent TREC QA evaluations evolved according to the changes and additional requirements
+introduced in further TREC QA Tracks. These changes were mainly related to increments in the sizeof the document collection, the introduction of more rigid requirements for answers to be consideredcorrect, and the amount and complexity of the proposed questions. In particular, the introductionof diﬀerent types of questions in these evaluations (factual, list, deﬁnition, etc.) made necessary thedevelopment of speciﬁc evaluation techniques capable of computing the speciﬁc characteristics of eachdiﬀerentquestiontype.
+So as to appreciate the evolution of these annual evaluations, we shall summarize each successive
+introduction to the test and introduce the main evaluation metrics employed. These metrics are alsobeingusedasastandardatotherQAevaluationforasuchasCLEFandNTCIR.
+20.4.1 Evolution of the TREC QA Track
+IntheTREC1999QAtrack,whichistheﬁrstinternationalopen-domainQAevaluation,theperformanceof participant systems was evaluated on 200 hand-made test questions, elaborated such that the answerto every proposed question was guaranteed to be in the document collection. For each question, thesystemswereexpectedtoreturnarankedlistwithamaximumofﬁvepossibletextsnippetscontainingtheanswers.Thereweretwopossiblecategoriesofanswers,dependinguponthemaximumlengthpermittedfortheanswerstring(250or50characters).
+TheTREC2000Conferencehadaconsiderableincreaseinthesizeofthedocumentcollectionaswell
+as in the number of questions to evaluate. At the TREC 2001 Conference the maximum length of theanswer string was limited to 50 characters. In addition, the existence of a correct answer for each testquestionwithinthedocumentcollectionwasnotguaranteed,sothattheonlycorrectanswertoquestions
+∗http://trec.nist.gov
+
+QuestionAnswering 499
+whose answer did not exist in the documents was “no answer”. This change allowed the test to evaluatethe problem of answer validation. This time the questions were real questions that were gathered fromthelogsofsearchengines.
+TheevaluationprocessfromTREC1999toTREC2001wassimilar.Foreachquestion,eachparticipant
+systemwouldreturnarankedlistofﬁvepassagesandapointertothedocumentswherethepassageswerefound. The lists were judged by a panel of assessors appointed by NIST, who would determine whethertheanswerwasfoundinthetext:
+A[document-id,answer-string ]pairwasjudgedcorrectif,intheopinionoftheNISTassessor,
+the answer-string contained an answer to the question, the answer-string was responsive to the
+question, and the document supported the answer. If the answer-string was responsive andcontainedacorrectanswer,butthedocumentdidnotsupporttheanswer,thepairwasjudged“notsupported” (except in TREC 1999 where it was marked correct). Otherwise the pair was judgedincorrect.(Voorhees2001a,p.3)
+Judgingwhetherananswer-stringwasresponsivetotheanswerwasnottrivial.Thejudgesweregiven
+speciﬁc guidelines, such as: Answer strings that contained multiple entities of the same semantic category
+asthecorrectanswerbutdidnotindicatewhichofthoseentitieswastheactualanswer(e.g.,alistofnamesinresponsetoawhoquestion)aretobejudgedasincorrect (Voorhees2001a, p. 3). Buttheﬁnaldecision
+waslefttothejudges.
+AlsoatTREC2001,the listsubtaskwasintroducedthatincludedquestionsthatspeciﬁedanumberof
+answerinstancestoberetrieved( TellmethreemoviesinwhichAntonioBanderasperformed ).
+AtTREC2002,thesystemswereaskedonlytorespondwithasingleanswertoeachquestionandthe
+answers needed to be exact, that is, the answer strings should contain only and exclusively the correct
+answers. The actual criteria used to judge whether an answer-string was an exact answer were veryrestrictive. For example, the string the Mississippi River was an exact answer to the question what is the
+longest river in the United States? ,w h e r e a s the river Mississippi was not an exact answer on the grounds
+thattheword riverintroducedadditionalinformation.
+The last TREC conferences that included the QA track (from TREC 2003 to TREC 2007) integrated
+factoidquestions,listquestions,anddeﬁnitionquestionsinamainsingletaskwiththeaimtoencourageparticipantstoattempttohandleallthreetypesofquestions.
+As an example, we will describe here the task and evaluation method in TREC 2005. The main task
+consisted of a set of 75 topics, each one of which containing a list of questions. Each question could beeither a factoid or a list question (tagged as such), plus an additional “other” question where the systemwas expected to return any additional information about the topic. Table 20.3 shows one of the topicsusedinthetest.
+By deﬁning questions around a topic, the systems were expected to handle context and reference to
+common ground information such as at the time inquestion 95.4ofTable20.3. Inaddition, the“ other”
+question tests the ability to ﬁnd information deﬁning the topic. Each type of question was evaluatedindependentlyandtheseparateevaluationﬁgureswerecombinedtogivetheﬁnalperformancescoreforthesystemasawhole.
+TABLE20.3 ATopicUsedinTREC2005
+95 ReturnofHonkKongtoChinesesovereignty
+95.1 FACTOID WhatisHongKong’spopulation?95.2 FACTOID WhenwasHongKongreturnedtoChinesesovereignty?95.3 FACTOID WhowastheChinesePresidentatthetimeofthereturn?95.4 FACTOID WhowastheBritishForeignSecretaryatthetime?95.5 LIST WhatothercountriesformallycongratulatedChinaonthereturn?95.6 OTHER
+
+500 HandbookofNaturalLanguageProcessing
+Diﬀerencesbetweentheseevaluationswereslight.EventswereaddedaspossibletargetsinTREC2005,
+requiring that answers should be temporally compatible with the time period deﬁned in the series. InTREC2006,sensitivitytotemporaldependencieswasmadeexplicitinthedistinctionbetweenlocallyandglobally correct answers, so that answers for questions phrased in the present tense should not only besupportedbythesupportingdocument(locallycorrect),butshouldalsobethemostup-to-dateanswerinthedocumentcollection(globallycorrect).ThechangesinTREC2007laidinthegenreofthedocumentcollection.Insteadofonlynewswire,thedocumentcollectionalsocontainedblogs.
+20.4.2 Evaluation Metrics
+EvaluationmetricsemployedformeasuringQAsystemsperformancehaveevolvedcontinuouslyinordertofulﬁlltheneedsimposedmainlybytheinclusionofnewquestiontypesandanswerrestrictionsintheevaluation.
+The following text introduces the main evaluation metrics used by the TREC QA tracks. TREC
+evaluation metrics and methodology have become a standard in the ﬁeld and have been adopted as areferentinotherevaluationforainQAsuchasCLEF,NTCIR,orTAC.
+The ﬁrst evaluation measure employed was the mean reciprocal rank (MRR). When several ranked
+answers are allowed, each question is scored according to the inverse of the position of the ﬁrst passagethatcontainsthecorrectanswer.Ifnoneofthepassagescontaintheanswer,thequestionscoreis0.TheMRRwascomputedasthemeanofthescoresofallquestions.ThismeasurebecameastandardmeasurefortheevaluationofQAsystems.
+Later, when only one answer could be returned per question, the MRR could not be used and the
+chosen measure was a variation of the answer accuracy called the conﬁdence-weighted score. Given a list
+ofQquestions ranked according to the conﬁdence of the system to have found the correct answer, the
+conﬁdence-weightedscorewas
+1
+QQ∑
+i=1numbercorrectinﬁrst iranks
+i
+Apart from factoid questions, the inclusion of new types such as listandotherquestions provoked
+separateevaluationswithdiﬀerentmetricsforeachofthequestiontypes.Systemsweregivenaﬁnalscoreby combining the results obtained for each of the diﬀerent types. Factoidquestions were evaluated by
+theiraccuracy,thatis,thepercentageofquestionsthathadacorrectanswer. Listquestionswereevaluated
+usingawell-knownmeasurewithintheareaofIR:the F-scorecombiningthe recallandprecision.Given
+Starget answers, Nanswers returned by the system, and Danswers returned that belong to the target
+answers,recallis R=D/Sandprecisionis P=D/N.Themeasureofthequestionis
+F=2×R×P
+R+P
+Toevaluate“other”questions,thejudgeswereaskedtodetermineasetofminimalpiecesofinformation
+that should appear in the deﬁnition, the so-called information nuggets. The nuggets were classiﬁed as“vital”iftheymustappearintheanswer,and“non-vital”iftheirappearanceintheanswerisacceptable.Forexample,Table20.4liststhevitalandnon-vitalnuggetsforthequestion Whatisagoldenparachute?
+(Voorhees2004):
+Allofthesenuggetsweresearchedintheanswer.Again,itwasthecriterionofthejudgestodetermine
+ifaspeciﬁcnuggetwasmentionedintheanswerornot.Forexample,theanswerstring Thearrangement,
+whichincludeslucrativestockoptions,aheftysalary,anda“goldenparachute”ifGiﬀordisﬁred, couldbe
+judgedtocovernuggets2and3.
+Thenuggetrecallwascomputedusingthelistofvitalnuggets.Thus,ifthereare S
+vvitalnuggetsand Dv
+ofthemwerefoundbythesystem, thenuggetrecallwas Dv/Sv. Thenuggetprecisionwasmorediﬃcult
+
+QuestionAnswering 501
+TABLE20.4 VitalandNon-VitalNuggetsfortheQuestion
+WhatIsaGoldenParachute?
+1 (vital) Agreementbetweencompaniesandtopexecutives2 (vital) Providesremunerationtoexecutiveswholosejobs3 (vital) Remunerationisusuallyverygenerous4 (non-vital) Encouragesexecsnottoresisttakeoverbeneﬁcial
+toshareholders
+5 (non-vital) Incentiveforexecstojoincompanies6 (non-vital) ArrangementforwhichIRScanimposeexcisetax
+tocomputebecauseitisimpossibletodetermineall thenuggetsofinformationmentionedintheanswer,
+especiallyiftheanswerisveryvague.Consequently,nuggetprecisionwasestimatedsolelyonthebasisofthelengthofthestringsreturnedbygivinganallowanceof100characterspernugget(vitalornon-vital).Thus,ifthesystemfound D
+vnvnuggetsamongthetargetvitalandnon-vitalnuggets,thenuggetprecision
+wasestimatedwiththeformula:
+1−length −100×Dvnv
+length
+The ﬁnal score combined the nugget recall and precision, giving recall three times more importance
+thanprecision:
+F(β=3)=10×precision ×recall
+9×precision +recall
+The method consequently relies heavily on the judges’ ability to deﬁne all the atomic concepts deter-
+mining a deﬁnition (in practice, only those nuggets appearing in the sum of answers are required), andthen to detect the information nuggets in the answer. Furthermore, the criterion to determine nuggetprecisionisstillverycrude.Still,thismethodprovidesaquantitativemeasurethatcanbeusedtocomparevarioussystems.
+20.5 Multilinguality in Question Answering
+TheincreasingavailabilityofinformationinlanguagesotherthanEnglish,theneedofuserstobeabletomanage all this information in their own language, and the social need of breaking the language barrierand enhance information access for non-English cultural areas such as Europe and Asia, have impulsedresearchinmultilingualinformationsystemsfromlongago.
+In the particular case of QA, this interest promoted the organization of QA tasks in the sphere of
+two international Workshops traditionally devoted to research in multilingual IR the Cross-LanguageEvaluationForum
+∗(CLEF)andtheNTCIREvaluationWorkshops.†WhileNTCIRorganizetaskstoassist
+intheevaluationofQAsystemsonAsianlanguages,CLEFproposessimilarevaluationsbutfocusingonabroadrangeofEuropeanlanguages.
+Fromageneralperspective,amultilingualQAsystemshouldbeexpectedtobeableto(1)understand
+questionsformulatedinvariouslanguages,(2)lookfortheexpectedinformationindocumentcollectionswrittenindiﬀerentlanguages,and(3)presentanswersintheuserreferencelanguage.
+Unfortunately,sincesuchasystemremainsbeyondthestateoftheart,theCLEFandNTCIRevaluations
+have limited the scope of the general multilingual problem to concentrate on more manageable tasks.These tasks are parts of a vision of a future multilingual QA system as a group of monolingual systems,eachofthemworkingonadiﬀerentlanguage.Followingthisschema,multilingualityisbasedonfourmainprocesses:(1)translatinguserquestionstothediﬀerentlanguagesoftheavailabledocumentcollections,
+∗http://clef-qa.itc.it
+†http://research.nii.ac.jp/ntcir/index-en.html
+
+502 HandbookofNaturalLanguageProcessing
+TABLE20.5 MTTranslationError
+Taxonomy
+TypeofTranslationError Percentage
+Word-by-WordTranslation 24%TranslatedSense 21%SyntacticStructure 34%InterrogativeParticle 26%Lexical–SyntacticCategory 6%UnknownWords 2.5%ProperName 12.5%
+(2)runninginparallelthemonolingualsystemsintegratedinthemultilingualQAsystem,(3)selectingtheﬁnalansweramongtheanswersretrievedinthediﬀerentlanguages, and(4)translatingtheﬁnalansweranditssupportingtexttothelanguageoftheoriginalquestion.
+CLEF and NTCIR evaluations have not been organized from a pure multilingual scenario. Departing
+from a set of languages, participants are allowed to conﬁgure their own QA scenario by selecting onelanguageforquestions(sourcelanguage)andanotherforthedocumentcollection(targetlanguage).Thisway,with ndiﬀerentlanguageswecanconﬁgure n
+2diﬀerentsubtasksdependingontheselectedlanguages.
+Thesesubtasksare monolingual whenthelanguageofthequestionandthelanguageofthetextcollection
+are the same and cross-lingual (orbilingual) when they diﬀer. This methodology enables monolingual
+evaluations in diﬀerent languages as well as bilingual evaluations designed to measure systems’ abilitiesto ﬁnd answers in a collection of texts in one language when questions are posed in any other language.Furthermore,itallowsthedevelopmentandevaluationoftheindependentpartsthatwillconforminthenearfutureawholemultilingualQAsystem.
+ThemajorityofQAsystemsdealingwithmultilingualityarereallybilingualsystems.Thearchitecture
+ofabilingualsystemisthesameofagenericQAsystem(presentedinSection20.3)butenhancedwithamodule inchargeof translatingthesource question to thetargetlanguage. For thisreason, researchhasconcentrated on translation issues and trying to develop methods and strategies capable of eliminatingtheeﬀectsofincorrectornonnaturaltranslationsoftheoriginalquery.
+Twomainstrategieshavebeeninvestigatednamely, questiontranslation andterm-by-termtranslation .
+The former consists in translating the whole question into the target language and then performing aquestionanalysisprocessinthislanguage.Ontheotherhand,term-by-termtranslationmeansapplyingquestionanalysisoverthequestioninthesourcelanguageandthentranslatingtheinformationreturnedbythisprocesstothemodulesthatretrievetheanswerfromthetargetlanguage.
+The approach most widely used is question translation where questions are translated into the target
+language using general purpose machine translation (MT) tools. Systems like those by Bouma et al.(2008),Martínez-Gonzálezetal.(2008),orvanZaanenandMollá(2007)aregoodrepresentativesofthisapproach.
+Aiming at exploring why MT tools aﬀect the performance of cross-lingual QA systems, Ferrández
+andFerrández(2007)conductedanextensivestudyonEnglish–Spanishcross-lingualQA.Thesetof200CLEF2004EnglishquestionswastranslatedintoSpanishusingseveralonlineMTservices.Translationswere manually checked and the errors detected were organized in seven classes. Table 20.5 shows theerrortaxonomyalongwiththepercentageofthetranslationsincludingthiserror.
+Word-by-WordTranslationerrorsinsertwordsinthetranslationthatshouldnotbethere.Translated
+sense errors are produced when the MT system does not detect properly the correct sense of a polyse-mouswordandconsequently,thetranslationusuallysubstitutesanimportantkeywordbyitserroneoustranslation. Obtaining wrong translations of proper names is very usual when using MT services. Inthis case, translation induces a very critical loss of information since detecting and processing correctlynamedentitiesisimplicitlyrelatedwiththeperformanceofaQAsystem.Thesethreeerrorscausealoss
+
+QuestionAnswering 503
+in precision in the passage retrieval module since the queries it receives as input will contain impreciseandnoisyinformation.
+Therearealsoimportanttranslationerrorsthataﬀectthequestionanalysisprocess.Inparticular,errors
+in the translation of the syntactic structure of the question produce non-syntactically correct questionsand induce errors in all the processes of the question analysis involving syntactic information. On theotherhand,awrongtranslationoftheinterrogativeparticleofthequestioncausesanerroneousdetectionoftheexpectedanswertype.
+With the goal of trying to reduce the impact of translation on the overall system performance, other
+approaches experimented with using diﬀerent translations for the same question in order to select thebest among them (Sacaleanu et al. 2008) or combine them to obtain a reformulated question (Sutcliﬀeetal.2006).
+Other systems opted for term-by-term translation approaches. In this case, questions are analyzed
+in the source language and their output is translated to the target language. These approaches usediﬀerent linguistic resources in isolation or in combination with automatic translation. These resourcesinclude bilingual dictionaries, monolingual or multilingual lexical databases (such as WordNet
+∗and
+EuroWordNet†), or named entity taggers among others. As an example, Tanev et al. (2006) translate
+the question keywords by using bilingual dictionaries and a lexical database. In order to limit the noisestemming from the diﬀerent translations and to have a better cohesion, they validate the translationsin a large corpus. The system described by Ferrández and Ferrández (2007) and Ferrández et al. (2007)considersmorethanonlyonetranslationperwordbyusingthediﬀerentsynsetsofeachwordintheInterLingualIndex(ILI)moduleofEuroWordNet.ThistranslationiscombinedwithaspecialprocessforthetranslationofnamedentitiesusingWikipedia.
+‡
+As reported in CLEF and NTCIR workshops, question translation remains the key issue to be inves-
+tigatedsincesystemsperformancelossrangesfrom30%to50%betweenmonolingualandcross-lingualapproaches. Furthermore, the eﬀorts employed in correcting the automatic translations have improvedcross-lingualQAsystemperformanceonlyslightlyincomparisontousingMTtools.
+20.6 Question Answering on Restricted Domains
+TherehasbeenworkonthelocalizationofQAtospeciﬁcdomains,someofwhichhasbeenreviewedbyMolláandVicedo(2007).Herewewillsimplycommentonwhatmakesrestricted-domainQAsomethingdiﬀerenttoopenQA.BasedontheworkbyMinock(2005),thecharacteristicsthatmakeagooddomainforQAare:
+•It should be circumscribed . That is, it should be clear what kinds of questions are likely to be
+asked. For example, the domains of news and gossip are not circumscribed because they allowany kinds of questions. On the other hand, the domains of biology and technical manuals arecircumscribed. Circumscribed domains should have authoritative and comprehensive resources(suchasterminologydictionaries)thatenablethelocalizationtothedomain.
+•Itshouldbe complex.Otherwiseasimplelook-uptablecanreplaceaQAsystem.
+•It should be practical. Otherwise, if there is no clear community that would want to use the QA
+system,thereisnoneedtodeveloptheQAsystematall.
+ThemostpopulardomainsforQAarethosethatmeetthesethreecharacteristics.Ofthem,themedical
+domain stands out. It is complex, requiring the analysis of complex and very speciﬁc questions. It ispractical,sincethelargeamountofnewpublicationsonmedicalaspectsmakesmedicalpractitionersface
+∗http://wordnet.princeton.edu/
+†http://www.illc.uva.nl/EuroWordNet/
+‡http://en.wikipedia.org/
+
+504 HandbookofNaturalLanguageProcessing
+acontinuousstruggletokeepuptodatewithnewdevelopments.Finally,itiscircumscribed,withalargerepository of publications that is continuously growing (MEDLINE) and a comprehensive ontology ofdiseases,drugs,andtreatments(MeSH).
+Methods used for restricted-domain QA depend heavily on the domain. Still, an issue that most
+domains face is that of handling the speciﬁc terminology. Good NE recognizers tuned to the speciﬁcdomainsandgooddomain-speciﬁcterminologytaxonomiesbecomeessential.
+20.7 Recent Trends and Related Work
+The work described in this chapter has focused on factoid QA. This kind of research has been the mostpopular in the area of QA, but there are other kinds of QA topics and related work. The followingparagraphs describe other common kinds of QA and introduce related tasks that are especially activenowadays.ListsTreatment of list questions was introduced in the TREC 2001 QA track and has been a constant
+componentoftheQAtrackuntilthelastyeartheQAtrackwasoﬀeredinTREC2007.Alistquestionisaquestionthatasksforalistoffacts,suchas WhatcountriesdoesAustraliaexportcoalto? .Consequently
+mostsystemstreatedlistquestionsinthesamefashionasfactoidquestions.Themaindiﬀerencewasthatlistquestionsarenotforcedtoproducethebestanswer.
+Twoissuesthatarisewiththiskindofquestionare(1)theneedtodetermineathresholdbeyondwhich
+an answer is not to be returned, and (2) the need to determine when two answers are equivalent. Thesetwoissuesalsoariseinfactoidquestionsbuttheybecomemoreprominentinlistquestions.Deﬁnitions Deﬁnition questions such as Who is Aaron Copland? expect a list of text snippets rather
+than a list of facts. These questions are easy to answer if there is an encyclopedic resource that matchesthetopicofthequestion,butthisisnotalwaysthecase.Web-basedQA AllthemethodsdescribedinthischaptercanbeappliedtoWeb-basedQAwithminor
+modiﬁcations. When the corpus is the Web, a search engine is needed to gather the relevant webpagesorsnippets. Oncetherelevanttextisfound, theregularmethodsdescribedearlierinthischaptercanbeapplied.
+The Web is an unusual corpus in that it is much larger than almost any other corpus and there is
+no editorial process. Due to the size of the Web, the issue of data redundancy becomes prominent and
+thereforesystemsoperatingontheWebtendtousefastandsimplemethodsthatattempttoﬁndsimpleanswers, and they incorporate methods of voting to select those answers that are most popular. Thesemethods are expanded with other methods that determine the document authority in order to detectproblemsofmisleadingorcontradictoryanswers.
+SomesystemstakeadvantageoftheexistenceofpocketsofstructuredinformationontheWeb.These
+areinterfacestodatabasesthatareaccessiblefromtheWeb,suchastheMovieDatabasewithinformationabout movies, or the CIA world factbook with geopolitical information. If the system detects a speciﬁcpatterninthequestionitcaneasilyconvertthequestiontoadatabasequeryspecializedtoapredetermineddatabaseordatabases(Lin2002).Textual Entailment Research on textual entailment started with the PASCAL Recognizing Textual
+Entailment Challenge (Dagan et al. 2005). The challenge used pairs of texts ( text, hypothesis ), and the
+challenge was to determine whether the text entailed the hypothesis. Pairs of text were sourced fromseveralapplications,includingQA.
+
+QuestionAnswering 505
+Sinceansweringquestionsneedsaminimumunderstandingofquestionsanddocuments,itisargued
+thattherelationbetweenaquestionanditsanswercanbemoldedintermsoflogicalentailment.Textualentailment techniques are being explored with success in diﬀerent processes involved in QA such asanswerextractionandranking(HarabagiuandHickl2006)orquestionanalysis(Ferrándezetal.2009).Summarization Complexquestionsrequirethegatheringofevidencefromseveraldocumentsandthe
+composition of a ﬁnal answer, thus employing document summarization techniques. The DocumentUnderstanding Conference DUC 2006 introduced a track that was based on summaries focused oncomplexquestionssuchasthefollowing(Dang2006):
+Describe theories concerning the causes and eﬀects of global warming and arguments against thesetheories.Systems participating in DUC 2006 used mostly summarization techniques, though there were some
+attemptstocombineQAwithsummarizationtechniques,suchasthesystembyMolláandWan(2006).Opinions Answering opinion questions like What is X’s opinion about Y? ,What does X like?,a n d
+Who believes in Y? has emerged as one of the main recent research interests in QA ﬁeld. Although this
+researchlineisnotnew,theincreasingavailabilityofonlineopiniontexts—suchasblogsandnewsgroupsfocusing on opinion topics such as social issues, political events, or product reviews—have impulsedthe need of automatic tools capable of analyzing all this information mainly for commercial or politicalpurposes.
+Asaconsequence,theTextualAnalysisConference(TAC)hasfocusedits2008QAtrack
+∗onﬁnding
+answerstoopinionquestions.ThistaskissimilartothemainQAtaskinTREC2007butquestionseriesin2008askforpeople’sopinionsaboutaparticulartargetandthequestionsareaskedoverblogdocuments.SimilarQuestionFinding SimilarQuestionFindingsystemsexploitthemassiveamountofinformation
+on the Web in the form of question and answer pairs. This information is organized in large (Q&A)whereeachquestionisassociatedtoitscorrespondinganswer. ThesearchivesincludetheFAQarchivesconstructedbycompaniesfortheirproductsandthearchivesgeneratedfromWebservicessuchasYahooAnswers!
+†andLiveQnA,‡wherepeopleanswerquestionsposedbyotherpeople.
+ThesesystemsdonotperformQAinthewaythathasbeenpreviouslypresented. Theyretrievethose
+questionsincludedintheQ&Aarchivethataresimilartonewqueriesposedbyusers.
+Although this area is not new—it was also known as Frequently Asked Questions Finding (FAQ
+Finding)(Bergeretal. 2000, Burkeetal. 1997)—ithasstronglyemergedmainlyduetothepopularityofthese Web sites and the increasing participation of people in building those Q&A archives. Readers arereferred to the publication by Jeon et al. (2005), Xue et al. (2008), and Duan et al. (2008) for additionalinformation.
+Acknowledgment
+TheauthorswouldliketogratefullythankChin-YewLinforhisinsightfulcommentsduringthereviewofthischapter.
+∗http://www.nist.gov/tac/tracks/2008/qa/index.html
+†http://es.answers.yahoo.com/
+‡http://qna.live.com/
+
+506 HandbookofNaturalLanguageProcessing
+References
+Androutsopoulos, I., G. Ritchie, and P. Thanisch (1995). Natural language interfaces to databases—An
+introduction. JournalofLanguageEngineering 1(1),29–81.
+Attardi, G., A. Cisternino, F. Formica, M. Simi, and A. Tommasi (2002, November). PIQASso 2002.
+Eleventh Text REtrieval Conference , Volume 500-251 of NIST Special Publications, Gaithersburg,
+MD.NationalInstituteofStandardsTechnology.
+Berger, A., R.Caruana, D.Cohn, D.Freitag, andV.Mittal(2000). Bridgingthelexicalchasm: Statistical
+approachestoanswer-ﬁnding. Proceedingsofthe23rdAnnualInternationalACMSIGIRConference
+onResearchandDevelopmentinInformationRetrieval,Athens,Greece,pp.192–199.
+Bouma,G.,I.Fahmi,J.Mur,G.vanNoord,L.vanderPlas,andJ.Tiedemann(2005).Linguisticknowledge
+andquestionanswering. TraitementAutomatiquedesLangues (TAL)46(3),15–39.
+Bouma,G.,J.Mur,G.vanNoord,L.vanderPlas,andJ.Tiedemann(2008).Questionansweringwithjoost
+atCLEF2008. WorkshopofCross-LanguageEvaluationForum(CLEF2008) ,Aarhus,Denmark.
+Breck, E., J. Burger, L. Ferro, L. Hirschman, D. House, M. Light, and I. Mani (2000). How to evaluate
+your question answering system every day and still get real work done. In Proceedings of Second
+InternationalConferenceonLanguageResourcesandEvaluation.LREC-2000 ,Athens,Greece.
+Breck, E., J. Burger, L. Ferro, D. House, M. Light, and I. Mani (1999, November). A sys called quanda.
+Eighth Text REtrieval Conference , Volume 500-246 of NIST Special Publications, Gaithersburg,
+MD,pp.369–377.NationalInstitutesofStandardsandTechnology.
+Brill, E., J. Lin, M. Banko, and S. Dumais (2001, November). Data-intensive question answering. Tenth
+Text REtrieval Conference, Volume 500-250 of NIST Special Publications, Gaithersburg, MD.NationalInstituteofStandardsandTechnology.
+Buchholz,S.andW.Daelemans(2001,September).SHAPAQA:ShallowParsingforQuestionAnswering
+in the World Wide Web. In Recent Advances in Natural Language Processing (RANLP), Tzigov
+Chark,Bulgary.
+Burger,J.,C.Cardie,V.Chaudhri,R.Gaizauskas,S.Harabagiu,D.Israel,C.Jacquemin,C.-Y.Lin,S.Maio-
+rano,G.Miller,D.Moldovan,B.Ogden,J.Prager,E.Riloﬀ,A.Singhal,R.Shrihari,T.Strzalkowski,E. Voorhees, and R. Weishedel (2000). Issues, tasks and program structures to roadmap researchin question & answering (Q&A). http://www-nlpir.nist.gov/projects/duc/papers/qa.Roadmap-paper_v2.doc.
+Burke, R., K. Hammond, V. Kulyukin, S. Lytinen, N. Tomuro, and S. Schoenberg (1997). Question
+answeringfromfrequentlyaskedquestionﬁles. AIMagazine18 (2),57–66.
+Carbonell, J., D. Harman, E. Hovy, S. Maiorano, J. Prange, and K. Sparck-Jones (2000). Vision
+statementtoguideresearchinquestion&answering(Q&A)andtextsummarization.http://www-nlpir.nist.gov/projects/duc/papers/Final-Vision-Paper-v1a.doc.
+Charniak, E., Y. Altun, R. Braz, B. Garrett, M. Kosmala, T. Moscovich, L. Pang, C. Pyo, Y. Sun,
+W. Wy, Z. Yang, S. Zeller, and L. Zorn (2000, May). Reading Comprehension Programsin a Statistical-Language-Processing Class. In ANLP/NAACL Workshop on Reading Compre-
+hension Tests as Evaluation for Computer-Based Language Understanding Systems , Seattle,
+WA,pp.1–5.
+Chu-Carroll, J., J. Prager, C. Welty, K. Czuba, and D. Ferrucci (2002, November). A multi-strategy and
+multi-sourceapproachtoquestionanswering. EleventhTextREtrievalConference ,Volume500-251
+ofNISTSpecialPublications,Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+Clarke, C. L., G. V. Cormack, G. Kemkes, M. Laszlo, T. R. Lynam, E. L. Terra, and P. L. Tilker (2002,
+November).Statisticalselectionofexactanswers(MultiTextExperimentsforTREC2002). Eleventh
+Text REtrieval Conference, Volume 500-251 of NIST Special Publications, Gaithersburg, MD.NationalInstituteofStandardsandTechnology.
+CLEF(2008). WorkshopofCross-LanguageEvaluationForum(CLEF2008) ,Aarhus,Denmark.
+
+QuestionAnswering 507
+Dagan, I., O. Glickman, and B. Magnini (2005). The pascal recognising textual entailment challenge. In
+ProceedingsofthePASCALChallengesWorkshoponRecognisingTextualEntailment ,Southampton,
+U.K.
+Dang, H. T. (2006). DUC 2005: Evaluation of question-focused summarization systems. In Proceedings
+of the Workshop on Task-Focused Summarization and Question Answering , Sydney, Australia,
+pp.48–55.AssociationforComputationalLinguistics.
+Duan, H., Y. Cao, C.-Y. Lin, and Y. Yu (2008, June). Searching questions by identifying question topic
+and question focus. In Proceedings of ACL-08: HLT , Columbus, OH, pp. 156–164. Association for
+ComputationalLinguistics.
+Ferrández,S.andA.Ferrández(2007).Thenegativeeﬀectofmachinetranslationoncross-lingualquestion
+answering. LectureNotesinComputerScience4394 ,494.
+Ferrández, Ó., R. Izquierdo, S. Ferrández, and J. L. Vicedo (2009). Addressing ontology-based question
+answeringwithcollectionsofuserqueries. InformationProcessing&Management 45 (2),175–188.
+Ferrández, S., A. Toral, O. Ferrández, and A. Ferrández (2007). Applying Wikipedia’s multilingual
+knowledgetocross–lingualquestionanswering.In Proceedingsofthe12thInternationalConference
+onApplicationsofNaturalLanguagetoInformationSystems ,Paris,France,pp.352–363.
+Ferret, O., B. Grau, M. Hurault-Plantet, G. Illouz, C. Jacquemin, and N. Masson (2000, Novem-
+ber). QALC—The question answering system of LIMSI-CNRS. Ninth Text REtrieval Conference,
+Volume 500-249 of NIST Special Publication, Gaithersburg, MD, pp. 325–334. National InstituteofStandardsandTechnology.
+Green,C.(1969).Theorem-provingbyresolutionasabasisforquestion-answeringsystems.InB.Meltzer
+and D. Michie (Eds.), Machine Intelligence, Volume 4, Chapter 11, pp. 183–205. Edinburgh
+UniversityPress,Scotland,U.K.
+Green,B.,A.Wolf,C.Chomsky,andK.Laugherty(1961).BASEBALL:Anautomaticquestionanswerer.
+InProceedings of the Western Joint IRE-AIEE-ACM Computer Conference , Los Angeles, CA,
+pp.219–224.
+Greenwood,M.,I.Roberts,andR.Gaizauskas(2002,November).TheUniversityofSheﬃeldTREC2002
+Q&A System. Eleventh Text REtrieval Conference , Volume 500-251 of NIST Special Publication,
+Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+Grolier,E.P.(1990). TheAcademicAmericanEncyclopedia.http://auth.grolier.com
+Harabagiu, S. and A. Hickl (2006). Methods for using textual entailment in open-domain question
+answering.In ACL-44:Proceedingsofthe21stInternationalConferenceonComputationalLinguistics
+and the 44th Annual Meeting of the Association for Computational Linguistics , Morristown, NJ,
+pp.905–912.AssociationforComputationalLinguistics.
+Harabagiu, S., D. Moldovan, M. Pasca, R. Mihalcea, M. Surdeanu, R. Bunescu, R. Gîrju, V. Rus,
+and P. Morarescu (2000, November). FALCON: Boosting knowledge for answer engines. Ninth
+Text REtrieval Conference, Volume 500-249 of NIST Special Publication, Gaithersburg, MD.pp.479–488.NationalInstituteofStandardsandTechnology.
+Hermjacob, U., A. Echihabi, and D. Marcu (2002, November). Natural language based reformulation
+resourceandwideexploitationforquestionanswering. EleventhTextREtrievalConference ,Volume
+500-251 of NIST Special Publication, Gaithersburg, MD. National Institute of Standards andTechnology.
+Hirschman,L.,M.Light,E.Breck,andJ.Burger(1999).Deepread:Areadingcomprehensionsystem.In
+37th Annual Meeting of the Association for Computational Linguistics (ACL-99), New Brunswick,
+NJ,pp.325–332.
+Hobbs, J., M. Stickel, D. Appelt, and P. Martin (1993). Interpretation as abduction. Artiﬁcial
+Intelligence63,69–142.
+Hovy, E., L. Gerber, U. Hermjacob, M. Junk, and C. Lin (2000, November). Question answering
+in webclopedia. Ninth Text REtrieval Conference, Volume 500-249 of NIST Special Publication,
+Gaithersburg,MD,pp.655–664.NationalInstituteofStandardsandTechnology.
+
+508 HandbookofNaturalLanguageProcessing
+Hovy, E., U. Hermjacob, and D. Ravichandran (2002). A question/answer typology with surface text
+patternsra. In Proceedings of the DARPA Human Language Technology Conference (HLT), San
+Diego,CA.
+Jeon,J.,W.B.Croft,andJ.H.Lee(2005).Findingsemanticallysimilarquestionsbasedontheiranswers.
+InSIGIR’05:Proceedingsofthe28thAnnualInternationalACMSIGIRConferenceonResearchand
+DevelopmentinInformationRetrieval ,NewYork,pp.617–618.ACM.
+Jijkoun, V., M. de Rijke, and J. Mur (2004). Information extraction for question answering: Improv-
+ing recall through syntactic patterns. In Proceedings of the 20th International Conference on
+ComputationalLinguistics (COLING2004)Geneva,Switzerland.
+Kamp, H. and U. Reyle (1993). From Discourse to Logic: Introduction to Model-Theoretic Semantics of
+Natural Language, Formal Logic and Discourse Representation Theory , Volume 42 of Studies in
+LinguisticsandPhilosophy.NewYork:Springer-Verlag.
+Kando,N.(2005).OverviewoftheﬁfthNTCIRworkshop.In ProceedingsNTCIR2005 ,Tokyo,Japan.
+Kupiec, J. (1993, June). MURAX: A robust linguistic approach for question-answering using an on-
+line encyclopedia. In 16th International ACM SIGIR Conference on Research and Development in
+InformationRetrieval ,Pittsburgh,PA,pp.181–190.
+Kwok, C., O. Etzioni and S. Daniel (2001). Scaling question answering to the web. In Proceedings of the
+TenthWorldWideWebConference,HongKong,China.
+Lee, G., J. Seo, S. Lee, H. Jung, B. Cho, C. Lee, B. Kwak, J. Cha, D. Kim, J. An, H. Kim, and K. Kim
+(2001,November).SiteQ:EngineeringhighperformanceQAsystemusinglexico-semanticpatternmatching and shallow NLP. Tenth Text REtrieval Conference, Volume 500-250 of NIST Special
+Publication,Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+Lehnert, W. (1977). A conceptual theory of question answering. In Proceedings of the 5th International
+JointConferenceonArtiﬁcialIntelligence,Cambridge,MA,pp.158–164.
+Leidner, J. L., J. Bos, T. Dalmas, J. R. Curran, S. Clark, C. J. Bannard, B. Webber, and M. Steedman
+(2003).QED:TheEdinburghTREC-2003questionansweringsystem.InE.M.VoorheesandL.P.Buckland(Eds.), ProceedingsoftheTREC2003,Gaitersburg,MD,Number500-255inNISTSpecial
+Publication.NIST.
+Li, X. and D. Roth (2002). Learning question classiﬁers. Proceedings of the COLING 02, Taipei, Taiwan,
+pp.556–562.
+Li, X. and D. Roth (2006). Learning question classiﬁers: The role of semantic information. Journal of
+NaturalLanguageEngineering 12(3),229–249.
+Lin,J.(2002).Thewebasaresourceforquestionanswering:Perspectivesandchallenges.In Proceedings
+oftheLREC2002,LasPalmas,Spain,pp.2120–2127.
+Lin, D. and P. Pantel (2001). Discovery of inference rules for question-answering. Natural Language
+Engineering 7 (4),343–360.
+Lin, J., A. Fernandes, B. Katz, G. Marton, and S. Tellex (2002, November). Extracting answers from the
+webusingdataannotationandknowledgeminingtechniques. EleventhTextREtrievalConference ,
+Volume 500-251 of NIST Special Publication, Gaithersburg, MD. National Institute of StandardsandTechnology.
+Litkowski,K.(2000,November).Syntacticcluesandlexicalresourcesinquestionanswering. NinthText
+REtrievalConference ,Volume500,Gaitherburg,MD,pp.157–168.
+Litkowski, K. (2002, November). Question answering using XML-tagged documents. See The Eleventh
+TextREtrievalConference,Gaitherburg,MD,(TREC-11(2002)).
+Magnini, B., M. Negri, R. Prevete, and H. Tanev (2002, November). Mining knowledge from repeated
+co-occurrences:DIOGENEatTREC2002.SeeTREC-11(2002).
+Martínez-González,Á.,C.dePablo-Sánchez,C.Polo-Bayo,M.T.Vicente-Díez,P.Martínez-Fernández,
+andJ.L.Martínez-Fernández(2008).TheMIRACLEteamattheCLEF2008multilingualquestionansweringtrack.SeeCLEF(2008).
+
+QuestionAnswering 509
+Miller, G. (1995). Wordnet: A lexical database for english. In Communications of the ACM 38 (11),
+pp.39–41.
+Minock, M. (2005). Where are the ‘killer applications’ of restricted domain question answering? In
+Proceedings of the IJCAI Workshop on Knowledge Reasoning in Question Answering , Edinberg,
+Scotland,U.K.,pp.4.
+Moldovan, D., C. Clark, S. Harabagiu, and S. Maiorano (2003). COGEX: A logic prover for question
+answering.In ProceedingsoftheHLT-NAACL2003,Edmonton,Alberta,Canada,pp.166–172.
+Moldovan,D.,S.Harabagiu,M.Pasca,R.Mihalcea,R.Goodrum,R.Gîrju,andV.Rus(1999,November).
+LASSO: A tool for surﬁng the answer net. Eighth Text REtrieval Conference , Volume 500-246 of
+NIST Special Publication, Gaithersburg, MD, pp. 175–184. National Institute of Standards andTechnology.
+Moldovan, D., M. Pasca, S. Harabagiu, and M. Surdeanu (2003, April). Performance issues and error
+analysis in an open-domain question answering system. ACM Transactions on Information
+Systems21(2),133–154.
+Mollá, D. (2004, November). Answerﬁnder in TREC 2003. Twelth Text REtrieval Conference , Volume
+500-251 of NIST Special Publication, Gaithersburg, MD. National Institute of Standards andTechnology.
+Mollá, D. (2006). Learning of graph-based question answering rules. In Proceedings of the HLT/NAACL
+2006WorkshoponGraphAlgorithmsforNaturalLanguageProcessing ,Sydney,Australia,pp.37–44.
+Mollá, D. and M. Gardiner (2004). Answerﬁnder—Question answering by combining lexical, syntactic
+and semantic information. In A. Asudeh, C. Paris, and S. Wan (Eds.), Proceedings of the ALTW
+2004,Sydney,Australia,pp.9–16.MacquarieUniversity.
+Mollá,D.andJ.L.Vicedo(2007).Questionansweringinrestricteddomains:Anoverview. Computational
+Linguistics33(1),41–61.
+Mollá,D.andS.Wan(2006).Macquarieuniversityatduc2006:Questionansweringforsummarisation.
+InProceedingsDUC ,Sydney,Australia.
+MUC-6(1996). SixthMessageUnderstandingConference,LosAltos,CA.MUC-6.
+MUC-7(1998). SeventhMessageUnderstandingConference ,Washington,DC.
+Oard,D.W.,J.Wang,D.Lin,andI.Soboroﬀ(1999,November).TREC-8experimentsatMaryland:CLIR,
+QA and routing. Eighth Text REtrieval Conference , Volume 500-246 of NIST Special Publication,
+Gaithersburg,MD,pp.623–636.NationalInstituteofStandardsandTechnology.
+Pizzato,L.andD.Mollá(2008).Indexingonsemanticrolesforquestionanswering.In Proceedingsofthe
+COLINGWorkshoponInformationRetrievalforQuestionAnswering ,Manchester,U.K.,p.8.
+Ravichandran,D.andE.Hovy(2002).Learningsurfacetextpatternsforaquestionansweringsystem.In
+40thAnnualMeetingoftheAssociationforComputationalLinguistics (ACL-02),Philadelphia,PA.
+Roberts,I.andR.J.Gaizauskas(2004). EvaluatingPassageRetrievalApproachesforQuestionAnswering ,
+Sunderland,U.K.,pp.72–84.LectureNotesinComputerScience.Springer.
+Sacaleanu, B., G. Neumann, and C. Spurk (2008). DFKI at QA@CLEF 2008. Workshop of Cross -
+LanguageEvaluationForum(CLEF-2008),Aarhus,Denmark.
+Shen, D., G.-J. M. Kruijﬀ, and D. Klakow (2005). Exploring syntactic relation patterns for question
+answering. In R. Dale, K. -F. Wong, J. Su, and O. Y. Kwong (Eds.), Natural Language Processing
+IJCNLP 2005: Second International Joint Conference , Jeju Island, Korea, October 11–13, 2005.
+Proceedings. Springer-Verlag.
+Simmons,R.F.(1965).Answeringenglishquestions:ASurvey. CommunicationsoftheACM1 (8),53–70.
+Soubbotin,M.andS.Soubbotin(2002,November).Useofpatternsfordetectionoflikelyanswerstrings:
+A systematic approach. Eleventh Text REtrieval Conference , Volume 500-251 of NIST Special
+Publication,Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+Sutcliﬀe,R.F.E.,K.White,D.Slattery,I.Gabbay,andM.Mulcahy(2006).Cross-languageFrench-English
+questionansweringusingtheDLTsystematCLEF2006.In WorkshopofCross-LanguageEvaluation
+Forum(CLEF2006) ,Alicante,Spain.
+
+510 HandbookofNaturalLanguageProcessing
+Tanev, H., M. Kouylekov, B. Magnini, M. Negri, and K. Simov (2006). Exploiting linguistic indices and
+syntactic structures for multilingual question answering: ITC-irst at CLEF 2005. Lecture Notes in
+ComputerScience4022 ,Toronto,Canada390.
+Tellex,S.,B.Katz,J.Lin,A.Fernandes,andG.Marton(2003).Quantitavieevaluationofpassageretrieval
+algorithmsforquestionanswering.In SIGIR’03:Proceedingsofthe26thAnnualInternationalACM
+SIGIR Conference on Research and Development in Information Retrieval, New York, pp. 41–47.ACMPress.
+TREC-8 (1999, November). Eighth Text REtrieval Conference , Volume 500-246 of NIST Special
+Publication ,Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+TREC-9(2000,November). NinthTextREtrievalConference,Volume500-249of NISTSpecialPublication ,
+Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+TREC-10 (2001, November). Tenth Text REtrieval Conference, Volume 500-250 of NIST Special
+Publication ,Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+TREC-11 (2002, November). Eleventh Text REtrieval Conference , Volume 500-251 of NIST Special
+Publication ,Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+TREC-12 (2004, November). Twelfth Text REtrieval Conference , Volume 500-255 of NIST Special
+Publication ,Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+Vallin, A., B. Magnini, D. Giampiccolo, L. Aunimo, C. Ayache, P. Osenova, A. P. nas, M. de Rijke,
+B. Sacaleanu, D. Santos, and R. Sutcliﬀe (2005). Overview of the CLEF 2005multilingual questionansweringtrack.In ProceedingsCLEF2005.Vienna,Austria,Workingnote.
+vanZaanen,M.andD.Mollá(2007).AnswerFinderatQA@CLEF2007.In WorkshopofCross-Language
+EvaluationForum(CLEF2007) ,Budapest,Hungary.
+Vicedo,J.L.(2002,May).SEMQA:Asemanticmodelappliedtoquestionansweringsystems.PhDthesis,
+DepartamentofLanguagesandInformationSystems. UniversityofAlicante, Ctra. deSanVicentes/n.03080Alicante.España.
+Voorhees, E. M. (2001a, November). Overview of the TREC 2001 question answering track. Tenth Text
+REtrieval Conference , Volume 500-250 of NIST Special Publications, Gaithersburg, MD. National
+InstituteofStandardsandTechnology.
+Voorhees, E. M. (2001b). The TREC question answering track. Natural Language Engineering 7 (4),
+361–378.
+Voorhees,E.M.(2004,November).OverviewoftheTREC2003questionansweringTrack. TwelthText
+REtrieval Conference , Volume 500-255 of NIST Special Publications, Gaithersburg, MD. National
+InstituteofStandardsandTechnology.
+Voorhees, E.M.andD.M.Tice(2000).Buildingaquestionansweringtestcollection. Proceedingsofthe
+23rd Annual International ACM SIGIR Conference on Research and Development in InformationRetrieval,Athens,Greece,pp.200–207.
+Woods, W. (1971). Progress in natural language understanding—An application to lunar geology. In
+AFIPSConference,NewYork,pp.441–450.
+Xue,X.,J.Jeon,andW.B.Croft(2008).Retrievalmodelsforquestionandanswerarchives.In SIGIR’08:
+Proceedingsofthe31stAnnualInternationalACMSIGIRConferenceonResearchandDevelopmentinInformationRetrieval ,NewYork,pp.475–482.ACM.
+Yang,H.andT.-S.Chua(2002,November).Theintegrationoflexicalknowledgeandexternalresources
+for question answering. Eleventh Text REtrieval Conference , Volume 500-251 of NIST Special
+Publication,Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+Zhang, D.and S. S. Lee(2003). Question classiﬁcationusing support vector machines. In Proceedings of
+theSIGIR03 ,NewYork.ACM.
+

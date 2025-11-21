@@ -1,0 +1,722 @@
+15
+An Overview of Modern
+Speech Recognition
+Xuedong Huang andLi Deng
+MicrosoftCorporation15.1 Introduction ..........................................................33915.2 MajorArchitecturalComponents ..................................340
+AcousticModels •LanguageModels •Decoding
+15.3 MajorHistoricalDevelopmentsinSpeechRecognition .........35015.4 Speech-RecognitionApplications ..................................352
+IVRApplications •Appliance—“ResponsePoint” •MobileApplications
+15.5 TechnicalChallengesandFutureResearchDirections ..........356
+RobustnessagainstAcousticEnvironmentsandaMultitudeofOtherFactors
+•CapitalizingonDataDelugeforSpeechRecognition •
+Self-LearningandAdaptationforSpeechRecognition •Developing
+SpeechRecognizersbeyondtheLanguageBarrier •DetectionofUnknown
+EventsinSpeechRecognition •LearningfromHumanSpeechPerception
+andProduction •CapitalizingonNewTrendsinComputational
+ArchitecturesforSpeechRecognition •EmbeddingKnowledgeand
+ParallelismintoSpeech-RecognitionDecoding
+15.6 Summary ..............................................................363References....................................................................363
+15.1 Introduction
+Thetaskofspeechrecognitionistoconvertspeechintoasequenceofwordsbyacomputerprogram.Asthe most natural communication modality for humans, the ultimate dream of speech recognition is toenablepeopletocommunicatemorenaturallyandeﬀectively.Whilethelong-termobjectiverequiresdeepintegration with many NLP components discussed in this book, there are many emerging applicationsthat can be readily deployed with the core speech-recognition module we review in this chapter. Someof these typical applications include voice dialing, call routing, data entry and dictation, command andcontrol, and computer-aided language learning. Most of these modern systems are typically based onstatistic models such as hidden Markov models (HMMs). One reason why HMMs are popular is thattheir parameters can be estimated automatically from a large amount of data, and they are simple andcomputationallyfeasible.
+Speech recognition is often regarded as the front-end for many NLP components discussed in this
+book. In practice, the speech system typically uses context-free grammar (CFG) or statistic n-grams for
+the same reason that HMMs are used for acoustic modeling. There are a number of excellent booksthat have covered the basis of speech recognition and related spoken language–processing technologies(Lee, 1988; Rabiner and Juang, 1993; Lee et al., 1996; Jelinek, 1997; Gold and Morgan, 2000; Jurafskyand Martin, 2000; Furui, 2001; Huang et al., 2001; Deng and O’Shaughnessy, 2003). In this chapter, we
+339
+
+340 HandbookofNaturalLanguageProcessing
+provideanoverviewinSection15.2ofthemaincomponentsinspeechrecognition,followedbyacritical
+reviewofthehistoricallysigniﬁcantdevelopmentsintheﬁeldinSection15.3.WedevoteSection15.4to
+speech-recognitionapplications,includingsomerecentcasestudies.Anin-depthanalysisofthecurrent
+stateofspeechrecognitionanddetaileddiscussionsonanumberoffutureresearchdirectionsinspeech
+recognitionarepresentedinSection15.5.
+15.2 Major Architectural Components
+Modernspeech-recognitionsystemshavebeenbuiltinvariablybasedonstatisticalprinciples,aspioneered
+by the work of Baker (1975) and Jelinek (1976) and exposed in detail in Huang et al. (2001); Deng and
+O’Shaughnessey (2003). A source-channel mathematical model or a type of generative statistical model
+isoftenusedtoformulatespeech-recognitionproblems.AsillustratedinFigure15.1,thespeaker’smind
+decides the source word sequence Wthat is delivered through his or her text generator. The source is
+passedthroughanoisycommunicationchannelthatconsistsofthespeaker’svocalapparatustoproduce
+thespeechwaveformandthespeechsignal-processingcomponentofthespeechrecognizer. Finally, the
+speechdecoderaimstodecodetheacousticsignal Xintoawordsequence ˆW,whichisinidealcasesclose
+totheoriginalwordsequence W.
+Atypical,practicalspeech-recognitionsystemconsistsofbasiccomponentsshowninthedottedboxof
+Figure15.2.Applicationsinterfacewiththedecodertoobtainrecognitionresultsthatmaybeusedtoadapt
+othercomponentsinthesystem. Acousticmodels includetherepresentationofknowledgeaboutacoustics,
+phonetics,microphoneandenvironmentvariability,genderanddialectdiﬀerencesamongspeakers,etc.
+Languagemodels refertoasystem’sknowledgeofwhatconstitutesapossibleword,whatwordsarelikely
+Speech recognizerˆWCommunication channel  
+XText
+generatorSpeech
+generatorSignal
+processingSpeech
+decoder
+W
+FIGURE15.1 Asource-channelmodelforatypicalspeech-recognitionsystem.
+ApplicationVoiceApplicationSignal processing
+Acoustic
+modelsDecoder
+Adaptation
+Language
+models
+FIGURE15.2 Basicsystemarchitectureofaspeech-recognitionsystem.
+
+AnOverviewofModernSpeechRecognition 341
+toco-occur,andinwhatsequence.Thesemanticsandfunctionsrelatedtoanoperationausermaywishtoperformmayalsobenecessaryforthelanguagemodel.Manyuncertaintiesexistintheseareas,associatedwith speaker characteristics, speech style and rate, the recognition of basic speech segments, possiblewords, likelywords, unknown words, grammaticalvariation, noise interference, nonnative accents, andtheconﬁdencescoringofresults. Asuccessfulspeech-recognitionsystemmustcontendwithalloftheseuncertainties.Theacousticuncertaintyofthediﬀerentaccentsandspeakingstylesofindividualspeakersarecompoundedbythelexicalandgrammaticalcomplexityandvariationsofspokenlanguage,whichareallrepresentedinthelanguagemodel.
+As shown in Figure 15.2, the speech signal is processed in the signal-processing module that extracts
+salientfeaturevectorsforthedecoder. Thedecoderusesbothacousticandlanguagemodelstogeneratethe word sequence that has the maximum posterior probability for the input feature vectors. It can alsoprovide information needed for the adaptation component to modify either the acoustic or languagemodelssothatimprovedperformancecanbeobtained.
+Thedivisionofacousticmodelingandlanguagemodelingdiscussedabovecanbesuccinctlydescribed
+bythefundamentalequationofstatisticalspeechrecognition:
+ˆW=argmax
+wP(W|A) =argmax
+wP(W)P(A|W)
+P(A)(15.1)
+whereforthegivenacousticobservationorfeaturevectorsequence X=X1X2...Xn,thegoalofspeech
+recognition is to ﬁnd out the corresponding word sequence ˆW=w1w2...wmthat has the maximum
+posteriorprobability P(W|X)asexpressedwithEquation15.1.SincethemaximizationofEquation15.1
+iscarriedoutwiththeobservation Xﬁxed,theabovemaximizationisequivalentofthemaximizationof
+thenumerator:
+ˆW=argmax
+wP(W)P(X|W) (15.2)
+whereP(W)andP(X|W)constitutetheprobabilisticquantitiescomputedbythelanguagemodelingand
+acousticmodelingcomponents,respectively,ofspeech-recognitionsystems.
+Thepracticalchallengeishowtobuildaccurateacousticmodels, P(X|W),andlanguagemodels, P(W),
+whichcantrulyreﬂectthespokenlanguagetoberecognized.Forlargevocabularyspeechrecognition,weneedtodecomposeawordintoasubwordsequence(oftencalledpronunciationmodeling),sincetherearealargenumberofwords.Thus, P(X|W)iscloselyrelatedtophoneticmodeling. P(X|W)shouldtakeinto
+accountspeakervariations, pronunciationvariations, environmentalvariations, andcontext-dependentphoneticcoarticulationvariations.Last,butnotleast,anystaticacousticorlanguagemodelwillnotmeetthe needs of real applications. So it is vital to dynamically adapt both P(W)andP(X|W)to maximize
+P(W|X)while using the spoken language systems. The decoding process of ﬁnding the best-matched
+word sequence, W, to match the input speech signal, X, in speech-recognition systems is more than a
+simple pattern recognition problem, since one faces a practically inﬁnite number of word patterns tosearchincontinuousspeechrecognition.
+Intheremainderofthissection,wewillprovideanoverviewonbothof P(W)andP(X|W)components
+inaspeechrecognizer,aswellasonhowthemaximizationoperationinEquation15.2,aprocessknownasdecoding,canbecarriedoutinpractice.
+15.2.1 Acoustic Models
+The accuracy of automatic speech recognition remains one of the most important research challengesafter years of research and development. There are a number of well-known factors that determinethe accuracy of a speech-recognition system. The most noticeable ones are context variations, speakervariations, andenvironmentvariations. Acousticmodelingplaysacriticalroletoimprovetheaccuracy.Itisnotfar-fetchedtostatethatitisthecentralpartofanyspeech-recognitionsystem.
+
+342 HandbookofNaturalLanguageProcessing
+Acoustic modeling of speech typically refers to the process of establishing statistical representations
+forthefeaturevectorsequencescomputedfromthespeechwaveform.HMM(Baum,1972;Baker,1975;
+Jelinek, 1976) is one of the most common types of acoustic models. Other acoustic models include
+segmentalmodels(Poritz,1988;Deng,1993;Dengetal.,1994;Ostendorfetal.,1996;Glass,2003),super-
+segmental models including hidden dynamic models (Deng et al., 2006), neural networks (Lippman,
+1987; Morgan et al., 2005), maximum entropy models (Gao and Kuo, 2006), and (hidden) conditional
+randomﬁelds(Gunawardanaetal.,2005).
+Acoustic modeling also encompasses “pronunciation modeling,” which describes how a sequence or
+multi-sequencesoffundamentalspeechunits(suchasphonesorphoneticfeature)areusedtorepresent
+largerspeechunitssuchaswordsorphrasesthataretheobjectofspeechrecognition.Acousticmodeling
+may also include the use of feedback information from the recognizer to reshape the feature vectors of
+speechinachievingnoiserobustnessinspeechrecognition.
+In speech recognition, statistical properties of sound events are described by the acoustic model.
+Correspondingly,thelikelihoodscore p(X|W)inEquation15.2iscomputedbasedontheacousticmodel.
+Inanisolated-wordspeech-recognitionsystemthathasan N-wordvocabulary,assumingthattheacoustic
+modelcomponentcorrespondingtothe ithwordWiisλi,thenp(X|Wi)=p(X|λi).InHMM-basedspeech
+recognition,itisassumedthatthesequenceofobservedvectorscorrespondingtoeachwordisgenerated
+by a Markov chain. As shown in Figure 15.3, an HMM is a ﬁnite state machine that changes state once
+everytimeframe,andateachtimeframe twhenastate jisentered,anobservationvector xtisgenerated
+fromtheemittingprobabilitydistribution bj(xt).Thetransitionpropertyfromstate itostatejisspeciﬁed
+bythetransitionprobability aij.Moreover,twospecialnon-emittingstatesareusuallyusedinanHMM.
+Theyincludeanentrystate,whichisreachedbeforethespeechvectorgenerationprocessbegins,andan
+exit state, which is reached when the generative process terminates. Both states are reached only once.
+Sincetheydonotgenerateanyobservation,noneofthemhasanemittingprobabilitydensity.
+In the HMM, the transition probability aijis the probability of entering state jgiven the previous
+statei,thatis,aij=Pr(s(t)=j|s(t−1)=i),wheres(t)isthestateindexattime t.ForanN-stateHMM,
+wehave,
+N∑
+j=1aij=1
+Theemittingprobabilitydensity bj(x)describesthedistributionoftheobservationvectorsatthestate j.
+Incontinuous-densityHMM(CDHMM),emittingprobabilitydensityisoftenrepresentedbyaGaussian
+mixturedensity:
+bj(x)=M∑
+m=1cj,mN(x;μjm,/Sigma1jm)
+where
+N(x;μjm,/Sigma1jm)=1
+(2π)D
+2|/Sigma1jm|1
+2e−1
+2(x−μjm)T/Sigma1−1
+jm(x−μjm)isamultivariateGaussiandensity
+Disthedimensionofthefeaturevector x
+1 2 3 5 4a12 a23 a34 a45a33 a22 a44
+FIGURE15.3 Illustrationofaﬁve-stateleft-to-rightHMM.Ithastwonon-emittingstatesandthreeemittingstates.
+Foreachemittingstate,theHMMisonlyallowedtoremainatthesamestateormovetothenextstate.
+
+AnOverviewofModernSpeechRecognition 343
+cjm,μjm,and/Sigma1jmaretheweight,mean,andcovarianceofthe mthGaussiancomponentofthemixture
+distributionatstate j
+Generallyspeaking,eachemittingdistributioncharacterizesasoundevent,andthedistributionmust
+bespeciﬁcenoughtoallowdiscriminationbetweendiﬀerentsoundsaswellasrobustenoughtoaccountforthevariabilityinnaturalspeech.
+NumerousHMMtrainingmethodsaredevelopedtoestimatevaluesofthestatetransitionprobabilities
+andtheparametersoftheemittingprobabilitydensitiesateachstateoftheHMM.InearlyyearsofHMMapplications to speech recognition, the EM algorithm, based on the maximum-likelihood principle, asdevelopedinBaum(1972);Baker(1975);Jelinek(1976);Dempsteretal.(1977)wastypicallyusedasthetrainingmethodfromthetrainingdata.ThehigheﬃciencyoftheEMalgorithmisonecrucialadvantageassociated with using the HMM as the acoustic model for speech recognition. The eﬀectiveness of theEM for training HMMs was questioned in later research, resulting in a series of more eﬀective but lesseﬃcient training algorithms, known as discriminative learning (Bahl et al., 1986; Macherey et al., 2005;Poveyetal.,2005).AcomprehensiveandunifyingreviewofdiscriminativelearningmethodsforspeechrecognitioncanbefoundinHeetal.(2008).
+Given {a
+ij}andbj(x),fori=1, 2,...,N,j=1, 2,...,N,thelikelihoodofanobservationsequence X
+iscalculatedas:
+p(X|λ)=∑
+sp(X,s|λ) (15.3)
+wheres=s1,s2,...,sTis the HMM state sequence that generates the observation vector sequence
+X=x1,x2,...,xT, and the joint probability of Xand the state sequence sgivenλis a product of the
+transitionprobabilitiesandtheemittingprobabilities
+p(X,s|λ)=T∏
+t=1bst(xt)astst+1
+wheresT+1isthenon-emittingexitstate.
+Inpractice,Equation15.3canbeapproximatelycalculatedasjointprobabilityoftheobservationvector
+sequence Xwiththemostpossiblestatesequence,thatis,
+p(X|λ)≈max
+sp(X,s|λ) (15.4)
+Although it is impractical to evaluate the quantities of Equations 15.3 and 15.4 directly due to the hugenumber of possible state sequences when Tis large, eﬃcient recursive algorithms exist for computing
+both of them. This is another crucial computational advantage, developed originally in Baum (1972);Baker(1975);Jelinek(1976),forHMMsasanacousticmodelforspeechrecognition.
+15.2.2 Language Models
+The role of language modeling in speech recognition is to provide the value P(W)in the fundamental
+equationofspeechrecognitionofEquation15.2.Onetypeoflanguagemodelisthegrammar,whichisaformalspeciﬁcationofthepermissiblestructuresforthelanguage.Thetraditional,deterministicgrammargivestheprobabilityofoneifthestructureispermissibleorofzerootherwise.Theparsingtechnique,asdiscussed in Chapter 4, is the method of analyzing the sentence to see if its structure is compliant withthegrammar.Withtheadventofbodiesoftext(corpora)thathavehadtheirstructureshand-annotated,it is now possible to generalize the formal grammar to include accurate probabilities. Furthermore, theprobabilistic relationship among a sequence of words can be directly derived and modeled from the
+
+344 HandbookofNaturalLanguageProcessing
+corporawiththeso-calledstochasticlanguagemodels,suchas n-gram,avoidingtheneedtocreatebroad
+coverageformalgrammars.
+Another,morecommontypeoflanguagemodeliscalledthestochasticlanguagemodel,whichplaysa
+criticalroleinbuildingaworkingspokenlanguagesystem.Wewilldiscussanumberofimportantissuesassociatedwiththistypeoflanguagemodels.
+Ascoveredearlier, alanguagemodelcanbeformulatedasaprobabilitydistribution P(W)overword
+stringsWthatreﬂecthowfrequentlyastring Woccursasasentence.Forexample,foralanguagemodel
+describing spoken language, we might have P(hi)=0.01 since perhaps one out of every 100 sentences
+a person speaks is hi. On the other hand, we would have P(lid gallops Changsha pop )=0 since it is
+extremelyunlikelyanyonewoulduttersuchastrangestring.
+P(W)canbedecomposedas
+P(W)=P(w
+1,w2,...,wn)
+=P(w1)P(w2|w1)P(w3|w1,w2)···P(wn|w1,w2,...,wn−1)
+=n∏
+i=1P(wi|w1,w2,...,wi−1) (15.5)
+whereP(wi|w1,w2,...,wi−1)is the probability that wiwill follow given that the word sequence
+w1,w2,...,wi−1was presented previously. In Equation 15.5, the choice of withus depends on the
+entire past history of the input. For a vocabulary of size vthere are vi−1diﬀerent histories and so, to
+specifyP(wi|w1,w2,...,wi−1)completely, vivalues would have to be estimated. In reality, the prob-
+abilitiesP(wi|w1,w2,...,wi−1)are impossible to estimate for even moderate values of i, since most
+histories w1,w2,...,wi−1are unique or have occurred only a few times. A practical solution to the
+aboveproblemsistoassumethat P(wi|w1,w2,...,wi−1)onlydependsonsomeequivalenceclasses.The
+equivalence class can be simply based on the several previous words wi−N+1,wi−N+2,...,wi−1.T h i s
+leadstoan N-gramlanguagemodel. Iftheworddependsontheprevioustwowords, wehavea trigram:
+P(wi|wi−2,wi−1). Similarly, we can have unigram: P(wi),o rbigram:P(wi|wi−1)language models. The
+trigramisparticularlypowerfulasmostwordshaveastrongdependenceontheprevioustwowordsanditcanbeestimatedreasonablywellwithanattainablecorpus.
+In bigram models, we make the approximation that the probability of a word depends only on the
+identity of the immediately preceding word. To make P(w
+i|wi−1)meaningful for i=1, we pad the
+beginning of the sentence with a distinguished token <s>; that is, we pretend w0=<s>. In addition, to
+makethesumoftheprobabilitiesofallstringsequal1,itisnecessarytoplaceadistinguishedtoken </s>
+attheendofthesentence .Forexample,tocalculate P(Marylovesthatperson)wewouldtake
+P(Marylovesthatperson )=
+P(Mary| <s>)P(loves|Mary)P (that|loves)P (person|that)P (</s>|person )
+To estimate P(wi|wi−1), the frequency with which the word wioccurs given that the last word is wi−1,
+wesimplycounthowoftenthesequence P(wi|wi−1)occursinsometextandnormalizethecountbythe
+numberoftimes wi−1occurs.
+In general, for a trigram model, the probability of a word depends on the two preceding words. The
+trigram can be estimated by observing the frequencies or counts of the word pair C(wi−2,wi−1)and
+tripletC(wi−2,wi−1,wi)asfollows:
+P(wi|wi−2,wi−1)=C(wi−2,wi−1,wi)
+C(wi−2,wi−1)(15.6)
+The text available for building a model is called a training corpus. For n-gram models, the amount of
+training data used is typically many millions of words. The estimate of Equation 15.6 is based on the
+
+AnOverviewofModernSpeechRecognition 345
+maximum likelihood principle, because this assignment of probabilities yields the trigram model thatassignsthehighestprobabilitytothetrainingdataofallpossibletrigrammodels.
+Wesometimesrefertothevalue nofann-grammodelasitsorder.Thisterminologycomesfromthe
+areaofMarkovmodels,ofwhich n-grammodelsareaninstance.Inparticular,an n-grammodelcanbe
+interpretedasaMarkovmodeloforder n−1.
+Consider a small example. Let our training data Sbe comprised of the three sentences John read her
+book. I read a diﬀerent book. John read a book by Mulan and let us calculate P(John read a book ) for the
+maximumlikelihoodbigrammodel.Wehave
+P(John|<s>)=C(<s>,John)
+C(<s>)=2
+3
+P(read|John) =C(John,read)
+C(John)=2
+2
+P(a|read )=C(read,a)
+C(read)=2
+3
+P(book|a) =C(a,book)
+C(a)=1
+2
+P(</s> |book) =C(book, </s>)
+C(book)=2
+3
+Thesetrigramprobabilitieshelpustoestimatetheprobabilityforthesentenceas:
+P(John,read,a,book) =P(John|<s>)P(read|John)P (a|read )P(book|a)P (</s> |book) (15.7)
+≈0.148
+If these three sentences are all the data we have to train our language model, the model is unlikely togeneralize well to new sentences. For example, the probability for Mulan read her book should have a
+reasonable probability, but the trigram will give it a zero probability simply because we do not have areliableestimatefor P(read|Mulan).
+Unlike linguistics, grammaticality is not a strong constraint in the n-gram language model. Even
+thoughthestringisungrammatical,wemaystillassignitahighprobabilityif nissmall.
+Language can be thought of as an information source whose outputs are words w
+ibelonging to the
+vocabulary of the language. The most common metric for evaluating a language model is the wordrecognition error rate, which requires the participation of a speech-recognition system. Alternatively,we can measure the probability that the language model assigns to test word strings without involvingspeech-recognitionsystems.Thisisthederivativemeasureofcross-entropyknownastestset perplexity.
+Given a language model that assigns probability P(W)to a word sequence W, we can derive a com-
+pressionalgorithmthatencodesthetext Wusing−log
+2P(T)bits.Thecross-entropy H(W)ofamodel
+P(wi|wi−n+1...wi−1)ondataW,withasuﬃcientlylongwordsequence,canbesimplyapproximatedas
+H(W)=−1
+NWlog2P(W) (15.8)
+whereNwisthelengthofthetext Wmeasuredinwords.
+Theperplexity PP(W)ofalanguagemodel P(W)isdeﬁnedasthereciprocalofthe(geometric)average
+probabilityassignedbythemodeltoeachwordinthetestset W.Thisisameasure,relatedtocross-entropy,
+knownastest-setperplexity:
+PP(W)=2H(W)(15.9)
+
+346 HandbookofNaturalLanguageProcessing
+Theperplexitycanberoughlyinterpretedasthegeometricmeanofthebranchingfactorofthetextwhenpresented to the language model. The perplexity deﬁned in Equation 15.9 has two key parameters: alanguagemodelandawordsequence.Thetest-setperplexityevaluatesthegeneralizationcapabilityofthelanguagemodel.Thetraining-setperplexitymeasureshowthelanguagemodelﬁtsthetrainingdata,suchasthelikelihood.Itisgenerallytruethatlowerperplexitycorrelateswithbetterrecognitionperformance.This is because the perplexity is essentially a statistically weighted word branching measure on the testset.Thehighertheperplexity,themorebranchesthespeechrecognizerneedstoconsiderstatistically.
+WhiletheperplexitydeﬁnedinEquation15.9iseasytocalculateforthe n-gram(Equation15.5), itis
+slightly more complicated to compute it for a probabilistic CFG. We can ﬁrst parse the word sequenceanduseEquation15.5tocompute P(W)forthetestsetperplexity.Theperplexitycanalsobeappliedto
+non-stochasticmodelssuchasCFGs.Wecanassumetheyhaveauniformdistributionincomputing P(W).
+A language with higher perplexity means the number of words branching from a previous word is
+largeronaverage.Inthissense,theperplexityisanindicationofthecomplexityofthelanguageifwehavean accurate estimate of P(W). For a given language, the diﬀerence between the perplexity of a language
+modelandthetrueperplexityofthelanguageisanindicationofthequalityofthemodel.Theperplexityofaparticularlanguagemodelcanchangedramaticallyintermsofthevocabularysize,thenumberofstatesor grammar rules, and the estimated probabilities. A language model with perplexity Xhas roughly the
+samediﬃcultyasanotherlanguagemodelinwhicheverywordcanbefollowedby Xdiﬀerentwordswith
+equal probabilities. Therefore, in the task of continuous digit recognition, the perplexity is 10. Clearly,lowerperplexitywillgenerallyhavelessconfusioninrecognition.Typicalperplexitiesyieldedbyn-grammodelsonEnglishtextrangefromabout50toalmost1000(correspondingtocross-entropiesfromabout6 to 10 bits/word), depending on the type of text. In tasks of 5000 word continuous speech recognitionfor theWall Street Journal newspaper, the test set perplexity of the trigram grammar and the bigram
+grammarisreportedtobeabout128and176,respectively.Intasksof2000wordconversationalAirTravelInformationSystem(ATIS),thetestsetperplexityofthewordtrigrammodelistypicallylessthan20.
+Since perplexity does not take into account the acoustic confusability, we eventually have to measure
+speech-recognitionaccuracy.Forexample,ifthevocabularyofaspeechrecognizercontainstheE-setofEnglish alphabet: B,C,D,E,G,a n dT, we can deﬁne a CFG that has a low perplexity value of 6. Such a
+low perplexity does not guarantee we will have good recognition performance, because of the intrinsicacousticconfusabilityoftheE-set.
+15.2.3 Decoding
+AsepitomizedinthefundamentalequationofspeechrecognitioninEquation15.2,thedecodingprocessin a speech recognizer’s operation is to ﬁnd a sequence of words whose corresponding acoustic andlanguagemodelsbestmatchtheinputfeaturevectorsequence.Therefore,theprocessofsuchadecodingprocesswithtrainedacousticandlanguagemodelsisoftenreferredtoasa searchprocess. Graphsearch
+algorithms have been explored extensively in the ﬁelds of artiﬁcial intelligence, operating research, andgametheory,whichserveasthebasicfoundationforthesearchproblemincontinuousspeechrecognition.
+The complexity of a search algorithm is highly correlated to the search space, which is determined
+bytheconstraintsimposed bythelanguagemodels. Theimpactofdiﬀerentlanguage models, includingﬁnite-stategrammars,CFG,and n-gramsarecriticaltodecodingeﬃciency.
+Speech recognition search is usually done with the Viterbi decoder (Viterbi, 1967; Vintsyuk, 1968;
+Sakoe and Chiba, 1971; Ney, 1984), or A
+∗stack decoder (Jelinek, 1969, 1976, 1997). The reasons for
+choosing the Viterbi decoder involve arguments that point to speech as a left-to-right process and theeﬃciencies aﬀorded by a time-synchronous process. The reasons for choosing a stack decoder involveits ability to more eﬀectively exploit the A
+∗criteria that holds out the hope of performing an optimal
+searchaswellastheabilitytohandlehugesearchspaces.Bothalgorithmshavebeensuccessfullyappliedtovariousspeech-recognitionsystems.Viterbibeamsearchhasbeenthepreferredmethodforalmostall
+
+AnOverviewofModernSpeechRecognition 347
+speech recognition tasks. Stack decoding, on the other hand, remains an important strategy to uncoverthen-bestandlatticestructures(SchwartzandChow,1990).
+Thedecoderuncoversthewordsequence ˆW=w
+1w2...wmthathasthemaximumposteriorprobabil-
+ityP(W|X)forthegivenacousticobservation X=X1X2...Xn,accordingtothemaximizationoperation
+described by Equation 15.2. One obvious (and brute-force) way is to search all possible word sequencesandselecttheonewithbestposteriorprobabilityscore.This,however,isnotpracticallyfeasible.
+The unit of acoustic model P(X|W)is not necessary a word model. For large-vocabulary speech-
+recognition systems, subword models, which include phonemes, demi-syllables, and syllables are oftenused. When subword models are used, the word model P(X|W)is then obtained by concatenating the
+subwordmodelsaccordingtothepronunciationtranscriptionofthewordsinalexiconordictionary.
+When word models are available, speech recognition becomes a search problem. The goal for speech
+recognition is thus to ﬁnd a sequence of word models that best describes the input waveform againstthe word models. As neither the number of words nor the boundary of each word or phoneme in theinputwaveformisknown,appropriatesearchstrategiestodealwiththesevariable-lengthnonstationarypatternsareextremelyimportant.
+When HMMs are used for speech-recognition systems, the states in the HMM can be expanded to
+formthestate-searchspaceinthesearch.Here,weuseHMMasourspeechmodels.AlthoughtheHMMframework is used to describe the search algorithms, the techniques discussed here can in principle beusedforsystemsbasedonothermodelingtechniques.TheHMM’sstatetransitionnetworkissuﬃcientlygeneralanditcanrepresentthegeneralsearchframeworkformostmodelingapproaches.15.2.3.1 The Concept of State Space in DecodingThestatespaceinspeechrecognitionsearchordecodingisanimportantconcept,asitisagoodindicatorofthecomplexityforthesearch.SincetheHMMrepresentationforeachwordinthelexiconisﬁxed,thestatespaceanditssizearedeterminedbythelanguagemodels.Andeachlanguagemodel(grammar)canbecorrelatedtoastatemachinethatcanbeexpandedtoformthefullstatespacefortherecognizer.Thestatesinsuchastatemachinearereferredtoas languagemodelsstates.Forsimpliﬁcation,wewillusethe
+conceptsofstatespaceandlanguagemodelstatesinterchangeably.TheexpansionoflanguagemodelstatestoHMMstateswillbedoneimplicitly.Thelanguagemodelstatesforisolatedwordrecognitionaretrivial.They are just the union of the HMM states of each word. In this section, we ﬁrst look at the languagemodel states for two grammars for continuous speech recognition: Finite State Grammar (FSG) andContext Free Grammar (CFG). We then discuss a most popular decoding technique, time-synchronousbeamsearchtechnique.
+In general, the decoding complexity for the time-synchronous Viterbi algorithm is O(N
+2T)whereN
+is the total number states in the composite HMM and Tis the length of the input observation. A full
+time-synchronousViterbisearchisquiteeﬃcientformoderatetasks(vocabulary ≤500). Mostsmallor
+moderate vocabulary tasks in speech-recognition applications use an FSG. Figure 15.4 shows a simpleexample of an FSG, where each of the word arcs in an FSG can be expanded as a network of phonemeorothersubwordHMMs.ThewordHMMsareconnectedwithnulltransitionswiththegrammarstate.A large ﬁnite state HMM network that encodes all the legal sentences can be constructed based on theexpansion procedure. The decoding process is achieved by performing the time-synchronous ViterbisearchonthiscompositeﬁnitestateHMM.
+Inpractice,FSGsaresuﬃcientonlyforsimpletasks.WhenanFSGismadetosatisfytheconstraintsof
+sharingofdiﬀerentsub-grammarsforcompactnessandsupportfordynamicmodiﬁcations,theresultingnondeterministicFSGbecomessimilartoCFGintermsofimplementation.TheCFGgrammarconsistsofasetofproductionsorrules,whichexpandnonterminalsintoasequenceofterminalsandnonterminals.Nonterminalsinthegrammartendtorefertohigh-leveltask-speciﬁcconceptssuchasdates,names,andcommands. The terminals are words in the vocabulary. A grammar also has a nonterminal designatedas its start state. While CFG has not been widely used in the NLP community, they are one of the mostwidelyusedmethodsforspeechrecognition.
+
+348 HandbookofNaturalLanguageProcessing
+/w/
+/ah/
+/w/ + /ah/ + /t//t/
+What/silence/
+isSeattle's Weather
+Boston's
+Denver'sPopulation
+Lattitude Show/silence/
+(optional)
+FIGURE 15.4 An illustration of how to compile a speech-recognition task with ﬁnite grammar into a
+compositeHMM.
+ACFGcanbeformulatedwitharecursivetransitionnetwork(RTN).RTNallowsarclabelstoreferto
+othernetworksaswellaswords.WeuseFigure15.5toillustratehowtoembedHMMsintoaRTN,which
+representsthefollowingCFG:
+S→NPVP
+NP→sam|samdavis
+VP→VERBtom
+VERB →likes|hates
+There are three types of arcs in an RTN shown in Figure 15.5: CAT (x), PUSH (x),P O PC A T (x)arc
+indicates xis a terminal node (which is equivalent to a word arc). Therefore, all the CAT (x)arcs can
+be expanded by the HMM network for x. The word HMM can again be composite HMM built from
+phoneme(orsubword)HMMs.SimilartotheﬁnitestategrammarcaseinFigure15.4,allgrammarstates
+act as a state with incoming and outgoing null transitions to connect word HMMs in the CFG. During
+decoding, the search pursues several paths through the CFG at the same time. Associated with each of
+the paths is a grammar state that describes completely how the path can be extended further. When the
+decoderhypothesizesendofthecurrentwordofapath,itaskstheCFGmoduletoextendthepathfurther
+byoneword.Theremaybeseveralalternativesuccessorwordsforthegivenpath.Thedecoderconsiders
+allthesuccessorwordpossibilities.Thismaycausethepathtobeextendedtogenerateseveralmorepaths
+tobeconsideredeachwithitsowngrammarstate.
+Readers should note that the same word might be under consideration by the decoder in the context
+ofdiﬀerentpathsandgrammarstatesatthesametime.Forexample,therearetwowordarcsCAT(Sam)
+inFigure15.5.TheirHMMstatesshouldbeconsideredasdistinctstatesinthetrellisbecausetheyarein
+completely diﬀerent grammar states. Two diﬀerent states in trellis also mean diﬀerent paths going into
+these two states cannot be merged. Since these two partial paths will lead to diﬀerent successive paths,
+the search decision needs to be postponed until the end of search. Therefore, when embedding HMM
+into word arc in grammar network, the HMM state will be assigned a new state identity although the
+HMM parameters (transition probabilities and output distributions) can still be shared across diﬀerent
+grammararcs.
+Eachpathconsistsofastackofproductionrules. Eachelementofthestackalsocontainstheposition
+within the production rule of the symbol that is currently being explored. The search graph (trellis)
+started from the initial state of CFG (state S). When the path needs to be extended, we look at the next
+
+AnOverviewofModernSpeechRecognition 349
+PUSH(N PUSH(V POP
+CAT
+CATVP2S S S S:
+NP2 NP1CAT POP
+CATNPCAT
+NP:
+VP1CATPOP
+VP VP:CAT
+FIGURE15.5 AnsimpleRTNexamplewiththreetypesofarcs:CAT (x),P U S H (x),andPOP.
+arc (symbol in CFG) in the production. When the search enters a CAT (x)arc (terminal), the path gets
+extendedwiththeterminalandtheHMMtrelliscomputationisperformedontheCAT (x)arctomatch
+themodel xagainsttheacousticdata.WhentheﬁnalstateoftheHMMfor xisreached,thesearchmoves
+onviathenulltransitiontothedestinationoftheCAT (x)arc.WhenthesearchentersaPUSH (x)arc,it
+indicatesanonterminalsymbol xisencountered.Ineﬀect,thesearchisabouttoenterasubnetworkof x,
+thedestinationofthePUSH (x)arcisstoredinalastinﬁrstout(LIFO)stack.Whenthesearchreachesa
+POParc,thesearchreturnstothestateextractedfromthetopoftheLIFOstack.Finally,whenwereach
+theendoftheproductionruleattheverybottomofthestack,wehavereachedanacceptingstateinwhich
+we have seen a complete grammatical sentence. For our decoding purpose, that is the state we want to
+pickasthebestscoreattheendtimeframe Ttoobtainthesearchresult.
+The problem of connected word recognition by FSG or CFG is that the number of states increases
+enormously when it is applied to complex tasks and grammars. Moreover, it remains a challenge to
+generate such a FSG or a CFG from a large corpus, either manually or automatically. Finally, it is
+questionable if FSG or CFG is adequate to describe natural languages or unconstrained spontaneous
+languages.Instead, n-gramlanguagemodels,whichwedescribedearlierinthissection,areoftenusedfor
+naturallanguagesorunconstrainedspontaneouslanguages.
+15.2.3.2 Time-Synchronous Viterbi Search
+When HMMs are used for acoustic models, the acoustic model score (likelihood) used in search is by
+deﬁnitiontheforwardprobability.Thatis,allpossiblestatesequencesmustbeconsidered.Thus,
+P(X|W)=∑
+all possible sT
+0P(X,sT
+0|W)
+wherethesummationistobetakenoverallpossiblestatesequences Swiththewordsequence Wunder
+consideration. However, under the trellis framework, more bookkeeping must be performed since we
+cannotaddscoreswithdiﬀerentwordsequencehistory.Sincethegoalofdecodingistouncoverthebest
+wordsequence,wecouldapproximatethesummationwiththemaximumtoﬁndthebeststatesequence
+instead.Wethenhavethefollowingapproximation:
+ˆW=argmax
+wP(W)P(X|W)∼=argmax
+w{
+P(W)max
+ST
+0P(X,sT
+0|W)}
+
+350 HandbookofNaturalLanguageProcessing
+which is often referred to as the Viterbi approximation . It can literally translated to “the most likely
+wordsequence isapproximatedbythe mostlikelystatesequence .”TheViterbisearchisthensuboptimal.
+AlthoughthesearchresultsbyusingtheforwardprobabilityandtheViterbiprobabilitycouldinprinciplebediﬀerent,inpracticethisisveryraretobethecase.
+The Viterbi search can be executed very eﬃciently via the trellis framework. It is a time-synchronous
+search algorithm that completely processes time tbefore going on to time t+1. For time t, each state
+is updated by the best score (instead of the sum of all incoming paths) from all states in at time t−1.
+Thisiswhyitisoftencalledthe time-synchronousViterbisearch .Whenoneupdateoccurs,italsorecords
+the backtracking pointer to remember the most probable incoming state. At the end of the search, themost probable statesequence canbe recovered bytracingbackthesebacktrackingpointers. TheViterbialgorithm provides an optimal solution for handling nonlinear time warping between HMMs and theacousticobservation,wordboundarydetection,andwordidentiﬁcationincontinuousspeechrecognition.ThisuniﬁedViterbisearchalgorithmservesasthefundamentaltechniqueformostsearchalgorithmsinuseincontinuousspeechrecognition.
+Itisnecessarytoclarifythebacktrackingpointerforthetime-synchronousViterbisearchforcontinuous
+word recognition. Actually, we are not interested in the optimal state sequence per se. Instead, we areonly interested in the optimal word sequence Therefore, we use the backtrack pointer to just rememberthe word history for the current path, so the optimal word sequence can be recovered at the end of thesearch.Tobemorespeciﬁc,whenwereachtheﬁnalstateofaword,wecreateahistorynodecontainingthewordidentityandcurrenttimeindexandappendthishistorynodetotheexistingbacktrackpointer.This backtrack pointer is then passed onto the successor node if it is the optimal path leading to thesuccessornodeforbothintra-wordandinter-wordtransition.Thesidebeneﬁtofkeepingthisbacktrackpointeristhatwenolongerneedtokeeptheentiretrellisduringthesearch.Instead,weonlyneedspacetokeeptwotime-slices(columns)inthetrelliscomputation(theprevioustimesliceandthecurrenttimeslice) because all the backtracking information is now kept in the backtrack pointer. This simpliﬁcationisasigniﬁcantbeneﬁtintheimplementationofatime-synchronousViterbisearch.
+The time-synchronous Viterbi search can be considered as a breadth ﬁrst search with dynamic pro-
+gramming. Instead of performing a tree search algorithm, the dynamic programming principle helps tocreateasearchgraphwheremultiplepathsleadingtothesamesearchstatearemergedbykeepingthebestpath (with the minimum cost). The Viterbi trellis is a representation of the search graph. Therefore, alleﬃcient techniques for graph search algorithms can be applied to the time-synchronous Viterbi search.Although we have so far described the trellis in an explicit fashion, where the entire search space needstobeexploredbeforetheoptimalpathcanbefound, itisnotnecessarytodoso. Whenthesearchspacecontains an enormous number of states, it becomes impractical to pre-compile the composite HMMentirely and store it in the memory. It is preferable to dynamically build and allocate portions of thesearch space that is suﬃcient to search the promising paths. By using the graph search algorithm, onlypartoftheentireViterbitrellisisgeneratedexplicitly.Byconstructingthesearchspacedynamically,thecomputationcostofthesearchisproportionalonlytothenumberofactivehypothesesthatisindependentof the overall size of the potential search space. Therefore, dynamically generated trellis is a key to theheuristicViterbisearchforeﬃcientlarge-vocabularycontinuousspeechrecognition.
+15.3 Major Historical Developments in Speech Recognition
+Each of the above three components in speech-recognition technology has experienced signiﬁcant his-torical development. In fact, the establishment of the basic statistical framework, as epitomized by thefundamentalequationofspeechrecognitiondescribedintheprecedingsectioninEquation15.1or15.2,constitutes one major milestone in the historical development of speech recognition. In the following,wereviewandhighlightthisandotherdevelopmentsintheﬁeld, basedpartlyontherecentlypublishedmaterialsinBakeretal.(2007,2009a,b).
+
+AnOverviewofModernSpeechRecognition 351
+Intheﬁrstcategoryofthesigniﬁcanthistoricaldevelopmentsinspeechrecognitionaretheestablish-
+mentofthestatisticalparadigm,andtheassociatedmodelsandalgorithmsenablingtheimplementationoftheparadigm.Themostsigniﬁcantparadigmshiftforspeech-recognitionprogresshasbeenthechangefrom the earlier nonstatistical methods to statistical ones, especially stochastic processing with HMMs(Baker,1975;Jelinek,1976)introducedasanacousticmodelingcomponentofspeechrecognitionintheearly1970s.Morethan30yearslater,thismethodologystillremainsasthepredominantone.Anumberof models and algorithms have been eﬃciently incorporated within this framework. The Expectation-Maximization(EM)AlgorithmandtheForward–BackwardortheBaum–Welchalgorithm(Baum,1972;Dempster et al., 1977) have been the basic and principal means by which the HMMs are trained highlyeﬃcientlyfromdata.Similarly,forthelanguage-modelingcomponent, N-gramlanguagemodelsandthe
+variants, trainedwith thebasic counting or EM-style techniques, haveproved remarkably powerful andresilient. Beyond these basic algorithms, statistical discriminative training techniques have been devel-oped since late 1980s based not on the likelihood for data-matching criteria but on maximum mutualinformation or related minimum error criteria (Bahl et al., 1986; Povey et al., 2005; He et al., 2008).AndbeyondthebasicHMM-likeacousticmodelsandbasic N-gram-likelanguagemodels,furtherdevel-
+opments include segmental models (Poritz, 1988; Deng, 1993, 1994; Ostendorf et al., 1996; Deng andSameti,1996;Glass,2003),andstructuredspeechandlanguagemodels(ChelbaandJelinek,2000;Wangetal.,2000;Dengetal.,2006).Despitecontinuingworkinthisarea,however,large-scalesuccessisyettobedemonstrated.
+Another important area of algorithm development is adaptation, which is vital to accommodating a
+wide range of variable conditions for the channel, noise, speaker, vocabulary, accent, and recognitiondomain, etc. Eﬀective adaptation algorithms enable rapid application integration, and are a key tothe successful commercial deployment of speech-recognition technology. The most popular adaptationtechniques include Maximum a Posteriori probability (MAP) estimation (Gauvain and Lee, 1994) andMaximum Likelihood Linear Regression (MLLR) (Leggetter and Woodland, 1995). Training can takeplace on the basis of small amounts of data from new tasks or domains for additional training material,as well as “one-shot” learning or “unsupervised” learning at test time (Huang and Lee, 1993). Theseadaptationtechniqueshavealsobeengeneralizedtotrainthe“generic”modelssothattheyarebetterabletorepresenttheoverallstatisticsofthefulltrainingdataset,atechniquecalledSpeakerAdaptiveTrainingorSAT(Anastasakosetal.,1997).
+In the second category of the signiﬁcant advancement in speech recognition is the establishment
+of the computational infrastructure that enables the above statistical model/algorithm developments.Moore’sLawobserveslong-termprogressincomputerdevelopment,andpredictsdoublingtheamountofcomputationforagivencostevery12–18months,aswellasacomparablyshrinkingcostofmemory.Thesehavebeeninstrumentalinenablingspeech-recognitionresearcherstodevelopandevaluatecomplexalgorithms on suﬃciently large tasks in order to make realistic progress. In addition, the availability ofcommon speech corpora for speech training, development, and evaluation, has been critical, allowingthe creation of complex systems of ever-increasing capabilities. Since speech is a highly variable signaland is characterized by many parameters, large corpora become critical in modeling it well enough forautomated systems to achieve proﬁciency. Over the years, these corpora have been created, annotated,and distributed to the worldwide community by the National Institute of Standard and Technology(NIST),theLinguisticDataConsortium(LDC),EuropeanLanguageResourcesAssociation(ELRA),andother organizations. The character of the recorded speech has progressed from limited, constrainedspeechmaterialstohugeamountsofprogressivelymorerealistic,spontaneousspeech.Thedevelopmentand adoption of rigorous benchmark evaluations and standards, nurtured by NIST and others, havealso been critical in developing increasingly powerful and capable systems. Many labs and researchershave beneﬁted from the availability of common research tools such as HTK, Sphinx, CMU LM toolkit,and SRILM toolkit. Extensive research support combined with workshops, task deﬁnitions, and systemevaluationssponsoredbyDARPA(theU.S.DepartmentofDefenseAdvancedResearchProjectsAgency)andothershavebeenessentialtotoday’ssystemdevelopments.
+
+352 HandbookofNaturalLanguageProcessing
+Historicallysigniﬁcantadvancementofspeechrecognitionhasthethirdcategorythatwecallknowledge
+representation. This includes the development of perceptually motivated speech signal representationssuch as Mel-Frequency Cepstral Coeﬃcients (MFCC) (Davis and Mermelstein, 1980) and PerceptualLinear Prediction (PLP) coeﬃcients (Hermansky, 1990), as well as normalizations via Cepstral MeanSubtraction (CMS) (Rosenberg et al., 1994), RASTA (Hermansky and Morgan, 1994), and Vocal TractLengthNormalization(VTLN)(EideandGish,1996).Architecturally,themostimportantdevelopmentinknowledgerepresentationhasbeensearchableuniﬁedgraphrepresentationsthatallowmultiplesourcesof knowledge to be incorporated into a common probabilistic framework. Non-compositional methodsincludemultiplespeechstreams,multipleprobabilityestimators,multiplerecognitionsystemscombinedat the hypothesis level, for example, ROVER (Fiscus, 1997), and multi-pass systems with increasingconstraints(bigramvs.four-gram,withinworddependenciesvs.cross-word,etc.).Morerecently,theuseofmultiplealgorithms,appliedbothinparallelandsequentiallyhasprovenfruitful,ashavemultipletypesoffeature-basedtransformationssuchasheteroscedasticlineardiscriminantanalysis(HLDA)(KumarandAndreou, 1998), feature-spaceminimumphoneerror(fMPE)(Poveyetal., 2005), andneuralnet-basedfeatures(Morganetal.,2005).
+The ﬁnal category of major historical signiﬁcant developments in speech recognition includes key
+decodingorsearchstrategiesthatwehavediscussedearlierinthissection.Thesestrategieshavefocusedon the stack decoding (A
+∗search) (Jelinek, 1969) and the time-synchronous Viterbi search (Viterbi,
+1967; Vintsyuk, 1968; SakoeandChiba, 1971; Ney, 1984). Withoutthesepracticaldecodingalgorithms,large-scalecontinuousspeechrecognitionwouldnotbepossible.
+15.4 Speech-Recognition Applications
+The ultimate impact of speech recognition depends on whether one can fully integrate the enablingtechnologies with applications. How to eﬀectively integrate speech into applications often depends onthe nature of the user interface and application. In discussing some general principles and guidelines indevelopingspokenlanguageapplications,wemustlookcloselyatdesigningtheuserinterface.
+Awell-designeduserinterfaceentailscarefullyconsideringtheparticularusergroupoftheapplication
+and delivering an application that works eﬀectively and eﬃciently. As a general guideline, one needs tomakesurethattheinterfacematchesthewayuserswanttoaccomplishatask.Onealsoneedstousethemostappropriatemodalityattheappropriatetimetoassistuserstoachievetheirgoals.Oneuniquechallengein speech-recognition applications is that speech recognition (as well as understanding) is imperfect. Inaddition, the spoken command can be ambiguous so a dialogue strategy is necessary to clarify the goalof the speaker. There are always mistakes one has to deal with. It is critical that applications employnecessary interactive error handling techniques to minimize the impact of these errors. Applicationdevelopers should therefore fully understand the strengths and weaknesses of the underlying speechtechnologiesandidentifytheappropriateplacetousespeechrecognitionandunderstandingtechnologyeﬀectively.
+There are three broad classes of applications. (1) Cloud-based call center/IVR (Interactive Voice
+Response): This includes the widely used applications from Tellme’s information access over the phoneto Microsoft Exchange Uniﬁed Messaging. (2) PC-based dictation/command and control: There are anumberofdictationapplicationsonthePC.Itisausefultoolforaccessibilitybeneﬁts,butnotyetreadyforthemainstream.(3)Device-basedembeddedcommandcontrol:Thereisawiderangeofdevicesthatdo not have a typical PC keyboard or mouse, and the traditional GUI application cannot be directlyextended. As an example, Microsoft’s Response Point blue button illustrates what speech interface cando to make the user interface much simpler. Mobile phones and automobile scenarios are also verysuitable for speech applications. Because of the physical size and hands-busy and eyes-busy constraints,the traditional GUI application interaction model requires a signiﬁcant modiﬁcation. Ford SYNC is a
+
+AnOverviewofModernSpeechRecognition 353
+FIGURE15.6 FordSYNChighlightsthecar’sspeechinterface—“Youtalk.SYNClistens.”
+FIGURE15.7 BingSearchhighlightsspeechfunctions—justsaywhatyou’relookingfor!
+goodexampleonleveragingthepowerofspeechtechnologiesinthiscategory(Figure15.6).Voicesearchisalsohighlysuitableformobilephones(Figure15.7).
+Speech interface has the potential to provide a consistent and uniﬁed interaction model across these
+scenarios.Theincreasedmobilityofoursocietydemandedaccesstoinformationandservicesatanytimeand anywhere. Both cloud and client-based voice-enabled applications can vastly enhance the userexperienceandoptimizecostsavingsforbusinesses.Wehereinthissectionselectivelytakesomeexamplesascasestudiestoillustratereal-worldapplicationsandchallenges.
+
+354 HandbookofNaturalLanguageProcessing
+15.4.1 IVR Applications
+Given that speech recognizers make mistakes, the inconvenience to the user must be minimized. Thismeans that careful design of human/machine interaction (e.g., the call ﬂow) is essential in providingreliable and acceptable services. Hence, a demand for skilled user interface designers has occurred overthepastdecade.
+BecauseoftheincreasedadoptionoftheWeb,IVR-basedinteractionprovidesamoreubiquitousbut
+less eﬀective information access than Web-based browsing. Because the phone is widely available, thereis an important empirical principle to decide if the IVR should be deployed. If the customer can waitfor more than two hours to get the information, the need to have the speech-based IVR would be lesscritical. This is because the Web has been very pervasive and generally provides a better user interfacefor customers to access the information. If the task is time sensitive, and the customer may be on themove without having the access to a PC, such IVR applications would bridge the gap and provide acomplementary value. The key beneﬁt of network-based IVR services is to provide the user with accesstoinformationindependentoftheuser’scommunicationdeviceorlocation.
+In2005,ForresterResearchpublishedastudyreportingthatonaverage,callcenterhumanagentscan
+cost $5.50–$12.00 per call and speech-enabled IVR services could reduce that down to $0.20/call. Withsigniﬁcantly improved natural speech applications, businesses can gain increased call completion ratesand happier customers. Successful network-based voice-enabled services have been and continue to bethose that have the beneﬁt of simplicity. Successful voice-enabled services are natural for phone-basedapplicationsandservices.Theyareeasytouseandproviderealvaluetothebusinesses.Manyapplicationsare extensions of DTMF-based IVR services. Speech recognition is used as a touchtone replacement forIVR menus. There are also applications speciﬁcally designed for speech-based applications. Microsoft’sTellme’sserviceissuchanexample (seeFigure15.8).
+15.4.2 Appliance—“Response Point”
+Withalargeofnumberofdiversedevices,proliferating,speech-baseduserinterfacebecomesincreasinglyimportantaswecannotattachakeyboardormousetoallofthesedevices.Amongthesedevices,phonesoﬀerauniqueopportunityforspeechrecognitionastheyaredesignedforvoicecommunicationsequippedwith a well-designed speaker and microphone already. Speech is such a natural way for informationexchangeonthephone.Earlyapplicationssuchasphonedialinghavebeenavailableonmanyembeddeddevices.
+One latest device-based speech-recognition example is Microsoft’s Response Point phone system
+designed speciﬁcally for small business customers (see
+Figure15.9). Response Point is a PBX system
+that runs on an embedded device without having any moving parts such as hard disk or cooling fan.It provides a comprehensive telephony solution for small business including PBX functions, uniﬁedmessaging, computer telephony integration and basic IVR for ﬁnding people, location, and businesshours. The key diﬀerentiation feature is a unique blue button on every Response Point phone. Theblue button allows speakers to simply push the button and issue command for a wide range of com-munications tasks such as name dialing, transferring the call, and checking voice mails. ResponsePoint is very simple to use, and helps to bring speech applications to the non-technological savvycustomers.
+15.4.3 Mobile Applications
+The HMM technology has proven to be an eﬀective method for mobile phones including dictation andname dialing. For example, Nuance oﬀers the HMM-based speaker-independent dialer in a wide rangeofmobilephones.Client-basedspeechrecognitionhasthebeneﬁtoflow-latency.
+
+AnOverviewofModernSpeechRecognition 355
+FIGURE15.8 Microsoft’sTellmeisintegratedintoWindowsMobileatthenetworklevel.
+FIGURE15.9 Microsoft’sResponsePointphonesystemdesignedspeciﬁcallyforsmallbusinesscustomers.
+FordSYNCisafactory-installed,in-carcommunicationsandentertainmentsystem.Thesystemruns
+onmostFord,Lincoln,andMercuryvehicles.FordSYNCallowsdriverstobringnearlyanymobilephoneordigitalmediaplayerintotheirvehicleandoperatethemusingvoicecommands,thevehicle’ssteeringwheel,orradiocontrols.
+One special type of applications in the mobile environment is voice search (Wang et al., 2008).
+Voice search provides mobile phone users with the information they request with a spoken query. Theinformation normally exists in a large database, and the query has to be compared with a ﬁeld in thedatabase to obtain the relevant information. The contents of the ﬁeld, such as business or productnames, are often unstructured text. While general voice search accuracy is not usable, structured voice
+
+356 HandbookofNaturalLanguageProcessing
+search with constrained contexts have been on the market. Google Voice Local Search is now live andpublicly available. Microsoft has Windows Live local search that is speech-enabled. Automated voice-basedmobilesearchestablishesaclearcompetitivelandscape,whichwilllikelymeanafurtherdeclineincallvolumesandrevenuesfortraditionalmobiledirectoryassistance,asconsumersbecomemoreawareoftheavailabilityofthesefreeservices.
+Windows Live local search is a multimodal application. The widespread availability of broadband
+accessandpowerfulmobiledevicesarefosteringanewwaveofhumancomputerinterfacesthatsupportmultiplemodalities,thusbridgingandeventuallyblurringthedeviceandnetworkvoice-enabledservicemarkets.Multimodalinterfacesalsosolvemanyoftoday’slimitationswithspeechapplications.Apictureis worth a thousand words. We believe “speech-in” and “picture-out” takes advantage of the two mostnatural human modalities that signiﬁcantly enhance the user experience when dealing with complexapplications.
+Asaconclusionofthissection, wewillseegreaterrolesofspeechrecognitioninthefuture’sanytime,
+anywhere, and any-channel communications. The greater automation of telecommunications services,and for individuals, easier access to information and services at any time, with any device, and fromanywhere, as well as in any language will be the norm. Customers will beneﬁt from rapid and personal-ized information access, partly empowered by speech recognition and the related technologies. Speechrecognitionhasjustscratchedthesurface.Buttoenablethisultimatesuccess,diﬃcultchallengesneedtobeovercomeandintensiveresearchisneed,whichisthesubjectofthenextsection.
+15.5 Technical Challenges and Future Research Directions
+Despite successful applications of speech recognition in the marketplace and people’s lives as describedabove,thetechnologyisfarfrombeingperfectandtechnicalchallengesabound. Someyearsago(2003–2004), the authors of this chapter have identiﬁed two main technical challenges in adopting speechrecognition: (1) making speech-recognition systems robust in noisy acoustic environments, and (2)creating workable speech-recognition systems for natural, free-style speech (Deng and Huang, 2004).Since then, huge stride has been made in overcoming these challenges, and yet the problems remainunsolved. In this section, we will address the remaining problems and expand the discussion to includeanumberofrelatedandnewchallenges.Wealsodiscussfertileareasforfuture,longer-termresearchinspeechrecognition.
+15.5.1 Robustness against Acoustic Environments and a Multitude
+of Other Factors
+As discussed in the preceding section, state-of-the-art speech recognition has been built upon a solidstatisticalframeworkafteraseriesofsuccessfulhistoricaldevelopments.Thestatisticalframeworkrequiresprobabilisticmodels,withparametersestimatedfromsamplespeechdata,whichrepresentsthevariabilitythatoccursinthenaturalspeechdata.Theseprobabilisticmodelsseektorecoverlinguisticinformation,such as the words or phrases uttered, from the speech signal received by microphones placed undernatural acoustic environments. One key underlying challenge to speech recognition technology is thespecialcomplexityofthevariabilitythatexistsinthenaturalspeechsignal.Howtoidentifyandhandleamultitudeofvariabilityfactors,somearerelatedtoandothersareunrelatedtothelinguisticinformationbeing sought by the speech-recognition system, forms one principal source of technical diﬃculties inbuildingsuccessfulspeech-recognitionsystems.
+One pervasive type of variability in the speech signal that is typically extraneous to the linguistic
+information to be decoded by speech recognizers is caused by the acoustic environment. This includes
+
+AnOverviewofModernSpeechRecognition 357
+background noise, room reverberation, the channel through which the speech is acquired (such ascellular,land-line,andVoIP),overlappingspeech,andLombardorhyper-articulatedspeech.Theacousticenvironmentinwhichthespeechiscapturedandthecommunicationchannelthroughwhichthespeechsignal is transmitted prior to its processing represent signiﬁcant causes of harmful variability that isresponsible for the drastic degradation of system performance. Existing techniques are able to reducevariability caused by additive noise or linear distortions, as well as compensate for slowly varying linearchannels (Droppo and Acero, 2008; Frey et al., 2001; Deng et al., 2004; Yu et al., 2008). However, morecomplex channel distortions such as reverberation or fast changing noise, as well as the Lombard eﬀectpresentasigniﬁcantchallengetobeovercomeinfutureresearch.
+Another common type of speech variability that has been studied intensively is due to diﬀerent
+speakers’ characteristics. It is well known that speech characteristics vary widely among speakers due tomany factors, including speaker physiology, speaker style, and accents—both regional and nonnative.Theprimarymethodcurrentlyusedformakingspeech-recognitionsystemsmorerobusttovariationsinspeakercharacteristicsistoincludeawiderangeofspeakers(andspeakingstyles)inthetraining.Speakeradaptation mildly alleviates problems with new speakers within the “span” of known speaker/speakingtypes,butfailfornewtypes.Further,currentspeech-recognitionsystemsassumeapronunciationlexiconthatmodelsnativespeakersofalanguageandtrainonlargeamountsofspeechdatafromvariousnativespeakersofthelanguage.Asdiscussedintheprecedingsection,anumberapproacheshavebeenexploredin explicit modeling of accented speech and in adaptation of native acoustic models via a moderateamount of accented speech data. Pronunciation variants have also been incorporated in the lexicon toaccommodate accented speech, but except for small gains, the problem is largely unsolved. Similarly,someprogresshasbeenmadeforautomaticallydetectingspeakingratefromthespeechsignal,butsuchknowledge has not been exploited in speech-recognition systems, mainly due to the lack of any explicitmechanismtomodelspeakingrateintherecognitionprocess.Furtherresearchisneededtoaccommodatespeaker-relatedvariability.
+Thethirdcommontypeofspeechvariabilityisrelatedtolanguagecharacteristicsincludingsublanguage
+ordialect,vocabulary,andgenreortopicofconversation.Manyimportantaspectsofspeakervariabilityhave to do with nonstandard dialects. Dialectal diﬀerences in a language can occur in all linguisticaspects: lexicon, grammar (syntax and morphology), and phonology. The vocabulary and language-use in a speech-recognition task change signiﬁcantly from task to task, necessitating the estimation ofnew language models for each case. A primary reason language models in current speech-recognitionsystemsarenotportableacrosstasksevenwithinthesamelanguageordialectisthattheylacklinguisticsophistication—they cannot consistently distinguish meaningful sentences from meaningless ones, norgrammatical from ungrammatical ones. Discourse structure is not considered either, merely the localcollocationofwords.Anotherreasonwhylanguagemodeladaptationtonewdomainsandgenreisverydataintensiveisthe“nonparametric”natureofthecurrentmodels.
+Thetechnicalchallengeinthisareaofresearchwillentailthecreationanddevelopmentofsystemsthat
+wouldbemuchmorerobustagainstallkindsofvariabilitydiscussedabove,includingchangesinacousticenvironments,reverberation,externalnoisesources,andcommunicationchannels.Newtechniquesandarchitectures need to be developed to enable exploring these critical issues in meaningful environmentsasdiverseasmeetingroompresentationstounstructuredconversations.
+It is fair to say that the acoustic models used in today’s speech systems have few explicit mechanisms
+toaccommodatemostoftheunderlyingcausesofvariabilitydescribedabove.Thestatisticalcomponentsof the model, such as Gaussian mixtures and Markov chains in the HMM, are instead burdened withimplicitlymodelingthevariabilityusingdiﬀerentmixturecomponentsandHMMstatesandinaframe-by-frame manner. Consequently, when the speech presented to a system deviates along one of theseaxes from the speech used for parameter estimation, predictions by the models become highly suspect.Theperformanceofthetechnologydegradescatastrophicallyevenwhenthedeviationsaresuchthattheintendedhumanlistenerexhibitslittleornodiﬃcultyinextractingthesameinformation.Therobustnessofspeechrecognitionagainstallthesevariabilityfactorsconstitutesamajortechnicalchallengeintheﬁeld.
+
+358 HandbookofNaturalLanguageProcessing
+Thehopefor meeting thischallengeliesnot only ininnovativearchitecturesand techniques/algorithmsthatcanintelligentlyrepresentexplicitmechanismsfortherealnatureofspeechvariability,butperhapsmore importantly, also in the ever-increasing data available to train and adapt the speech-recognitionmodelsinwaysnotfeasibleinthepast.
+15.5.2 Capitalizing on Data Deluge for Speech Recognition
+We now have some very exciting opportunities to collect large amounts of audio data that have notpreviously been available. This gives rise to “data deluge.” Thanks in large part to the Internet, thereare now readily accessible large quantities of “everyday” speech, reﬂecting a variety of materials andenvironments previously unavailable. Other rich sources are university course lectures, seminars, andsimilarmaterial, whichareprogressivelybeingputonline. Allthesematerialsreﬂectalessformal, morespontaneous, and natural form of speech than present-day systems have typically been developed torecognize. Recently emerging voice search in mobile phones has also provided a rich source of speechdata,which,becauseoftherecordingofthemobilephoneusers’selection,canbeconsideredaspartially“labeled.”
+One practical beneﬁt of working with these new speech materials is that systems will become more
+capable and more robust in expanding the range of speech materials that can be accurately recognizedunderawiderangeofconditions.Muchofwhatislearnedhereisalsolikelytobeofbeneﬁtinrecognizingcasual“everyday”speechinnon-Englishlanguages.
+Overtheyears,theavailabilityofbothopensourceandcommercialspeechtoolshasbeenveryeﬀective
+inquicklybringinggoodqualityspeechprocessingcapabilitiestomanylabsandresearchers.NewWeb-basedtoolscouldbemadeavailabletocollect,annotate,andthenprocesssubstantialquantitiesofspeechverycost-eﬀectivelyinmanylanguages. MusteringtheassistanceofinterestedindividualsontheWorldWideWeb(e.g.,opensourcesoftware,Wikipedia,etc.)couldgeneratesubstantialquantitiesoflanguageresources very eﬃciently and cost-eﬀectively. This could be especially valuable for creating signiﬁcantnewcapabilitiesforresource“impoverished”languages.
+The ever-increasing amount of data, which is increasingly available to help build speech-recognition
+systems, presents both an opportunity and a challenge for advancing the state of the art in speechrecognition. Large corpora of diverse speech will have to be compiled containing speech that carriesinformation of the kind targeted for extraction by speech recognition. It should also exhibit large butusefullynormalizedextraneousdeviationsofthekindagainstwhichrobustnessissought,suchasadiversespeaker population with varying degrees of nonnative accents or diﬀerent local dialects, widely varyingchannelsandacousticenvironments,diversegenre,etc.
+Speech-recognitiontechnologyhasbarelyscratchedthesurfaceinsamplingthemanykindsofspeech,
+environments, and channels that people routinely experience. In fact, we currently provide to ourautomatic systems only a very small fraction of the amount of materials that humans utilize to acquirelanguage. If we want our systems to be more powerful and to understand the nature of speech itself, weneedtomakemoreuseofitandlabelmoreofit.Well-labeledspeechcorporahavebeenthecornerstoneonwhichtoday’ssystemshavebeendevelopedandevolved.However,mostofthelargequantitiesofdataarenotlabeledorpoorly“labeled,”andlabelingthemaccuratelyiscostly.Thereisanurgentandpracticalneedtodevelophigh-qualityactivelearningandunsupervised/semi-supervisedlearningtechniques.Upontheir successful development, the exploitation of unlabeled or partially labeled data becomes possible totrainthemodels,andwecanautomatically(and“actively”)selectpartsoftheunlabeleddataformanuallabeling in a way that maximizes its utility. This need is partly related to the compilation of diversetraining data discussed earlier. The range of possible combinations of channel, speaker, environment,speakingstyle,anddomainissolargethatitisunrealistictoexpecttranscribedorlabeledspeechineveryconﬁguration of conditions for training the models. However, it is feasible to simply collect raw speechin all conditions of interest. Another important reason for unsupervised learning is that the systems,
+
+AnOverviewofModernSpeechRecognition 359
+like their human “baseline,” will have to undergo “lifelong learning,” adjusting to evolving vocabulary,channels,languageuse,etc.
+Large amounts of speech data will enable multi-stream and multiple-module strategies for speech
+recognition to be developed. Robust methods are needed to identify reliable elements of the speechspectrum in a data-driven manner by employing an entire ensemble of analyses. A multiple-moduleapproach also entails a new search strategy that treats the reliability of a module or stream in anyinstanceasanotherhiddenvariableoverwhichtooptimize,andseeksthemostlikelyhypothesisoverallconﬁgurationsofthesehiddenvariables.
+15.5.3 Self-Learning and Adaptation for Speech Recognition
+State-of-the-art systems for speech recognition are based on statistical models estimated from labeledtraining data, such as transcribed speech, and from human-supplied knowledge, such as pronunciationdictionaries.Suchbuilt-inknowledgeoftenbecomesobsoletefairlyquicklyafterasystemisdeployedina real-world application, and signiﬁcant and recurring human intervention in the form of retraining isneeded to sustain the utility of the system. This is in sharp contrast with the speech facility in humans,which is constantly updated over a lifetime, routinely acquiring new vocabulary items and idiomaticexpressions, as well as deftly handling previously unseen nonnative accents and regional dialects of alanguage. In particular, humans exhibit a remarkable aptitude for learning the sublanguage of a newdomainorapplicationwithoutexplicitsupervision.
+Thechallengehereistocreateself-adaptiveorself-learningtechniquesthatwillendowspeechrecog-
+nizerswithatleastarudimentaryformofthehuman’sself-learningcapability.Thereisaneedforlearningat all levels of speech and language processing to cope with changing environments, nonspeech sounds,speakers, pronunciations, dialects, accents, words, meanings, and topics, to name but a few sources ofvariation over the lifetime of a deployed system. Like its human counterpart, the system would engageinautomaticpatterndiscovery, activelearning, andadaptation. Researchinthisareamustaddressboththelearningofnewmodelsandtheintegrationofsuchmodelsintopreexistingknowledgesources.Thus,an important aspect of learning is being able to discern when something has been learned and how toapply the result. Learning from multiple concurrent modalities, for example, new text and video, mayalso be necessary. For instance, a speech-recognition system may encounter a new proper noun in itsinput speech, and may need to examine contemporaneous text with matching context to determine thespellingofthename. Theexploitationofunlabeledorpartiallylabeleddatawouldbenecessaryforsuchlearning, perhaps including the automatic selection (by the system) of parts of the unlabeled data formanuallabeling,inawaythatmaximizesitsutility.
+Amotivationfortheresearchdirectionondevelopingspeechrecognizers’self-learningcapabilityisthe
+growingactivityinthealliedﬁeldofMachineLearning.Successinthisendeavorwouldextendthelifetimeof deployed systems, and directly advance our ability to develop speech systems in new languages anddomains without onerous demands of labeled speech, essentially by creating systems that automaticallylearnandimproveovertime.
+Onemostimportantaspectoflearningisgeneralization.Whenasmallamountoftestdataisavailable
+to adjust speech recognizers, we call such generalization as adaptation. Adaptation and generalizationcapabilitiesenablerapidspeech-recognitionapplicationintegration.
+Over the past three decades, the speech community has developed and reﬁned an experimental
+methodologythathashelpedtofostersteadyimprovementsinspeechtechnology.Theapproachthathasworked well, and been adopted in other research communities, is to develop shared corpora, softwaretools, and guidelines that can be used to reduce diﬀerences between experimental setups down to thebasic algorithms, so that it becomes easier to quantify fundamental improvements. Typically, thesecorporaarefocusedonaparticulartask.Asspeechtechnologyhasbecomemoresophisticated,thescopeand diﬃculty of these tasks has continually increased: from isolated words to continuous speech, fromspeaker-dependenttoindependent,fromreadtospontaneousspeech,fromcleantonoisy,fromutterance
+
+360 HandbookofNaturalLanguageProcessing
+tocontent-based, etc. Althoughthecomplexityofsuchcorporahascontinuallyincreased, onecommonproperty of such tasks is that they typically have a training partition that is quite similar in nature tothe test data. Indeed, obtaining large quantities of training data that is closely matched to the test isperhaps the single most reliable method to improve speech-recognition performance. This strategy isquite diﬀerent from the human experience however. For our entire lives, we are exposed to all kinds ofspeech data from uncontrolled environments, speakers, and topics, (i.e., “every day” speech). Despitethis variation in our own personal training data, we are all able to create internal models of speech andlanguagethatareremarkablyadeptatdealingwithvariationinthespeechchain.Thisabilitytogeneralizeisakeyaspectofhumanspeechprocessingthathasnotyetfounditswayintomodernspeechrecognizers.Research activities on this topic should produce technology that will operate more eﬀectively in novelcircumstances, and that can generalize better from smaller amounts of data. Examples include movingfrom one acoustic environment to another, diﬀerent tasks, languages, etc. Another research area couldexplorehowwellinformationgleanedfromlargeresourcelanguagesand/ordomainsgeneralizetosmallerresourcelanguagesanddomains.
+15.5.4 Developing Speech Recognizers beyond the Language Barrier
+State-of-the-artspeechrecognitionsystemstodaydelivertopperformancesbybuildingcomplexacousticandlanguagemodelsusingalargecollectionofdomain-andlanguage-speciﬁcspeechandtextexamples.Thissetoflanguageresourcesisoftennotreadilyavailableformanylanguages. Thechallengehereistocreatespokenlanguagetechnologiesthatarerapidlyportable.Toprepareforrapiddevelopmentofsuchspoken language systems, a new paradigm is needed to study speech and acoustic units that are morelanguage-universal than language-speciﬁc phones. Three speciﬁc research issues need to be addressed:(1) cross-language acoustic modeling of speech and acoustic units for a new target language, (2) cross-linguallexicalmodelingofwordpronunciationsfornewlanguage, (3)cross-linguallanguagemodeling.By exploring correlation between these emerging languages and well-studied languages, cross-languageproperties (e.g., language clustering and universal acoustic modeling can be utilized to facilitate therapid adaptation of acoustic and language models. Bootstrapping techniques are also keys to buildingpreliminarysystemsfromasmallamountoflabeledutterancesﬁrst, usingthemtolabelmoreutteranceexamplesinanunsupervisedmanner, incorporatingnew-labeled dataintothelabelset, anditeratingtoimprove the systems until they reach a comparable performance level similar to today’s high-accuracysystems.
+15.5.5 Detection of Unknown Events in Speech Recognition
+Current ASR systems have diﬃculty in handling unexpected—and thus often the most informationrich—lexical items. This is especially problematic in speech that contains interjections or foreign orout-of-vocabularywords,andinlanguagesforwhichthereisrelativelylittledatawithwhichtobuildthesystem’s vocabulary and pronunciation lexicon. A common outcome in this situation is that high-valueterms are overconﬁdently misrecognized as some other common and similar-sounding word. Yet, suchspoken events are key to tasks such as spoken term detection and information extraction from speech.Theiraccuratedetectionisthereforeofvitalimportance.
+The challenge here is to create systems that reliably detect when they do not know a (correct) word.
+Acluetotheoccurrenceofsucherroreventsisthemismatchbetweenananalysisofapurelysensorysignalunencumberedbypriorknowledge,suchasunconstrainedphonerecognition,andaword-orphrase-levelhypothesisbasedonhigherlevelknowledge,oftenencodedinalanguagemodel.Akeycomponentofthisresearch would therefore be to develop novel conﬁdence measures and accurate models of uncertaintybased on the discrepancy between sensory evidence and ap r i o r ibeliefs. A natural sequel to detection
+of such events would be to transcribe them phonetically when the system is conﬁdent that its wordhypothesisisunreliable,andtodeviseerror-correctionschemes.
+
+AnOverviewofModernSpeechRecognition 361
+15.5.6 Learning from Human Speech Perception and Production
+Asalong-termresearchdirection, oneprincipalknowledgesourcethatwecandrawtobeneﬁtmachinespeech recognition is in the area of human speech perception, understanding, and cognition. This richknowledgesourcehasitsbasisinbothpsychologicalandphysiologicalprocessesinhumans.Physiologicalaspectsofthehumanspeechperceptionofmostinterestincludecorticalprocessingintheauditoryareaaswellasintheassociatedmotorareaofthebrain.Oneimportantprincipleofauditoryperceptionisitsmodular organization, and recent advances in functional neuroimaging technologies provide a drivingforce motivating new studies toward developing the integrated knowledge of the modularly organizedauditory process in an end-to-end manner. The psychological aspects of human speech perceptionembody the essential psychoacoustic properties that underlie auditory masking and attention. Such keyproperties equip human listeners with the remarkable capability of coping with cocktail party eﬀectsthat no current automatic speech-recognition techniques can successfully handle. Intensive studies areneeded in order for speech recognition and understanding applications to reach a new level, deliveringperformancecomparabletohumans.
+Speciﬁcissuestoberesolvedinthestudyofhowthehumanbrainprocessesspoken(aswellaswritten)
+languagearethewayhumanlistenersadapttononnativeaccentsandthetimecourseoverwhichhumanlisteners reacquaint themselves to a language known to them. Humans have amazing capabilities toadapt to nonnative accents. Current speech-recognition systems are extremely poor in this aspect, andthe improvement is expected only after we have suﬃcient understanding of human speech processingmechanisms. One speciﬁc issue related to human speech perception, which is linked to human speechproduction,isthetemporalspanoverwhichspeechsignalsarerepresentedandmodeled.Oneprominentweakness in current HMMs is the handicap in representing long-span temporal dependency in theacoustic feature sequence of speech, which, nevertheless, is an essential property of speech dynamicsin both perception and production. The main cause of this handicap is the conditional independenceassumptions inherit in the HMM formalism. The HMM framework also assumes that speech can bedescribed as a sequence of discrete units, usually phone(me)s. In this symbolic, invariant approach, thefocus is on the linguistic/phonetic information, and the incoming speech signal is normalized duringpreprocessing in order to remove most of the paralinguistic information. However, human speechperception experiments have shown that the paralinguistic information plays a crucial role in humanspeechperception.
+Numerous approaches have been taken over the past dozen years to address the above weaknesses of
+HMMs.Theseapproachescanbebroadlyclassiﬁedintothefollowingtwocategories.Theﬁrst,parametric,structure-basedapproachestablishesmathematicalmodelsforstochastictrajectories/segmentsofspeechutterances using various forms of parametric characterization. The essence of such an approach is thatitexploitsknowledgeandmechanismsofhumanspeechperceptionandproductionsoastoprovidethestructureofthemultitieredstochasticprocessmodels.Theseparametricmodelsaccountfortheobservedspeech trajectory data based on the underlying mechanisms of speech coarticulation and reductiondirectly relevant to human speech perception, and on the relationship between speaking rate variationsand the corresponding changes in the acoustic features. The second, nonparametric and template-based approach to overcoming the HMM weaknesses involves the direct exploitation of speech featuretrajectories(i.e.,“template”)inthetrainingdatawithoutanymodelingassumptions.Thisnewerapproachis based on episodic learning as evidenced in many recent human speech perception and recognitionexperiments. Due to the dramatic increase of speech databases and computer storage capacity availablefor training, as well as the exponentially expanded computational power, nonparametric methods andepisodiclearningproviderichareasforfutureresearch.Theessenceofthetemplate-basedapproachisthatitcapturesstrongdynamicsegmentalinformationaboutspeechfeaturesequencesinawaycomplimentarytotheparametric,structure-basedapproach.
+Understandinghumanspeechperceptionwillprovideawealthofinformationenablingtheconstruction
+ofbettermodels(thanHMMs)thatreﬂectattributesofhumanauditoryprocessingandthelinguisticunits
+
+362 HandbookofNaturalLanguageProcessing
+usedinhumanspeechrecognition.Forexample,towhatextentmayhumanlistenersusemixedwordorphrase“templates”andtheconstituentphonetic/phonologicalunitsintheirmemorytoachieverelativelyhigh-performanceinspeechrecognitionforaccentedspeechorforeignlanguages(weakknowledge)andforacousticallydistortedspeech(weakobservation)?Howdohumanlistenersuseepisodiclearning(e.g.,direct memory access) and parametric learning related to smaller phonetic units (analogous to whatwe are currently using for HMMs in machines) in speech recognition/understanding? Answers to thesequestionswillbeneﬁtourdesignofnext-generationmachinespeech-recognitionmodelsandalgorithms.
+15.5.7 Capitalizing on New Trends in Computational Architectures for
+Speech Recognition
+Moore’s law has been a dependable indicator of the increased capability for computation and storagein our computational systems for decades. The resulting eﬀects on systems for speech recognition andunderstanding have been enormous, permitting the use of larger and larger training databases andrecognition systems, and the incorporation of more and more detailed models of spoken language.Many of the future research directions and applications suggested in this chapter implicitly dependupon a continued advance in computational capabilities, an assumption that certainly seems justiﬁedgivenrecenthistory.However,thefundamentalsofthisprogressionhaverecentlychanged.AsIntelandothershavenotedrecently, thepowerdensityonmicroprocessorshasincreasedtothepointthathigherclock rates would begin to melt the silicon. Consequently, at this point, industry development is nowfocusedonimplementingmicroprocessorsonmultiplecores.DualcoreCPUsarenowverycommon,andfour-processor and eight-processor systems are coming out. The new road maps for the semiconductorindustryreﬂectthistrend,andfuturespeedupswillcomemorefromparallelismthanfromhavingfasterindividualcomputingelements.
+Forthemostpart,algorithmdesignersforspeechsystemshaveignoredinvestigationofsuchparallelism,
+partlybecausetheadvanceofscalabilityhasbeensoreliable.Futureresearchdirectionsandapplicationsdiscussed in this chapter will require signiﬁcantly more computation, and consequently researchersconcerned with implementation will need to consider parallelism explicitly in their designs. This willbe a signiﬁcant change from the status quo. In particular, tasks such as decoding, for which extremelyclever schemes to speed up single-processor performance have been developed, will require a completerethinkingofthealgorithms.
+15.5.8 Embedding Knowledge and Parallelism into Speech-Recognition
+Decoding
+Decoding or search is one of the three major components in the general statistical speech-recognitionarchitecture,asweoverviewedearlierinthischapterontheconventionaltechniquesdevelopedincludingthetime-synchronousViterbisearchandthestacksearch.Thesesearchalgorithmsweredevelopedlongbefore parallelism came into being. New search methods that explicitly exploit parallelism as a novelcomputationalarchitecturemaybeanimportantresearchdirectionforspeechunderstandingsystems.
+Additionally, as innovative recognition algorithms are added, there will be impact on the search
+component. For instance, rather than the left-to-right (and sometimes right-to-left) recognition passesthat are used today, there could be advantages to either identifying islands of reliability or islandsof uncertainty, and rely upon alternate knowledge sources only “locally” in the search process. Theincorporationofmultipletiersofunits(e.g.,DengandSun,1994;SunandDeng,2002),suchasarticulatoryfeature,sub-phonestate,phone,syllable,word,andmulti-wordphrase,couldhaveconsequencesforthesearchprocess.
+Further, so-called episodic approaches to speech recognition are being investigated (Wachter et al.,
+2003). These approaches rely on examples of phrases, words, or other units directly, as opposed tostatistical models of speech. While this seems to be a throwback to the days before the prominence of
+
+AnOverviewofModernSpeechRecognition 363
+HMMs,theideaisgainingnewprominenceduetotheavailabilityoflargerandlargerspeechdatabases,and thus more and more examples for each modeled speech unit (Deng and Strik, 2007). One futureresearchdirectionwouldbetolearnhowtobestincorporatetheseapproachesintoasearchthatalsousesstatisticalmodels,whichhavealreadyproventheirworth.
+15.6 Summary
+Speech recognition has a long history of development. It is not until the introduction of the statisticalframework that the ﬁeld has enjoyed steadfast progress and has opened up many practical applications.Threemaincomponents(acousticmodeling,languagemodeling,anddecoding)discussedinthischaptercanbefoundinmostmodernspeech-recognitionsystems.Eachofthesecomponentshashadsigniﬁcantmilestones in the historical developments. Beyond the set of applications discussed in this chapter, webelieve other speech applications will proliferate thanks to the increased power of computing, mobilecommunications,andmultimodaluserinterface,aswellastonewbreakthroughsandresearchadvancesin the ﬁeld. Some of the fertile areas for future research discussed in Section 15.5 provide potentialadvancesthatmayleadtonewspeechtechnologyapplications.
+References
+Anastasakos,T.,J.McDonough,andJ.Makhoul(1997).Speakeradaptivetraining:Amaximumlikelihood
+approachtospeakernormalization,in ProceedingsoftheIEEEInternationalConferenceonAcoustics,
+Speech,andSignalProcessing ,pp.1043–1046,Munich,Germany.
+Bahl, L., P. Brown, P. de Souza, and R. Mercer (1986). Maximum mutual information estimation of
+hiddenMarkovmodelparametersforspeechrecognition,in ProceedingsoftheIEEEInternational
+ConferenceonAcoustics,Speech,andSignalProcessing ,pp.49–52,Tokyo,Japan.
+Baker, J. (1975). Stochastic modeling for automatic speech recognition, in D. R. Reddy, (ed.), Speech
+Recognition ,AcademicPress,NewYork.
+Baker, J., L. Deng, J. Glass, S. Khudanpur, C.-H. Lee, and N. Morgan (2007). MINDS report:
+Historicaldevelopmentandfuturedirectionsinspeechrecognitionandunderstanding.http://www-nlpir.nist.gov/MINDS/FINAL/speech.web.pdf.
+Baker,J.,L.Deng,J.Glass,S.Khudanpur,C.-H.Lee,N.Morgan,andD.O’Shaughnessy(2009a).Updated
+MINDS report on speech recognition and understanding part I, IEEE Signal Processing Magazine ,
+26(3),75–80.
+Baker, J., L. Deng, J. Glass, S. Khudanpur, C.-H. Lee, N. Morgan, and D. O’Shaughnessy (2009b).
+Updated MINDS report on speech recognition and understanding part II, IEEE Signal Processing
+Magazine ,26(4),78–85.
+Baum,L.(1972).Aninequalityandassociatedmaximizationtechniqueoccurringinstatisticalestimation
+forprobabilisticfunctionsofaMarkovprocess, Inequalities,III,1–8.
+Breiman, L., J. Friedman, R. Olshen, and C. Stone (1984). Classiﬁcation and Regression Trees ,
+Wadsworth&Brooks,PaciﬁcGrove,CA.
+Chelba C. and F. Jelinek (2000). Structured language modeling, Computer Speech and Language , 14,
+283–332.
+Davis, S. and P. Mermelstein (1980). Comparison of parametric representations for monosyllabic word
+recognition in continuously spoken sentences, IEEE Transactions on Acoustics, Speech, and Signal
+Processing ,28(4),357–366.
+Dempster, A., N. Laird, and D. Rubin (1977). Maximum likelihood from incomplete data via the EM
+algorithm, JournaloftheRoyalStatisticalSociety ,39(1),1–21.
+
+364 HandbookofNaturalLanguageProcessing
+Deng, L. (1993). A stochastic model of speech incorporating hierarchical nonstationarity, IEEE
+TransactionsonSpeechandAudioProcessing ,1(4),471–475.
+Deng, L. and X. D. Huang (2004). Challenges in adopting speech recognition, Communications of the
+ACM,47(1),11–13.
+Deng, L. and D. O’Shaughnessy (2003). Speech Processing—A Dynamic and Optimization-Oriented
+Approach,MarcelDekkerInc.,NewYork.
+Deng,L.andH.Sameti(1996).TransitionalspeechunitsandtheirrepresentationbytheregressiveMarkov
+states:Applicationstospeechrecognition, IEEETransactionsonSpeechandAudioProcessing ,4(4),
+301–306.
+Deng, L. and H. Strik (2007). Structure-based and template-based automatic speech recognition—
+Comparingparametricandnon-parametricapproaches,in Proceedingsofthe8thAnnualConference
+oftheInternationalSpeechCommunicationAssociationInterspeech ,Antwerp,Belgium.
+Deng, L. and D. Sun (1994). A statistical approach to automatic speech recognition using the atomic
+speechunitsconstructedfromoverlappingarticulatoryfeatures, JournaloftheAcousticalSocietyof
+America,85(5),2702–2719.
+Deng, L., M. Aksmanovic, D. Sun, and J. Wu (1994). Speech recognition using hidden Markov models
+with polynomial regression functions as nonstationary states, IEEE Transactions on Speech and
+AudioProcessing ,2,507–520.
+Deng, L., J. Droppo, and A. Acero (2004). Estimating cepstrum of speech under the presence of noise
+usingajointpriorofstaticanddynamicfeatures, IEEETransactionsonSpeechandAudioProcessing ,
+12(3),218–233.
+Deng, L., D.Yu, andA.Acero(2006). Structuredspeechmodeling, IEEETransactions onAudio, Speech
+andLanguageProcessing(SpecialIssueonRichTranscription),14(5),1492–1504.
+Droppo, J. and A. Acero (2008). Environmental robustness, in Handbook of Speech Processing ,
+pp.653–680,Springer-Verlag,Berlin,Germany.
+EideE.andH.Gish(1996).Aparametricapproachtovocaltractlengthnormalization,in Proceedingsof
+theInternationalConferenceonAcoustics,Speech,andSignalProcessing ,pp.346–349,Atlanta,GA.
+Fiscus, J. (1997). A post-processing system to yield reduced word error rates: Recognizer output vot-
+ing error reduction (ROVER), IEEE Automatic Speech Recognition and Understanding Workshop ,
+pp.3477–3482,SantaBarbara,CA.
+Frey,B.,T.T.Kristjansson,L.Deng,andA.Acero(2001).ALGONQUIN—learningdynamicnoisemodels
+from noisy speech for robust speech recognition, in Proceedings of Neural Information Processing
+Systems,pp.100–107.
+Furui, S. (2001). Digital Speech Processing, Synthesis and Recognition (2nd Ed.), Marcel Dekker Inc.,
+NewYork.
+GaoY.andJ.Kuo(2006).Maximumentropydirectmodelsforspeechrecognition, IEEETransactionson
+SpeechandAudioProcessing,14(3),873–881.
+Gauvain,J.-L.andC.-H.Lee(1997).MaximumaposterioriestimationformultivariateGaussianmixture
+observationsofMarkovchains, IEEETransactionsonSpeechandAudioProcessing ,7,711–720.
+Glass, J. (2003). A probabilistic framework for segment-based speech recognition, in M. Russell and
+J. Bilmes (eds.), New Computational Paradigms for Acoustic Modeling in Speech Recognition ,
+Computer,SpeechandLanguage (Specialissue),17(2–3),137–152.
+Gold,B.andN.Morgan(2000). SpeechandAudioSignalProcessing ,JohnWiley&Sons,NewYork.
+Gunawardana, A. and W. Byrne (2001). Discriminative speaker adaptation with conditional maximum
+likelihoodlinearregression, ProceedingsoftheEUROSPEECH ,Aalborg,Denmark.
+Gunawardana, A., M. Mahajan, A. Acero, and J. C. Platt (2005). Hidden conditional random ﬁelds for
+phoneclassiﬁcation, in ProceedingsoftheInternationalConferenceonSpeechCommunicationand
+Technology,pp.1117–1120.
+He, X., L. Deng, C. Wu (2008). Discriminative learning in sequential pattern recognition, IEEE Signal
+ProcessingMagazine ,25(5),14–36.
+
+AnOverviewofModernSpeechRecognition 365
+Hermansky,H.(1990).Perceptuallinearpredictiveanalysisofspeech, JournaloftheAcousticalSocietyof
+America,87(4),1738–1752.
+Hermansky H. and N. Morgan (1994). RASTA processing of speech, IEEE Transactions on Speech and
+AudioProcessing ,2(4),578–589.
+Huang,X.D.(2009).Leadingastart-upinanenterprise:LessonslearnedincreatingMicrosoftresponse
+point,IEEESignalProcessingMagazine ,26(2),135–138.
+Huang, X. D. and K.-F. Lee (1993), On speaker-independent, speaker-dependent and speaker adaptive
+speechrecognition, IEEETransactionsonSpeechandAudioProcessing ,1(2),150–157.
+Huang,X.D.,A.Acero,andH.Hon(2001). SpokenLanguageProcessing—AGuidetoTheory,Algorithms,
+andSystemDevelopment,PrenticeHall,UpperSaddleRiver,NJ.
+Jelinek, F. (1969) A fast sequential decoding algorithm using a stack, IBM Journal of Research and
+Development,13,675–685.
+Jelinek, F. (1976). Continuous speech recognition by statistical methods, Proceedings of the IEEE , 64(4),
+532–557.
+Jelinek,F.(1997). StatisticalMethodsforSpeechRecognition ,MITPress,Cambridge,MA.
+Jiang, L. and X. D. Huang (1998). Vocabulary-independent word conﬁdence measure using subword
+features,in ProceedingsoftheInternationalConferenceonSpokenLanguageProcessing ,pp.401–404,
+Sydney,NSW.
+Jurafsky D. and J. Martin (2000). Speech and Language Processing—An Introduction to Natural Lan-
+guage Processing, Computational Linguistics, and Speech Recognition , Prentice Hall, Upper Saddle
+River,NJ.
+Kumar, N. and A. Andreou (1998). Heteroscedastic analysis and reduced rank HMMs for improved
+speechrecognition, SpeechCommunication,26,283–297.
+Lee, K. F. (1988). Automatic Speech Recognition: The Development of the Sphinx Recognition System,
+Springer-Verlag,Berlin,Germany.
+Lee, C., F. Soong, and K. Paliwal (eds.) (1996). Automatic Speech and Speaker Recognition—Advanced
+Topics,KluwerAcademic,Norwell,MA.
+Leggetter C. and P. Woodland (1995). Maximum likelihood linear regression for speaker adaptation of
+continuousdensityhiddenMarkovmodels, ComputerSpeechandLanguage ,9,171–185.
+Lippman,R.(1987).Anintroductiontocomputingwithneuralnets, IEEEASSPMagazine ,4(2),4–22.
+Macherey,M.,L.Haferkamp,R.Schlüter,andH.Ney(2005).Investigationsonerrorminimizingtraining
+criteria for discriminative training in automatic speech recognition, in Proceedings of Interspeech,
+pp.2133–2136,Lisbon,Portugal.
+Morgan,N.,Q.Zhu,A.Stolcke,K.Sonmez,S.Sivadas,T.Shinozaki,M.Ostendorf,P.Jain,H.Hermansky,
+D. Ellis, G. Doddington, B. Chen, O. Cetin, H. Bourlard, and M. Athineos (2005). Pushing theenvelope—Aside, IEEESignalProcessingMagazine ,22,81–88.
+Ney,H.(1984).Theuseofaone-stagedynamicprogrammingalgorithmforconnectedwordrecognition,
+IEEETransactionsonASSP ,32,263–271.
+Ostendorf, M., V. Digalakis, and J. Rohlicek(1996). From HMMsto segment models: A uniﬁed view of
+stochastic modeling for speech recognition, IEEE Transactions on Speech and Audio Processing ,4 ,
+360–378.
+Poritz,A.(1988).HiddenMarkovmodels: Aguidedtour, in ProceedingsoftheInternationalConference
+onAcoustics,Speech,andSignalProcessing ,Vol.1,pp.1–4,Seattle,WA.
+Povey,B.,Kingsbury,L.Mangu,G.Saon,H.Soltau,andG.Zweig(2005).FMPE:Discriminativelytrained
+featuresforspeechrecognition,in ProceedingsoftheInternationalConferenceonAcoustics,Speech,
+andSignalProcessing ,Philadelphia,PA.
+Rabiner,L.andB.Juang(1993). FundamentalsofSpeechRecognition ,PrenticeHall,EnglewoodCliﬀs,NJ.
+Reddy,D.R.(ed.)(1975). SpeechRecognition ,AcademicPress,NewYork.
+
+366 HandbookofNaturalLanguageProcessing
+Rosenberg,A.,C.H.Lee,andF.K.Soong(1994).CepstralchannelnormalizationtechniquesforHMM-
+basedspeakerveriﬁcation,in ProceedingsoftheInternationalConferenceonAcoustics,Speech,and
+SignalProcessing ,pp.1835–1838,Adelaide,SA.
+Sakoe, S. and S. Chiba (1971). A dynamic programming approach to continuous speech recogni-
+tion, inProceedings of the 7th International Congress on Acoustics , Vol. 3, pp. 65–69, Budapest,
+Hungary.
+Vintsyuk,T.(1968).Speechdiscriminationbydynamicprogramming, Kibernetika,4(2),81–88.
+Viterbi, A. (1967). Error bounds for convolutional codes and an asymptotically optimum decoding
+algorithm,in IEEETransactionsonInformationTheory,IT-13(2),260–269.
+Schwartz, R. and Y. Chow (1990). The N-best algorithm: An eﬃcient and exact procedure for ﬁnding
+theNmostlikelysentencehypotheses,in ProceedingsoftheInternationalConferenceonAcoustics,
+Speech,andSignalProcessing ,Albuquerque,NM.
+Sun, J. and L. Deng (2002). An overlapping-feature based phonological model incorporating linguistic
+constraints:Applicationstospeechrecognition, JournaloftheAcousticalSocietyofAmerica,111(2),
+1086–1101.
+Vinyals, O., L.Deng, D.Yu, andA.Acero(2009)Discriminativepronunciationlearningusingphonetic
+decoderandminimum-classiﬁcation-errorcriterion,in ProceedingsoftheInternationalConference
+onAcoustics,Speech,andSignalProcessing ,Taipei,Taiwan.
+Wang, Y., M. Mahajan, and X. Huang (2000). A uniﬁed context-free grammar and n-gram model for
+spoken language processing, in Proceedings of the International Conference on Acoustics, Speech,
+andSignalProcessing ,Istanbul,Turkey.
+Wang, Y., D. Yu, Y. Ju, and A. Acero (2008). An introduction to voice search, IEEE Signal Processing
+Magazine(SpecialIssueonSpokenLanguageTechnology) ,25(3),29–38.
+Wachter, M., K. Demuynck, D. Van Compernolle, and P. Wambacq (2003). Data-driven example
+basedcontinuousspeechrecognition,in ProceedingsoftheEUROSPEECH,pp.1133–1136,Geneva,
+Switzerland.
+Yaman, S., L. Deng, D. Yu, Y. Wang, and A. Acero (2008). An integrative and discriminative technique
+for spoken utterance classiﬁcation, IEEE Transactions on Audio, Speech, and Language Processing ,
+16(6),1207–1214.
+Yu, D., L. Deng, J. Droppo, J. Wu, Y. Gong, and A. Acero (2008). Robust speech recognition using
+cepstralminimum-mean-square-error noisesuppressor, IEEETransactions on Audio, Speech, and
+LanguageProcessing ,16(5),1061–1070.
+

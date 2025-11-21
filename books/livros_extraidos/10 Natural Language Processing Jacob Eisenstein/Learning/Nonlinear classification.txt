@@ -1,0 +1,793 @@
+Chapter 3 1341
+Nonlinear classiﬁcation 1342
+Linear classiﬁcation may seem like all we need for natural language processing. The bag- 1343
+of-words representation is inherently high dimensional, and the number of features is 1344
+often larger than the number of training instances. This means that it is usually possible 1345
+to ﬁnd a linear classiﬁer that perfectly ﬁts the training data. Moving to nonlinear classiﬁ- 1346
+cation may therefore only increase the risk of overﬁtting. For many tasks, lexical features 1347
+(words) are meaningful in isolation, and can offer independent evidence about the in- 1348
+stance label — unlike computer vision, where individual pixels are rarely informative, 1349
+and must be evaluated holistically to make sense of an image. For these reasons, natu- 1350
+ral language processing has historically focused on linear classiﬁcation to a greater extent 1351
+than other machine learning application domains. 1352
+But in recent years, nonlinear classiﬁers have swept through natural language pro- 1353
+cessing, and are now the default approach for many tasks (Manning, 2016). There are at 1354
+least three reasons for this change. 1355
+•There have been rapid advances in deep learning , a family of nonlinear meth- 1356
+ods that learn complex functions of the input through multiple layers of compu- 1357
+tation (Goodfellow et al., 2016). 1358
+•Deep learning facilitates the incorporation of word embeddings , which are dense 1359
+vector representations of words. Word embeddings can be learned from large amounts 1360
+of unlabeled data, and enable generalization to words that do not appear in the an- 1361
+notated training data (word embeddings are discussed in detail in chapter 14). 1362
+•A third reason for the rise of deep nonlinear learning algorithms is hardware. Many 1363
+deep learning models can be implemented efﬁciently on graphics processing units 1364
+(GPUs), offering substantial performance improvements over CPU-based comput- 1365
+ing. 1366
+This chapter focuses on neural networks , which are the dominant approach for non- 1367
+61
+
+62 CHAPTER 3. NONLINEAR CLASSIFICATION
+linear classiﬁcation in natural language processing today.1Historically, a few other non- 1368
+linear learning methods have been applied to language data: 1369
+•Kernel methods are generalizations of the nearest-neighbor classiﬁcation rule, which 1370
+classiﬁes each instance by the label of the most similar example in the training 1371
+set (Hastie et al., 2009). The application of the kernel support vector machine to 1372
+information extraction is described in chapter 17. 1373
+•Decision trees classify instances by checking a set of conditions. Scaling decision 1374
+trees to bag-of-words inputs is difﬁcult, but decision trees have been successful in 1375
+problems such as coreference resolution (chapter 15), where more compact feature 1376
+sets can be constructed (Soon et al., 2001). 1377
+•Boosting and related ensemble methods work by combining the predictions of sev- 1378
+eral “weak” classiﬁers, each of which may consider only a small subset of features. 1379
+Boosting has been successfully applied to text classiﬁcation (Schapire and Singer, 1380
+2000) and syntactic analysis (Abney et al., 1999), and remains one of the most suc- 1381
+cessful methods on machine learning competition sites such as Kaggle (Chen and 1382
+Guestrin, 2016). 1383
+3.1 Feedforward neural networks 1384
+Consider the problem of building a classiﬁer for movie reviews. The goal is to predict 1385
+a labely∈{GOOD,BAD,OKAY}from a representation of the text of each document, x. 1386
+But what makes a good movie? The story, acting, cinematography, soundtrack, and so 1387
+on. Now suppose the training set contains labels for each of these additional features, 1388
+z= [z1,z2,...,zKz]⊤. With such information, we could build a two-step classiﬁer: 1389
+1.Use the textxto predict the features z. Speciﬁcally, train a logistic regression clas- 1390
+siﬁer to compute p (zk|x), for eachk∈{1,2,...,Kz}. 1391
+2.Use the features zto predict the label y. Again, train a logistic regression classiﬁer 1392
+to compute p (y|z). On test data, zis unknown, so we use the probabilities p (z|x) 1393
+from the ﬁrst layer as the features. 1394
+This setup is shown in Figure 3.1, which describes the proposed classiﬁer in a compu- 1395
+tation graph : the text features xare connected to the middle layer z, which in turn is 1396
+connected to the label y. 1397
+Since eachzk∈{0,1}, we can treat p (zk|x)as a binary classiﬁcation problem, using 1398
+binary logistic regression: 1399
+Pr(zk= 1|x;Θ(x→z)) =σ(θ(x→z)
+k·x) = (1 + exp(−θ(x→z)
+k·x))−1, [3.1]
+1I will use “deep learning” and “neural networks” interchangeably.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+3.1. FEEDFORWARD NEURAL NETWORKS 63
+. . .. . .
+xzy
+Figure 3.1: A feedforward neural network. Shaded circles indicate observed features,
+usually words; squares indicate nodes in the computation graph, which are computed
+from the information carried over the incoming arrows.
+whereσ(·)is the sigmoid function (shown in Figure 3.2), and the matrix Θ(x→z)∈RKz×V1400
+is constructed by stacking the weight vectors for each zk, 1401
+Θ(x→z)= [θ(x→z)
+1,θ(x→z)
+2,...,θ(x→z)
+Kz]⊤. [3.2]
+We will assume that xcontains a term with a constant value of 1, so that a corresponding 1402
+offset parameter is included in each θ(x→z)
+k. 1403
+The output layer is computed by the multi-class logistic regression probability, 1404
+Pr(y=j|z;Θ(z→y),b) =exp(θ(z→y)
+j·z+bj)
+∑
+j′∈Yexp(θ(z→y)
+j′·z+bj′), [3.3]
+wherebjis an offset for label j, and the output weight matrix Θ(z→y)∈RKy×Kzis again 1405
+constructed by concatenation, 1406
+Θ(z→y)= [θ(z→y)
+1,θ(z→y)
+2,...,θ(z→y)
+Ky]⊤. [3.4]
+The vector of probabilities over each possible value of yis denoted, 1407
+p(y|z;Θ(z→y),b) =SoftMax (Θ(z→y)z+b), [3.5]
+where element jin the output of the SoftMax function is computed as in Equation 3.3. 1408
+We have now deﬁned a multilayer classiﬁer, which can be summarized as,
+p(z|x;Θ(x→z)) =σ(Θ(x→z)x) [3.6]
+p(y|z;Θ(z→y),b) =SoftMax (Θ(z→y)z+b), [3.7]
+whereσ(·)is now applied elementwise to the vector of inner products, 1409
+σ(Θ(x→z)x) = [σ(θ(x→z)
+1·x),σ(θ(x→z)
+2·x),...,σ (θ(x→z)
+Kz·x)]⊤. [3.8]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+64 CHAPTER 3. NONLINEAR CLASSIFICATION
+3
+ 2
+ 1
+ 0 1 2 31
+0123values
+sigmoid
+tanh
+ReLU
+3
+ 2
+ 1
+ 0 1 2 30.00.20.40.60.81.0derivatives
+Figure 3.2: The sigmoid, tanh, and ReLU activation functions
+Now suppose that the hidden features zare never observed, even in the training data.
+We can still construct the architecture in Figure 3.1. Instead of predicting yfrom a discrete
+vector of predicted values z, we use the probabilities σ(θk·x). The resulting classiﬁer is
+barely changed:
+z=σ(Θ(x→z)x) [3.9]
+p(y|x;Θ(z→y),b) =SoftMax (Θ(z→y)z+b). [3.10]
+This deﬁnes a classiﬁcation model that predicts the label y∈Y from the base features x, 1410
+through a“hidden layer” z. This is a feedforward neural network .21411
+3.2 Designing neural networks 1412
+This feedforward neural network can be generalized in a number of ways. 1413
+3.2.1 Activation functions 1414
+If the hidden layer is viewed as a set of latent features, then the sigmoid function repre- 1415
+sents the extent to which each of these features is “activated” by a given input. However, 1416
+the hidden layer can be regarded more generally as a nonlinear transformation of the in- 1417
+put. This opens the door to many other activation functions, some of which are shown in 1418
+Figure 3.2. At the moment, the choice of activation functions is more art than science, but 1419
+a few points can be made about the most popular varieties: 1420
+•The range of the sigmoid function is (0,1). The bounded range ensures that a cas- 1421
+cade of sigmoid functions will not “blow up” to a huge output, and this is impor- 1422
+2The architecture is sometimes called a multilayer perceptron , but this is misleading, because each layer
+is not a perceptron as deﬁned in Algorithm 3.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+3.2. DESIGNING NEURAL NETWORKS 65
+tant for deep networks with several hidden layers. The derivative of the sigmoid is 1423
+∂
+∂aσ(a) =σ(a)(1−σ(a)). This derivative becomes small at the extremes, which can 1424
+make learning slow; this is called the vanishing gradient problem. 1425
+•The range of the tanh activation function is(−1,1): like the sigmoid, the range 1426
+is bounded, but unlike the sigmoid, it includes negative values. The derivative is 1427
+∂
+∂atanh(a) = 1−tanh(a)2, which is steeper than the logistic function near the ori- 1428
+gin (LeCun et al., 1998). The tanh function can also suffer from vanishing gradients 1429
+at extreme values. 1430
+•The rectiﬁed linear unit (ReLU) is zero for negative inputs, and linear for positive 1431
+inputs (Glorot et al., 2011), 1432
+ReLU (a) ={
+a, a≥0
+0,otherwise.[3.11]
+The derivative is a step function, which is 1if the input is positive, and zero oth- 1433
+erwise. Once the activation is zero, the gradient is also zero. This can lead to the 1434
+problem of dead neurons , where some ReLU nodes are zero for all inputs, through- 1435
+out learning. A solution is the leaky ReLU , which has a small positive slope for 1436
+negative inputs (Maas et al., 2013), 1437
+Leaky-ReLU (a) ={
+a, a≥0
+.0001a,otherwise.[3.12]
+Sigmoid and tanh are sometimes described as squashing functions , because they squash 1438
+an unbounded input into a bounded range. Glorot and Bengio (2010) recommend against 1439
+the use of the sigmoid activation in deep networks, because its mean value of1
+2can cause 1440
+the next layer of the network to be saturated, with very small gradients on their own 1441
+parameters. Several other activation functions are reviewed by Goodfellow et al. (2016), 1442
+who recommend ReLU as the “default option.” 1443
+3.2.2 Network structure 1444
+Deep networks stack up several hidden layers, with each z(d)acting as the input to the 1445
+next layer,z(d+1). As the total number of nodes in the network increases, so does its capac- 1446
+ity to learn complex functions of the input. For a ﬁxed number of nodes, an architectural 1447
+decision is whether to emphasize width (large Kzat each layer) or depth (many layers). 1448
+At present, this tradeoff is not well understood.31449
+3With even a single hidden layer, a neural network can approximate any continuous function on a closed
+and bounded subset of RNto an arbitrarily small non-zero error; see section 6.4.1 of Goodfellow et al. (2016)
+for a survey of these theoretical results. However, depending on the function to be approximated, the width
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+66 CHAPTER 3. NONLINEAR CLASSIFICATION
+It is also possible to “short circuit” a hidden layer, by propagating information directly 1450
+from the input to the next higher level of the network. This is the idea behind residual net- 1451
+works , which propagate information directly from the input to the subsequent layer (He 1452
+et al., 2016), 1453
+z=f(Θ(x→z)x) +x, [3.13]
+wherefis any nonlinearity, such as sigmoid or ReLU. A more complex architecture is
+thehighway network (Srivastava et al., 2015; Kim et al., 2016), in which an addition gate
+controls an interpolation between f(Θ(x→z)x)andx:
+t=σ(Θ(t)x+b(t)) [3.14]
+z=t⊙f(Θ(x→z)x) + (1−t)⊙x, [3.15]
+where⊙refers to an elementwise vector product, and 1is a column vector of ones. The 1454
+sigmoid function is applied elementwise to its input; recall that the output of this function 1455
+is restricted to the range [0,1]. Gating is also used in the long short-term memory (LSTM) , 1456
+which is discussed in chapter 6. Residual and highway connections address a problem 1457
+with deep architectures: repeated application of a nonlinear activation function can make 1458
+it difﬁcult to learn the parameters of the lower levels of the network, which are too distant 1459
+from the supervision signal. 1460
+3.2.3 Outputs and loss functions 1461
+In the multi-class classiﬁcation example, a softmax output produces probabilities over
+each possible label. This aligns with a negative conditional log-likelihood ,
+−L=−N∑
+i=1logp(y(i)|x(i); Θ). [3.16]
+where Θ ={Θ(x→z),Θ(z→y),b}is the entire set of parameters. 1462
+This loss can be written alternatively as follows:
+˜yj≜Pr(y=j|x(i); Θ) [3.17]
+−L=−N∑
+i=1ey(i)·log˜y [3.18]
+whereey(i)is aone-hot vector of zeros with a value of 1at positiony(i). The inner product 1463
+betweeney(i)andlog˜yis also called the multinomial cross-entropy , and this terminology 1464
+is preferred in many neural networks papers and software packages. 1465
+of the hidden layer may need to be arbitrarily large. Furthermore, the fact that a network has the capacity to
+approximate any given function does not say anything about whether it is possible to learn the function using
+gradient-based optimization.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+3.3. LEARNING NEURAL NETWORKS 67
+It is also possible to train neural networks from other objectives, such as a margin loss.
+In this case, it is not necessary to use softmax at the output layer: an afﬁne transformation
+of the hidden layer is enough:
+Ψ(y;x(i),Θ) =θ(z→y)
+y·z+by [3.19]
+ℓMARGIN (Θ;x(i),y(i)) = max
+y̸=y(i)(
+1 + Ψ(y;x(i),Θ)−Ψ(y(i);x(i),Θ))
++. [3.20]
+In regression problems, the output is a scalar or vector (see §4.1.2). For these problems, a 1466
+typical loss function is the squared error (y−ˆy)2or squared norm ||y−ˆy||2
+2. 1467
+3.2.4 Inputs and lookup layers 1468
+In text classiﬁcation, the input layer xcan refer to a bag-of-words vector, where xjis 1469
+the count of word j. The input to the hidden unit zkis then∑V
+j=1θ(x→z)
+j,kxj, and word jis 1470
+represented by the vector θ(x→z)
+j . This vector is sometimes described as the embedding of 1471
+wordj, and can be learned from unlabeled data, using techniques discussed in chapter 14. 1472
+The columns of Θ(x→z)are eachKz-dimensional word embeddings. 1473
+Chapter 2 presented an alternative view of text documents, as a sequence of word 1474
+tokens,w1,w2,...,wM. In a neural network, each word token wmis represented with 1475
+a one-hot vector, ewm∈RV. The matrix-vector product Θ(x→z)ewmreturns the embed- 1476
+ding of word wm. The complete document can represented by horizontally concatenating 1477
+these one-hot vectors, W= [ew1,ew2,...,ewM], and the bag-of-words representation can 1478
+be recovered from the matrix-vector product W1, which simply sums each row over the 1479
+tokensm={1,2,...,M}. The matrix product Θ(x→z)Wcontains the horizontally con- 1480
+catenated embeddings of each word in the document, which will be useful as the starting 1481
+point for convolutional neural networks (see§3.4). This is sometimes called a lookup 1482
+layer , because the ﬁrst step is to lookup the embeddings for each word in the input text. 1483
+3.3 Learning neural networks 1484
+The feedforward network in Figure 3.1 can now be written in a more general form,
+z←f(Θ(x→z)x(i)) [3.21]
+˜y←SoftMax(
+Θ(z→y)z+b)
+[3.22]
+ℓ(i)←−ey(i)·log˜y, [3.23]
+wherefis an elementwise activation function, such as σor ReLU. 1485
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+68 CHAPTER 3. NONLINEAR CLASSIFICATION
+Let us now consider how to estimate the parameters Θ(x→z),Θ(z→y)andb, using on-
+line gradient-based optimization. The simplest such algorithm is stochastic gradient de-
+scent (Algorithm 5). The relevant updates are,
+b←b−η(t)∇bℓ(i)[3.24]
+θ(z→y)
+k←θ(z→y)
+k−η(t)∇θ(z→y)
+kℓ(i)[3.25]
+θ(x→z)
+k←θ(x→z)
+k−η(t)∇θ(x→z)
+kℓ(i), [3.26]
+whereη(t)is the learning rate on iteration t,ℓ(i)is the loss at instance (or minibatch) i, and 1486
+θ(x→z)
+kis columnkof the matrix Θ(x→z), andθ(z→y)
+kis columnkofΘ(z→y). 1487
+The gradients of the negative log-likelihood on bandθ(z→y)
+kare very similar to the
+gradients in logistic regression,
+∇θ(z→y)
+kℓ(i)=
+∂ℓ(i)
+∂θ(z→y)
+k,1,∂ℓ(i)
+∂θ(z→y)
+k,2,...,∂ℓ(i)
+∂θ(z→y)
+k,Ky
+⊤
+[3.27]
+∂ℓ(i)
+∂θ(z→y)
+k,j=−∂
+∂θ(z→y)
+k,j
+θ(z→y)
+y(i)·z−log∑
+y∈Yexpθ(z→y)
+y·z
+ [3.28]
+=(
+Pr(y=j|z;Θ(z→y),b)−δ(
+j=y(i)))
+zk, [3.29]
+whereδ(
+j=y(i))
+is a function that returns one when j=y(i), and zero otherwise. The 1488
+gradient∇bℓ(i)is similar to Equation 3.29. 1489
+The gradients on the input layer weights Θ(x→z)can be obtained by applying the chain
+rule of differentiation:
+∂ℓ(i)
+∂θ(x→z)
+n,k=∂ℓ(i)
+∂zk∂zk
+∂θ(x→z)
+n,k[3.30]
+=∂ℓ(i)
+∂zk∂f(θ(x→z)
+k·x)
+∂θ(x→z)
+n,k[3.31]
+=∂ℓ(i)
+∂zk×f′(θ(x→z)
+k·x)×xn, [3.32]
+wheref′(θ(x→z)
+k·x)is the derivative of the activation function f, applied at the input
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+3.3. LEARNING NEURAL NETWORKS 69
+θ(x→z)
+k·x. For example, if fis the sigmoid function, then the derivative is,
+∂ℓ(i)
+∂θ(x→z)
+n,k=∂ℓ(i)
+∂zk×σ(θ(x→z)
+k·x)×(1−σ(θ(x→z)
+k·x))×xn [3.33]
+=∂ℓ(i)
+∂zk×zk×(1−zk)×xn. [3.34]
+For intuition, consider each of the terms in the product. 1490
+•If the negative log-likelihood ℓ(i)does not depend much on zk,∂ℓ(i)
+∂zk→0, then it 1491
+doesn’t matter how zkis computed, and so∂ℓ(i)
+∂θ(x→z)
+n,k→0. 1492
+•Ifzkis near 1or0, then the curve of the sigmoid function (Figure 3.2) is nearly ﬂat, 1493
+and changing the inputs will make little local difference. The term zk×(1−zk)is 1494
+maximized at zk=1
+2, where the slope of the sigmoid function is steepest. 1495
+•Ifxn= 0, then it does not matter how we set the weights θ(x→z)
+n,k, so∂ℓ(i)
+∂θ(x→z)
+n,k= 0. 1496
+3.3.1 Backpropagation 1497
+In the equations above, the value∂ℓ(i)
+∂zkis reused in the derivatives with respect to each 1498
+θ(x→z)
+n,k. It should therefore be computed once, and then cached. Furthermore, we should 1499
+only compute any derivative once we have already computed all of the necessary “inputs” 1500
+demanded by the chain rule of differentiation. This combination of sequencing, caching, 1501
+and differentiation is known as backpropagation . It can be generalized to any directed 1502
+acyclic computation graph . 1503
+A computation graph is a declarative representation of a computational process. At 1504
+each node t, compute a value vtby applying a function ftto a (possibly empty) list of 1505
+parent nodes, πt. For example, in a feedforward network with one hidden layer, there are 1506
+nodes for the input x(i), the hidden layer z, the predicted output ˜y, and the parameters 1507
+{Θ(x→z),Θ(z→y),b}. During training, there is also a node for the observed label y(i)and 1508
+the lossℓ(i). Computation graphs have three main types of nodes: 1509
+Variables. The variables include the inputsx, the hidden nodesz, the outputs y, and the 1510
+loss function. Inputs are variables that do not have parents. Backpropagation com- 1511
+putes the gradients with respect to all variables except the inputs, but does not up- 1512
+date the variables during learning. 1513
+Parameters. In a feedforward network, the parameters include the weights and offsets. 1514
+Parameter nodes do not have parents, and they are updated during learning. 1515
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+70 CHAPTER 3. NONLINEAR CLASSIFICATION
+Algorithm 6 General backpropagation algorithm. In the computation graph G, every
+node contains a function ftand a set of parent nodes πt; the inputs to the graph are x(i).
+1:procedure BACKPROP (G={ft,πt}T
+t=1},x(i))
+2:vt(n)←x(i)
+nfor allnand associated computation nodes t(n).
+3: fort∈TOPOLOGICAL SORT(G)do⊿Forward pass: compute value at each node
+4: if|πt|>0then
+5: vt←ft(vπt,1,vπt,2,...,vπt,Nt)
+6:gobjective = 1 ⊿Backward pass: compute gradients at each node
+7: fort∈REVERSE (TOPOLOGICAL SORT(G))do
+8:gt←∑
+t′:t∈πt′gt′×∇vtvt′⊿Sum over all t′that are children of t, propagating
+the gradient gt′, scaled by the local gradient ∇vtvt′
+9: return{g1,g2,...,gT}
+Objective. The objective node is not the parent of any other node. Backpropagation begins 1516
+by computing the gradient with respect to this node. 1517
+If the computation graph is a directed acyclic graph, then it is possible to order the 1518
+nodes with a topological sort, so that if node tis a parent of node t′, thent < t′. This 1519
+means that the values {vt}T
+t=1can be computed in a single forward pass. The topolog- 1520
+ical sort is reversed when computing gradients: each gradient gtis computed from the 1521
+gradients of the children of t, implementing the chain rule of differentiation. The general 1522
+backpropagation algorithm for computation graphs is shown in Algorithm 6, and illus- 1523
+trated in Figure 3.3. 1524
+While the gradients with respect to each parameter may be complex, they are com- 1525
+posed of products of simple parts. For many networks, all gradients can be computed 1526
+through automatic differentiation . This means that end users need only specify the feed- 1527
+forward computation, and the gradients necessary for learning can be obtained automati- 1528
+cally. There are many software libraries that perform automatic differentiation on compu- 1529
+tation graphs, such as Torch (Collobert et al., 2011), TensorFlow (Abadi et al., 2016), and 1530
+DyNet (Neubig et al., 2017). One important distinction between these libraries is whether 1531
+they support dynamic computation graphs , in which the structure of the computation 1532
+graph varies across instances. Static computation graphs are compiled in advance, and 1533
+can be applied to ﬁxed-dimensional data, such as bag-of-words vectors. In many natu- 1534
+ral language processing problems, each input has a distinct structure, requiring a unique 1535
+computation graph. 1536
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+3.3. LEARNING NEURAL NETWORKS 71
+a
+b
+cxd
+eva
+gx vb
+gx
+vcgxvxgd
+vx
+ge
+Figure 3.3: Backpropagation at a single node xin the computation graph. The values of
+the predecessors va,vb,vcare the inputs to x, which computes vx, and passes it on to the
+successorsdande. The gradients at the successors gdandgeare passed back to x, where
+they are incorporated into the gradient gx, which is then passed back to the predecessors
+a,b, andc.
+3.3.2 Regularization and dropout 1537
+In linear classiﬁcation, overﬁtting was addressed by augmenting the objective with a reg- 1538
+ularization term, λ||θ||2
+2. This same approach can be applied to feedforward neural net- 1539
+works, penalizing each matrix of weights: 1540
+L=N∑
+i=1ℓ(i)+λz→y||Θ(z→y)||2
+F+λx→z||Θ(x→z)||2
+F, [3.35]
+where||Θ||2
+F=∑
+i,jθ2
+i,jis the squared Frobenius norm , which generalizes the L2norm 1541
+to matrices. The bias parameters bare not regularized, as they do not contribute to the 1542
+sensitivity of the classiﬁer to the inputs. In gradient-based optimization, the practical 1543
+effect of Frobenius norm regularization is that the weights “decay” towards zero at each 1544
+update, motivating the alternative name weight decay . 1545
+Another approach to controlling model complexity is dropout , which involves ran- 1546
+domly setting some computation nodes to zero during training (Srivastava et al., 2014). 1547
+For example, in the feedforward network, on each training instance, with probability ρwe 1548
+set each input xnand each hidden layer node zkto zero. Srivastava et al. (2014) recom- 1549
+mendρ= 0.5for hidden units, and ρ= 0.2for input units. Dropout is also incorporated 1550
+in the gradient computation, so if node zkis dropped, then none of the weights θ(x→z)
+kwill 1551
+be updated for this instance. Dropout prevents the network from learning to depend too 1552
+much on any one feature or hidden node, and prevents feature co-adaptation , in which a 1553
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+72 CHAPTER 3. NONLINEAR CLASSIFICATION
+hidden unit is only useful in combination with one or more other hidden units. Dropout is 1554
+a special case of feature noising , which can also involve adding Gaussian noise to inputs 1555
+or hidden units (Holmstrom and Koistinen, 1992). Wager et al. (2013) show that dropout is 1556
+approximately equivalent to “adaptive” L2regularization, with a separate regularization 1557
+penalty for each feature. 1558
+3.3.3 *Learning theory 1559
+Chapter 2 emphasized the importance of convexity for learning: for convex objectives, 1560
+the global optimum can be found efﬁciently. The negative log-likelihood and hinge loss 1561
+are convex functions of the parameters of the output layer. However, the output of a feed- 1562
+forward network is generally not a convex function of the parameters of the input layer, 1563
+Θ(x→z). Feedforward networks can be viewed as function composition, where each layer 1564
+is a function that is applied to the output of the previous layer. Convexity is generally not 1565
+preserved in the composition of two convex functions — and furthermore, “squashing” 1566
+activation functions like tanh and sigmoid are not convex. 1567
+The non-convexity of hidden layer neural networks can also be seen by permuting the 1568
+elements of the hidden layer, from z= [z1,z2,...,zKz]to˜z= [zπ(1),zπ(2),...,zπ(Kz)]. This 1569
+corresponds to applying πto the rows of Θ(x→z)and the columns of Θ(z→y), resulting in 1570
+permuted parameter matrices Θ(x→z)
+π andΘ(z→y)
+π . As long as this permutation is applied 1571
+consistently, the loss will be identical, L(Θ) =L(Θπ): it is invariant to this permutation. 1572
+However, the loss of the linear combination L(αΘ+ (1−α)Θπ)will generally not be 1573
+identical to the loss under Θor its permutations. If L(Θ)is better than the loss at any 1574
+points in the immediate vicinity, and if L(Θ) =L(Θπ), then the loss function does not 1575
+satisfy the deﬁnition of convexity (see §2.3). One of the exercises asks you to prove this 1576
+more rigorously. 1577
+In practice, the existence of multiple optima is not necessary problematic, if all such 1578
+optima are permutations of the sort described in the previous paragraph. In contrast, 1579
+“bad” local optima are better than their neighbors, but much worse than the global opti- 1580
+mum. Fortunately, in large feedforward neural networks, most local optima are nearly as 1581
+good as the global optimum (Choromanska et al., 2015), which helps to explain why back- 1582
+propagation works in practice. More generally, a critical point is one at which the gradient 1583
+is zero. Critical points may be local optima, but they may also be saddle points , which 1584
+are local minima in some directions, but local maxima in other directions. For example, the 1585
+equationx2
+1−x2
+2has a saddle point at x= (0,0).4In large networks, the overwhelming 1586
+majority of critical points are saddle points, rather than local minima or maxima (Dauphin 1587
+et al., 2014). Saddle points can pose problems for gradient-based optimization, since learn- 1588
+ing will slow to a crawl as the gradient goes to zero. However, the noise introduced by 1589
+4Thanks to Rong Ge’s blogpost for this example, http://www.offconvex.org/2016/03/22/
+saddlepoints/
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+3.3. LEARNING NEURAL NETWORKS 73
+stochastic gradient descent, and by feature noising techniques such as dropout, can help 1590
+online optimization to escape saddle points and ﬁnd high-quality optima (Ge et al., 2015). 1591
+Other techniques address saddle points directly, using local reconstructions of the Hessian 1592
+matrix (Dauphin et al., 2014) or higher-order derivatives (Anandkumar and Ge, 2016). 1593
+3.3.4 Tricks 1594
+Getting neural networks to work effectively sometimes requires heuristic “tricks” (Bottou, 1595
+2012; Goodfellow et al., 2016; Goldberg, 2017b). This section presents some tricks that are 1596
+especially important. 1597
+Initialization Initialization is not especially important for linear classiﬁers, since con-
+vexity ensures that the global optimum can usually be found quickly. But for multilayer
+neural networks, it is helpful to have a good starting point. One reason is that if the mag-
+nitude of the initial weights is too large, a sigmoid or tanh nonlinearity will be saturated,
+leading to a small gradient, and slow learning. Large gradients are also problematic. Ini-
+tialization can help avoid these problems, by ensuring that the variance over the initial
+gradients is constant and bounded throughout the network. For networks with tanh acti-
+vation functions, this can be achieved by sampling the initial weights from the following
+uniform distribution (Glorot and Bengio, 2010),
+θi,j∼U[
+−√
+6√
+din(n) +dout(n),√
+6√
+din(n) +dout(n)]
+, [3.36]
+[3.37]
+For the weights leading to a ReLU activation function, He et al. (2015) use similar argu- 1598
+mentation to justify sampling from a zero-mean Gaussian distribution, 1599
+θi,j∼N(0,√
+2/din(n)) [3.38]
+Rather than initializing the weights independently, it can be beneﬁcial to initialize each
+layer jointly as an orthonormal matrix , ensuring that Θ⊤Θ=I(Saxe et al., 2014). Or-
+thonormal matrices preserve the norm of the input, so that ||Θx||=||x||, which prevents
+the gradients from exploding or vanishing. Orthogonality ensures that the hidden units
+are uncorrelated, so that they correspond to different features of the input. Orthonormal
+initialization can be performed by applying singular value decomposition to a matrix of
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+74 CHAPTER 3. NONLINEAR CLASSIFICATION
+values sampled from a standard normal distribution:
+ai,j∼N(0,1) [3.39]
+A={ai,j}din(j),dout(j)
+i=1,j=1 [3.40]
+U,S,V⊤=SVD(A) [3.41]
+Θ(j)←U. [3.42]
+The matrix Ucontains the singular vectors ofA, and is guaranteed to be orthonormal. 1600
+For more on singular value decomposition, see chapter 14. 1601
+Even with careful initialization, there can still be signiﬁcant variance in the ﬁnal re- 1602
+sults. It can be useful to make multiple training runs, and select the one with the best 1603
+performance on a heldout development set. 1604
+Clipping and normalizing the gradients As already discussed, the magnitude of the 1605
+gradient can pose problems for learning: too large, and learning can diverge, with succes- 1606
+sive updates thrashing between increasingly extreme values; too small, and learning can 1607
+grind to a halt. Several heuristics have been proposed to address this issue. 1608
+•Ingradient clipping (Pascanu et al., 2013), an upper limit is placed on the norm of 1609
+the gradient, and the gradient is rescaled when this limit is exceeded, 1610
+CLIP(˜g) ={
+g||ˆg||<τ
+τ
+||g||gotherwise.[3.43]
+•Inbatch normalization (Ioffe and Szegedy, 2015), the inputs to each computation
+node are recentered by their mean and variance across all of the instances in the
+minibatchB(see§2.5.2). For example, in a feedforward network with one hidden
+layer, batch normalization would tranform the inputs to the hidden layer as follows:
+µ(B)=1
+|B|∑
+i∈Bx(i)[3.44]
+s(B)=1
+|B|∑
+i∈B(x(i)−µ(B))2[3.45]
+x(i)=(x(i)−µ(B))/√
+s(B). [3.46]
+Empirically, this speeds convergence of deep architectures. One explanation is that 1611
+it helps to correct for changes in the distribution of activations during training. 1612
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+3.4. CONVOLUTIONAL NEURAL NETWORKS 75
+•Inlayer normalization (Ba et al., 2016), the inputs to each nonlinear activation func-
+tion are recentered across the layer:
+a=Θ(x→z)x [3.47]
+µ=1
+KzKz∑
+k=1ak [3.48]
+s=1
+KzKz∑
+k=1(ak−µ)2[3.49]
+z=(a−µ)/√s. [3.50]
+Layer normalization has similar motivations to batch normalization, but it can be 1613
+applied across a wider range of architectures and training conditions. 1614
+Online optimization The trend towards deep learning has spawned a cottage industry
+of online optimization algorithms, which attempt to improve on stochastic gradient de-
+scent. AdaGrad was reviewed in §2.5.2; its main innovation is to set adaptive learning
+rates for each parameter by storing the sum of squared gradients. Rather than using the
+sum over the entire training history, we can keep a running estimate,
+v(t)
+j=βv(t−1)
+j + (1−β)g2
+t,j, [3.51]
+wheregt,jis the gradient with respect to parameter jat timet, andβ∈[0,1]. This term 1615
+places more emphasis on recent gradients, and is employed in the AdaDelta (Zeiler, 2012) 1616
+and Adam (Kingma and Ba, 2014) optimizers. Online optimization and its theoretical 1617
+background are reviewed by Bottou et al. (2016). Early stopping , mentioned in§2.2.2, 1618
+can help to avoid overﬁtting, by terminating training after reaching a plateau in the per- 1619
+formance on a heldout validation set. 1620
+3.4 Convolutional neural networks 1621
+A basic weakness of the bag-of-words model is its inability to account for the ways in 1622
+which words combine to create meaning, including even simple reversals such as not 1623
+pleasant ,hardly a generous offer , and I wouldn’t mind missing the ﬂight . Similarly, computer 1624
+vision faces the challenge of identifying the semantics of images from pixel features that 1625
+are uninformative in isolation. An earlier generation of computer vision research fo- 1626
+cused on designing ﬁlters to aggregate local pixel-level features into more meaningful 1627
+representations, such as edges and corners (e.g., Canny, 1987). Similarly, earlier NLP re- 1628
+search attempted to capture multiword linguistic phenomena by hand-designed lexical 1629
+patterns (Hobbs et al., 1997). In both cases, the output of the ﬁlters and patterns could 1630
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+76 CHAPTER 3. NONLINEAR CLASSIFICATION
+  
+X(0)
+C
+C*
+X(1)
+z
+convolutionpooling prediction
+MKeKfKf
+Figure 3.4: A convolutional neural network for text classiﬁcation
+then act as base features in a linear classiﬁer. But rather than designing these feature ex- 1631
+tractors by hand, a better approach is to learn them, using the magic of backpropagation. 1632
+This is the idea behind convolutional neural networks . 1633
+Following§3.2.4, deﬁne the base layer of a neural network as, 1634
+X(0)=Θ(x→z)[ew1,ew2,...,ewM], [3.52]
+whereewmis a column vector of zeros, with a 1at position wm. The base layer has dimen-
+sionX(0)∈RKe×M, whereKeis the size of the word embeddings. To merge information
+across adjacent words, we convolve X(0)with a set of ﬁlter matrices C(k)∈RKe×h. Convo-
+lution is indicated by the symbol ∗, and is deﬁned,
+X(1)=f(b+C∗X(0)) =⇒x(1)
+k,m=f(
+bk+Ke∑
+k′=1h∑
+n=1c(k)
+k′,n×x(0)
+k′,m+n−1)
+, [3.53]
+wherefis an activation function such as tanh or ReLU, and bis a vector of offsets. The 1635
+convolution operation slides the matrix C(k)across the columns of X(0); at each position 1636
+m, compute the elementwise product C(k)⊙X(0)
+m:m+h−1, and take the sum. 1637
+A simple ﬁlter might compute a weighted average over nearby words, 1638
+C(k)=
+0.5 1 0.5
+0.5 1 0.5
+... ... ...
+0.5 1 0.5
+, [3.54]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+3.4. CONVOLUTIONAL NEURAL NETWORKS 77
+thereby representing trigram units like not so unpleasant . In one-dimensional convolu- 1639
+tion, each ﬁlter matrix C(k)is constrained to have non-zero values only at row k(Kalch- 1640
+brenner et al., 2014). 1641
+To deal with the beginning and end of the input, the base matrix X(0)may be padded 1642
+withhcolumn vectors of zeros at the beginning and end; this is known as wide convolu- 1643
+tion. If padding is not applied, then the output from each layer will be h−1units smaller 1644
+than the input; this is known as narrow convolution . The ﬁlter matrices need not have 1645
+identical ﬁlter widths, so more generally we could write hkto indicate to width of ﬁlter 1646
+C(k). As suggested by the notation X(0), multiple layers of convolution may be applied, 1647
+so that X(d)is the input to X(d+1). 1648
+AfterDconvolutional layers, we obtain a matrix representation of the document X(D)∈
+RKz×M. If the instances have variable lengths, it is necessary to aggregate over all Mword
+positions to obtain a ﬁxed-length representation. This can be done by a pooling operation,
+such as max-pooling (Collobert et al., 2011) or average-pooling,
+z=MaxPool (X(D)) =⇒zk= max(
+x(D)
+k,1,x(D)
+k,2,...x(D)
+k,M)
+[3.55]
+z=AvgPool (X(D)) =⇒zk=1
+MM∑
+m=1x(D)
+k,m. [3.56]
+The vectorzcan now act as a layer in a feedforward network, culminating in a prediction 1649
+ˆyand a lossℓ(i). The setup is shown in Figure 3.4. 1650
+Just as in feedforward networks, the parameters ( C(k),b,Θ) can be learned by back-
+propagating from the classiﬁcation loss. This requires backpropagating through the max-
+pooling operation, which is a discontinuous function of the input. But because we need
+only a local gradient, backpropagation ﬂows only through the argmax m:
+∂zk
+∂x(D)
+k,m={
+1, x(D)
+k,m= max(
+x(D)
+k,1,x(D)
+k,2,...x(D)
+k,M)
+0,otherwise.[3.57]
+The computer vision literature has produced a huge variety of convolutional architec- 1651
+tures, and many of these bells and whistles can be applied to text data. One avenue for 1652
+improvement is more complex pooling operations, such as k-max pooling (Kalchbrenner 1653
+et al., 2014), which returns a matrix of the klargest values for each ﬁlter. Another innova- 1654
+tion is the use of dilated convolution to build multiscale representations (Yu and Koltun, 1655
+2016). At each layer, the convolutional operator applied in strides , skipping ahead by s 1656
+steps after each feature. As we move up the hierarchy, each layer is stimes smaller than 1657
+the layer below it, effectively summarizing the input. This idea is shown in Figure 3.5. 1658
+Multi-layer convolutional networks can also be augmented with “shortcut” connections, 1659
+as in the ResNet model from §3.2.2 (Johnson and Zhang, 2017). 1660
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+78 CHAPTER 3. NONLINEAR CLASSIFICATION
+Figure 3.5: A dilated convolutional neural network captures progressively larger context
+through recursive application of the convolutional operator (Strubell et al., 2017) [todo:
+permission]
+Additional resources 1661
+The deep learning textbook by Goodfellow et al. (2016) covers many of the topics in this 1662
+chapter in more detail. For a comprehensive review of neural networks in natural lan- 1663
+guage processing, see (Goldberg, 2017b). A seminal work on deep learning in natural 1664
+language processing is the aggressively titled “Natural Language Processing (Almost) 1665
+from Scratch”, which uses convolutional neural networks to perform a range of language 1666
+processing tasks (Collobert et al., 2011). This chapter focuses on feedforward and con- 1667
+volutional neural networks, but recurrent neural networks are one of the most important 1668
+deep learning architectures for natural language processing. They are covered extensively 1669
+in chapters 6 and 7. 1670
+The role of deep learning in natural language processing research has caused angst 1671
+in some parts of the natural language processing research community (e.g., Goldberg, 1672
+2017a), especially as some of the more zealous deep learning advocates have argued that 1673
+end-to-end learning from “raw” text can eliminate the need for linguistic constructs such 1674
+as sentences, phrases, and even words (Zhang et al., 2015, originally titled Text understand- 1675
+ing from scratch ). These developments were surveyed by Manning (2016). 1676
+Exercises 1677
+1. Prove that the softmax and sigmoid functions are equivalent when the number of 1678
+possible labels is two. Speciﬁcally, for any Θ(z→y)(omitting the offset bfor simplic- 1679
+ity), show how to construct a vector of weights θsuch that, 1680
+SoftMax (Θ(z→y)z)[0] =σ(θ·z). [3.58]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+3.4. CONVOLUTIONAL NEURAL NETWORKS 79
+2. Design a feedforward network to compute the XOR function: 1681
+f(x1,x2) =
+
+−1, x 1= 1,x2= 1
+1, x 1= 1,x2= 0
+1, x 1= 0,x2= 1
+−1, x 1= 0,x2= 0. [3.59]
+Your network should have a single output node which uses the Sign activation func- 1682
+tion. Use a single hidden layer, with ReLU activation functions. Describe all weights 1683
+and offsets. 1684
+3. Consider the same network as above (with ReLU activations for the hidden layer), 1685
+with an arbitrary differentiable loss function ℓ(y(i),˜y), where ˜yis the activation of 1686
+the output node. Suppose all weights and offsets are initialized to zero. Prove that 1687
+gradient-based optimization cannot learn the desired function from this initializa- 1688
+tion. 1689
+4. The simplest solution to the previous problem relies on the use of the ReLU activa- 1690
+tion function at the hidden layer. Now consider a network with arbitrary activations 1691
+on the hidden layer. Show that if the initial weights are any uniform constant, then 1692
+it is not possible to learn the desired function. 1693
+5. Consider a network in which: the base features are all binary, x∈ {0,1}M; the 1694
+hidden layer activation function is sigmoid, zk=σ(θk·x); and the initial weights 1695
+are sampled independently from a standard normal distribution, θj,k∼N(0,1). 1696
+•Show how the probability of a small initial gradient on any weight,∂zk
+∂θj,k<α, 1697
+depends on the size of the input M.Hint : use the lower bound, 1698
+Pr(σ(θk·x)×(1−σ(θk·x))<α)≥2 Pr(σ(θk·x)<α), [3.60]
+and relate this probability to the variance V[θk·x]. 1699
+•Design an alternative initialization that removes this dependence. 1700
+6. Suppose that the parameters Θ ={Θ(x→z),Θ(z→y),b}are a local optimum of a
+feedforward network in the following sense: there exists some ϵ>0such that,
+(
+||˜Θ(x→z)−Θ(x→z)||2
+F+||˜Θ(z→y)−Θ(z→y)||2
+F+||˜b−b||2
+2<ϵ)
+⇒(
+L(˜Θ)>L(Θ))
+[3.61]
+Deﬁne the function πas a permutation on the hidden units, as described in §3.3.3, 1701
+so that for any Θ,L(Θ) =L(Θπ). Prove that if a feedforward network has a local 1702
+optimum in the sense of Equation 3.61, then its loss is not a convex function of the 1703
+parameters Θ, using the deﬁnition of convexity from §2.3 1704
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+
+

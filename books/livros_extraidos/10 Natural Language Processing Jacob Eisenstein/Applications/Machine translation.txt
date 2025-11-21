@@ -1,0 +1,965 @@
+Chapter 18 9371
+Machine translation 9372
+Machine translation (MT) is one of the “holy grail” problems in artiﬁcial intelligence, 9373
+with the potential to transform society by facilitating communication between people 9374
+anywhere in the world. As a result, MT has received signiﬁcant attention and funding 9375
+since the early 1950s. However, it has proved remarkably challenging, and while there 9376
+has been substantial progress towards usable MT systems — especially for high-resource 9377
+language pairs like English-French — we are still far from translation systems that match 9378
+the nuance and depth of human translations. 9379
+18.1 Machine translation as a task 9380
+Machine translation can be formulated as an optimization problem: 9381
+ˆw(t)= argmax
+w(t)Ψ(w(s),w(t)), [18.1]
+wherew(s)is a sentence in a source language,w(t)is a sentence in the target language , 9382
+andΨis a scoring function. As usual, this formalism requires two components: a decod- 9383
+ing algorithm for computing ˆw(t), and a learning algorithm for estimating the parameters 9384
+of the scoring function Ψ. 9385
+Decoding is difﬁcult for machine translation because of the huge space of possible 9386
+translations. We have faced large label spaces before: for example, in sequence labeling, 9387
+the set of possible label sequences is exponential in the length of the input. In these cases, 9388
+it was possible to search the space quickly by introducing locality assumptions: for ex- 9389
+ample, that each tag depends only on its predecessor, or that each production depends 9390
+only on its parent. In machine translation, no such locality assumptions seem possible: 9391
+human translators reword, reorder, and rearrange words; they replace single words with 9392
+multi-word phrases, and vice versa. This ﬂexibility means that in even relatively simple 9393
+435
+
+436 CHAPTER 18. MACHINE TRANSLATION
+Figure 18.1: The Vauquois Pyramid http://commons.wikimedia.org/wiki/File:
+Direct_translation_and_transfer_translation_pyramind.svg
+translation models, decoding is NP-hard (Knight, 1999). Approaches for dealing with this 9394
+complexity are described in §18.4. 9395
+Estimating translation models is difﬁcult as well. Labeled translation data usually
+comes in the form parallel sentences, e.g.,
+w(s)=A Vinay le gusta las manzanas.
+w(t)=Vinay likes apples.
+A useful feature function would note the translation pairs (gusta, likes ),(manzanas, apples ), 9396
+and even (Vinay, Vinay ). But this word-to-word alignment is not given in the data. One 9397
+solution is to treat this alignment as a latent variable ; this is the approach taken by clas- 9398
+sical statistical machine translation (SMT) systems, described in §18.2. Another solution 9399
+is to model the relationship between w(t)andw(s)through a more complex and expres- 9400
+sive function; this is the approach taken by neural machine translation (NMT) systems, 9401
+described in§18.3. 9402
+The Vauquois Pyramid is a theory of how translation should be done. At the lowest 9403
+level, the translation system operates on individual words, but the horizontal distance 9404
+at this level is large, because languages express ideas differently. If we can move up the 9405
+triangle to syntactic structure, the distance for translation is reduced; we then need only 9406
+produce target-language text from the syntactic representation, which can be as simple 9407
+as reading off a tree. Further up the triangle lies semantics; translating between semantic 9408
+representations should be easier still, but mapping between semantics and surface text is 9409
+a difﬁcult, unsolved problem. At the top of the triangle is interlingua , a semantic repre- 9410
+sentation that is so generic that it is identical across all human languages. Philosophers 9411
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.1. MACHINE TRANSLATION AS A TASK 437
+Adequate? Fluent?
+To Vinay it like Python yes no
+Vinay debugs memory leaks no yes
+Vinay likes Python yes yes
+Table 18.1: Adequacy and ﬂuency for translations of the Spanish sentence A Vinay le gusta
+Python .
+debate whether such a thing as interlingua is really possible (Derrida, 1985). While the 9412
+ﬁrst-order logic representations discussed in chapter 12 might be considered to be lan- 9413
+guage independent, it is built on an inventory of relations that is suspiciously similar to 9414
+a subset of English words (Nirenburg and Wilks, 2001). Nonetheless, the idea of linking 9415
+translation and semantic understanding may still be a promising path, if the resulting 9416
+translations better preserve the meaning of the original text. 9417
+18.1.1 Evaluating translations 9418
+There are two main criteria for a translation, summarized in Table 18.1. 9419
+•Adequacy : The translation w(t)should adequately reﬂect the linguistic content of 9420
+w(s). For example, if w(s)=A Vinay le gusta Python , the gloss1w(t)=To Vinay it like Python 9421
+is considered adequate becomes it contains all the relevant content. The output 9422
+w(t)=Vinay debugs memory leaks is not adequate. 9423
+•Fluency : The translation w(t)should read like ﬂuent text in the target language. By 9424
+this criterion, the gloss w(t)=To Vinay it like Python will score poorly, and w(t)= 9425
+Vinay debugs memory leaks will be preferred. 9426
+Automated evaluations of machine translations typically merge both of these criteria, 9427
+by comparing the system translation with one or more reference translations , produced 9428
+by professional human translators. The most popular quantitative metric is BLEU (bilin- 9429
+gual evaluation understudy; Papineni et al., 2002), which is based on n-gram precision: 9430
+what fraction of n-grams in the system translation appear in the reference? Speciﬁcally, 9431
+for eachn-gram length, the precision is deﬁned as, 9432
+pn=number ofn-grams appearing in both reference and hypothesis translations
+number ofn-grams appearing in the hypothesis translation.
+[18.2]
+Then-gram precisions for three hypothesis translations are shown in Figure 18.2. 9433
+1A gloss is a word-for-word translation.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+438 CHAPTER 18. MACHINE TRANSLATION
+Translation p1p2p3p4BP BLEU
+Reference Vinay likes programming in Python
+Sys1 To Vinay it like to program Python2
+70 0 0 1 .21
+Sys2 Vinay likes Python3
+31
+20 0 .51 .33
+Sys3 Vinay likes programming in his pajamas4
+63
+52
+41
+31 .76
+Figure 18.2: A reference translation and three system outputs. For each output, pnindi-
+cates the precision at each n-gram, and BP indicates the brevity penalty.
+The BLEU score is then based on the average, exp1
+N∑N
+n=1logpn. Two modiﬁcations 9434
+of Equation 18.2 are necessary: (1) to avoid computing log 0 , all precisions are smoothed 9435
+to ensure that they are positive; (2) each n-gram in the source can be used at most once, 9436
+so that to to to to to to does not achieve p1= 1 against the reference to be or not to be . 9437
+Furthermore, precision-based metrics are biased in favor of short translations, which can 9438
+achieve high scores by minimizing the denominator in [18.2]. To avoid this issue, a brevity 9439
+penalty is applied to translations that are shorter than the reference. This penalty is indi- 9440
+cated as “BP” in Figure 18.2. 9441
+Automated metrics like BLEU have been validated by correlation with human judg- 9442
+ments of translation quality. Nonetheless, it is not difﬁcult to construct examples in which 9443
+the BLEU score is high, yet the translation is disﬂuent or carries a completely different 9444
+meaning from the original. To give just one example, consider the problem of translating 9445
+pronouns. Because pronouns refer to speciﬁc entities, a single incorrect pronoun can oblit- 9446
+erate the semantics of the original sentence. Existing state-of-the-art systems generally 9447
+do not attempt the reasoning necessary to correctly resolve pronominal anaphora (Hard- 9448
+meier, 2012). Despite the importance of pronouns for semantics, they have a marginal 9449
+impact on BLEU , which may help to explain why existing systems do not make a greater 9450
+effort to translate them correctly. 9451
+Fairness and bias The problem of pronoun translation intersects with issues of fairness 9452
+and bias. In many languages, such as Turkish, the third person singular pronoun is gender 9453
+neutral. Today’s state-of-the-art systems produce the following Turkish-English transla- 9454
+tions (Caliskan et al., 2017): 9455
+(18.1) O
+Hebir
+is adoktor.
+doctor.9456
+(18.2) O
+Shebir
+is ahem¸ sire.
+nurse.9457
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.1. MACHINE TRANSLATION AS A TASK 439
+The same problem arises for other professions that have stereotypical genders, such as 9458
+engineers, soldiers, and teachers, and for other languages that have gender-neutral pro- 9459
+nouns. This bias was not directly programmed into the translation model; it arises from 9460
+statistical tendencies in existing datasets. This highlights a general problem with data- 9461
+driven approaches, which can perpetuate biases that negatively impact disadvantaged 9462
+groups. Worse, machine learning can amplify biases in data (Bolukbasi et al., 2016): if a 9463
+dataset has even a slight tendency towards men as doctors, the resulting translation model 9464
+may produce translations in which doctors are always he, and nurses are always she. 9465
+Other metrics A range of other automated metrics have been proposed for machine 9466
+translation. One potential weakness of BLEU is that it only measures precision; METEOR 9467
+is a weighted F-MEASURE , which is a combination of recall and precision (see §4.4.1). 9468
+Translation Error Rate ( TER)computes the string edit distance (see§9.1.4.1) between the 9469
+reference and the hypothesis (Snover et al., 2006). For language pairs like English and 9470
+Japanese, there are substantial differences in word order, and word order errors are not 9471
+sufﬁciently captured by n-gram based metrics. The RIBES metric applies rank correla- 9472
+tion to measure the similarity in word order between the system and reference transla- 9473
+tions (Isozaki et al., 2010). 9474
+18.1.2 Data 9475
+Data-driven approaches to machine translation rely primarily on parallel corpora : sentence- 9476
+level translations. Early work focused on government records, in which ﬁne-grained ofﬁ- 9477
+cial translations are often required. For example, the IBM translation systems were based 9478
+on the proceedings of the Canadian Parliament, called Hansards , which are recorded in 9479
+English and French (Brown et al., 1990). The growth of the European Union led to the 9480
+development of the EuroParl corpus , which spans 21 European languages (Koehn, 2005). 9481
+While these datasets helped to launch the ﬁeld of machine translation, they are restricted 9482
+to narrow domains and a formal speaking style, limiting their applicability to other types 9483
+of text. As more resources are committed to machine translation, new translation datasets 9484
+have been commissioned. This has broadened the scope of available data to news,2movie 9485
+subtitles,3social media (Ling et al., 2013), dialogues (Fordyce, 2007), TED talks (Paul et al., 9486
+2010), and scientiﬁc research articles (Nakazawa et al., 2016). 9487
+Despite this growing set of resources, the main bottleneck in machine translation data 9488
+is the need for parallel corpora that are aligned at the sentence level. Many languages have 9489
+sizable parallel corpora with some high-resource language, but not with each other. The 9490
+high-resource language can then be used as a “pivot” or “bridge” (Boitet, 1988; Utiyama 9491
+2https://catalog.ldc.upenn.edu/LDC2010T10 , http://www.statmt.org/wmt15/
+translation-task.html
+3http://opus.nlpl.eu/
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+440 CHAPTER 18. MACHINE TRANSLATION
+and Isahara, 2007): for example, De Gispert and Marino (2006) use Spanish as a bridge for 9492
+translation between Catalan and English. For most of the 6000 languages spoken today, 9493
+the only source of translation data remains the Judeo-Christian Bible (Resnik et al., 1999). 9494
+While relatively small, at less than a million tokens, the Bible has been translated into 9495
+more than 2000 languages, far outpacing any other corpus. Some research has explored 9496
+the possibility of automatically identifying parallel sentence pairs from unaligned parallel 9497
+texts, such as web pages and Wikipedia articles (Kilgarriff and Grefenstette, 2003; Resnik 9498
+and Smith, 2003; Adafre and De Rijke, 2006). Another approach is to create large parallel 9499
+corpora through crowdsourcing (Zaidan and Callison-Burch, 2011). 9500
+18.2 Statistical machine translation 9501
+The previous section introduced adequacy and ﬂuency as the two main criteria for ma- 9502
+chine translation. A natural modeling approach is to represent them with separate scores, 9503
+Ψ(w(s),w(t)) = ΨA(w(s),w(t)) + ΨF(w(t)). [18.3]
+The ﬂuency score ΨFneed not even consider the source sentence; it only judges w(t)on 9504
+whether it is ﬂuent in the target language. This decomposition is advantageous because 9505
+it makes it possible to estimate the two scoring functions on separate data. While the 9506
+adequacy model must be estimated from aligned sentences — which are relatively expen- 9507
+sive and rare — the ﬂuency model can be estimated from monolingual text in the target 9508
+language. Large monolingual corpora are now available in many languages, thanks to 9509
+resources such as Wikipedia. 9510
+An elegant justiﬁcation of the decomposition in Equation 18.3 is provided by the noisy
+channel model , in which each scoring function is a log probability:
+ΨA(w(s),w(t))≜logpS|T(w(s)|w(t)) [18.4]
+ΨF(w(t))≜logpT(w(t)) [18.5]
+Ψ(w(s),w(t)) = log pS|T(w(s)|w(t)) + log pT(w(t)) = log pS,T(w(s),w(t)). [18.6]
+By setting the scoring functions equal to the logarithms of the prior and likelihood, their 9511
+sum is equal to logpS,T, which is the logarithm of the joint probability of the source and 9512
+target. The sentence ˆw(t)that maximizes this joint probability is also the maximizer of the 9513
+conditional probability pT|S, making it the most likely target language sentence, condi- 9514
+tioned on the source. 9515
+The noisy channel model can be justiﬁed by a generative story. The target text is orig- 9516
+inally generated from a probability model pT. It is then encoded in a “noisy channel” 9517
+pS|T, which converts it to a string in the source language. In decoding, we apply Bayes’ 9518
+rule to recover the string w(t)that is maximally likely under the conditional probability 9519
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.2. STATISTICAL MACHINE TRANSLATION 441
+AVinaylegustapython
+Vinay
+likes
+python
+Figure 18.3: An example word-to-word alignment
+pT|S. Under this interpretation, the target probability pTis just a language model, and 9520
+can be estimated using any of the techniques from chapter 6. The only remaining learning 9521
+problem is to estimate the translation model pS|T. 9522
+18.2.1 Statistical translation modeling 9523
+The simplest decomposition of the translation model is word-to-word: each word in the 9524
+source should be aligned to a word in the translation. This approach presupposes an 9525
+alignmentA(w(s),w(t)), which contains a list of pairs of source and target tokens. For 9526
+example, given w(s)=A Vinay le gusta Python andw(t)=Vinay likes Python , one possible 9527
+word-to-word alignment is, 9528
+A(w(s),w(t)) ={(A,∅),(Vinay, Vinay ),(le, likes ),(gusta, likes ),(Python,Python )}.[18.7]
+This alignment is shown in Figure 18.3. Another, less promising, alignment is: 9529
+A(w(s),w(t)) ={(A, Vinay ),(Vinay, likes ),(le, Python ),(gusta,∅),(Python,∅)}.[18.8]
+Each alignment contains exactly one tuple for each word in the source , which serves to 9530
+explain how the source word could be translated from the target, as required by the trans- 9531
+lation probability pS|T. If no appropriate word in the target can be identiﬁed for a source 9532
+word, it is aligned to ∅— as is the case for the Spanish function word ain the example, 9533
+which glosses to the English word to. Words in the target can align with multiple words 9534
+in the source, so that the target word likes can align to both leand gusta in the source. 9535
+The joint probability of the alignment and the translation can be deﬁned conveniently
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+442 CHAPTER 18. MACHINE TRANSLATION
+as,
+p(w(s),A|w(t)) =M(s)∏
+m=1p(w(s)
+m,am|w(t)
+am,m,M(s),M(t)) [18.9]
+=M(s)∏
+m=1p(am|m,M(s),M(t))×p(w(s)
+m|w(t)
+am). [18.10]
+This probability model makes two key assumptions: 9536
+•The alignment probability factors across tokens, 9537
+p(A|w(s),w(t)) =M(s)∏
+m=1p(am|m,M(s),M(t)). [18.11]
+This means that each alignment decision is independent of the others, and depends 9538
+only on the index m, and the sentence lengths M(s)andM(t). 9539
+•The translation probability also factors across tokens, 9540
+p(w(s)|w(t),A) =M(s)∏
+m=1p(w(s)
+m|w(t)
+am), [18.12]
+so that each word in w(s)depends only on its aligned word in w(t). This means that 9541
+translation is word-to-word, ignoring context. The hope is that the target language 9542
+model p (w(t))will correct any disﬂuencies that arise from word-to-word translation. 9543
+To translate with such a model, we could sum or max over all possible alignments,
+p(w(s),w(t)) =∑
+Ap(w(s),w(t),A) [18.13]
+=p(w(t))∑
+Ap(A)×p(w(s)|w(t),A) [18.14]
+≥p(w(t)) max
+Ap(A)×p(w(s)|w(t),A). [18.15]
+The term p (A)deﬁnes the prior probability over alignments. A series of alignment
+models with increasingly relaxed independence assumptions was developed by researchers
+at IBM in the 1980s and 1990s, known as IBM Models 1-6 (Och and Ney, 2003). IBM
+Model 1 makes the strongest independence assumption:
+p(am|m,M(s),M(t)) =1
+M(t). [18.16]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.2. STATISTICAL MACHINE TRANSLATION 443
+In this model, every alignment is equally likely. This is almost surely wrong, but it re- 9544
+sults in a convex learning objective, yielding a good initialization for the more complex 9545
+alignment models (Brown et al., 1993; Koehn, 2009). 9546
+18.2.2 Estimation 9547
+Let us deﬁne the parameter θu→vas the probability of translating target word uto source 9548
+wordv. If word-to-word alignments were annotated, these probabilities could be com- 9549
+puted from relative frequencies, 9550
+ˆθu→v=count (u,v)
+count (u), [18.17]
+where count (u,v)is the count of instances in which word vwas aligned to word uin 9551
+the training set, and count (u)is the total count of the target word u. The smoothing 9552
+techniques mentioned in chapter 6 can help to reduce the variance of these probability 9553
+estimates. 9554
+Conversely, if we had an accurate translation model, we could estimate the likelihood 9555
+of each alignment decision, 9556
+qm(am|w(s),w(t))∝p(am|m,M(s),M(t))×p(w(s)
+m|w(t)
+am), [18.18]
+whereqm(am|w(s),w(t))is a measure of our conﬁdence in aligning source word w(s)
+m
+to target word w(t)
+am. The relative frequencies could then be computed from the expected
+counts ,
+ˆθu→v=Eq[count (u,v)]
+count (u)[18.19]
+Eq[count (u,v)] =∑
+mqm(am|w(s),w(t))δ(w(s)
+m=v)δ(w(t)
+am=u). [18.20]
+The expectation-maximization (EM) algorithm proceeds by iteratively updating qm 9557
+and ˆΘ. The algorithm is described in general form in chapter 5. For statistical machine 9558
+translation, the steps of the algorithm are: 9559
+1.E-step : Update beliefs about word alignment using Equation 18.18. 9560
+2.M-step : Update the translation model using Equations 18.19 and 18.20. 9561
+As discussed in chapter 5, the expectation maximization algorithm is guaranteed to con- 9562
+verge, but not to a global optimum. However, for IBM Model 1, it can be shown that EM 9563
+optimizes a convex objective, and global optimality is guaranteed. For this reason, IBM 9564
+Model 1 is often used as an initialization for more complex alignment models. For more 9565
+detail, see Koehn (2009). 9566
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+444 CHAPTER 18. MACHINE TRANSLATION
+Nous allonsprendreune verre
+We’ll
+have
+a
+drink
+Figure 18.4: A phrase-based alignment between French and English, corresponding to
+example (18.3)
+18.2.3 Phrase-based translation 9567
+Real translations are not word-to-word substitutions. One reason is that many multiword 9568
+expressions are not translated literally, as shown in this example from French: 9569
+(18.3) Nous
+Weallons
+willprendre
+takeun
+averre
+glass9570
+We’ll have a drink 9571
+The line we will take a glass is the word-for-word gloss of the French sentence; the transla- 9572
+tion we’ll have a drink is shown on the third line. Such examples are difﬁcult for word-to- 9573
+word translation models, since they require translating prendre tohave and verre todrink . 9574
+These translations are only correct in the context of these speciﬁc phrases. 9575
+Phrase-based translation generalizes on word-based models by building translation
+tables and alignments between multiword spans. (These “phrases” are not necessarily
+syntactic constituents like the noun phrases and verb phrases described in chapters 9 and
+10.) The generalization from word-based translation is surprisingly straightforward: the
+translation tables can now condition on multi-word units, and can assign probabilities to
+multi-word units; alignments are mappings from spans to spans, ((i,j),(k,ℓ)), so that
+p(w(s)|w(t),A) =∏
+((i,j),(k,ℓ))∈Apw(s)|w(t)({w(s)
+i+1,w(s)
+i+2,...,w(s)
+j}|{w(t)
+k+1,w(t)
+k+2,...,w(t)
+ℓ}).
+[18.21]
+The phrase alignment ((i,j),(k,ℓ))indicates that the span w(s)
+i+1:jis the translation of the 9576
+spanw(t)
+k+1:ℓ. An example phrasal alignment is shown in Figure 18.4. Note that the align- 9577
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.2. STATISTICAL MACHINE TRANSLATION 445
+ment setAis required to cover all of the tokens in the source, just as in word-based trans- 9578
+lation. The probability model pw(s)|w(t)must now include translations for all phrase pairs, 9579
+which can be learned from expectation-maximization just as in word-based statistical ma- 9580
+chine translation. 9581
+18.2.4 *Syntax-based translation 9582
+The Vauquois Pyramid (Figure 18.1) suggests that translation might be easier if we take a 9583
+higher-level view. One possibility is to incorporate the syntactic structure of the source, 9584
+the target, or both. This is particularly promising for language pairs that consistent syn- 9585
+tactic differences. For example, English adjectives almost always precede the nouns that 9586
+they modify, while in Romance languages such as French and Spanish, the adjective often 9587
+follows the noun: thus, angry ﬁsh would translate to pez (ﬁsh) enojado (angry) in Spanish. 9588
+In word-to-word translation, these reorderings cause the alignment model to be overly 9589
+permissive. It is not that the order of anypair of English words can be reversed when 9590
+translating into Spanish, but only adjectives and nouns within a noun phrase. Similar 9591
+issues arise when translating between verb-ﬁnal languages such as Japanese (in which 9592
+verbs usually follow the subject and object), verb-initial languages like Tagalog and clas- 9593
+sical Arabic, and verb-medial languages such as English. 9594
+An elegant solution is to link parsing and translation in a synchronous context-free 9595
+grammar (SCFG; Chiang, 2007).4An SCFG is a set of productions of the form X→(α,β,∼), 9596
+whereXis a non-terminal, αandβare sequences of terminals or non-terminals, and ∼ 9597
+is a one-to-one alignment of items in αwith items in β. To handle the English-Spanish 9598
+adjective-noun ordering, an SCFG would include productions such as, 9599
+NP→(DET1NN2JJ3,DET1JJ3NN2), [18.22]
+with subscripts indicating the alignment between the Spanish (left) and English (right) 9600
+parts of the right-hand side. Terminal productions yield translation pairs, 9601
+JJ→(enojado1,angry1). [18.23]
+A synchronous derivation begins with the start symbol S, and derives a pair of sequences 9602
+of terminal symbols. 9603
+Given an SCFG in which each production yields at most two symbols in each language 9604
+(Chomsky Normal Form; see §9.2.1.2), a sentence can be parsed using only the CKY 9605
+algorithm (chapter 10). The resulting derivation also includes productions in the other 9606
+language, all the way down to the surface form. Therefore, SCFGs make translation very 9607
+similar to parsing. In a weighted SCFG, the log probability logpS|Tcan be computed from 9608
+4Key earlier work includes syntax-driven transduction (Lewis II and Stearns, 1968) and stochastic inver-
+sion transduction grammars (Wu, 1997).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+446 CHAPTER 18. MACHINE TRANSLATION
+the sum of the log-probabilities of the productions. However, combining SCFGs with a 9609
+target language model is computationally expensive, necessitating approximate search 9610
+algorithms (Huang and Chiang, 2007). 9611
+Synchronous context-free grammars are an example of tree-to-tree translation , be- 9612
+cause they model the syntactic structure of both the target and source language. In string- 9613
+to-tree translation , string elements are translated into constituent tree fragments, which 9614
+are then assembled into a translation (Yamada and Knight, 2001; Galley et al., 2004); in 9615
+tree-to-string translation , the source side is parsed, and then transformed into a string on 9616
+the target side (Liu et al., 2006). A key question for syntax-based translation is the extent 9617
+to which we phrasal constituents align across translations (Fox, 2002), because this gov- 9618
+erns the extent to which we can rely on monolingual parsers and treebanks. For more on 9619
+syntax-based machine translation, see the monograph by Williams et al. (2016). 9620
+18.3 Neural machine translation 9621
+Neural network models for machine translation are based on the encoder-decoder archi-
+tecture (Cho et al., 2014). The encoder network converts the source language sentence into
+a vector or matrix representation; the decoder network then converts the encoding into a
+sentence in the target language.
+z=ENCODE (w(s)) [18.24]
+w(t)|w(s)∼DECODE (z), [18.25]
+where the second line means that the function D ECODE (z)deﬁnes the conditional proba- 9622
+bility p (w(t)|w(s)). 9623
+The decoder is typically a recurrent neural network, which generates the target lan-
+guage sentence one word at a time, while recurrently updating a hidden state. The en-
+coder and decoder networks are trained end-to-end from parallel sentences. If the output
+layer of the decoder is a logistic function, then the entire architecture can be trained to
+maximize the conditional log-likelihood,
+logp(w(t)|w(s)) =M(t)∑
+m=1p(w(t)
+m|w(t)
+1:m−1,z) [18.26]
+p(w(t)
+m|w(t)
+1:m−1,w(s))∝exp(
+βw(t)
+m·h(t)
+m−1)
+[18.27]
+where the hidden state h(t)
+m−1is a recurrent function of the previously generated text
+w(t)
+1:m−1and the encoding z. The second line is equivalent to writing,
+w(t)
+m|w(t)
+1:m−1,w(s)∼SoftMax(
+β·h(t)
+m−1)
+, [18.28]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.3. NEURAL MACHINE TRANSLATION 447
+h(s,D)
+m−1 h(s,D)
+m h(s,D)
+m+1
+. . . . . . . . .
+h(s,2)
+m−1 h(s,2)
+m h(s,2)
+m+1
+h(s,1)
+m−1 h(s,1)
+m h(s,1)
+m+1
+x(s)
+m−1 x(s)
+m x(s)
+m+1
+Figure 18.5: A deep bidirectional LSTM encoder
+whereβ∈R(V(t)×K)is the matrix of output word vectors for the V(t)words in the target 9624
+language vocabulary. 9625
+The simplest encoder-decoder architecture is the sequence-to-sequence model (Sutskever
+et al., 2014). In this model, the encoder is set to the ﬁnal hidden state of a long short-term
+memory (LSTM) (see§6.3.3) on the source sentence:
+h(s)
+m=LSTM (x(s)
+m,h(s)
+m−1) [18.29]
+z≜h(s)
+M(s), [18.30]
+wherex(s)
+mis the embedding of source language word w(s)
+m. The encoding then provides
+the initial hidden state for the decoder LSTM:
+h(t)
+0=z [18.31]
+h(t)
+m=LSTM (x(t)
+m,h(t)
+m−1), [18.32]
+wherex(t)
+mis the embedding of the target language word w(t)
+m. 9626
+Sequence-to-sequence translation is nothing more than wiring together two LSTMs: 9627
+one to read the source, and another to generate the target. To make the model work well, 9628
+some additional tweaks are needed: 9629
+•Most notably, the model works much better if the source sentence is reversed, read- 9630
+ing from the end of the sentence back to the beginning. In this way, the words at the 9631
+beginning of the source have the greatest impact on the encoding z, and therefore 9632
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+448 CHAPTER 18. MACHINE TRANSLATION
+impact the words at the beginning of the target sentence. Later work on more ad- 9633
+vanced encoding models, such as neural attention (see§18.3.1), has eliminated the 9634
+need for reversing the source sentence. 9635
+•The encoder and decoder can be implemented as deep LSTMs , with multiple layers
+of hidden states. As shown in Figure 18.5, each hidden state h(s,i)
+mat layeriis treated
+as the input to an LSTM at layer i+ 1:
+h(s,1)
+m=LSTM (x(s)
+m,h(s)
+m−1) [18.33]
+h(s,i+1)
+m =LSTM (h(s,i)
+m,h(s)
+m−1),∀i≥1. [18.34]
+The original work on sequence-to-sequence translation used four layers; in 2016, 9636
+Google’s commercial machine translation system used eight layers (Wu et al., 2016).59637
+•Signiﬁcant improvements can be obtained by creating an ensemble of translation 9638
+models, each trained from a different random initialization. For an ensemble of size 9639
+N, the per-token decoding probability is set equal to, 9640
+p(w(t)|z,w(t)
+1:m−1) =1
+NN∑
+i=1pi(w(t)|z,w(t)
+1:m−1), [18.35]
+where piis the decoding probability for model i. Each translation model in the 9641
+ensemble includes its own encoder and decoder networks. 9642
+•The original sequence-to-sequence model used a fairly standard training setup: stochas- 9643
+tic gradient descent with an exponentially decreasing learning rate after the ﬁrst ﬁve 9644
+epochs; mini-batches of 128 sentences, chosen to have similar length so that each 9645
+sentence on the batch will take roughly the same amount of time to process; gradi- 9646
+ent clipping (see§3.3.4) to ensure that the norm of the gradient never exceeds some 9647
+predeﬁned value. 9648
+18.3.1 Neural attention 9649
+The sequence-to-sequence model discussed in the previous section was a radical depar- 9650
+ture from statistical machine translation, in which each word or phrase in the target lan- 9651
+guage is conditioned on a single word or phrase in the source language. Both approaches 9652
+have advantages. Statistical translation leverages the idea of compositionality — transla- 9653
+tions of large units should be based on the translations of their component parts — and 9654
+this seems crucial if we are to scale translation to longer units of text. But the translation 9655
+of each word or phrase often depends on the larger context, and encoder-decoder models 9656
+capture this context at the sentence level. 9657
+5Google reports that this system took six days to train for English-French translation, using 96 NVIDIA
+K80 GPUs, which would have cost roughly half a million dollars at the time.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.3. NEURAL MACHINE TRANSLATION 449
+Output
+activation α
+Query ψα
+Key Value
+Figure 18.6: A general view of neural attention. The dotted box indicates that each αm→n
+can be viewed as a gate on valuen.
+Is it possible for translation to be both contextualized and compositional? One ap- 9658
+proach is to augment neural translation with an attention mechanism . The idea of neural 9659
+attention was described in §17.5, but its application to translation bears further discus- 9660
+sion. In general, attention can be thought of as using a query to select from a memory 9661
+of key-value pairs. However, the query, keys, and values are all vectors, and the entire 9662
+operation is differentiable. For each key nin the memory, we compute a score ψα(m,n) 9663
+with respect to the query m. That score is a function of the compatibility of the key and 9664
+the query, and can be computed using a small feedforward neural network. The vector 9665
+of scores is passed through an activation function, such as softmax. The output of this 9666
+activation function is a vector of non-negative numbers [αm→1,αm→2,...,αm→N]⊤, with 9667
+lengthNequal to the size of the memory. Each value in the memory vnis multiplied by 9668
+the attention αm→n; the sum of these scaled values is the output. This process is shown in 9669
+Figure 18.6. In the extreme case that αm→n= 1 andαm→n′= 0 for all other n′, then the 9670
+attention mechanism simply selects the value vnfrom the memory. 9671
+Neural attention makes it possible to integrate alignment into the encoder-decoder ar- 9672
+chitecture. Rather than encoding the entire source sentence into a ﬁxed length vector z, 9673
+it can be encoded into a matrix Z∈RK×M(S), whereKis the dimension of the hidden 9674
+state, andM(S)is the number of tokens in the source input. Each column of Zrepresents 9675
+the state of a recurrent neural network over the source sentence. These vectors are con- 9676
+structed from a bidirectional LSTM (see§7.6), which can be a deep network as shown in 9677
+Figure 18.5. These columns are both the keys and the values in the attention mechanism. 9678
+At each step min decoding, the attentional state is computed by executing a query,
+which is equal to the state of the decoder, h(t)
+m. The resulting compatibility scores are,
+ψα(m,n) =vα·tanh(Θα[h(t)
+m;h(s)
+n]). [18.36]
+The function ψis thus a two layer feedforward neural network, with weights vαon the 9679
+output layer, and weights Θαon the input layer. To convert these scores into atten- 9680
+tion weights, we apply an activation function, which can be vector-wise softmax or an 9681
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+450 CHAPTER 18. MACHINE TRANSLATION
+element-wise sigmoid: 9682
+Softmax attention
+αm→n=expψα(m,n)
+∑M(s)
+n′=1expψα(m,n′)[18.37]
+Sigmoid attention
+αm→n=σ(ψα(m,n)) [18.38]
+The attention αis then used to compute an context vector cmby taking a weighted
+average over the columns of Z,
+cm=M(s)∑
+n=1αm→nzn, [18.39]
+whereαm→n∈[0,1]is the amount of attention from word mof the target to word nof the
+source. The context vector can be incorporated into the decoder’s word output probability
+model, by adding another layer to the decoder (Luong et al., 2015):
+˜h(t)
+m= tanh(
+Θc[h(t)
+m;cm])
+[18.40]
+p(w(t)
+m+1|w(t)
+1:m,w(s))∝exp(
+βw(t)
+m+1·˜h(t)
+m)
+. [18.41]
+Here the decoder state h(t)
+mis concatenated with the context vector, forming the input 9683
+to compute a ﬁnal output vector ˜h(t)
+m. The context vector can be incorporated into the 9684
+decoder recurrence in a similar manner (Bahdanau et al., 2014). 9685
+18.3.2 *Neural machine translation without recurrence 9686
+In the encoder-decoder model, attention’s “keys and values” are the hidden state repre-
+sentations in the encoder network, z, and the “queries” are state representations in the
+decoder network h(t). It is also possible to completely eliminate recurrence from neural
+translation, by applying self-attention (Lin et al., 2017; Kim et al., 2017) within the en-
+coder and decoder, as in the transformer architecture (Vaswani et al., 2017). For level i,
+the basic equations of the encoder side of the transformer are:
+z(i)
+m=M(s)∑
+n=1α(i)
+m→n(Θvh(i−1)
+n) [18.42]
+h(i)
+m=Θ2ReLU(
+Θ1z(i)
+m+b1)
++b2. [18.43]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.3. NEURAL MACHINE TRANSLATION 451
+For each token mat leveli, we compute self-attention over the entire source sentence: 9687
+the keys, values, and queries are all projections of the vector h(i−1). The attention scores 9688
+α(i)
+m→nare computed using a scaled form of softmax attention, 9689
+αm→n∝exp(ψα(m,n)/M), [18.44]
+whereMis the length of the input. This encourages the attention to be more evenly 9690
+dispersed across the input. Self-attention is applied across multiple “heads”, each using 9691
+different projections of h(i−1)to form the keys, values, and queries. 9692
+The output of the self-attentional layer is the representation z(i)
+m, which is then passed 9693
+through a two-layer feed-forward network, yielding the input to the next layer, h(i). To 9694
+ensure that information about word order in the source is integrated into the model, the 9695
+encoder includes positional encodings of the index of each word in the source. These 9696
+encodings are vectors for each position m∈{1,2,...,M}. The positional encodings are 9697
+concatenated with the word embeddings xmat the base layer of the model.69698
+Convolutional neural networks (see §3.4) have also been applied as encoders in neu- 9699
+ral machine translation. For each word w(s)
+m, a convolutional network computes a rep- 9700
+resentationh(s)
+mfrom the embeddings of the word and its neighbors. This procedure is 9701
+applied several times, creating a deep convolutional network. The recurrent decoder then 9702
+computes a set of attention weights over these convolutional representations, using the 9703
+decoder’s hidden state h(t)as the queries. This attention vector is used to compute a 9704
+weighted average over the outputs of another convolutional neural network of the source, 9705
+yielding an averaged representation cm, which is then fed into the decoder. As with the 9706
+transformer, speed is the main advantage over recurrent encoding models; another sim- 9707
+ilarity is that word order information is approximated through the use of positional en- 9708
+codings. It seems likely that there are limitations to how well positional encodings can 9709
+account for word order and deeper linguistic structure. But for the moment, the com- 9710
+putational advantages of such approaches have put them on par with the best recurrent 9711
+translation models.79712
+18.3.3 Out-of-vocabulary words 9713
+Thus far, we have treated translation as a problem at the level of words or phrases. For 9714
+words that do not appear in the training data, all such models will struggle. There are 9715
+two main reasons for the presence of out-of-vocabulary (OOV) words: 9716
+6The transformer architecture relies on several additional tricks, including layer normalization (see
+§3.3.4) and residual connections around the nonlinear activations (see §3.2.2).
+7A recent evaluation found that best performance was obtained by using a recurrent network for the
+decoder, and a transformer for the encoder (Chen et al., 2018). The transformer was also found to signiﬁcantly
+outperform a convolutional neural network.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+452 CHAPTER 18. MACHINE TRANSLATION
+Source: The ecotax portico inPont-de-buis was taken down onThursday morning
+Reference: Le portique ´ ecotaxe de Pont-de-buis a ´ et´ e d´ emont´ e jeudi matin
+System: Le unk de unk ` aunk a ´ et´ e pris le jeudi matin
+Figure 18.7: Translation with unknown words . The system outputs unkto indicate words
+that are outside its vocabulary. Figure adapted from Luong et al. (2015).
+•New proper nouns, such as family names or organizations, are constantly arising — 9717
+particularly in the news domain. The same is true, to a lesser extent, for technical 9718
+terminology. This issue is shown in Figure 18.7. 9719
+•In many languages, words have complex internal structure, known as morphology . 9720
+An example is German, which uses compounding to form nouns like Abwasserbe- 9721
+handlungsanlage (sewage water treatment plant ; example from Sennrich et al. (2016)). 9722
+While compounds could in principle be addressed by better tokenization (see §8.4), 9723
+other morphological processes involve more complex transformations of subword 9724
+units. 9725
+Names and technical terms can be handled in a postprocessing step: after ﬁrst identi- 9726
+fying alignments between unknown words in the source and target, we can look up each 9727
+aligned source word in a dictionary, and choose a replacement (Luong et al., 2015). If the 9728
+word does not appear in the dictionary, it is likely to be a proper noun, and can be copied 9729
+directly from the source to the target. This approach can also be integrated directly into 9730
+the translation model, rather than applying it as a postprocessing step (Jean et al., 2015). 9731
+Words with complex internal structure can be handled by translating subword units 9732
+rather than entire words. A popular technique for identifying subword units is byte-pair 9733
+encoding (BPE; Gage, 1994; Sennrich et al., 2016). The initial vocabulary is deﬁned as the 9734
+set of characters used in the text. The most common character bigram is then merged into 9735
+a new symbol, and the vocabulary is updated. The merging operation is applied repeat- 9736
+edly, until the vocabulary reaches some maximum size. For example, given the dictionary 9737
+{ﬁsh, ﬁshed, want, wanted, bike, biked }, we would ﬁrst merge e+dinto the subword unit ed, 9738
+since this bigram appears in three words of the six words. Next, there are several bigrams 9739
+that each appear in a pair of words: f+i,i+s,s+h,w+a,a+n, etc. These can be merged 9740
+in any order, resulting in the segmentation, {ﬁsh,ﬁsh+ed,want,want+ed,bik+e,bik+ed}. At 9741
+this point, there are no subword bigrams that appear more than once. In real data, merg- 9742
+ing is performed until the number of subword units reaches some predeﬁned threshold, 9743
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.4. DECODING 453
+such as 104. 9744
+Each subword unit is treated as a token for translation, in both the encoder (source 9745
+side) and decoder (target side). BPE can be applied jointly to the union of the source and 9746
+target vocabularies, identifying subword units that appear in both languages. For lan- 9747
+guages that have different scripts, such as English and Russian, transliteration between 9748
+the scripts should be applied ﬁrst.89749
+18.4 Decoding 9750
+Given a trained translation model, the decoding task is:
+ˆw(t)= argmax
+w∈V∗Ψ(w,w(s)), [18.45]
+wherew(t)is a sequence of tokens from the target vocabulary V. It is not possible to 9751
+efﬁciently obtain exact solutions to the decoding problem, for even minimally effective 9752
+models in either statistical or neural machine translation. Today’s state-of-the-art transla- 9753
+tion systems use beam search (see§11.3.1.4), which is an incremental decoding algorithm 9754
+that maintains a small constant number of competitive hypotheses. Such greedy approxi- 9755
+mations are reasonably effective in practice, and this may be in part because the decoding 9756
+objective is only loosely correlated with measures of translation quality, so that exact op- 9757
+timization of [18.45] may not greatly improve the resulting translations. 9758
+Decoding in neural machine translation is somewhat simpler than in phrase-based
+statistical machine translation.9The scoring function Ψis deﬁned,
+Ψ(w(t),w(s)) =M(t)∑
+m=1ψ(w(t)
+m;w(t)
+1:m−1,z) [18.46]
+ψ(w(t);w(t)
+1:m−1,z) =βw(t)
+m·h(t)
+m−log∑
+w∈Vexp(
+βw·h(t)
+m)
+, [18.47]
+wherezis the encoding of the source sentence w(s), andh(t)
+mis a function of the encoding 9759
+zand the decoding history w(t)
+1:m−1. This formulation subsumes the attentional translation 9760
+model, where zis a matrix encoding of the source. 9761
+Now consider the incremental decoding algorithm,
+ˆw(t)
+m= argmax
+w∈Vψ(w;ˆw(t)
+1:m−1,z), m = 1,2,... [18.48]
+8Transliteration is crucial for converting names and other foreign words between languages that do not
+share a single script, such as English and Japanese. It is typically approached using the ﬁnite-state methods
+discussed in chapter 9 (Knight and Graehl, 1998).
+9For more on decoding in phrase-based statistical models, see Koehn (2009).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+454 CHAPTER 18. MACHINE TRANSLATION
+This algorithm selects the best target language word at position m, assuming that it has 9762
+already generated the sequence ˆw(t)
+1:m−1. (Termination can be handled by augmenting 9763
+the vocabularyVwith a special end-of-sequence token, ■.) The incremental algorithm 9764
+is likely to produce a suboptimal solution to the optimization problem deﬁned in Equa- 9765
+tion 18.45, because selecting the highest-scoring word at position mcan set the decoder 9766
+on a “garden path,” in which there are no good choices at some later position n>m . We 9767
+might hope for some dynamic programming solution, as in sequence labeling ( §7.3). But 9768
+the Viterbi algorithm and its relatives rely on a Markov decomposition of the objective 9769
+function into a sum of local scores: for example, scores can consider locally adjacent tags 9770
+(ym,ym−1), but not the entire tagging history y1:m. This decomposition is not applicable 9771
+to recurrent neural networks, because the hidden state h(t)
+mis impacted by the entire his- 9772
+toryw(t)
+1:m; this sensitivity to long-range context is precisely what makes recurrent neural 9773
+networks so effective.10In fact, it can be shown that decoding from any recurrent neural 9774
+network is NP-complete (Siegelmann and Sontag, 1995; Chen et al., 2018). 9775
+Beam search Beam search is a general technique for avoiding search errors when ex- 9776
+haustive search is impossible; it was ﬁrst discussed in §11.3.1.4. Beam search can be 9777
+seen as a variant of the incremental decoding algorithm sketched in Equation 18.48, but 9778
+at each step m, a set ofKdifferent hypotheses are kept on the beam. For each hypothesis 9779
+k∈{1,2,...,K}, we compute both the current score∑M(t)
+m=1ψ(w(t)
+k,m;w(t)
+k,1:m−1,z)as well as 9780
+the current hidden state h(t)
+k. At each step in the beam search, the Ktop-scoring children 9781
+of each hypothesis currently on the beam are “expanded”, and the beam is updated. For 9782
+a detailed description of beam search for RNN decoding, see Graves (2012). 9783
+Learning and search Conventionally, the learning algorithm is trained to predict the 9784
+right token in the translation, conditioned on the translation history being correct. But 9785
+if decoding must be approximate, then we might do better by modifying the learning 9786
+algorithm to be robust to errors in the translation history. Scheduled sampling does this 9787
+by training on histories that sometimes come from the ground truth, and sometimes come 9788
+from the model’s own output (Bengio et al., 2015).11As training proceeds, the training 9789
+wheels come off: we increase the fraction of tokens that come from the model rather than 9790
+the ground truth. Another approach is to train on an objective that relates directly to beam 9791
+search performance (Wiseman et al., 2016). Reinforcement learning has also been applied 9792
+to decoding of RNN-based translation models, making it possible to directly optimize 9793
+translation metrics such as B LEU (Ranzato et al., 2016). 9794
+10Note that this problem does not impact RNN-based sequence labeling models (see §7.6). This is because
+the tags produced by these models do not affect the recurrent state.
+11Scheduled sampling builds on earlier work on learning to search (Daum ´e III et al., 2009; Ross et al.,
+2011), which are also described in §15.2.4.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.5. TRAINING TOWARDS THE EVALUATION METRIC 455
+18.5 Training towards the evaluation metric 9795
+In likelihood-based training, the objective is the maximize the probability of a parallel 9796
+corpus. However, translations are not evaluated in terms of likelihood: metrics like BLEU 9797
+consider only the correctness of a single output translation, and not the range of prob- 9798
+abilities that the model assigns. It might therefore be better to train translation models 9799
+to achieve the highest BLEU score possible — to the extent that we believe BLEU mea- 9800
+sures translation quality. Unfortunately, BLEU and related metrics are not friendly for 9801
+optimization: they are discontinuous, non-differentiable functions of the parameters of 9802
+the translation model. 9803
+Consider an error function ∆(ˆw(t),w(t)), which measures the discrepancy between the
+system translation ˆw(t)and the reference translation w(t); this function could be based on
+BLEU or any other metric on translation quality. One possible criterion would be to select
+the parameters θthat minimize the error of the system’s preferred translation,
+ˆw(t)= argmax
+w(t)Ψ(w(t),w(s);θ) [18.49]
+ˆθ= argmin
+θ∆(ˆw(t),w(s)) [18.50]
+However, identifying the top-scoring translation ˆw(t)is usually intractable, as described 9804
+in the previous section. In minimum error-rate training (MERT) ,ˆw(t)is selected from a 9805
+set of candidate translations Y(w(s)); this is typically a strict subset of all possible transla- 9806
+tions, so that it is only possible to optimize an approximation to the true error rate (Och 9807
+and Ney, 2003). 9808
+A further issue is that the objective function in Equation 18.50 is discontinuous and
+non-differentiable, due to the argmax over translations: an inﬁnitesimal change in the
+parametersθcould cause another translation to be selected, with a completely different
+error. To address this issue, we can instead minimize the risk, which is deﬁned as the
+expected error rate,
+R(θ) =Eˆw(t)|w(s);θ[∆(ˆw(t),w(t))] [18.51]
+=∑
+ˆw(t)∈Y(w(s))p(ˆw(t)|w(s))×∆(ˆw(t),w(t)). [18.52]
+Minimum risk training minimizes the sum of R(θ)across all instances in the training set. 9809
+The risk can be generalized by exponentiating the translation probabilities,
+˜p(w(t);θ,α)∝(
+p(w(t)|w(s);θ))α
+[18.53]
+˜R(θ) =∑
+ˆw(t)∈Y(w(s))˜p(ˆw(t)|w(s);α,θ)×∆(ˆw(t),w(t)) [18.54]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+456 CHAPTER 18. MACHINE TRANSLATION
+whereY(w(s))is now the set of allpossible translations for w(s). Exponentiating the prob- 9810
+abilities in this way is known as annealing (Smith and Eisner, 2006). When α= 1, then 9811
+˜R(θ) =R(θ); whenα=∞, then ˜R(θ)is equivalent to the sum of the errors of the maxi- 9812
+mum probability translations for each sentence in the dataset. 9813
+Clearly the set of candidate translations Y(w(s))is too large to explicitly sum over.
+Because the error function ∆generally does not decompose into smaller parts, there is
+no efﬁcient dynamic programming solution to sum over this set. We can approximate
+the sum∑
+ˆw(t)∈Y(w(s))with a sum over a ﬁnite number of samples, {w(t)
+1,w(t)
+2,...,w(t)
+K}.
+If these samples were drawn uniformly at random, then the (annealed) risk would be
+approximated as (Shen et al., 2016),
+˜R(θ)≈1
+ZK∑
+k=1˜p(w(t)
+k|w(s);θ,α)×∆(w(t)
+k,w(t)) [18.55]
+Z=K∑
+k=1˜p(w(t)
+k|w(s);θ,α). [18.56]
+Shen et al. (2016) report that performance plateaus at K= 100 for minimum risk training 9814
+of neural machine translation. 9815
+Uniform sampling over the set of all possible translations is undesirable, because most
+translations have very low probability. A solution from Monte Carlo estimation is impor-
+tance sampling , in which we draw samples from a proposal distribution q(w(t)). This
+distribution can be set equal to the current translation model p (w(t)|w(s);θ). Each sam-
+ple is then weighted by an importance score ,ωk=˜p(w(t)
+k|w(s))
+q(w(t)
+k). The effect of this weighting
+is to correct for any mismatch between the proposal distribution qand the true distribu-
+tion˜p. The risk can then be approximated as,
+w(t)
+k∼q(w(t)) [18.57]
+ωk=˜p(w(t)
+k|w(s))
+q(w(t)
+k)[18.58]
+˜R(θ)≈1∑K
+k=1ωkK∑
+k=1ωk×∆(w(t)
+k,w(t)). [18.59]
+Importance sampling will generally give a more accurate approximation with a given 9816
+number of samples. The only formal requirement is that the proposal assigns non-zero 9817
+probability to every w(t)∈Y(w(s)). For more on importance sampling and related meth- 9818
+ods, see Robert and Casella (2013). 9819
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+18.5. TRAINING TOWARDS THE EVALUATION METRIC 457
+Additional resources 9820
+A complete textbook on machine translation is available from Koehn (2009). While this 9821
+book precedes recent work on neural translation, a more recent draft chapter on neural 9822
+translation models is also available (Koehn, 2017). Neubig (2017) provides a comprehen- 9823
+sive tutorial on neural machine translation, starting from ﬁrst principles. The course notes 9824
+from Cho (2015) are also useful. 9825
+Several neural machine translation systems are available, in connection with each of 9826
+the major neural computing libraries: lamtram is an implementation of neural machine 9827
+translation in the dynet (Neubig et al., 2017); OpenNMT (Klein et al., 2017) is an imple- 9828
+mentation primarily in Torch ;tensor2tensor is an implementation of several of the 9829
+Google translation models in tensorflow (Abadi et al., 2016). 9830
+Literary translation is especially challenging, even for expert human translators. Mes- 9831
+sud (2014) describes some of these issues in her review of an English translation of L’´ etranger , 9832
+the 1942 French novel by Albert Camus.12She compares the new translation by Sandra 9833
+Smith against earlier translations by Stuart Gilbert and Matthew Ward, focusing on the 9834
+difﬁculties presented by a single word in the ﬁrst sentence: 9835
+Then, too, Smith has reconsidered the book’s famous opening. Camus’s 9836
+original is deceptively simple: “ Aujourd’hui, maman est morte .” Gilbert inﬂu- 9837
+enced generations by offering us “Mother died today”—inscribing in Meur- 9838
+sault [the narrator] from the outset a formality that could be construed as 9839
+heartlessness. But maman , after all, is intimate and affectionate, a child’s name 9840
+for his mother. Matthew Ward concluded that it was essentially untranslatable 9841
+(“mom” or “mummy” being not quite apt), and left it in the original French: 9842
+“Maman died today.” There is a clear logic in this choice; but as Smith has 9843
+explained, in an interview in The Guardian ,maman “didn’t really tell the reader 9844
+anything about the connotation.” She, instead, has translated the sentence as 9845
+“My mother died today.” 9846
+I chose “My mother” because I thought about how someone would 9847
+tell another person that his mother had died. Meursault is speaking 9848
+to the reader directly. “My mother died today” seemed to me the 9849
+way it would work, and also implied the closeness of “maman” you 9850
+get in the French. 9851
+Elsewhere in the book, she has translated maman as “mama” — again, striving 9852
+to come as close as possible to an actual, colloquial word that will carry the 9853
+same connotations as maman does in French. 9854
+12The book review is currently available online at http://www.nybooks.com/articles/2014/06/
+05/camus-new-letranger/ .
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+458 CHAPTER 18. MACHINE TRANSLATION
+The passage is a useful reminder that while the quality of machine translation has 9855
+improved dramatically in recent years, expert human translations draw on considerations 9856
+that are beyond the ken of any known computational approach. 9857
+Exercises 9858
+1. Give a synchronized derivation ( §18.2.4) for the Spanish-English translation, 9859
+(18.4) El
+Thepez
+ﬁshenojado
+angryatacado.
+attacked.9860
+The angry ﬁsh attacked. 9861
+As above, the second line shows a word-for-word gloss, and the third line shows 9862
+the desired translation. Use the synchronized production rule in [18.22], and design 9863
+the other production rules necessary to derive this sentence pair. You may derive 9864
+(atacado, attacked )directly from VP. 9865
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+

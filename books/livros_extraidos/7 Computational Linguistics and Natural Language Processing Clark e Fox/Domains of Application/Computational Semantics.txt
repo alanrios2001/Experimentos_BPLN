@@ -1,0 +1,822 @@
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 394 — #1
+15 Computational Semantics
+CHRIS FOX
+1 Introduction
+In this chapter we will generally use ‘semantics’ to refer to a formal analysis ofmeaning, and ‘computational’ to refer to approaches that in principle supporteffective implementation, following Blackburn and Bos (2005).
+There are many difﬁculties in interpreting natural language. These difﬁculties
+can be classiﬁed into speciﬁc phenomena – such as scope ambiguity, anaphora,ellipsis and presuppositions. Historically, different phenomena have beenexplored within different frameworks, based upon different philosophical andmethodological foundations. The nature of these frameworks, and how they areformulated, has an impact on whether a given analysis is computationally feasible.Thus the topic of computational semantics can be seen to be concerned with theanalysis of semantic phenomena within computationally feasible frameworks.
+Unfortunately, the range of phenomena and the number of frameworks that are
+of relevance to computational semantics are too vast and this chapter too short tobe able to do the subject full justice in the space available. Instead, this contributionshould be seen as offering merely a taste of some issues in computational seman-tics, focusing primarily on logic-based approaches. There are differing views onwhat counts as the canon of computational semantics, what aspects of seman-tics are deemed to be ‘solved,’ and which research questions are considered openand worthy of pursuit. For these reasons, the focus of the chapter will necessar-ily appear biased and unbalanced, reﬂecting the interests and prejudices of theauthor.
+One factor that computational semantics requires over and above formal seman-
+tics is that we take seriously the notion of a semantic representation whosebehavior can be expressed independently of any model-theoretic interpretation.This is because an effective implementation needs to be able to use and reasondirectly with this representation: an implementation cannot make a direct appealto some abstract, external model in order to determine which inferences arevalid.
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 395 — #2
+Computational Semantics 395
+In a formal theory of semantics, the appropriate inferential behavior of the rep-
+resentation should be clearly and precisely formulated. Ideally, to ensure thatthe behavior corresponds with our intuitions, the relevant behaviors should becaptured as transparently as possible.
+For computational semantics, the entailments of the representation language
+should also be computationally feasible. The notions of decidability are relevant
+here (see Chapter 2 of this book,
+COMPUTATIONAL COMPLEXITY IN NATURAL
+LANGUAGE , Section 1.2). In a decidable system, we can determine what does and
+does not follow from an expression. In a semi-decidable system, we can only guar-
+antee to compute things that follow from an expression. This is also called recursive
+enumerability. If something does not follow, then the decision procedure may neverhalt. In an undecidable system, we cannot even guarantee to be able to compute
+what follows from a statement.
+If there is a choice, then typically a decidable formulation should be preferred to
+a semi-decidable one, which in turn should be preferred to an undecidable formu-lation. Even a logic that is not decidable in general might be decidable for thoseinferences that are of interest – as would be the case if the domain of discourse wasﬁnite, for example – but it might be better to adopt a formalism that captures thisrequirement by design or nature rather than contingently.
+In addition to techniques based upon formal semantics, the remit of com-
+putational semantics may be taken to include corpus-based machine learningtechniques applied to aspects of interpretation, such as word-sense disambigua-tion, and identiﬁcation of entailments and semantic roles. Some such methods aretouched upon (Section 5), although they are not the primary focus of this chapter.
+1.1 Outline
+This chapter is aimed at readers with some knowledge of syntactic theory (e.g.,see Chapter 1 of this book,
+FORMAL LANGUAGE THEORY ) and predicate logic. The
+primary focus here is on the formal and logical aspects of computational seman-tics, rather than on linguistic data, or statistical or corpus-based techniques. It isorganized as follows. In Section 2 there is a basic introduction to formal semantics,including a discussion of compositionality, elementary types, model theory, andproof theory. In Section 3, the ‘state of the art’ treatment of the formal analysisof discourse and underspeciﬁed representations of quantiﬁer scoping are out-lined. In Section 4, some relatively open formal topics are sketched, covering typetheory, intensionality, and the analysis of non-indicatives. This section alsoincludes some discussion of the issue of power versus expressiveness of formalrepresentation languages. This covers the idea of treating ‘computability’ as aconstraint on formal semantic theories.
+Due to limitations of space, it is unavoidable that many important semantic
+issues will not even be mentioned, including the full range of modalities, hypo-theticals, the meaning of names, mass terms and plurals, and the formal analysisof topic and focus, and tense. It is also not possible to do full justice to the many
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 396 — #3
+396 Chris Fox
+relevant corpus-based techniques, but some of the latter are brieﬂy summarized inSection 5, and are also discussed in Chapter 18,
+INFORMATION EXTRACTION ,a n d
+Chapter 22, QUESTION ANSWERING .
+2 Background
+Given that our core characterization of computational semantics is founded oncomputationally tractable accounts of meaning that are rooted in formal seman-tics, it is appropriate to give an introductory account of what is usually meant byformal semantics.
+Language is used to convey information. This can be directly, in terms of the
+literal ‘content’ of an expression, or indirectly, either through accommodating thepresuppositions of an expression (van der Sandt 1992), or through some otherforms of implicature (Grice 1975; 1981).
+1
+We can use the following examples to illustrate the different kinds of informa-
+tion that can be conveyed.
+(1) a) ‘The sun is rising.’
+b) ‘Pick the other one!’
+c) ‘ Can you pass the salt?’
+The literal content of the ﬁrst sentence is the claim that the sun is rising. In the caseof the second example, information is conveyed indirectly that there is more thanone thing to pick, in addition to the more direct interpretation that something hasto be picked. In the ﬁnal case, we normally conclude that this is a request to passthe salt, not a mere inquiry about an ability.
+Some of the more pragmatic notions of meaning may appeal to abilities outside
+the linguistic realm. In some contexts, the statement ‘Wool is horrible when itis wet.’ might actually be a request not to wear a particular garment. Such non-literal meaning may be described as being part of pragmatics (Kadmon 2001). Theboundary between pragmatics and semantics is somewhat difﬁcult to deﬁne (seeKamp 1979 for example). As a ﬁrst approximation, one could claim that seman-tics is the meaning that can be deduced directly from an expression, with noextra-linguistic information, but ideally in a way that can accommodate any suchinformation.
+If we were to include in semantics that which has to be assumed in order to
+make any sense of what has been uttered, then that would include certain kindsof presuppositions. Indeed, there are claims that all semantic meaning may becharacterized as some variety of accommodation (Kamp 2007). In this chapter wewill explore the more ‘traditional’ view of semantics.
+In the case of computational semantics, we are interested not just in abstract
+accounts of meaning, but also in their concrete formalization in ways that, at leastin principle, are able to support implementation.
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 397 — #4
+Computational Semantics 397
+2.1 A standard approach
+In general it is difﬁcult to reason directly in terms of sentences of natural language.There have been attempts to produce proof-theoretic accounts of sentential reason-ing (for example, Zamansky et al., 2006; Francez & Dyckhoff 2007), but it is moreusual to adopt a formal language, either a logic or some form of set theory, andthen translate natural language expressions into that formal language. In the con-text of computational semantics, that means a precise description of an algorithmictranslation rather than some intuitive reformulation of natural language.
+Such translations usually appeal to a local principle of compositionality . This can
+be characterized by saying that the meaning of an expression is a function of themeaning of its parts. This idea is often attributed to Frege (although see Janssen2001 for a different view).
+In computational semantics there are two common approaches to specifying
+compositional functions. Essentially all that is required in most cases is somemechanism for combining the meaning of constituent expressions. This is typi-cally achieved by substituting the meaning of one constituent into a place-holdercontained in the meaning of the constituent with which it is being combined. Bothuniﬁcation (Moore 1989) and λ-calculus (Montague 1974; Blackburn & Bos 2005)
+can achieve this end. In the case of uniﬁcation-based formalisms, syntactic expres-sions are typically in the form of feature-value structures, and the grammar givesrules of composition indicating how the features are to be uniﬁed (combined) andwhether any additional constraints are to be imposed. Semantic interpretationscan just be viewed as another feature, with variables that are also constrained byfeature value constraints in the grammar and within the constituents.
+When using the λ-calculus, the composition of semantic forms is expressed
+in a language that supports substitutions of arguments for variables in a term.Subject to some side conditions on variable names, an expression of the form λx.t
+when given an argument t
+′will be identical to t, but with all occurrences of xint
+replaced by t′. To a ﬁrst approximation, (λy...man′(y)...)( John′)will be identical
+to...man′(John′)....2
+The choice of λ-calculus versus uniﬁcation need not be exclusive, for example
+the instantiations of the arguments in a λ-calculus approach might itself be accom-
+plished by way of uniﬁcation. Also, uniﬁcation-based formalisms might appealtoλ-calculus abstractions for certain phenomena. Indeed, the λ-calculus itself can
+be implemented within a uniﬁcation-based framework (Pereira & Shieber 1987;Covington 1994; Blackburn & Bos 2005). Some have argued that λ-calculus expres-
+sions are complex in comparison with uniﬁcation-based constraint formalisms(Moore 1989). This might be more a matter of taste: the uniﬁcation approachesgenerally speaking adopt the machinery of constraint-based grammar formalisms,such as HPSG (Pollard & Sag 1994), whereas λ-calculus approaches adopt the
+machinery of higher-order logic (or similar formalisms) and categorial grammar(for example, Steedman 1993).
+To be sure that we can translate every sentence covered by a grammar into
+a formal representation language, we need to associate each word with some
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 398 — #5
+398 Chris Fox
+semantic representation, and each rule with a piece of information that can beused to derive a representation for each possible category. Adopting the compo-sitional approach entails that the meaning of a sentence then depends upon themeaning of its parts, as analyzed by the grammar.
+In the case of the treatment proposed by Montague (1974), a categorial grammar
+(supplemented by transformational operations) was combined with higher-orderintensional logic (see Sections 4.2 and 4.4) to produce the semantic analysis. Herewe follow Blackburn and Bos (2005) and others in using a context-free grammar forthe syntax, and a ﬁrst-order representation language combined with the λ-calculus
+for the semantic representations.
+3
+With the grammar(2) s −→ np vp
+np−→ det noun
+vp−→ v
+det−→ ‘a’det−→ ‘every’
+n−→ ‘man’
+n−→ ‘woman’
+v−→ ‘laughed’
+we can parse the following sentences.
+(3) a) ‘A man laughed.’
+b) ‘Every woman laughed .’
+In ﬁrst-order predicate calculus, we want to give these sentences translations of
+the form:
+(4) a) ∃x(man
+′(x)∧laughed′(x))
+b)∀x(woman′(x)→laughed′(x))
+To this end, we can associate the words ‘ man,’ ‘woman,’ and ‘laughed’w i t ht h e
+predicates man′,woman′,a n d laughed′respectively. The determiners will have to
+contribute the following quantiﬁed expressions:
+(5) a) ∃x(⟨noun ⟩(x)∧⟨verb⟩(x))
+b)∀x(⟨noun ⟩(x)→⟨ verb⟩(x))
+To perform compositional semantics we need some general way of composing
+the meanings of constituent categories (for example, the noun and the verb in thiscase) so that they ‘ﬁll’ the correct ‘slots’ in the quantiﬁed expression. When wecombine the determiner with the noun, we want the meaning of the noun to besubstituted for ⟨noun⟩to give the meanings of the noun phrases:
+(6) a) ∃x(man
+′(x)∧⟨verb⟩(x)
+b)∀x(woman′(x)→⟨ verb⟩(x))
+When we subsequently combine a noun phrase with a verb phrase we want
+to substitute the meaning of the verb phrase (laughed′in this case) for ⟨verb⟩ in
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 399 — #6
+Computational Semantics 399
+the meaning of the noun phrase. As mentioned above, this substitution couldbe performed if we could use some mechanism like uniﬁcation, which is read-ily available in logic programming languages such as Prolog. Here we will usetheλ-calculus. Typically, semantic annotations on the grammar will tell us which
+λ-calculus expressions to use at each stage, and the rules of the calculus will tell ushow to produce the ﬁnal representation.
+To perform compositional semantics with a context-free grammar, then for each
+rule in the grammar (and each word in the lexicon), we need to state how tocompose the semantics of the category that is being deﬁned. This will be deﬁnedin terms of the semantics of the constituent categories (those categories to the rightof the arrow). We can use the notation: [[⟨category ⟩]]to indicate that we are referring
+to the semantics of ⟨category ⟩.
+(7) An example of a grammar with semantic annotations
+sentence −→ np vp [[np]]([[vp]])
+np −→ det noun [[det]]([[noun]] )
+vp −→ verb [[verb]]
+det −→ ‘a’ λP.λQ∃x(P(x) ∧Q(x))
+det −→ ‘every ’λP.λQ∀x(P(x) →Q(x))
+noun −→ ‘man’ man
+′
+noun −→ ‘woman’ woman′
+verb −→ ‘laughed’ laughed′
+In an attribute value grammar, we can represent such semantic annotations as
+one of the attributes of the categories (Johnson 1988).
+The annotated grammar (7) is sufﬁcient for the simple sentences of (3). The
+semantic annotations becomes more complicated if we consider more syntacticconstructions such as transitive verbs, auxiliary verbs, adjectives, and adverbs.We would also need a richer semantic representation language if we were to takeaccount of other aspects of meaning, such as tense, context-dependent meaning,knowledge, and belief.
+To account for transitive verbs, we would need to add a rule of the form:(8) vp −→ verb-trans np [[verb-trans]] ([[np]])
+together with transitive verbs in the lexicon, such as the following:
+(9) verb-trans −→ ‘loves’ λR(λy(R(λxloves
+′(x,y))))
+We can then derive the semantics of some sentences with transitive verbs.
+(10) a) ‘ A man loves a woman.’
+b)∃x(man′(x)∧∃y(woman′(y)∧loves′(x,y)))
+As it turns out, this is not always an appropriate representation for transitive verbs(Section 4.2).
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 400 — #7
+400 Chris Fox
+There are cases of ambiguity in the semantic analysis that cannot be accounted
+for at other levels of analysis. A prime example is that of quantiﬁer scope ambiguity.
+The sentence
+(11) ‘Every man loves a woman ’
+could have either of the following representations:
+(12) a) ∀x(man′(x)→∃ y(woman′(y)∧loves′(x,y)))
+b)∃y(woman′(y)∧∀x(man′(x)→loves′(x,y)))
+The analysis given so far just produces the ﬁrst reading.
+To a ﬁrst approximation, there can be as many interpretations as there are
+permutations of the orders of the quantiﬁers, or other scope-taking elements.A strictly compositional analysis will only ﬁnd one quantiﬁer scoping. Extramachinery is required to obtain the additional readings, and to use the context torule out inappropriate interpretations. There are other scoping ambiguities, some,such as prepositional attachment, have a syntactic characterization. We will lookat solutions to the problem of quantiﬁer scoping ambiguity in Section 3.2. Someproposals treat all of these ambiguities by way of underspeciﬁcation (van Deemter
+1996).
+Another issue concerns the representation of anaphora and ellipsis. Additional
+work is required to resolve anaphora such as pronouns (Section 3.1). Indeed thereare general questions about the most appropriate representation language and itsfeatures (Section 4). In the next section, we will say a few things about types in
+representational languages.
+2.2 Basic types
+When considering the representations of nouns, verbs, and sentences as prop-erties, relations, and propositions respectively, we may have to pay attention tothe nature of the permitted arguments. For example, we may have: properties ofindividuals; relationships between individuals; relationships between individualsand propositions (such as statements of belief and knowledge); and, in the caseof certain modiﬁers, relations that take properties as arguments to give a newproperty of individuals. Depending upon the choice of permitted arguments,and how they are characterized, there can be an impact on the formal powerof the underlying theory. This is of particular concern for a computational theory
+of meaning: if the theory is more powerful than ﬁrst-order logic, then some validconclusions will not be derivable by computational means; such a logic is saidto be incomplete ,
+4which corresponds with the notion of decidability (Section 1,
+and Section 1.2 of Chapter 2, COMPUTATIONAL COMPLEXITY IN NATURAL
+LANGUAGE ).
+A critical reason for considering this issue arises if the λ-expressions used in the
+compositional interpretation of meaning are part of the representation language
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 401 — #8
+Computational Semantics 401
+itself. There are good reasons for assuming that this is appropriate (see Section 4.2).Unfortunately, if we impose no constraints on how expressions may be combined,it is then possible to construct a logical paradox. Consider the property Rof not
+being self-applicable. Rcan be deﬁned by (13).
+(13) R(p)=
+def¬p(p)
+IfR(p) is a proposition for a property p, then applying Rto itself leads to a
+paradox.
+(14) R(R)↔¬ R(R)
+The conventional way of avoiding this problem is to ban self-application. Theusual approach for expressing such constraints is to adopt a typed representationlanguage. This allows us to implement well-formedness criteria for the languageof representation by way of typing constraints that govern the well-formedness of
+expressions in the logic. Typically, the types are expressed as efor entity, tfor
+a proposition, and ⟨a,b⟩for an expression that takes an argument of type aand
+returns one of type b. The idea is that every well-formed expression has exacly
+one type. When interpreting this theory, it is usual to assume a set-theoretic model,where expressions of type ⟨e,t⟩, for example, are viewed as sets of elements e(the
+values for functions from entities to truth values). This gives rise to simple type
+theory (STT) (Church 1940). In such a system, it is in felicitous to use (13) to deﬁne
+a term R, as it is not possible to assign Rexactly one type. Such terms are thus not
+permitted in the representation language, and the paradox of (14) does not arise.
+Conventional higher-order logic (HOL) adopts simple type theory and allows
+quantiﬁers to range over expressions of any given type. The propositions ofhigher-order logic are expressions that have the type t. In effect, Montague’s inten-
+sional logic (Montague 1974) is based on a variant of this type theory, except an
+additional (pseudo) type is added to account for intensionality (Section 4.2).
+There is some further discussion of types in Section 4.1.
+2.3 Model theory and proof theory
+There are two ways in which traditional formal semantic accounts of indicativeshave been characterized. First, we may be interested in evaluating the truth ofindicatives (or at least their semantic representation) by evaluating their truthconditions with respect to the world (or, more precisely, some formal represen-tation or model of a world). This can be described as model-theoretic semantics.
+Model-theoretic accounts are typically formulated in set theory. Set theory is a verypowerful formalism that does not lend itself to computational implementation. Inpractice, the full power of set theory may not be exploited. Indeed, if the prob-lem domain itself is ﬁnite in character, then an effective implementation should bepossible regardless of the general computational properties of the formal frame-work (see Klein 2006 for example).
+5
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 402 — #9
+402 Chris Fox
+On the second characterization of formal semantic accounts, the goal is to
+formalize some notion of inference or entailment for natural language. If oneexpression in natural language entails another, then we would like that relation tobe captured by any formalization that purports to capture the meaning of naturallanguage. This can be described as proof-theoretic semantics.
+6Such rules may lend
+themselves to fairly direct implementation (see for example van Eijck and Unger(2004); Ramsay (1995); Bos and Oka (2002), the last of which supplements theoremproving with model building).
+Although a proof-theoretic approach may seem more appropriate for compu-
+tational semantics, the practical feasibility of general theorem proving is open toquestion. Depending on the nature of the theory, the formalization may be unde-cidable. Even with a decidable or semi-decidable theory, there may be problemsof computational complexity, especially given the levels of ambiguity that may bepresent (Monz and de Rijke 2001).
+7
+These two different approaches may be considered, broadly speaking, to follow
+those of Tarski (interpretation) and Gentzen (proof) respectively (Tarski 1983;Gentzen 1969). With both the model-theoretic and the proof-theoretic approach,radically different assumptions may be made about the nature of the semanticframework, its ontology, the appropriate way of encoding information in thetheory, and the underlying philosophical principles that are adopted. In practice,such choices may depend upon methodology, taste, and precedent rather thangeneral, universal principles.
+At an abstract level, the model-theoretic and proof-theoretic views of indica-
+tives might not appear radically different from each other. Assuming our modelsof the world have some coherent notion of the relationships between the truth andfalsity of various expressions that exactly mimics our understanding of language,then any entailment patterns in language can be captured by considering thepatterns of truth for the interpretations of the sentences in all models. An indica-tive expression Aentails Bexactly when all those models in which Ais interpreted
+as being true also interpret Bas being true.
+A key issue for computational semantics is the computational tractability of
+the semantic representation. We could have a representation of a set-theoreticmodel theory, although we might question whether in general that is compu-tationally tractable. If possible, we would like to avoid representations that areso powerful that we cannot enumerate their theorems (let alone those for whichwe cannot even write down all the rules that govern their behavior). In general,set-theoretic interpretations are among those that are problematic when it comesto computational feasibility. An easier starting point is a relatively weak proof-theoretic representation, but with appropriate expressiveness for the phenomenain question.
+2.4 Lexical semantics
+The meaning of language is more than the ability to compose representationsbased on the form of sentences, and construct formal proofs. Other issues include
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 403 — #10
+Computational Semantics 403
+the pragmatics of how language is used, and of course the meanings of wordsthemselves (Pustejovsky 1995).
+A lexicon may include lexical features that indicate salient information about
+the syntactic and semantic arguments of lexical items which are needed to obtaina formal semantic representation. But in general we may also be interested in theconcept that is represented by a given word.
+For natural language processing this may be difﬁcult to capture. But there may
+be some aspects of meaning that can be captured and represented. These includeontological classiﬁcations of words, such cause-of, agent, and relationships between
+words. Such relationships might be semantic in character (such as hyponym andmeronym relationships, etc.), or founded on co-location information, where aword is assumed to be related in meaning to other words that are used in asimilar context, which might be described as ‘distributional’ lexical semantics.Many corpus-based techniques (Section 5) assume that at least some aspects ofmeaning are implicitly embodied in co-location data and, furthermore, that wordclassiﬁcations can be learned (Chiu et al., 2007).
+3 State of the Art
+There are a range of analyses of natural language phenomena that may be saidto constitute the state of the art of computational semantics. Here we pick twoissues that have received a signiﬁcant amount of attention over the years, namelythe treatments of anaphora and of quantiﬁer scoping. These are discussed in thesections on discourse (Section 3.1) and underspeciﬁcation (Section 3.2). This is notto say that the analyses proposed are beyond question, or that all the relevantissues have been resolved, but there is certainly a relatively stable core of ideasand analyses that can be considered state of the art.
+3.1 Discourse
+Here ‘discourse’ is taken to refer to a sequence of sentences where each sentence isinterpreted in the context of the preceding sentences. This context provides poten-tial antecedents for anaphoric expressions such as inter-sentential pronouns, as inthe very simple example given in (15), where the antecedent to which ‘She ’ refers
+is intended to be ‘Mary .’
+(15) ‘Mary is a woman. She loves John.’
+The antecedent might be inferred but is not overtly mentioned in the text. Theissue is how the discourse can be represented in a way that allows anaphoricrelations to be represented in a manner that is sympathetic to concerns with quan-tiﬁcation and scoping, and also captures intuitions about felicitous and infelicitousanaphoric reference.
+8
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 404 — #11
+404 Chris Fox
+Montague’s treatment of scope (Section 3.2) makes use of anaphora, but it
+cannot be generalized easily to other cases. One obvious solution would be toconsider pronouns as variables, and deﬁne some mechanism for these variables tobe bound appropriately by the quantiﬁers (nouns) to which they refer.
+Given the sentence(16) ‘Mary is a woman. She loves John’
+we can try to represent the pronoun ‘She ’ using a variable.
+(17) woman
+′(mary′)∧loves′(x,john′)
+Here, ‘She’ is an anaphoric pronoun that needs to be resolved so that it is associ-ated somehow with an appropriate antecedent. In this case, it would be legitimate
+to consider replacing the variable by mary
+′. Unfortunately, this solution does not
+generalize.
+If we consider the sentences(18) a) ‘ A man drank. He fell asleep ’
+b)∃x(man
+′(x)∧drank′(x))∧fell_asleep′(y)
+the pronoun, represented by y, cannot be resolved by just replacing it with a
+constant. Renaming yto be xalso does not work, because it lies outside the
+syntactic scope of the existential quantiﬁer, and so is not bound by it.9
+Some particularly problematic examples are given by Geach (1972), including
+the following so-called ‘donkey’ examples:
+(19) a) ‘ If a farmer owns a donkey, he beats it .’
+b) ‘Every farmer who owns a donkey beats it .’
+The issue of concern here is that it is not clear that we have the correct analysisof quantiﬁers or conditionals. If pronouns are to be represented by variables, weneed to ensure not only that they are bound correctly, but also that indeﬁnites haveuniversal force in the second example, which a naïve analysis would interpretincorrectly as something like
+(20) ∃x(farmer
+′(x)∧∃y(donkey′(y)∧own′(x,y))→beat′(x,y))
+where both xand yin the consequent of (20) are outside the scope of the relevant
+quantiﬁers, and the sense of universality is not captured. These issues, amongothers, have led people to consider alternative ways of representing meaning,including discourse representation theory (DRT) (Kamp 1981; Kamp & Reyle 1993;
+and Section 3.1.1 below). In addition to putting emphasis on the representationitself, rather than focusing on the model theory, DRT also provided an algorith-mic account of how to generate these representations from natural language inputsentences. Both features are characteristic of computational semantics.
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 405 — #12
+Computational Semantics 405
+3.1.1 Discourse representation theory Discourse representation theory (DRT)
+and related paradigms intend to capture the notions of discourse that are rel-evant for resolving anaphoric pronouns by reconsidering the representation ofquantiﬁers and some of the other logical connectives (Kamp 1981; Kamp & Reyle1993). The idea is to have a representation of the individuals that are introducedinto a discourse, and allow them to be referred to in subsequent discourse whereappropriate.
+Using a construction algorithm, DRT systematically builds a representation of the
+individuals described in a discourse, and the properties and relationships thathold between them. The basic notion in DRT is that of a discourse representation
+structure (DRS), which has the following form:
+(21)
+⟨referents ⟩
+⟨conditions ⟩
+The top part of the box contains individuals described in the discourse. The bottompart contains conditions on those individuals. The conditions may include otherDRSs.
+Essentially, existentially quantiﬁed noun phrases introduce a new individual
+into the current DRS with appropriate conditions.
+(22) a) ‘ A woman cried.’
+b)x
+woman′x
+cried′x
+Universally quantiﬁed noun phrases introduce a conditional DRS as a conditionof the DRS representing the current discourse.
+(23) a) ‘ Every man laughed .’
+b)...
+y
+man′y→laughed′y
+There are rules that govern from where a discourse referent may be referred to,and the construction algorithm indicates where analysis of subsequent discourseshould appear in the DRS. Resolution of anaphora can be expressed as equationsover discourse referents.
+(24) a) ‘ Mary is a woman.’
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 406 — #13
+406 Chris Fox
+b)m
+m=mary′
+woman′(m)
+c) ‘ Mary is a woman. She loves John.’
+d)m,j,x
+m=mary′
+woman′(m)
+j=john′
+loves′(j,x)
+x=m
+Here, the pronoun ‘ She’ is represented by x, and resolved by the condition x=m.
+A typical ‘donkey sentence’ where the conditional is interpreted with universal
+force is exempliﬁed next.
+(25) a) ‘ If a farmer owns a donkey, he beats it .’
+b)f,d
+farmer′(f)
+donkey′(d)
+owns′(f,d)→x,y
+beats′(x,y)
+x=f
+y=d
+Accessibility of referents is deﬁned in such a way that the farmer and donkey(f,d) are not accessible from any subsequent discourse (at least, not as singular
+antecedents).
+If DRT is combined with a notion of abstraction and application, then it is possi-
+ble to produce a more conventional compositional presentation of the constructionprocess (Blackburn & Bos 1999).
+DRT has been exploited for more things than just pronominal anaphora. Exam-
+ples include underspeciﬁcation (for example, Asher 1993; Reyle 1993), presup-positions (van der Sandt 1988; 1992; Krahmer & Piwek 1999; Beaver 2002), anddiscourse relations (Asher & Lascarides 2003).
+There are many issues that require a more sophisticated analysis, such as plural
+anaphora, as in
+(26) ‘John
+iand Mary jwent to Paris. They i+jmet at the Eiffel tower.’
+conditional examples where universal quantiﬁcation is not the most naturalinterpretation (Pelletier & Schubert 1989), as in
+(27) ‘If you have a penny, put it in the box.’
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 407 — #14
+Computational Semantics 407
+and examples where it is difﬁcult to see how the appropriate representation mightbe obtained (Heim 1990; Kadmon 1990), such as
+(28) ‘Most farmers who own a donkey beat it .’
+where the most natural reading is that most donkey-owning farmers beat donkeysthat they own, rather than the unnatural quantiﬁcation over farmer–donkey pairsthat would be obtained by an unmodiﬁed DRT-style analysis.3.1.2 Dynamic accounts There are many other approaches to dealing with
+pronominal anaphora. The accounts using dynamic logic effectively redeﬁne the
+meaning of quantiﬁcation and conditionality (Groenendijk & Stokhof 1990a; 1991).The aim is to allow variables to be bound outside the syntactic scope of existentialquantiﬁers and to give existentials a universal interpretation when appearing asthe antecedent of a conditional. This is an example of where the need to deal witha particular phenomena leads to a re-appraisal of the formalism and techniques ofconventional classical logic.
+Syntactically, the net result is a logic that has the appearance of a classically
+quantiﬁed logic, but where examples such as (20) have the appropriate semanticsby way of a modiﬁed interpretation of the logical operators and quantiﬁers.
+DRT and logic are equivalent in their ability to analyze simple discourse with
+singular pronouns.3.1.3 Type theoretic approaches We ﬁnish this section on discourse by brieﬂy
+mentioning some type-theoretic approaches. As Sundholm (1989) observed, thereare certain aspects of constructive type theory that appear to capture the appropri-ate behavior for interpreting discourse involving singular anaphora. In particular,the dependent types that feature in constructive type theory can be used tocapture contextual effects. This idea was developed by Ranta (1994) and Ahn andKolb (1990).
+There are alternative approaches that use types for dealing with discourse prob-
+lems. For example, it is possible to exploit dependent types within a classicalframework (Smith 1984; Turner 1992; Fox 2000). Perhaps a more radical approachis due to Lappin and Francez (1994) and Lappin (1989). Rather than characteriz-ing the problem of resolving anaphora as one of ﬁnding an element with which toequate a pronoun, these proposals suggest that the problem can be construed asone of ﬁnding the appropriate type for the variable representing the pronoun. This
+idea is developed in Fox and Lappin (2005) in the context of property theory with
+Curry typing (PTCT).
+Additional relevant information may also be found in Chapter 21,
+DIS-
+COURSE PROCESSING , and Chapter 16, COMPUTATIONAL MODELS OF DIALOGUE .
+We brieﬂy mention constructive type theory and dependent types again inSection 4.1.4.
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 408 — #15
+408 Chris Fox
+3.2 Underspeciﬁcation
+One problem for a compositional analysis is semantic ambiguity. This is typicallyexempliﬁed by the issue of quantiﬁer scoping, but also arises with other scope-taking elements, such as modiﬁer expressions, prepositional phrases, negation,and other logical operators, as well as anaphoric reference (Poesio & Reyle 2001).In the case of scoping, the issue is that a sentence with more than one scope-takingelement is ambiguous in a way that is not usually evident in any syntactic analysis.For example, in an ambiguous sentence such as
+(29) ‘Every student took a course ’
+it is unclear whether there was one particular course taken by every student, orwhether every student took at least one course, but not necessarily the same onein each case.
+Montague (1974) offered an approach to the quantiﬁer scoping problem that
+used additional rules which effectively reordered the quantiﬁers in the syntacticanalysis, and hence changed the scope in the semantic representation. The currentconsensus is that it is better to have a systematic account that does not requirechanges to the syntactic analysis, and which provides an intermediate represen-tation that is unspeciﬁed, or underspeciﬁed with respect to scope orderings, butwhich permits all appropriate scope orderings to be generated when required.3.2.1 Cooper storage The prime example of a system intended to allow the
+generation of scoped readings is Cooper storage (Cooper 1983). Although thereare other proposals, they can be construed as variations and reﬁnements of thisproposal. Cooper storage builds semantic representations using a data struc-ture known as a store . This can be thought of as providing an underspeciﬁed
+representation of the meaning of a sentence.
+The store contains a ‘core’ representation (typically representing the main verb)
+together with the representations of the generalized quantiﬁers (typically repre-senting the noun phrases). The argument positions in the core representation areassociated with indices identifying which generalized quantiﬁer (noun phrase)binds that position.
+The approach can be illustrated by analyzing the following sentence using
+Cooper storage.
+(30) ‘Every man loves a woman .’
+The stored representation will be something like
+10
+(31) ⟨love′(z6,z7),
+(λp(∀x(man′(x)→p(x))),6 ),
+(λp(∃y(woman′(y)∧p(y))),7 )⟩
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 409 — #16
+Computational Semantics 409
+‘Every man loves a woman’ (S)
+⟨⟨love′(z6,z7),
+(λp(∀x(man′(x)→p(x))),6 ),
+(λp(∃y(woman′(y)∧p(y))),7 )⟩⟩
+‘Every man’ (NP)
+⟨λq(qz 6),
+(λp(∀x(man′(x)→p(x))),6 )⟩‘loves a woman’ (VP)
+⟨λu(love′(u,z7),
+(λp(∃y(woman′(y)∧p(y))),7 )⟩
+‘loves’ (Vt)
+⟨λqλu(q(λv(loves′(u,v))))⟩‘a woman’ (NP)
+⟨λq(qz 7),
+(λp(∃y(woman′(y)∧p(y))),7 )⟩
+Figure 15.1 Derivation of semantic representation with storage.
+The derivation of this is sketched in Figure 15.1.
+Given an unscoped representation in the store, retrieval operations can be used to
+generate fully scoped representations. The generalized quantiﬁers can be appliedto the core representation in any order, thus giving rise to the different quantiﬁerscopings. The index is used to ensure that each generalized quantiﬁer binds thecorrect argument position, so that the meaning of the sentence is not corruptedby the reordering of the quantiﬁers. Blackburn and Bos (2005: 108) give a workedexample of this.
+With our example, if we retrieve 6 (‘ Every man ’) ﬁrst, then the store is
+(32) ⟨λp(∀x(man
+′(x)→p(x)))(λz 6(love′(z6,z7)),
+(λp(∃y(woman′(y)∧p(y))),7 )⟩
+Applying β-reduction gives us
+(33) ⟨∀x(man′(x)→loves′(x,z7)),
+(λp(∃y(woman′(y)∧p(y))),7 )⟩
+The second, and ﬁnal, retrieval operation gives us
+(34) ⟨(λp(∃y(woman′(y)∧p(y)))(λz 7∀x(man′(x)→loves′(x,z7)))⟩
+which after β-reduction is
+(35) ⟨∃y(woman′(y)∧∀x(man′(x)→loves′(x,y)))⟩
+Retrieving the items in the opposite order would give us the alternative scopereading for this example.
+11
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 410 — #17
+410 Chris Fox
+In the account as given, there are some problems in handling relative clauses
+and complex noun phrases with prepositions. Such phrases can give rise to nested,or hierarchical, noun phrases. If the storage and retrieval operations are notsensitive to such structures, then ill-formed representations may be generated.Consider the following sentence:
+(36) ‘Mary knows every owner of a pub .’
+We should not be able to retrieve the representation of ‘ a pub ’ until we have
+retrieved the core part of the noun phrase ‘ every owner .’ The need for constraints
+on retrieval is addressed by nested orKeller storage, where nested stores are used
+to ‘lock up’ constituent parts of a noun phrase which can only be accessed oncewe have retrieved the core noun phrase that contains those parts (Keller 1988).
+A comprehensive account of underspeciﬁcation needs to handle scoping of
+negation, conjunction, modiﬁcation, modalities, and propositional attitudes.Futhermore, we might consider approaches that allow partially speciﬁed repre-
+sentations that can accommodate incremental constraints on acceptable scopings,as in the following example (taken from Fox & Lappin, forthcoming):
+(37) a) Speaker 1: ‘ Every student wrote a program for some professor .’
+b) Speaker 2: ‘Yes, I know the professor. She taught the Haskell course .’
+c) Speaker 3: ‘ I saw the programs, and they were all list-sorting procedures.’
+We can assume the following:
+(38) a) ‘ some professor ’ in the ﬁrst sentence (37a) is the antecedent for both ‘the
+professor’a n d‘ She’ in the second sentence (37b).
+b) ‘a program’ in the ﬁrst sentence (37a) is the antecedent for both ‘ the pro-
+grams ’a n d‘ they’ in the third sentence (37c).
+The ﬁrst assumption (38a) gives ‘some professor ’ scope over ‘every student’i nt h eﬁ r s t
+sentence (37a). The second assumption (38a) leads to ‘ a program’ taking narrow
+scope with respect to ‘every student’ in the ﬁrst sentence (37a). From this it can beseen that, as the discourse proceeds, (37b) and (37c) force on the ﬁrst sentence (37a)a fully resolved scope order, namely
+(39) ‘some professor ,’ ‘every student,’ ‘a program’
+Most treatments of quantiﬁer scoping based on storage do not by themselvesprovide an efﬁcient analysis of such incremental constraints, nor do they neces-sarily support direct reasoning with such partially speciﬁed scopings.3.2.2 Other treatments of scope ambiguity Bos (1995), and Blackburn and
+Bos (1999) develop a constraint-based system for underspeciﬁed representationfor ﬁrst-order logic that they refer to as predicate logic unplugged (PLU). This
+system is a generalization of the hole semantics approach to underspeciﬁcation
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 411 — #18
+Computational Semantics 411
+which Reyle (1993) ﬁrst developed within the framework of underspeciﬁed discourse
+representation theory (UDRT).
+Minimal recursion semantics (Copestake et al., 2006) is an application of hole
+semantics within a typed feature structure grammar (HPSG). Normal dominanceconditions (Koller et al., 2003) can be seen as a reﬁnement and development of thecentral ideas of hole semantics.
+Dalrymple et al. (1999) and Crouch and van Genabith (1999) suggest a theory in
+which representations of generalized quantiﬁers and core relations are expressedas premises in an underspeciﬁed semantic glue language . The premises are com-
+bined using the natural deduction rules of linear logic (Girard 1987) to yield aformula that represents the scope reading of a sentence.
+Packed representations (Crouch 2005) ‘compress’ the scoped interpretations
+derived using glue language. Components of meaning shared by several readingsare expressed as a single common clause. This uses an approach that is applied inchart parsing to construct a graph for non-redundant representation of the full setof possible syntactic structures for a parsed phrase.
+Ebert (2005) gives a detailed discussion of the formal relationships between the
+various theories of underspeciﬁcation with respect to their expressive power.
+Van Eijck and Unger (2004) develop an approach to underspeciﬁed representa-
+tions, in the functional programming language Haskell, which uses relation reduc-
+tionand arbitrary arity relations. This is based on a proposal due to Keenan (1992).
+This work inspired a proposal by Fox and Lappin (2005) which represents under-speciﬁed representations in a data structure that can be formalized within therepresentation language PTCT itself. On this account, there is no appeal to meta-semantic machinery as such, and the full power of the representation language isused to express constraints governing the legitimate readings, including incremen-tal constraints. This addresses the concerns of Ebert (2005) with regard to expres-sive completeness, although it still leaves outstanding the problem of dealing withthe signiﬁcant combinatorial complexity of computing the desired readings.
+4 Research Issues
+There are many open research questions in computational semantics. Some areconcerned with how to analyze particular aspects of meaning, including phenom-ena that are not easily analyzed by way of a direct truth-conditional interpretation.Others are concerned with representations that provide the most appropriatemachinery to express and reason with the meaning of natural language in acomputationally tractable manner. Here there is only space to consider a smallselection of such issues.
+4.1 Type theory
+Typically, the types used for natural language semantics are based on simple typetheory (Section 2.2). But there are other kinds of types, and other ways of imposing
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 412 — #19
+412 Chris Fox
+typing constraints. Indeed, it is not entirely clear that simple type theory is themost appropriate type system for natural language semantics. Here we considersome other options.4.1.1 Polymorphism The simply typed higher order logic (Section 2.2) might
+be considered somewhat restrictive. One area in which it appears excessivelyrigid and inexpressive concerns certain type-general phenomena that are appar-ent in natural language, such as the apparent polymorphism of conjunction.The following examples illustrate that ‘ and’ can combine expressions of different
+categories.
+(40) a) ‘ John and Mary saw Peter.’
+b) ‘John saw and heard Peter.’
+c) ‘ The book was red and white.’
+However, the typing is not unconstrained: in each of these examples, the con-juncts and the conjunctive phrase itself are all of the same category. Partee andRooth (1983) deal with this phenomena by introducing generalized quantiﬁca-tion that ‘raises’ the type of the basic conjunction and disjunction operators tot-ending types. An alternative is to adopt a more ﬂexible type system that permitspolymorphic types of the form
+(41) ∀
+′X.T
+where ∀′is a type quantiﬁer that allows Xin type Tto range over all types.12As
+an example, an expression of the type ∀′X.⟨X,t⟩will form a proposition (type t)
+given an argument of any type. The type of a coordinating expression can then begiven as
+(42) ∀
+′X.⟨X,⟨X,t⟩⟩
+This can also be used to capture other type-general phenomena – such as verbs like‘fun’ that can take nominal expressions, inﬁnitives, and gerunds as arguments –without resorting to a universal type for example (Chierchia 1982).
+13
+In addition to looking at ways in which the type system could be made more
+expressive to match the needs of natural language, as with polymorphic types,there may also be some merit in considering what constraints there are on the type
+system required for natural language.4.1.2 First-order sorts Rather than adopting a typed higher-order logic, an
+alternative approach to constraining the way in which entities of the theory mayfelicitously be combined is to have sortal predicates that classify terms as repre-senting individuals, relations, and properties. Logical rules can then be given thatexpress analogues of type inference rules.
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 413 — #20
+Computational Semantics 413
+For example, we might have predicates entity′,property′,proposition′,a n dar u l e
+that says
+(43) (entitity′(i)∧property′(p))→proposition′(p(i))
+H e r et h en o t i o no fproposition′and property′must be seen as distinct from those
+notions in the language in which these statements are being expressed.
+Characterizing properties and propositions by way of sortal predicates means that
+properties and propositions are being treated as ﬁrst-order terms of the theory. Wethen need to ﬁnd some way of asserting that p(i)is true. One option would be to
+introduce a predicate holds
+′(Kowalski & Sergot 1986; Miller & Shanahan 1999) that
+relates a proposition′to an event (holds′(p(i), e)), or situation (giving rise to a form
+of event calculus), or else introduce a truth predicate true′,a si n property theory
+(see Turner 1992, for example). Care needs to be taken about what terms count aspropositions in order to avoid paradoxes of the kind illustrated by (14).
+Sortal constraints can mimic expressive types such as dependent types (Smith
+1984; Turner 1992), which can provide a treatment for analyzing discourseanaphora (Sundholm 1989; Ranta 1994) (Section 3.1.3). There are alternative waysof mimicking higher-order type theory within a ﬁrst-order logic using Currytyping with polymorphic types without expressing types (Fox & Lappin 2005),as we shall see below.4.1.3 Property theory with Curry typing It is possible to avoid some of the
+strictures of Church typing, by separating out the typing system from theλ-calculus presentation. That is, we can adopt the untyped λ-calculus, and then
+have typing rules that allow us to infer the types of the λ-expressions (Curry
+& Feys 1958). This is the approach adopted by property theory with Curry typ-
+ing(PTCT) (Fox & Lappin 2005). This approach allows additional ﬂexibility in
+developing a type system that is focused on the speciﬁc requirements of nat-ural language semantics, including separation types (a form of subtype) andpolymorphic types. This is formulated in an essentially ﬁrst-order language.4.1.4 Constructive theories and dependent types Constructive type theory
+was mentioned before in relation to analyzing anaphora (Section 3.1.3). Theconstructive approach offers an alternative to classical logic. In constructivesystems, propositions are only considered to be true if there is an appropriateproof or witness. Using the Curry–Howard isomorphism, propositions can then be
+viewed as types whose members are their proofs. Such logical systems are slightlyweaker than corresponding classical formulations in that they do not supportproof by contradiction.
+As already noted, the intrinsically dynamic nature of the dependent types can
+be exploited in the analysis anaphoric phenomena, although such types are notexclusive to constructive theories.
+There are other kinds of dependent types, including record types, which gener-
+alize the notion of dependency over a collection of type expressions. The use of
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 414 — #21
+414 Chris Fox
+such types has been proposed both for the analysis of discourse and as a languagein which attribute value grammars can be formulated (Cooper & Ginzburg 2002;Cooper 2005).
+4.2 Intensionality
+We need to be able to represent sentences where the verb expresses a relation-ship involving not just individuals but also propositions and predicates, as in thefollowing examples:
+(44) a) ‘ John believes that every cat is furry .’
+b) ‘Mary likes red .’
+We also need to be able to distinguish between de re and de dicto interpretations of
+the arguments of some verbs. For example, in the sentences
+(45) a) ‘ John seeks a football’
+b) ‘John seeks a unicorn ’
+it is clear that in the ﬁrst example, John may be seeking a real entity that exists andis a football. This is a de re interpretation. In the latter case, he is seeking something
+that does not exist, but he can still be said to be intending to ﬁnd a unicorn. This is
+ade dicto interpretation. In the former case, with a de re interpretation we cannot
+be certain that John knows that he is seeking a football; he might know it by someother description, such as ‘the object lying in the yard.’
+The conventional view is that this requires predicates that can take things other
+than individuals as their arguments.
+A semantic interpretation along the following lines might seem appropriate:(46) a) ‘ John believes that every cat is furry .’
+believe
+′(John′,∃x(cat′(x)∧furry′(x)))
+b) ‘Mary likes red .’
+likes′(Mary′,red′)
+c) ‘ John seeks a football.’
+(i)∃x(football′(x)∧seeks′(John′,x)) (de re )
+(ii) seeks′(John′,λP∃x( football′(x)∧P(x))) (de dicto)
+d) ‘John seeks a unicorn.’
+seeks′(John′,λP∃x(unicorn′(x)∧P(x)))
+The felicity of this approach depends in part upon the nature of propositions
+and predicates. If propositions are identiﬁed with truth values, then there are onlytwo propositions. Further, any truth-conditionally equivalent propositions maybe substituted for each other. This is a particular problem for mathematical truthswhich are necessarily true together but not identical. This gives some incorrectpredictions about equivalence in the meaning of distinct sentences. Similarly, ifpredicates are just sets, then distinct predicates may be accidentally equated.
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 415 — #22
+Computational Semantics 415
+4.2.1 The Montagovian analysis The classical approach to intensionality is
+attributed to Montague (1974), although it has its roots in earlier work (for exam-ple, Carnap 1947; Kripke 1963). In the representation, a function,o r operator
+∩is
+introduced that takes a single proposition or predicate as its argument. The resultis an intensional expression that can appear as an argument to predicates that havean appropriate type. A second function/operator
+∪can undo the operation of∩,s o
+that∪∩p=p.
+For the so-called transparent verbs, such as ‘ ﬁnd,’ meaning postulates can be
+introduced that allow the de re interpretation to be derived from the de dicto one.
+Following Montague (1974) we can interpret this intensional theory using
+possible worlds semantics. Possible worlds are commonly used to model modal-
+ity, such as possibility ,a n d necessity ,permission,a n dobligation for example (Carnap
+1947; Kripke 1963; von Wright 1967). Propositions can be treated as sets of possibleworlds, or (equivalently) functions from possible worlds to truth values. Prop-erties can be modeled as functions from individuals to sets of possible worlds(propositions). Propositions that are true together in the current world may bedistinguished from each other provided there are worlds in which their truthvalues differ.
+Ifpis of type A, then
+∩pwill be of type ⟨s,A⟩. Following Gallin (1975), the type
+scan be thought of as corresponding to a possible world index. Types of the form
+⟨s,A⟩are then functions from world indices to expressions of type A.
+4.2.2 Other approaches Montague’s possible-worlds approach is a dominant
+paradigm for analyzing the formal semantics of natural language, but it does haveproblems. The type system is inﬂexible and the notions of modality and inten-sionality are conﬂated. As a result, the analysis is not sufﬁciently ﬁne-grainedin its treatment of intensionality: for example, propositions that are necessar-ily true together cannot be distinguished from each other. Such propositions areexempliﬁed by mathematical truths.
+An alternative is to take what Montague writes as
+∩pto be some kind of represen-
+tation orencoding ofpthat does not conﬂate propositions merely because they are
+necessarily true (or false) together. We could take∩pto be an individual (a term).
+The identity criteria for propositions would then be syntactic in nature, ratherthan truth conditional. Such preﬁxes
+∩and∪then serve as functions from proposi-
+tions (and predicates) to terms, and terms to propositions (predicates). In practice,we may prefer that the default interpretation of pbe a term rather than a truth-
+conditional proposition. This avoids conceptual problems in having a function
+∩
+that increases the intensionality of its argument. Of course, some interpretation ofthese expressions is then required in order to ﬁnd an appropriate model theory.This requires a relatively expressive language of terms.
+There are potential risks with this strategy. If we are not careful about what can
+be represented as an individual (and hence appear as an argument to a predicate),then we may introduce paradoxes. Theories that take this approach (or variationsof it) include property theory (Bealer 1982; Cocchiarella 1985; Turner 1992), property
+theory with Curry typing (PTCT) (Fox & Lappin 2005), and situation theory
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 416 — #23
+416 Chris Fox
+(Barwise & Perry 1983; Barwise & Etchemendy 1990), the latter of which comeswith a particular philosophical perspective on the nature of ‘situated’ meaning.Another alternative is to ﬁnd suitably intensional models for theories that aresyntactically not far removed from Montague’s IL (Thomason 1980; Gilmore 2001;Fox et al., 2002; Pollard, forthcoming), or use theory that combines differentnotions of intensionality (Tichý 1988; Materna et al., forthcoming). An alterna-tive is to interpret our representation language using some form of intensional settheory (Jubien 1989).
+4.3 Non-indicatives
+So far we have only considered indicative sentences. Indeed this is the focus ofperhaps the majority of work in computational semantics. But if we are interestedin computing the meaning of language in general, then it is vital to consider non-indicatives.
+As before, what follows is not intended to be a comprehensive survey of the
+work in the respective ﬁelds. We merely present a taste of some of the generalmethodological and practical issues that can arise in computational semantics. Tothis end, we brieﬂy sample some proposals for the analysis of two signiﬁcantnon-indicative categories, namely questions and imperatives. The fundamentalissue that lies behind all of these examples results from the fact that there are‘entailment’ patterns which we might like to capture, but which are not overtlytruth-conditional in nature: we do not usually think of questions or imperativesbeing ‘true’ or ‘false.’
+In the case of imperatives there is some debate about the appropriate nature of
+any entailment patterns, and even whether a logical approach is possible. In thecase of questions, and their answers, it is generally accepted now that an appro-priate notion which should be captured by ‘entailments’ between questions canbe viewed in terms of answerhood criteria, although there is debate about howthese are best expressed. The point of particular interest here lies in the difﬁcultyof specifying what constitutes an answer in a computationally tractable fashion.
+This is taken to illustrate the point that, in general, many of the core aspects of
+semantics, such as the truth of a proposition, answerhood for a question, etc., maynot themselves be characterized completely within a computationally tractabletheory. That is not to say this is a critical ﬂaw for the computational semantics pro-gramme, merely that some aspects of a computational theory in effect will includeproperties of implementations, rather than implementable properties.4.3.1 Questions and answers For questions and answers, we might consider
+the notion of answerhood conditions in place of truth conditions. Such an idea was
+proposed by Belnap (1982) among others. This requires consideration of whatmight constitute a legitimate answer to a question, and when an answer to onequestion is also an answer to another.
+One inﬂuential and comprehensive account of the semantics of questions is
+due to Groenendijk and Stokhof (1984; 1990b; 1997). In their model, a question
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 417 — #24
+Computational Semantics 417
+partitions the set of all possible worlds, where each partition corresponds to adifferent possible answer. A yes/no question would give rise to two partitions, onecorresponding to the underlying proposition being true, the other to it being false.A wh-question would give rise to a more complex set of partitions correspond-ing to the underlying property being applicable to different individuals. A trueanswer is then considered to be anything that provides the information neededfor the questioner to determine in which partition the actual world lies. A partial,true answer would indicate a collection of partitions in which the actual worldmay lie. In general an answer (whether correct or not) will provide a means of‘eliminating’ certain worlds, and hence certain possibilities, from consideration.
+Due to the model-theoretic approach, Groenendijk and Stokhof’s theory is not
+presented directly in terms of inference rules concerning the nature of answersand answerhood conditions; although it might provide a useful model, it does notnecessarily lend itself to direct implementation. There is also the issue of combina-torial explosion when it comes to the evaluation of wh-questions. If the size of thedomain is n, then checking the consistency of every ﬁeld of a wh-question requires
+2
+ninferences (Bos & Gabsdil 2000).
+One key question concerns the nature of the answerhood relationship itself, and
+in what way the rules governing answerhood may be implemented. We couldtry to build on the view advocated by Groenendijk and Stokhof and others, thatyes/no questions are really questions of ‘whether’ something is true or false, andan answer to such a question allows you to determine that the proposition in ques-tion is true, or that it is false. We could seek to model this explicitly in terms ofknowledge.
+(47)‘Know whether p
+′pTrue
+‘Know that p′‘Know whether p′¬pTrue
+‘Know that ¬p′
+Alternatively, we might seek to express this internally as some state of ‘knowl-edge’ Γ.
+(48) A proposition panswers a question q? in a context ΓifΓand ptogether
+allow us to either infer qor infer ¬q(andΓby itself allows us to infer
+neither).
+14
+However they are expressed, these are essentially constraints over reasoningsystems involving answerhood, but in general they may not be directly express-ible within the representation language itself, or any implementation of such a
+theory.
+This issue is apparent even in other attempts to capture the notion of answer-
+hood within a ﬁrst-order framework. Bos and Gabsdil (2000) adopt answerhoodconditions for wh-questions that are expressed in a ﬁrst-order language. Essen-tially they translate wh-questions into a formula with domain Dand body B.
+Putting to one side the DRT aspects of their notation, essentially wh-questions
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 418 — #25
+418 Chris Fox
+can then be given in the form D?B. An answer Ais deﬁned as proper for the ques-
+tion if at least one of the following propositions is consistent, and at least one is
+inconsistent :
+(49) a) ∀x(Dx →Bx)∧A
+b)∃x(Dx ∧Bx)∧A
+c)∃x(Dx ∧¬Bx)∧A
+d)¬∃x(Dx ∧Bx)∧A
+So if we had the question
+(50) ‘Who loves John?’
+this might be represented as something like
+(51) person′(x)?loves′(j′,x)
+A proper answer is one that is consistent with at least one, but not all, of thefollowing possibilities:
+(52) a) ‘ Everybody loves John ’
+b) ‘Somebody loves John’
+c) ‘ Somebody does not love John’
+d) ‘Nobody loves John’
+This characterization loses some of the ﬁne-grained distinctions that
+Groenendijk and Stokhof (1984; 1990b) make concerning answers and exhaustiveanswers, but reduces the number of permutations that have to be considered whendetermining whether Ais a proper answer. Unfortunately it cannot avoid the
+fundamental problem that the property of answerhood for a given question is notnecessarily tractable for arbitrary domains, and that it cannot be internalized intothe representation language.
+The extensional, model-theoretic interpretation of questions of Groenendijk and
+Stokhof (1984; 1990b; 1997) is not universally accepted. Ginzburg and Sag (2000)argue that it is incorrect to interpret questions by their exhaustive answerhoodcriteria. There may be contextual effects that change what constitutes an exhaus-tive answer, and different questions may have the same exhaustive answers.These arguments echo those concerned with propositions and truth conditions(Section 4.2); just as it can be argued that propositions are more than their truthconditions, perhaps questions are more than their answerhood conditions.
+An alternative is to treat questions as something more basic, perhaps repre-
+sented by propositions with abstracted variables. To do it justice, such an accountneeds to be formulated in a theory that does not automatically conﬂate any suchpropositional abstracts with ‘mere’ properties and relations. Ginzburg and Sag(2000) develop such an approach to questions and answers in the context of
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 419 — #26
+Computational Semantics 419
+situation-theoretic semantics (Barwise & Perry 1983; Barwise & Etchemendy 1990).It should be possible to adapt the key aspects of this approach to other semanticframeworks.4.3.2 Imperatives It seems appropriate to consider some kind of theory of
+entailment for imperatives that can determine when one imperative ‘implies’another. As with propositional connectives, we may wish to consider notions ofentailment between simple and complex imperatives, including conjoined imper-atives, disjoined imperatives, and imperatives containing negation. Certainly itseems appealing to assume that there is a form of entailment relationship that cansay something about the following pairs of examples.
+(53) a) ‘ Go to work!’
+b) ‘Go to work and write a paper!’
+(54) a) ‘ Go to the beach or watch a ﬁlm! ’
+b) ‘Go to the beach!’
+(55) a) ‘ Eat the apple!’
+b) ‘Don’t eat the apple!’
+The intuitions behind even these cases are not always straightforward. For exam-ple, in the case of disjunction there are two potential readings, the so-calledfree choice and weak readings (Kamp 1973). Imperatives may also combine withpropositions.
+(56) ‘If you see John, say hello!’
+In such a case, we might want to ‘infer’ that there is an imperative to say hello inthe event that John is seen (or possibly that the subject might want to avoid seeingJohn).
+There are also the so-called pseudo-imperative constructions (Franke 2006)
+whose formal analysis appears non-trivial, as with the following examples.
+(57) a) ‘ Have another drink and you will die!’
+b) ‘Have another drink and you will be happy!’
+c) ‘ Have another drink or you will die!’
+15
+A fundamental question is what counts as a relevant notion of entailment
+for imperatives. There are similarities with questions, in that it does not seemappropriate to assign imperatives a direct truth-conditional interpretation. Unlikeinterrogatives, imperatives are not so easily embedded inside other expressions.Nor is there an overtly linguistic counterpart to an ‘answer.’ The question about
+what kinds of behavior should be modeled by a semantic analysis of imperativesrevolves around notions of what are sometimes referred to as satisfaction and valid-
+ity(Ross 1945). In the case of the former, there is a notion of an imperative being
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 420 — #27
+420 Chris Fox
+satisﬁed by some response, or behavior. Entailments may then be expressed interms that describe which other imperatives are satisﬁed by such a response.
+As elsewhere, different frameworks have been adopted and adapted to
+capture appropriate patterns of behavior associated with imperatives. Manyaccounts assume a possible-worlds perspective, with actions (or possible actions)that update the state of the world so that it satisﬁes some propositional analogueof the imperative. The question arises as to whether an imperative is satisﬁed by apropositional description of the desired state, or by a particular agent engaging inan appropriate action. Given the following imperative
+(58) ‘Shut the window! ’
+any natural utterance of this will typically be directed at an individual (or groupof individuals), with the expectation that it is that individual who will cause
+the particular desired outcome, or that the particular individual engaging in theassociated activity isthe desired outcome, so that
+(59) ‘John shuts the window’
+is a propositional description of the satisfaction criteria of (58). A more elaborateview might additionally contemplate a counter-factual element to satisfaction, sothat John’s shutting of the window only genuinely satisﬁes the imperative if Johnwould not otherwise have shut the window.
+Many accounts of imperatives (including those of Segerberg (1990), Lascarides
+and Asher (2004) and many others) have sought to avoid what has come to beknown as Ross’s paradox . This is the view expressed by Ross (1945) that it is not
+possible to formulate a logic of imperatives as it appears impossible to discern acoherent collection of inferences that encapsulate the notions of satisfaction andvalidity. That is, inferences cannot allow us to conclude both (a) which otherimperatives are satisﬁed given that the imperative in the premise has been satisﬁed(satisfaction) and (b) that the requirement to comply with a particular commandin the premise entails that we should comply with a command in the conclu-sion (validity). The example often cited in favor of this view concerns disjunctionintroduction. Consider the following two imperatives.
+(60) a) ‘ Post the letter!’
+b) ‘Post the letter or burn the letter! ’
+To many, the most natural inference is from (60b) to (60a) (Kamp 1973). This cor-responds to an inference concerning validity. However, if a logic of imperativesfollows the usual rule of disjunction introduction, the inference should go theother way around. This can only correspond to an inference concerning satisfac-tion: if we have satisﬁed the requirement to post the letter, we would also havesatisﬁed a requirement to post or burn the letter.
+Even if both notions (satisfaction and validity) cannot be encapsulated by a
+single rule, that does not mean there can be no meaningful logics of satisfaction
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 421 — #28
+Computational Semantics 421
+and validity. We might instead consider a logic of satisfaction independently of alogic of validity. The former might in many cases parallel inferences of indica-tive reasoning, whereas the latter may be more akin to a notion of reﬁnement
+from computer science (Wirth 1971). This latter view may also correspond to amore pragmatic analysis of imperatives which characterizes the problem of ‘whatshould be done’ in terms of lists of obligations that need to be fulﬁlled (Piwek2000; Portner 2005).
+4.4 Expressiveness, formal power, and computability
+In computational semantics there is a tension. We want a theory that is computa-tionally tractable but also sufﬁciently expressive to handle the natural languagephenomena of interest. In many cases the most convenient way of obtainingexpressiveness is by adopting a more powerful representation language. Yetmore formal power is typically accompanied by computational intractability. Insome cases, however, it is possible to ﬁnd a virtuous combination of appropriateexpressiveness without an undesirable increase in formal power beyond what iscomputationally tractable.
+The issue of computability arises in many guises. For example, theoremhood is,
+in general, intractable in higher-order formalisms. This is because such formalismsdo not have a decidable proof theory: the theorems of higher-order theories arenot recursively enumerable. This suggests that systems with the power of ﬁrst-order logic should be preferred to higher-order systems. There are other caseswhere a sacriﬁce in expressiveness may be appropriate. For example, in the caseof arithmetic and quantiﬁers of number, we may prefer weaker, more tractabletheories such as Presburger arithmetic (Presburger 1929) over the more usualPeano arithmetic. In general, these trade-offs in power may mean that certain per-tinent notions are not expressible (such as the quantiﬁer ‘inﬁnitely many’ in thecase of a genuinely ﬁrst-order theory, and the notion of multiplication in the caseof Presburger arithmetic).
+Related to this is the speciﬁc problem of impredicativity. This can arise with type
+quantiﬁcation – as used in (41) of Section 4.1.1. If we allow such type quantiﬁ-cation to range over all types, including polymorphic types, then the evaluationof polymorphic types can be deeply problematic in a computational system (theevaluation of such a type requires us to quantify over the very type that weare attempting to evaluate). Fortunately it appears that natural language doesnot require such a powerful typing system; we can compromise by having theexpressivity of polymorphic types, but restricted so that there is no problem-atic quantiﬁcation over polymorphic types themselves. This is a case where it ispossible to have a more expressive theory without increasing the power of the
+system beyond what is computationally tractable.
+There are other notions that cannot be formalized within any computable theory
+besides impredicative types, such as the notion of truth, and answerhood condi-tions (Section 4.3.1). We may deﬁne constraints on how truth and answerhoodshould behave, but that does not mean the notions themselves are intrinsically
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 422 — #29
+422 Chris Fox
+amenable to deﬁnition within a tractable theory. Here we might begin to see how
+notions relevant to computational semantics might not be directly expressed byan
+implementation, but they may be properties ofsuch an implementation.
+This suggests an alternative characterization of computational semantics, where
+the idea of computability itself is considered as a constraint on appropriate formal-
+izations and models (Turner 2007). As a methodological constraint, this may berelevant even in the event that the behaviors being described by a formal theoryare not directly relevant to any conceivable practical implementation. Rather, theclaim might be made that a computable theory potentially has more explanatorypower than a theory expressed in an intrinsically intractable framework.
+Indeed, we can contemplate using the constraint of computability not just in
+the context of the formal representations of meaning, but also in the process oftranslating natural language into those representations. It is conventional onlyto require that the translation be compositional (Section 2.1). Unfortunately, itturns out that if there are no restrictions on the nature of the functions used tocombine the meaning of the parts, then compositionality does not impose anyeffective restriction on the nature of the interpretation (Zadrozny 1994). In effect,compositionality is a constraint only on the form of the translation rules, andtheir coverage, not their function. That is, as usually deﬁned, compositionalityis a restriction only on the general form of the semantic annotations, rather thannecessarily being a restriction on the end result of that translation.
+If we ignore the evaluation of the functions that are applied in a compositional
+translation, then the constraint of compositionality ensures that the transla-tion process is recursive on the structure of the expression. For every syntacticconstituency rule there should be a corresponding rule for determining the seman-tic representation to be associated with the head of the expression as a function ofthe semantic representation of its constituent parts. This guarantees that everysyntactic analysis has a corresponding semantic interpretation.
+Of course, the evaluation of the functions used in a compositional interpretation
+is important. If the functions themselves are meta-theoretic, and not part of thesemantic theory as such, then they need to be applied to produce a well-formedrepresentation. Even if they are part of the semantic theory, we may need to applythe functions in order to derive a representation in some ‘normal form.’ In eithercase, it would be appropriate to consider constraints on the nature of the functionsthemselves. At the very least, we would expect them to be computable.
+5 Corpus-Based and Machine Learning Methods
+Although the focus of this chapter, and indeed much work in computationalsemantics, has largely been on the application of techniques for computationallytractable semantic analysis based upon representations in formal logic, there areother computational approaches that involve less traditional forms of semanticanalysis which do not rely upon strictly logical theories of meaning. These includeapproaches that exploit corpus-based techniques and machine learning. We will
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 423 — #30
+Computational Semantics 423
+brieﬂy survey a small sample of these techniques and their applications, andspeculate on the role that a more formal analysis may play in their application,particularly in the case of textual entailment.
+5.1 Latent semantic analysis
+Latent semantic analysis (LSA) (Landauer et al., 1998; 2007) is a technique thataims to determine a ‘conceptual’ or ‘semantic’ space for words and the documentsin which they occur. The number of ‘concepts’ used is invariably smaller than thenumber of different words in the documents. The idea is that words denotingsimilar concepts will be mapped on to similar vectors in this reduced space.The technique is able to determine when word meanings – and documents – arerelated, even when the words never occur in the same context and the documentshave few words in common. Two words may be deemed to be conceptually relatedbecause the words that they appear with occur together in other documents. Thisallows us to compare and process words and documents in concept space.
+The technique takes as input a word document matrix where each entry indi-
+cates the number of times a given word appears in a given document. It then usessingular value decomposition (SVD) (Golub & van Loan 1989) effectively to ‘rotate’
+the word document space to a different set of dimensions. These dimensions (the‘latent space’) are such that they give the axes of greatest variation for the origi-nal word document matrix. Dimension reduction can then be applied by pruningthose dimensions with the smallest contribution. The dimensions that are left areconsidered to correspond to some notion of a ‘concept.’ In the matrix of reduceddimensionality, words which make a similar contribution are effectively mergedtogether. The intuitive explanation is that different words will have similar vectorrepresentations in this reduced space if they denote a similar concept.
+This technique has a number of applications (Landauer et al., 1998; 2007) includ-
+ing document indexing and search (latent semantic indexing , LSI) (Deerwester et al.,
+1990) and automatic essay marking (Landauer et al., 1998). It can also be usedto cluster documents according to their conceptual similarity. In the case of LSI,the terms occurring in a query expression can also be mapped to the correspond-ing concepts, which are then used to retrieve the documents in which thoseconcepts occur. This allows documents to be retrieved that do not necessarilycontain the terms in question, but which do include terms that correspond to thesame ‘concepts.’
+Terms that are combined by the dimension reduction into a single concept may
+be indicative of an underlying synonym, although the notion of a ‘concept’ here isa mathematical abstraction that need not correspond to any natural category.
+It has been argued that the dimension reduction employed by LSA has
+certain problems including the fact that the reduced matrix can contain negativevalues, which is counterintuitive if the values are interpreted as counts of conceptoccurrences (Hofmann 2001; Quesada 2003). An alternative approach is probabilis-
+tic latent semantic analysis (PLSA), which employs a dimension reduction strategy
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 424 — #31
+424 Chris Fox
+that is claimed to have a more solid statistical foundation. In this technique, thenumber of concepts is decided, and words are ﬁtted to those concepts usingexpectation-maximization (Hofmann 1999; 2001).
+5.2 Extraction of semantic roles
+Identiﬁcation of semantic roles is useful for a range of problems, such as ques-tion answering (Narayanan & Harabagiu 2004; Sun et al., 2005; Kaisser 2006;Shen & Lapata 2007), dialogue systems (Liu 1995), and information extraction(Riloff 1993).
+The notion of semantic role is connected with the notions of subcategoriza-
+tion and selection preferences, which may determine the syntactic function and‘thematic role’ of an entity. (In some cases, coercion by way of metaphor or someother semantic relation may be needed to obtain a natural interpretation.) Thesyntactic role of a verb’s complement can give an indication of the semantic role ofnominal expressions, such as agent, patient ,theme, etc. (Fillmore 1968; Dowty 1991).
+More speciﬁc roles may also be deﬁned, as in Frame semantics (Fillmore 1976),and FrameNet languages (Baker et al., 1998). Resources such as PropBank (Palmeret al., 2005), provide a hand corrected body of predicate–argument annotations ofthe Penn Treebank.
+There are machine learning methods (both supervised and unsupervised) for
+automatically determining semantic roles. Such methods can be used to learn tolabel constituents of a sentence with the semantic roles of a target frame (Gildea& Jurafsky 2002). One problem is that the correspondence between syntactic cate-gories and semantic roles is not always direct or easy to predict. Machine learningtechniques that have been applied to this problem include maximum entropy,rule-based, memory-based, and kernel methods.
+For more on semantic role identiﬁcation and tagging, see Chapter 9,
+ARTIFI -
+CIAL NEURAL NETWORKS , Chapter 10, LINGUISTIC ANNOTATION , and Chapter 18,
+INFORMATION EXTRACTION . More discussion on machine learning techniques is
+provided in Chapter 5, MAXIMUM ENTROPY MODELS , Chapter 6, MEMORY -BASED
+LEARNING , Chapter 7, DECISION TREES , Chapter 8, UNSUPERVISED LEARNING
+AND GRAMMAR INDUCTION ,a n dC h a p t e r9 , ARTIFICIAL NEURAL NETWORKS .
+5.3 Word-sense disambiguation
+Word-sense disambiguation (Ide & Véronis 1998) is a useful step when dealingwith various essentially semantic issues, such as question answering and intelli-gent document retrieval. The objective is to be able to distinguish between varioussenses of a word. Machine learning techniques can be used in a variety of waysto achieve this. One common feature is to identify word senses from the differ-ent contexts in which a given word is used. For many tasks, a ﬁne discriminationbetween senses might not be required (Ide & Wilks 2006).
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 425 — #32
+Computational Semantics 425
+Knowledge-based approaches may use dictionaries and thesauri to provide
+examples of different word senses, and the other words associated with a givensense (Lesk 1986), as well as ontological relationships (Roberto Navigli 2005).In general such approaches may be limited by the quality and relevance of theinformation sources used.
+Data-driven approaches seek to determine different senses of a word by iden-
+tifying patterns, or clusters, of co-occurrences and contexts, both local andglobal (McCarthy et al., 2004). They may involve supervised or unsupervisedlearning. In the former case, sense-tagged corpora may be used to train a sense-disambiguation algorithm. In the latter case, clustering techniques may be usedto identify different collocation contexts, which are assumed to correspond todifferent word senses. Various assumptions may be made to aid training. Onesuch assumption is that, generally speaking, a word appearing more than once ina given document is likely to share the same word sense (Gale et al., 1992b).
+Bilingual corpora may also be used to help identify the different senses of a
+word by identifying systematic differences in translation (Gale et al., 1992c; Kaji &Morimoto 2005).
+Chapter 10,
+LINGUISTIC ANNOTATION , discusses word-sense disambiguation,
+and Chapter 11, EVALUATION OF NLP SYSTEMS , uses word-sense disambiguation
+as a case study.
+5.4 Textual entailment
+One of the purposes of a computationally feasible formal semantic analysis oflanguage is to determine what is entailed by a given text. This is called textual
+entailment. It can be thought of as capturing relationships of the form t⇒h, where
+tis some natural language text, and his some hypothesis, also expressed in natu-
+ral language. Intuitively, the relevant notion of entailment is one where hwould
+not follow without t;t h a ti s ,h cannot be obtained from any of the background
+information that is being used to capture entailment relations. Textual entailmentcan be applied to the problems of information extraction, question answering (seeChapter 22,
+QUESTION ANSWERING ), translation, summarization, and other NLP
+tasks (Glickman et al., 2005). In some cases, it is possible to capture a notion oftextual entailment using statistical and probabilistic techniques, rather than apurely logic-based analysis of meaning. Indeed, the term ‘textual entailment’ isoften used in a context that does not presuppose a rigorous, logic-based analysis ofmeaning.
+The mechanisms for obtaining appropriate entailment patterns include hand
+coded rules, acquired knowledge, and machine learning (see Chapter 5,
+MAXIMUM
+ENTROPY MODELS , Chapter 6, MEMORY -BASED LEARNING , Chapter 7, DECISION
+TREES , Chapter 8, UNSUPERVISED LEARNING AND GRAMMAR INDUCTION ,a n d
+Chapter 9, ARTIFICIAL NEURAL NETWORKS ). For example, a range of machine
+learning techniques can be applied to ﬁnd approximations to human judgments
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 426 — #33
+426 Chris Fox
+concerning entailment patterns, or rules. Another possibility is to exploit pat-terns of words that indicate some intended inference or relation. For example,hyponyms and meronyms may be identiﬁed by discovering ontological relation-ships from corpora that are indicated by particular patterns (Hearst 1992; Berland& Charniak 1999). Various other semantic relationships may also be discovered,including causal relations (Girju 2003; Cole et al., 2006) and temporal orderingand other relationships between verb meanings (Chklovski & Pantel 2004). Thismay not be entirely robust. There may be problems to overcome with patternsthat are overgeneral, negative polarity contexts, and anaphoric expressions (seeSanchez-Graillet et al., 2006; Sanchez-Graillet & Poesio 2007 for example).
+The method may be made more robust if there is a notion of the semantic class
+of a word (Girju et al., 2006), although this requires additional work in identify-ing the relevant semantic classes (see Chapter 10,
+LINGUISTIC ANNOTATION and
+Chapter 18, INFORMATION EXTRACTION ).
+Such methods may help to identify particular kinds of entailments. There are,
+however, other more general corpus-based approaches to inference, some of whichrely upon a traditional formal semantic analysis, where a semantic analysis ofthe documents in question is produced, along with the hypothesis that is to bechecked. In general this requires a broad-coverage deep syntactic analysis, com-prehensive semantic analysis, and a robust theorem prover. For some problemdomains, such as question answering, it is possible that techniques based onpattern-matching of the semantic representations may be adequate (Ahn et al.,2005). Additional sources of information may have to be analyzed to determinerelevant relationships between information in a given document (or documentcollection) and a hypothesis that is being tested, or a question that is being asked.In addition to ﬁnding evidence of such relationships from supplementary sourcesof information, there have been proposals to improve the robustness of theoremproving by allowing costed abductive assumptions (Raina et al., 2005) which allowsome degree of ﬂexibility in unifying the terms that appear in a proof. Cost func-tions can be used to minimize the contribution of abductive reasoning that ispermitted within a proof to avoid perverse results.
+It is sometimes argued that contemporary formal techniques (which have been
+the focus of this chapter) are too fragile and incomplete to be used for suchapplications. Alternative approaches seek to represent knowledge, and cap-ture textual entailments, using shallower, less abstract representations of thetext. Such methods include hierarchical representations based upon descriptionlogics (de Salvo Braz et al., 2005). These seek to capture structural, relational,and other semantic properties. Other approaches use representations that arecloser to the surface form of language, including lexically based parse-tree rep-resentations (Dagan et al., 2008a), perhaps augmented with annotations (fornegation and modality, for example). A relevant work on this topic is Daganet al. (2009). A comprehensive analysis of textual entailment almost certainlyneeds to address questions of resolving anaphora. But corpus-based methodshave also been applied to this problem (Ge et al., 1998; Paul et al., 1999; Poesio& Alexandrov-Kabadjov 2004).
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 427 — #34
+Computational Semantics 427
+5.5 Relationship to formal semantics
+We may wonder about the nature of the relationship between corpus-basedmethods and formal, logic-based approaches. The relevance of this issue isperhaps most obvious in the case of textual entailment, which aims to addressone of the objectives of formal methods – that of capturing legitimate entailmentrelationships.
+One question is whether it is realistic to assume that formal approaches will
+ever be able to model the full range of textual entailments, or whether entailmentscaptured by corpus-based methods will ever be as trustworthy as logic-basedinference. We offer no view on this matter here, but observe that some aspectsof textual entailment may need to be informed by something resembling aformal analysis for us to know what counts as a legitimate or illegitimate entail-ment, and why – even if only to ensure an element of consistency, and conﬁdence,in the conclusions drawn. Regardless of the underlying mechanism used forcapturing textual entailment relationships, it seems appropriate to formalize nor-mative rules concerning how a coherent notion of textual entailment shouldbehave; that is, we should consider formulating a logic of textual entailment tocharacterize the properties that the relationship t⇒hshould support.
+Another topic that may merit further exploration is a better understanding of
+the relationships, if any, between a logic-based conception of semantics, and thenotion of semantics as used in work that builds on word and phrase co-occurrencedata and its generalizations, such as LSA. At the time of writing, it appears therehave been few if any attempts to reconcile these different views on the nature ofnatural language semantics.
+6 Concluding Remarks
+This chapter has presented some of the basic ideas behind computational seman-tics, with some sample topics and research questions. Some corpus-based tech-niques that embody a notion of semantics have been sketched, but the primaryfocus has been on logic-based approaches. One idea that arises in the presentationis not merely to think of computational semantics as describing theories of seman-tics that lend themselves to implementation, but to consider computability itself asa constraint on theories of meaning and semantic analysis. We can also distinguishbetween those aspects of a theory of meaning that lend themselves to direct imple-mentation, and those that describe the properties of an implementation, withoutthemselves necessarily being implementable.
+NOTES
+1 For criticisms of Grice, see for example Davis (1998).2 This assumes that the ydoes not occur within the scope of another ‘ λy.’
+
+“9781405155816_4_015” — 2010/5/8 — 12:07 — page 428 — #35
+428 Chris Fox
+3 In general there may be issues to resolve when combining a logic with a λ-calculus,
+which we put to one side at this point (see Section 2.2).
+4 It is worth noting, however, that a ﬁrst-order theory (a theory deﬁned in a ﬁrst-
+order logic) may be incomplete, as Gödel demonstrated for ﬁrst-order arithmetic, forexample.
+5 See Section 4.4 for a little more discussion on the issue of power versus expressiveness.6 Aristotelean syllogisms can be viewed as a form of proof-theoretic semantics, although
+one where the entailment patterns are captured directly in terms of natural languagesentences.
+7 Section 4 of Chapter 2,
+COMPUTATIONAL COMPLEXITY IN NATURAL LANGUAGE , con-
+siders the computational complexity of determining relationships between sentences.
+8 We do not consider other issues concerning the analysis of discourse, such as topic and
+focus (Rooth 1993; Hajiˇ cová et al., 1998), or discourse segmentation. Note that there are
+non-logical, quantitative methods that have been applied to the latter problem (Hearst1997).
+9 In this case, we would want xto be evaluated in the same way as the other ‘ x’s in the
+representation. This cannot happen if it is not bound by the same quantiﬁer.
+10 The precise values of the subscripts (in this case 6 and 7) and place-holder variable
+names (z
+6,z7)m a yv a r y .
+11 Blackburn and Bos (2005: 108) provide more details of this approach.12 We might restrict the quantiﬁcation so that it only ranges over non-polymorphic types.
+See Section 4.4 and Fox and Lappin (2005).
+13 An alternative approach would be to use schematic polymorphism (Pollard 2004).
+14 This mirrors Groenendijk and Stokhof (1997, fact 4.3).15 To be contrasted with ‘Have another drink or you will be happy! ’
+

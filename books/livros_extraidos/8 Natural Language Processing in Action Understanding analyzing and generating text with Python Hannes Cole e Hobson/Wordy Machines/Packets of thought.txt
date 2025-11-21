@@ -1,0 +1,1120 @@
+3Packets of thought
+(NLP overview)
+You are about to embark on an exciting adventure in natural language processing.
+First we show you what NLP is and all the things you can do with it. This will get
+your wheels turning, helping you think of ways to use NLP in your own life, both at
+work and at home.
+ Then we dig into the details of exactly how to process a small  bit of English text
+using a programming language like Python, which will help you build up your NLP
+toolbox incrementally. In this chapter, you’ll write your first program that can readThis chapter covers
+What natural language processing (NLP) is
+Why NLP is hard and only recently has become 
+widespread
+When word order and grammar is important and when it can be ignored
+How a chatbot combines many of the tools of NLP
+How to use a regular expression to build the start of a tiny chatbot
+ 
+
+4 CHAPTER  1Packets of thought (NLP overview)
+and write English statements. This Python snippet will be the first of many you’ll use to
+learn all the tricks needed to assemble an  English language dialog engine—a chatbot.
+1.1 Natural language vs. programming language
+Natural languages are different from comp uter programming languages. They aren’t
+intended to be translated into a finite se t of mathematical oper ations, like program-
+ming languages are. Natural languages ar e what humans use to share information
+with each other. We don’t use programming  languages to tell each other about our
+day or to give directions to  the grocery store. A computer  program writte n with a pro-
+gramming language tells a machine exactly what to do. But there are no compilers or
+interpreters for natural languages such as English and French.
+DEFINITION Natural language processing  is an area of rese arch in computer sci-
+ence and artificial intell igence (AI) concerned with processing natural lan-
+guages such as English or Mandarin . This processing generally involves
+translating natural language into data (numbers) that a computer can use to
+learn about the world. And this understanding of the world is sometimes usedto generate natural language text that reflects that understanding.
+Nonetheless, this chapter shows you how a machine can process  natural language. You
+might even think of this as a natural langua ge interpreter, just like the Python inter-
+preter. When the computer program you de velop processes natural language, it will
+be able to act on those statements or even  reply to them. But these actions and replies
+aren’t precisely defined, which leaves more discretion up to you, the developer of thenatural language pipeline.
+DEFINITION A natural language processing syst em is often referred to as a
+pipeline  because it usually involves several stages of processing where natural
+language flows in one end and the pr ocessed output flows out the other.
+You’ll soon have the power to write softwa re that does interesting, unpredictable
+things, like carry on a conversation, which can make machines seem a bit morehuman. It may seem a bit like magic—at fi rst, all advanced technology does. But we
+pull back the curtain so you can explore backstage, and you’ll soon discover all theprops and tools you need to do the magic tricks yourself.
+“Everything is easy, once you know the answer.”
+                                                                    —Dave Magee
+1.2 The magic
+What’s so magical about a machine that ca n read and write in a natural language?
+Machines have been processing language s since computers were invented. However,
+these “formal” languages—su ch as early languages Ada, COBOL, and Fortran—were
+designed to be interpreted (or compiled) on ly one correct way. Today Wikipedia lists
+ 
+
+5 The magic
+more than 700 programming languages. In contrast, Ethnologue1 has identified 10 times
+as many natural languages spoken by humans  around the world. And Google’s index of
+natural language documents is we ll over 100 million gigabytes.2 And that’s just the
+index. And it’s incomplete. The size of th e actual natural langua ge content currently
+online must exceed 100 billion gigabytes.3 But this massive amount of natural language
+text isn’t the only reason it’s importan t to build software that can process it.
+ The interesting thing about the process is that it’s hard. Machines with the capabil-
+ity of processing something natural isn’t natura l. It’s kind of like building a structure
+that can do something useful with architec tural diagrams. When software can process
+languages not designed for machines to understand, it seems magical—something we
+thought was a uniquely human capability.
+ The word “natural” in “natural  language” is used in the sa me sense that it is used in
+“natural world.” Natural, evolved things in the world about us  are different from
+mechanical, artificial things designed and built by humans. Being able to design and
+build software that can read and process language like what you’re reading here—
+language about building software that can process natural language… well that’s very
+meta, very magical.
+ To make your job a little easier, we fo cus on only one natural language, English.
+But you can use the techniques you learn in this book to build software that can pro-
+cess any language, even a language you don’ t understand, or has yet to be deciphered
+by archaeologists and linguists. And we’re going to show you how to write software to
+process and generate that language using only one programming language, Python.
+ Python was designed from the ground up to be a readable language. It also
+exposes a lot of its own language processing  “guts.” Both of these characteristics make
+it a natural choice for learning natural lang uage processing. It’s a great language for
+building maintainable production pipelines for NLP algorithms in an enterprise envi-
+ronment, with many contributors to a single  codebase. We even use Python in lieu of
+the “universal language” of mathematics an d mathematical symbols, wherever possi-
+ble. After all, Python is an unambiguou s way to express mathematical algorithms,4 and
+it’s designed to be as readable as possible for programmers like you.
+1.2.1 Machines that converse
+Natural languages can’t be directly translated  into a precise set of mathematical oper-
+ations, but they do contain information and instructions that can be extracted. Those
+pieces of information and instruction can be  stored, indexed, sear ched, or immediately
+1Ethnologue  is a web-based publication that mainta ins statistics about natural languages.
+2See the web page titled “How Google’s Site Crawlers Index Your Site - Google Search” ( https:/ /www.google
+.com/search/howsearchwor ks/crawling-indexing/ ).
+3You can estimate the amount of actual natural language  text out there to be at least 1000 times the size of
+Google’s index.
+4Mathematical notation is ambiguous. See the “Mathema tical notation” section of the Wikipedia article “Ambi-
+guity” ( https:/ /en.wikipedia.org/wiki/Am biguity#Mathematical_notation ).
+ 
+
+6 CHAPTER  1Packets of thought (NLP overview)
+acted upon. One of those actions could be to  generate a sequence of words in response
+to a statement. This is the function of the “dialog engine” or chatbot that you’ll build.
+ We focus entirely on English text docu ments and messages, no t spoken statements.
+We bypass the conversion of spoken stat ements into text—speech recognition, or
+speech to text (STT). We al so ignore speec h generation or text to speech, converting
+text back into some human-sounding voice utterance. But you can still use what you
+learn to build a voice interface or virtual assi stant like Siri or Al exa, because speech-to-
+text and text-to-speech librar ies are freely available. An droid and iOS mobile operat-
+ing systems provide high qual ity speech recognition and generation APIs, and there
+are Python packages to acco mplish similar functionalit y on a laptop or server.
+1.2.2 The math
+Processing natural language to  extract useful information can be difficult. It requires
+tedious statistical bookkeeping, but that’s wh at machines are for. And like many other
+technical problems, solving it is a lot easier  once you know the answer. Machines still
+cannot perform most practical NLP tasks, such as conversation and reading compre-
+hension, as accurately and reliably as huma ns. So you might be able to tweak the algo-
+rithms you learn in this book to do some NLP tasks a bit better.
+ T h e  t e c h n i q u e s  y o u ’ l l  l e a r n ,  h o w e v e r ,  a r e  p o w e rf u l  e n o u g h  t o  c r e a t e  m a c h i n e s
+that can surpass humans in  both accuracy and speed fo r some surprisingly subtle
+tasks. For example, you might not have gu essed that recognizing sarcasm in an iso-
+lated Twitter message can be done more a ccurately by a machine than by a human.5
+Don’t worry, humans are still better at  recognizing humor and sarcasm within an
+ongoing dialog, due to our ability to main tain information about the context of a
+statement. But machines are getting better  and better at maintaining context. And
+this book helps you incorporate context (metadata) into your NLP pipeline, in caseyou want to try your hand at advancing the state of the art.Speech recognition systems
+If you want to build a customized speech recognition or generation system, that un-
+dertaking is a whole book in itself; we l eave that as an “exercis e for the reader.” It
+requires a lot of high quality labeled data, voice recordings annotated with their pho-
+netic spellings, and natural language transcriptions aligned with the audio files.Some of the algorithms you learn in this bo ok might help, but most  of the recognition
+and generation algorithms are quite different. 
+5Gonzalo-Ibanez et al. found that educated and trained human judges couldn’t match the performance of
+their simple classification algorithm of 68% repo rted in their ACM paper. The Sarcasm Detector ( https:/ /
+github.com/MathieuCliche/Sarcasm_detector ) and the web app ( http:/ /www.thesarcasmdetector.com/ ) by
+Matthew Cliche at Cornell achi eve similar accuracy (>70%).
+ 
+
+7 The magic
+ Once you extract structured numerical da ta, vectors, from natural language, you
+can take advantage of all the tools of ma thematics and machine learning. We use the
+same linear algebra tricks as the projection of 3D objects onto a 2D computer screen,
+something that computers and drafters were  doing long before natural language pro-
+cessing came into its own. These breakthrough ideas open ed up a world of “semantic”
+analysis, allowing computers to interpret and store the “meaning” of statements rather
+than just word or character counts. Semant ic analysis, along with  statistics, can help
+resolve the ambiguity of natural language—t he fact that words or phrases often have
+multiple meanings or interpretations.
+ So extracting information isn’t at all like building a programming language com-
+piler (fortunately for you). The most prom ising techniques bypass the rigid rules of
+regular grammars (patterns) or formal langua ges. You can rely on statistical relation-
+ships between words instead of a deep system of logical rules.6 Imagine if you had to
+define English grammar and spelling rules in  a nested tree of if…then statements.
+Could you ever write enough rules to deal with every possible way that words, letters,
+and punctuation can be combined to make a statement? Would you even begin to cap-
+ture the semantics, the meanin g of English statements? Even if it were useful for some
+kinds of statements, imagine how limited and brittle this software would be. Unantici-
+pated spelling or punctuation would break or befuddle your algorithm.
+ Natural languages have an additional “dec oding” challenge that is even harder to
+solve. Speakers and writers of natural lang uages assume that a human is the one doing
+the processing (listening or reading), not a machine. So when I say “good morning”, I
+assume that you have some knowledge abou t what makes up a morning, including not
+only that mornings come before noons an d afternoons and evenings but also after
+midnights. And you need to know they can represent times of day as well as general
+experiences of a period of time. The interp reter is assumed to kn ow that “good morn-
+ing” is a common greeting that doesn’t co ntain much information at all about the
+morning. Rather it reflects the state of mi nd of the speaker and her readiness to speak
+with others.
+ This theory of mind abou t the human processor of lang uage turns out to be a pow-
+erful assumption. It allows us to say a lot wi th few words if we assume that the “proces-
+sor” has access to a lifetime of common se nse knowledge about the world. This degree
+of compression is still out of  reach for machines. There is no clear “theory of mind”
+you can point to in an NLP pipeline. Howeve r, we show you techniques in later chap-
+ters to help machines build ontologies, or knowledge bases, of common sense knowl-
+edge to help interpret statements  that rely on this knowledge. 
+6Some grammar rules can be implemented in a computer  science abstraction calle d a finite state machine.
+Regular grammars can be implemented in regular expressions. There are two Python packages for runningregular expression finite state machines, 
+re which is built in, and regex  which must be installed, but may
+soon replace re. Finite state machines are just trees of if…t hen…else statements for each token (character/
+word/n-gram) or action that a machine needs to react to or generate.
+ 
+
+8 CHAPTER  1Packets of thought (NLP overview)
+1.3 Practical applications
+Natural language processing is  everywhere. It’s so ubiquito us that some of the exam-
+ples in table 1.1 may surprise you.
+A search engine can provide mo re meaningful results if it  indexes web pages or docu-
+ment archives in a way that takes into ac count the meaning of natural language text.
+Autocomplete uses NLP to complete yo ur thought and is common among search
+engines and mobile phone keyboards. Many  word processors, br owser plugins, and
+text editors have spelling correctors, gr ammar checkers, concordance composers, and
+most recently, style coaches. Some dialog  engines (chatbots) use natural language
+search to find a response to th eir conversation partner’s message.
+ NLP pipelines that generate (compose) text can be used not only to compose
+short replies in chatbots and virtual assistan ts, but also to assemble much longer pas-
+sages of text. The Associated Press uses NLP “robot journalists” to write entire finan-
+cial news articles and sporting event reports.7 Bots can compose weather forecasts that
+sound a lot like what your hometown weat her person might say, perhaps because
+human meteorologists use word processors  with NLP features to draft scripts.
+ NLP spam filters in early email programs helped email overtake telephone and fax
+communication channels in the '90s. And the spam filters have retained their edge in
+the cat and mouse game between spam filter s and spam generators for email, but may
+be losing in other environments like social networks. An estimated 20% of the tweetsTable 1.1 Categorized NLP applications
+Search Web Documents Autocomplete
+Editing Spelling Grammar Style
+Dialog Chatbot Assistant Scheduling
+Writing Index Concordance Table of contents
+Email Spam filter Classification Prioritization
+Text mining Summarization Knowledge extraction Medical diagnoses
+Law Legal inference Precedent search Subpoena classification
+News Event detection Fact checking Headline composition
+Attribution Plagiarism detection Literary forensics Style coaching
+Sentiment analysis Community morale monitoring Product review triage Customer care
+Behavior prediction Finance Election forecasting Marketing
+Creative writing Movie scripts Poetry Song lyrics
+7“AP’s 'robot journalists' are writing their own stories now,” The Verge, Jan 29, 2015, http:/ /www.theverge
+.com/2015/1/29/7939067/ap-journalism-au tomation-robots-financial-reporting .
+ 
+
+9 Language through a computer’s “eyes”
+about the 2016 US presidential elec tion were composed by chatbots.8 These bots
+amplify their owners’ and developers’ viewpoints. And these “puppet masters” tend to
+be foreign governments or large corporatio ns with the resources and motivation to
+influence popular opinion.
+ NLP systems can generate more than just  short social network posts. NLP can be
+used to compose lengthy movie and produc t reviews on Amazon and elsewhere. Many
+reviews are the creation of autonomous NLP pipelines that have never set foot in amovie theater or purchased th e product they’re reviewing.
+ There are chatbots on Slack, IRC, and even customer service websites—places
+where chatbots have to deal with ambigu ous commands or questions. And chatbots
+paired with voice recognition and generation  systems can even handle lengthy conver-
+sations with an indefinite goal or “objecti ve function” such as making a reservation at
+a local restaurant.
+9 NLP systems can answer phones for companies that want some-
+thing better than a phone tree but don’t wa nt to pay humans to help their customers.
+NOTE With its Duplex  demonstration at Google IO, engineers and managers
+overlooked concerns about the ethics  of teaching chatbots to deceive
+humans. We all ignore this dilemma when we happily interact with chatbotson Twitter and other anonymous social  networks, where bots don’t share
+their pedigree. With bots that can so convincingly deceive us, the AI control
+problem
+10 looms, and Yuval Harari’s cautionary forecast of “Homo Deus”11
+may come sooner than we think.
+NLP systems exist that can act as email “rec eptionists” for businesses or executive assis-
+tants for managers. These assistants schedu le meetings and record summary details in
+an electronic Rolodex, or CRM (customer relationship ma nagement system), interact-
+ing with others by email on their boss’s behalf. Companies are putting their brand and
+face in the hands of NLP sy stems, allowing bots to ex ecute marketing and messaging
+campaigns. And some inexperienced daredevil NLP textbook authors are letting botsauthor several sentences in their book. More on that later. 
+1.4 Language through a computer’s “eyes”
+W h e n  y o u  t y p e  “ G o o d  M o r n ’ n  R o s a , ”  a  computer sees only “01000111 01101111
+01101111 …”. How can you program a chatbo t to respond to this binary stream
+intelligently? Could a nested tree of conditionals ( if… else … statements) check each
+one of those bits and act on them individual ly? This would be equivalent to writing a
+8New York Times, Oct 18, 2016, https:/ /www.nytimes.com/2016/11/18/ technology/automated-pro-trump-
+bots-overwhelmed-pro-clinton- messages-researchers-say.html  and MIT Technology Review, Nov 2016, 
+https:/ /www.technologyreview.com /s/602817/how-the-bot-y-politi c-influenced-this-election/ .
+9Google Blog May 2018 about their Duplex  system https:/ /ai.googleblog.com/2018/05/advances-in-semantic-
+textual-similarity.html .
+10See the web page titled “AI control problem - Wikipedia” ( https:/ /en.wikipedia.org/wiki/AI_control
+_problem ).
+11WSJ Blog, March 10, 2017 https:/ /blogs.wsj.com/cio/2017/03/10/ho mo-deus-author-yuval-noah-harari-says-
+authority-shifting-from-people-to-ai/ .
+ 
+
+10 CHAPTER  1Packets of thought (NLP overview)
+special kind of program called a finite st ate machine (FSM). An FSM that outputs a
+sequence of new symbols as it runs, like the Python str.translate  function, is called
+a finite state transducer (FST). You’ve probably already built an FSM without even know-
+ing it. Have you ever written a regular expre ssion? That’s the kind of FSM we use in the
+next section to show you on e possible approach to NLP: the pattern-based approach.
+ What if you decided to search a memory bank (database) for the exact same string
+of bits, characters, or words, and use on e of the responses that other humans and
+authors have used for that statement in the past? But imagine if there was a typo orvariation in the statement. Ou r bot would be sent off the rails. And bits aren’t continu-
+ous or forgiving—they either match or they don’t. There’s no obvious way to find sim-
+ilarity between two streams of bits that take s into account what they signify. The bits
+for “good” will be just as similar to “bad!” as they are to “okay.”
+ But let’s see how this approach would work  before we show you a better way. Let’s
+build a small regular expression to recogniz e greetings like “Good morning Rosa” and
+respond appropriately—our first tiny chatbot!
+1.4.1 The language of locks
+Surprisingly, the humble combination lock is actually a simple  language processing
+machine. So, if you’re mechanically inclined, this section may be illuminating. But ifyou don’t need mechanical analogies to he lp you understand algorithms and how reg-
+ular expressions work, then you can skip this section.
+ After finishing this section, you’ll never think of your combination bicycle lock the
+same way again. A combination lock certai nly can’t read and understand the textbooks
+stored inside a school locker, but it can unde rstand the language of locks. It can under-
+stand when you try to “tell” it a “passwor d”: a combination. A padlock combination is
+any sequence of symbols that  matches the “grammar” (pattern) of lock language. Even
+more importantly, the padlock can tell if a lock “statement” matches a particularly
+meaningful statement, the one for which ther e’s only one correct “response”: to release
+the catch holding the U-shaped hasp so you can get into your locker.
+ This lock language (regular expressions) is a particularly simple one. But it’s not
+so simple that we can’t use it in a chatbot . We can use it to recognize a key phrase or
+command to unlock a particular action or behavior.
+ For example, we’d like our chatbot to recognize greetings such as “Hello Rosa,”
+and respond to them appropriately. This kind of language, like the language of locks,
+is a formal language because it has strict  rules about how an acceptable statement
+must be composed and interpreted. If you’ve  ever written a math equation or coded a
+programming language expression, you’ve  written a formal language statement.
+ Formal languages are a subset of natura l languages. Many natural language state-
+ments can be matched or generated using a formal language grammar, like regular
+expressions. That’s the reason for this di version into the mechanical, “click, whirr”
+12
+language of locks.
+12One of Cialdini’s six psychology principles in his popular book, Influence http:/ /changingminds.org/
+techniques/general/cialdini/click-whirr.htm
+ 
+
+11 Language through a computer’s “eyes”
+1.4.2 Regular expressions
+Regular expressions use a special kind (cla ss) of formal langua ge grammar called a
+regular grammar. Regular grammars have predictable, provable behavior, and yet areflexible enough to power some of the most  sophisticated dialog engines and chatbots
+on the market. Amazon Alexa and Google Now are mostly pattern-based engines that
+rely on regular grammars. Deep, complex regular grammar rules can often beexpressed in a single line of code calle d a regular expression. There are successful
+chatbot frameworks in Python, like 
+Will , that rely exclusively on this kind of language
+to produce some useful and interesting behavior. Amazon Echo, Google Home, and
+similarly complex and useful assistants use th is kind of language to encode the logic
+for most of their user interaction.
+NOTE Regular expressions implemented in Python and in Posix (Unix) appli-
+cations such as grep aren’t true regular grammars. They have language and
+logic features such as look-ahead and look-back that make leaps of logic and
+recursion that aren’t allowed in a regular grammar. As a result, regular expres-sions aren’t provably halting; they can sometimes “crash” or run forever.
+13
+You may be saying to yourself, “I’ve heard of regular expressions. I use grep . But that’s
+only for search!” And you’re right. Regular expressions are indeed used mostly forsearch, for sequence matching. But anything that can find matches within text is also
+great for carrying out a di alog. Some chatbots, like 
+Will , use “search” to find sequences
+of characters within a user statement that  they know how to respond to. These recog-
+nized sequences then trigger a scripted response appropriate to that particular regular
+expression match. And that sa me regular expression can also  be used to extract a useful
+piece of information from a statement. A chat bot can add that bit of information to its
+knowledge base about the user or abou t the world the user is describing.
+ A machine that processes this
+kind of language can be thought of asa formal mathematical object called afinite state machine or deterministic
+finite automaton (DFA). FSMs come
+up again and again in this book. Soyou’ll eventually get a good feel for
+what they’re used for without digging
+into FSM theory and math. For thosewho can’t resist trying to understand
+a bit more about these computer
+science tools, figu re 1.1 shows where
+13Stack Exchange went down for 30 minutes on July 20, 2016 when a regex “crashed” ( http:/ /stackstatus.net/
+post/147710624694/outage-postmortem-july-20-2016 ).Combinational logic
+Finite-state machine
+Pushdown automaton
+Turing machine
+Figure 1.1 Kinds of automata
+ 
+
+12 CHAPTER  1Packets of thought (NLP overview)
+FSMs fit into the nested world of automata (bots). And the side note that follows
+explains a bit more formal de tail about formal languages.
+1.4.3 A simple chatbot
+Let’s build a quick and dirty chatbot. It won’t be very capable, and it will require a lot
+of thinking about the English language. You wi ll also have to hardcode regular expres-
+sions to match the ways people may try to say something. But don’t worry if you think
+you couldn’ t have come up with this Python code yourself. Y ou won’ t have to try to
+think of all the different ways people can sa y something, like we did in this example.
+You won’t even have to write regular expre ssions (regexes) to build an awesome chat-
+bot. We show you how to build a chatbot of your own in later chapters without hard-
+coding anything. A mo dern chatbot can learn from reading (processing) a bunch of
+English text. And we show you how to do that in later chapters.
+ This pattern matching chatbot is an ex ample of a tightly controlled chatbot. Pat-
+tern matching chatbots were common be fore modern machine learning chatbotFormal mathematical explanation of formal languages
+Kyle Gorman describes programming languages this way:
+Most (if not all) programming language s are drawn from the class of context-
+free languages.
+Context-free languages are parsed with context-free grammars, which provideefficient parsing.
+The regular languages are also efficiently parsable and used extensively incomputing for string matching.
+String matching applications rarely require the expressiveness of context-
+free.
+There are a number of formal language classes, a few of which are shownhere (in decreasing complexity):
+a
+– Recursively enumerable
+– Context-sensitive
+–C o n t e x t - f r e e
+– Regular
+Natural languages:
+Are not regularb
+Are not context-freec
+Can’t be defined by any formal grammard
+aSee the web page titled “Chomsk y hierarchy - Wikipedia” ( https://en.wikipedia.org/ wiki/Chomsky_hierarchy ).
+b“English is not a regular language” ( http://cs.haifa.ac.il/~shuly/teaching/08/nlp/complexity.pdf#page=20 ) by Shuly 
+Wintner.
+c“Is English context-free?” ( http://cs.haifa.ac.il/~shuly/teaching/08/nlp/complexity.pdf#page=24 ) by Shuly Wintner.
+dSee the web page titled “1.11. Formal and Natural Languages — How to Think like a Computer Scientist: Interactive 
+Edition” ( http://interactivepython.org/runestone/static/CS1 52f17/GeneralIntro/Formal andNaturalLanguages.html ).
+ 
+
+13 Language through a computer’s “eyes”
+techniques were developed. And a variat ion of the pattern matching approach we
+show you here is used in chatbots like Amazon Alexa and other virtual assistants.
+ For now let’s build an FSM, a regular expression, that can speak lock language
+(regular language). We could program it to understand lock language statements,
+such as “01-02-03.” Even better, we’d like it  to understand greetings, things like “open
+sesame” or “hello Rosa.” An important feature for a prosocial chatbot is to be able to
+respond to a greeting. In high school, teac hers often chastised me for being impolite
+when I’d ignore greetings like th is while rushing to class. We surely don’t want that for
+our benevolent chatbot.
+ In machine communication protocol, we’d  define a simple handshake with an ACK
+(acknowledgement) signal after each me ssage passed back and forth between two
+machines. But our machines are going to be interacting with humans who say things
+like “Good morning, Rosa.” We don’t want it sending out a bunch of chirps, beeps, or
+ACK messages, like it’s syncin g up a modem or HTTP connect ion at the start of a con-
+versation or web browsing session. Instead let’s use regular expr essions to recognize
+several different human greetings at th e start of a conversation handshake:
+>>> import re
+>>> r = "(hi|hello|hey)[ ]*([a-z]*)">>> re.match(r, 'Hello Rosa', flags=re.IGNORECASE)
+<_sre.SRE_Match object; span=(0, 10), match='Hello Rosa'>
+>>> re.match(r, "hi ho, hi ho, it's off to work ...", flags=re.IGNORECASE)<_sre.SRE_Match object; span=(0, 5), match='hi ho'>
+>>> re.match(r, "hey, what's up", flags=re.IGNORECASE)
+<_sre.SRE_Match object; span=(0, 3), match='hey>
+In regular expressions, you can specify a ch aracter class with square brackets. And you
+can use a dash ( -) to indicate a range of characters without having to type them all
+out individually. So the regular expression "[a-z]"  will match any single lowercase let-
+ter, “a” through “z.” The star ('*') after a character class means that the regular expres-
+sion will match any number of consecutiv e characters if they are all within that
+character class.
+ Let’s make our regular expression a lot more  detailed to try to match more greetings:
+ 
+ 
+>>> r = r"[^a-z]*([y]o|[h']?ello|ok|hey|(good[ ])?(morn[gin']{0,3}|"\
+...     r"afternoon|even[gin']{0,3}))[\s,;:]{1,3}([a-z]{1,20})"
+>>> re_greeting = re.compile(r, flags=re.IGNORECASE)There are two “official” regu lar expression packages in
+Python. We use the re package here just because it’s
+installed with all versions of Python. The regex
+package comes with later ve rsions of Python and is
+much more powerful, as you’ll see in chapter 2.'|' means “OR,” and '\*' means the
+preceding character can occur 0 or more
+times and still match. So our regex will
+match greetings that start with “hi” or
+“hello” or “hey” followed by any
+number of '<space>' characters and
+then any number of letters.
+Ignoring the case of text
+characters is common,
+ to keep the regular
+expressions simpler.
+You can compile regular expressions so
+you don’t have to specify the options
+(flags) each time you use them.
+ 
+
+14 CHAPTER  1Packets of thought (NLP overview)
+>>> re_greeting.match('Hello Rosa')
+<_sre.SRE_Match object; span=(0, 10), match='Hello Rosa'>
+>>> re_greeting.match('Hello Rosa').groups()('Hello', None, None, 'Rosa')
+>>> re_greeting.match("Good morning Rosa")
+<_sre.SRE_Match object; span=(0, 17), match="Good morning Rosa">>>> re_greeting.match("Good Manning Rosa")
+>>> re_greeting.match('Good evening Rosa Parks').groups()
+('Good evening', 'Good ', 'evening', 'Rosa')>>> re_greeting.match("Good Morn'n Rosa")
+<_sre.SRE_Match object; span=(0, 16), match="Good Morn'n Rosa">
+>>> re_greeting.match("yo Rosa")<_sre.SRE_Match object; span=(0, 7), match='yo Rosa'>
+TIP The “r” before the quote specifies a raw string, not a regular expression.
+With a Python raw string, you can send  backslashes directly to the regular
+expression compiler without having to double-backslash ("\\") all the special
+regular expression charac ters such as spaces ("\\ ") and curly braces or han-
+dlebars ("\\{ \\} ").
+There’s a lot of logic packed into that first line of code, the regular expression. It gets
+the job done for a surprising range of gr eetings. But it missed that “Manning” typo,
+which is one of the reasons NLP is hard. In machine learning and medical diagnostic
+testing, that’s called a false negative classi fication error. Unfortunately, it will also
+match some statements that humans would be unlikely to ever say—a false positive,
+which is also a bad thing. Having both fals e positive and false negative errors means
+that our regular expression is both too li beral and too strict. These mistakes could
+make our bot sound a bit dull and mechanical . We’d have to do a lot more work to
+refine the phrases that it ma tches to be more human-like.
+ And this tedious work would be highly unlikely to ever succeed at capturing all the
+slang and misspellings people  use. Fortunately, compos ing regular expressions by
+hand isn’t the only way to train a chatbot. Stay tuned for more on that later (the entirerest of the book). So we only use them wh en we need precise control over a chatbot’s
+behavior, such as when issuing commands to  a voice assistant on your mobile phone.
+ But let’s go ahead and finish up our one-tr ick chatbot by adding an output genera-
+tor. It needs to say something. We use Pyth on’s string formatter to create a “template”
+for our chatbot response:
+>>> my_names = set(['rosa', 'rose', 'chatty', 'chatbot', 'bot',
+... 'chatterbot'])
+>>> curt_names = set(['hal', 'you', 'u'])>>> greeter_name = ''                   
+>>> match = re_greeting.match(input())
+...>>> if match:
+... at_name = match.groups()[-1]Notice that this regular
+expression cannot recognize
+(match) words with typos.
+Our chatbot can
+separate different parts
+of the greeting into groups,
+but it will be unaware of Rosa’s  famous last name, because we
+don’t have a pattern to match any characters after the first name.
+We don’t yet know who is 
+chatting with the bot, and we won’t worry about it here.
+ 
+
+15 Language through a computer’s “eyes”
+... if at_name in curt_names:
+... print("Good one.")
+... elif at_name.lower() in my_names:... print("Hi {}, How are you?".format(greeter_name))
+So if you run this little script and chat to ou r bot with a phrase like “Hello Rosa,” it will
+respond by asking about your day. If you us e a slightly rude name to address the chat-
+bot, she will be less responsive, but not in flammatory, to try to encourage politeness.14
+If you name someone else who might be mo nitoring the conversation on a party line
+or forum, the bot will keep quiet and al low you and whomever you are addressing to
+chat. Obviously there’s no one else out there watching our input()  line, but if this
+were a function within a larger chatbot, you’d want to deal with these sorts of things.
+ Because of the limitations of computatio nal resources, early NLP researchers had to
+use their human brains’ computational power to design and hand-tune complex logical
+rules to extract information from a natural language string. This is called a pattern-
+based approach to NLP. The patterns don’t have to be merely character sequence pat-terns, like our regular expression. NLP also  often involves patterns of word sequences,
+or parts of speech, or other “higher level” patterns. The core NLP building blocks like
+stemmers and tokenizers as well as sophis ticated end-to-end NLP dialog engines (chat-
+bots) like ELIZA were built this way, from  regular expressions and pattern matching.
+The art of pattern-matching ap proaches to NLP is coming up with elegant patterns that
+capture just what you want, without too many lines of regula r expression code.
+CLASSICAL COMPUTATIONAL THEORY OF MIND This classical NLP pattern-
+matching approach is based on the computational theory of mind (CTM).
+CTM assumes that human-like NLP can be  accomplished with a finite set of
+logical rules that are processed in series.15 Advancements in neuroscience and
+NLP led to the development of a “conne ctionist” theory of mind around the
+turn of the century, which allows for parallel pipelines processing natural lan-
+guage simultaneously, as is done in artificial neural networks.16, 17
+You’ll learn more about pattern-based approaches—such as the Porter stemmer or
+the Treebank tokenizer—to tokenizing and st emming in chapter 2. But in later chap-
+ters we take advantage of modern computatio nal resources, as well as our larger data-
+sets, to shortcut this laborious  hand programming and refining.
+ If you’re new to regular expressions and want to le arn more, you can check out
+appendix B or the online documentation for Python regular expressions. But you
+14The idea for this defusing response originated with Viktor Frankl’s Man’s Search for Meaning , his Logotherapy
+(https:/ /en.wikipedia.org/wiki/Logotherapy ) approach to psychology, and the many popular novels where
+a child protagonist like Owen Meany has the wisdom to respond to an insult with a response like this.
+15Stanford Encyclopedia of Philosop hy, Computational Theory of Mind, https:/ /plato.stanford.edu/entries/
+computational-mind/ .
+16Stanford Encyclopedia of Philosophy, Connectionism, https:/ /plato.stanford.e du/entries/connectionism/ .
+17Christiansen and Chater, 1999, Southern Illinois University, https:/ /crl.ucsd.edu/~elman/Bulgaria/
+christiansen-chater-soa.pdf .
+ 
+
+16 CHAPTER  1Packets of thought (NLP overview)
+don’t have to understand them just yet. We’ll continue to provide you with example
+regular expressions as we use them for th e building blocks of  our NLP pipeline. So
+don’t worry if they look like gibberish. Hu man brains are pretty good at generalizing
+from a set of examples, and I’m sure it will become clear by the end of this book. Andit turns out machines can learn this way as well.
+1.4.4 Another way
+Is there a statistical or machine learning ap proach that might work in place of the
+pattern-based approach? If we had enough  data could we do something different?
+What if we had a giant database containing  sessions of dialog between humans, state-
+ments and responses for thousands or even  millions of conversations? One way to
+build a chatbot would be to search that data base for the exact same string of charac-
+t e r s  o u r  c h a t b o t  u s e r  j u s t  “ s a i d ”  t o  o u r  c h a t b o t .  C o u l d n ’ t  w e  t h e n  u s e  o n e  o f  t h eresponses to that statement that ot her humans have said in the past?
+ But imagine how a single typo or variatio n in the statement would trip up our bot.
+Bit and character sequences are discrete. Th ey either match or they don’t. Instead,
+we’d like our bot to be able to measure the difference in meaning  between character
+sequences.
+ When we use character sequence matche s to measure distance between natural
+language phrases, we’ll often get it wrong.  Phrases with similar meaning, like “good”
+and “okay,” can often have different charac ter sequences and large distances when we
+count up character-by-character matches to measure distance . And sequences with
+completely different meanings, like “bad” an d “bar,” might be too close to one other
+when we use metrics designed to measur e distances between numerical sequences.
+Metrics like Jaccard, Levenshtein, and Eu clidean vector distance can sometimes add
+enough “fuzziness” to prevent a chatbot from  stumbling over minor spelling errors or
+typos. But these metrics fail to capture th e essence of the relationship between two
+strings of characters when they are dissi milar. And they also sometimes bring small
+spelling differences close together that might not really be typos, like “bad” and “bar.”
+ Distance metrics designed for numerical sequences and vectors are useful for a few
+NLP applications, like spelling correctors and recognizing proper nouns. So we usethese distance metrics when they make sens e. But for NLP applications where we are
+more interested in the meaning of the natu ral language than its spelling, there are
+better approaches. We use vector represen tations of natural language words and text
+and some distance metrics for those vector s for these NLP applications. We show you
+each approach, one by one, as we talk a bout these different vector representations
+and the kinds of applications they are used with.
+ We won’t stay in this confusing binary world of logic for long, but let’s imagine we’re
+famous World War II-era code-breaker Mavi s Batey at Bletchley Park and we’ve just
+been handed that binary, Morse code message intercepted from communication
+ 
+
+17 Language through a computer’s “eyes”
+between two German military officers. It co uld hold the key to winning the war. Where
+would we start? Well the first step in our analysis would be to do something statisticalwith that stream of bits to see if we can find patterns. We can first use the Morse codetable (or ASCII table, in our case) to assign letters to each group of bits. Then, if the
+characters are gibberish to us, as they ar e to a computer or a cryptographer in WWII,
+we could start counting them up, looking up the short sequences in a dictionary of all
+the words we’ve seen before and putting a mark  next to the entry every time it occurs.
+We might also make a mark in some other log book to indicate which message the word
+occurred in, creating an en cyclopedic index to all the documents we’ve read before.
+This collection of documents is called a corpus , and the collection of words or sequences
+we’ve listed in our index is called a lexicon .
+ If we’re lucky, and we’re not at war,  and the messages we’re looking at aren’t
+strongly encrypted, we’ll see patterns in those German word  counts that mirror counts
+of English words used to communicate simi lar kinds of messages. Unlike a crypto-
+grapher trying to decipher German Morse co de intercepts, we know that the symbols
+have consistent meaning and aren’t changed with every key click to try to confuse us.
+This tedious counting of char acters and words is just the sort of thing a computer can
+do without thinking. And surp risingly, it’s nearly enough  to make the machine appear
+to understand our language. It can even do math on these statistical vectors that coin-cides with our human understanding of thos e phrases and words. When we show you
+how to teach a machine our language using Word2Vec in later chapters, it may seem
+magical, but it’s not. It ’s just math, computation.
+ But let’s think for a moment about what in formation has been lost in our effort to
+count all the words in the messa ges we receive. We assign the words to bins and store
+them away as bit vectors like a coin or to ken sorter directing different kinds of tokens
+to one side or the other in a cascade of deci sions that piles them in bins at the bottom.
+Our sorting machine must take into account hundreds of thousand s if not millions of
+possible token “denominations,” one for each  possible word that a speaker or author
+m i g h t  u s e .  E a c h  p h r a s e  o r  s e n t e n c e  o r  d o c u m e n t  w e  f e e d  i n t o  o u r  t o k e n  s o r t i n gmachine will come out the bottom, where we have a “vector” with a count of the tokens
+in each slot. Most of our counts are zero, even for large documents with verbose vocab-
+ulary. But we haven’t lost any words yet. What have we lost? Could you, as a human,
+understand a document that we presented you in this way, as a count of each possible
+word in your language, without any sequence  or order associated with those words? I
+doubt it. But if it was a short sentence or tweet, you’d probably be able to rearrange
+them into their intended order and meaning most of the time.
+ Here’s how our token sorter fits into an NLP pipeline right after a tokenizer (see
+chapter 2). We’ve included a stopword filter as well as a “rare” word filter in our
+mechanical token sorter sketch . Strings flow in from the top, and bag-of-word vectors
+are created from the height profile of the token “stacks” at the bottom.
+ 
+
+18 CHAPTER  1Packets of thought (NLP overview)
+     It turns out that machines can
+handle this bag of words quite welland glean most of the informationcontent of even moderately longdocuments this way. Each docu-ment, after token sorting andcounting, can be represented as avector, a sequence of integers foreach word or token in that docu-ment. You see a crude example infigure 1.2, and then chapter 2shows some more useful datastructures for bag-of-word vectors.    This is our first vector spacemodel of a language. Those binsand the numbers they contain foreach word are represented aslong vectors containing a lot ofzeros and a few ones or twos scat-tered around wherever the wordfor that bin occurred. All the dif-ferent ways that words could becombined to create these vectorsis called a vector space . And rela-
+tionships between vectors in thisspace are what make up ourmodel, which is attempting topredict combinations of thesewords occurring within a collec-tion of various sequences of words(typically sentences or docu-ments). In Python, we can repre-sent these sparse (mostly empty)vectors (lists of numbers) as dic-
+tionaries. And a Python 
+Counter  i s  a  s p e c i a l  k i n d  o f  d i c t i o n a r y  t h a t  b i n s  o b j e c t s
+(including strings) and counts  them just like we want:
+>>> from collections import Counter
+>>> Counter("Guten Morgen Rosa".split())
+Counter({'Guten': 1, 'Rosa': 1, 'morgen': 1})
+>>> Counter("Good morning, Rosa!".split())
+Counter({'Good': 1, 'Rosa!': 1, 'morning,': 1})Tokenizer
+Catbat
+anyAnyBatGoodGood
+Bag of words
+bat
+batanyand
+RosaStop
+RareAA
+aaA bat anda rat
+Bag-of-words
+vector [3, 1, 4, 8, 9, 0,..,]
+Figure 1.2 Token sorting tray
+ 
+
+19 A brief overflight of hyperspace
+You can probably imagine some ways to clean those tokens up. We do just that in the
+next chapter. But you might also think to yourself that these sp arse, high-dimensional
+vectors (many bins, one for each possible wo rd) aren’t very useful for language pro-
+cessing. But they are good enough for some industry-changing tools like spam filters,
+which we discuss in chapter 3.
+ We can imagine feeding into this machine,  one at a time, all the documents, state-
+ments, sentences, and even single words we could find. We’d count up the tokens in
+each slot at the bottom after each of thes e statements was processed, and we’d call
+that a vector representation of that st atement. All the possible vectors a machine
+might create this way is called a vector space . And this model of documents and state-
+ments and words is called a vector space model . It allows us to use linear algebra to
+manipulate these vectors and compute things like distance s and statistics about natu-
+ral language statements, which helps us solve a much wider ra nge of problems with
+less human programming and less br ittleness in the NLP pipeline. 
+ One statistical question that is asked of bag-of-words vector sequences is “What is
+the combination of words most likely to follow a particular ba g of words?” Or, even
+better, if a user enters a sequence of words, “What is the closest bag of words in ourdatabase to a bag-of-words vector provided by the user?” This is a search query. Theinput words are the words you might type in to a search box, and the closest bag-of-
+words vector corresponds to the document or web page you were looking for. Theability to efficiently answer these two questions would be sufficient to build a machine
+learning chatbot that could get better and better as we gave it more and more data.
+ But wait a minute, perhaps these vectors aren’t like any you’ve ever worked with
+before. They’re extremely high-dimensional. It’s possible to have  millions of dimen-
+sions for a 3-gram vocabulary computed from a large corpus. In chapter 3, we discuss
+the curse of dimensionality and some othe r properties that make high dimensional
+vectors difficult to work with. 
+1.5 A brief overflight of hyperspace
+In chapter 3, we show you how to consolid ate words into a smal ler number of vector
+dimensions to help mitigate the curse of  dimensionality and maybe turn it to our
+advantage. When we project these vectors onto each other to determine the distance
+between pairs of vectors, this will be a reasonable estimate of the similarity in their
+meaning  rather than merely their statistical word  usage. This vector distance metric is
+called cosine distance metric , which we talk about in chapte r 3, and then reveal its true
+power on reduced dimension topic vectors in chapter 4. We can even project
+(“embed” is the more precise term) these ve ctors in a 2D plane to have a “look” at
+them in plots and diagrams to see if our human brains can find patterns. We can then
+teach a computer to recogniz e and act on these patterns in ways that reflect the
+underlying meaning of the words that produced those vectors.
+ Imagine all the possible tw eets or messages or sentences that humans might write.
+Even though we do repeat ourselves a lot, that’s still a lot of possibilities. And when
+those tokens are each treated as separate, distinct dimensions, there’s no concept that
+ 
+
+20 CHAPTER  1Packets of thought (NLP overview)
+“Good morning, Hobs” has some shared meaning with “Guten Morgen, Hannes.” We
+need to create some reduced dimension ve ctor space model of messages so we can
+label them with a set of continuous (float) values. We could rate messages and words
+for qualities like subject matter and sentiment. We could ask questions like
+How likely is this message to be a question?
+How much is it about a person?
+How much is it about me?
+How angry or happy does it sound?
+Is it something I need to respond to?
+Think of all the ratings we could give stat ements. We could put these ratings in order
+and “compute” them for each statement to co mpile a “vector” for each statement. The
+list of ratings or dimensions we could give  a set of statements should be much smaller
+than the number of possible statements. An d statements that mean the same thing
+should have similar values for all our questions.
+ These rating vectors become somethin g that a machine can be programmed to
+react to. We can simplify and generalize vect ors further by clumping  (clustering) state-
+ments together, making them close on some dimensions and not on others.
+ But how can a computer assign values to each of these vector dimensions? Well, we
+simplify our vector dimension questions to  things like “Does it contain the word
+‘good’?” Does it contain the word “morning?” And so on. You can see that we might be
+able to come up with a million or so questi ons resulting in numeri cal values that a com-
+puter could assign to a phrase. This is the fi rst practical vector space model, called a bit
+vector language model, or the sum of “one -hot encoded” vectors. You can see why com-
+puters are just now getting powerful enough to make sense of natural language. Themillions of million-dimensional vectors that  humans might generate simply “Does not
+compute!” on a supercomputer of the 80s, but is no problem on a commodity laptop in
+the 21st century. More than just raw hardware power and capacity made NLP practical;incremental, constant-RAM, linear algebra al gorithms were the final piece of the puzzle
+that allowed machines to crack the code of natural language.
+ There’s an even simpler, but much larger representation that can be used in a chat-
+bot. What if our vector dimensions complete ly described the exact sequence of charac-
+ters. It would contain the answer to questions like, “Is the first letter an A? Is it a B? …
+Is the second letter an A?” and so on. This ve ctor has the advantage that it retains all the
+information contained in the original text, including the order of the characters and
+words. Imagine a player piano th at could only play a single note at a time, and it had 52
+or more possible notes it co uld play. The “notes” for this natural language mechanical
+player piano are the 26 uppercase and lowerc ase letters plus any punctuation that the
+piano must know how to “play.” The paper roll  wouldn’t have to be much wider than for
+a real player piano, and the number of no tes in some long piano songs doesn’t exceed
+the number of characters in a small docu ment. But this one-hot character sequence
+encoding representation is mainly useful for recording and then replaying an exact
+ 
+
+21 Word order and grammar
+piece rather than composing something new or extracting the essence of a piece. We
+can’t easily compare the piano paper roll for one song to that of another. And this rep-
+resentation is longer than the original AS CII-encoded representation of the document.
+The number of possible document represen tations just exploded in order to retain
+information about each sequence of charac ters. We retained the order of characters
+and words, but expanded the dimensionality of our NLP problem.
+ These representations of documents don’t cluster together well in this character-
+based vector world. The Russian mathematic ian Vladimir Levenshtein came up with a
+brilliant approach for quickly finding simila rities between sequences (strings of char-
+acters) in this world. Levenshtein’s algorith m made it possible to create some surpris-
+ingly fun and useful chatbots, with only this  simplistic, mechanical view of language.
+But the real magic happened when we figured out how to compress/embed these
+higher dimensional spaces in to a lower dimensional space of fuzzy meaning or topic
+vectors. We peek behind the magician’s curtain in chapter 4 when we talk about latentsemantic indexing and latent Dirichlet a llocation, two techniques for creating much
+more dense and meaningful vector repres entations of statements and documents. 
+1.6 Word order and grammar
+The order of words matters. Those rules th at govern word order in a sequence of
+words (like a sentence) are called the gram mar of a language. That’s something that
+our bag of words or word vector discarde d in the earlier examples. Fortunately, in
+most short phrases and even many complete  sentences, this wo rd vector approxima-
+tion works OK. If you just want to encode  the general sense and sentiment of a short
+sentence, word order is not te rribly important. Take a look at all these orderings of
+our “Good morning Rosa” example:
+>>> from itertools import permutations
+>>> [" ".join(combo) for combo in\
+... permutations("Good morning Rosa!".split(), 3)]['Good morning Rosa!',
+'Good Rosa! morning',
+'morning Good Rosa!','morning Rosa! Good',
+'Rosa! Good morning',
+'Rosa! morning Good']
+Now if you tried to interpret each of these strings in isolation (without looking at the
+others), you’d probably conclude that they all probably had similar intent or mean-
+ing. You might even notice the capitalizati on of the word “Good” and place the word
+at the front of the phrase in your mind. Bu t you might also think that “Good Rosa” was
+some sort of proper noun, like the name of  a restaurant or flow er shop. Nonetheless,
+a smart chatbot or clever woman of the 1940 s in Bletchley Park would likely respond
+to any of these six permutations with th e same innocuous gree ting, “Good morning
+my dear General.”
+ 
+
+22 CHAPTER  1Packets of thought (NLP overview)
+ Let’s try that (in our heads) on a much  longer, more complex phrase, a logical
+statement where the order of the words matters a lot:
+>>> s = """Find textbooks with titles containing 'NLP',
+... or 'natural' and 'language', or... 'computational' and 'linguistics'.""">>> len(set(s.split()))12>>> import numpy as np>>> np.arange(1, 12 + 1).prod() # factorial(12) = arange(1, 13).prod()479001600
+The number of permutations exploded from factorial(3) == 6  in our simple greet-
+ing to factorial(12) == 479001600  in our longer statement! And it’s clear that the
+logic contained in the order of the words is important to any machine that would liketo reply with the correct response. Even th ough common greetings aren’t usually gar-
+bled by bag-of-words processing, more co mplex statements can lose most of their
+meaning when thrown into a bag. A bag of words isn’t the best way to begin process-
+ing a database query, like the natural language query in the preceding example.
+ Whether a statement is written in a form al programming language like SQL, or in
+an informal natural language like English, word order and grammar are importantwhen a statement intends to convey logica l relationships between things. That’s why
+computer languages depend on rigid grammar and syntax rule parsers. Fortunately,
+recent advances in natural language syntax  tree parsers have made possible the extrac-
+tion of syntactical and logical relationsh ips from natural language with remarkable
+accuracy (greater than 90%).
+18 In later chapters, we show you how to use packages
+like SyntaxNet  (Parsey McParseface) and SpaCy  to identify these relationships.
+ And just as in the Bletchley Park exampl e greeting, even if a statement doesn’t rely
+on word order for logical interpretation, sometimes paying attention to that word
+order can reveal subtle hints of meaning th at might facilitate deep er responses. These
+deeper layers of natural language processi ng are discussed in the next section. And
+chapter 2 shows you a trick for incorporat ing some of the information conveyed by
+word order into our word-vector representati on. It also shows you how to refine the
+crude tokenizer used in the previous examples ( str.split() ) to more accurately bin
+words into more appropriate slots within the word vector , so that strings like “good”
+and “Good” are assigned the same bin, and separate bins can be allocated for tokens
+like “rosa” and “Rosa” but not “Rosa!”. 
+1.7 A chatbot natural language pipeline
+The NLP pipeline required to build a dialog engine, or chatbot, is similar to the pipe-
+line required to build a question  answering system described in Taming Text  (Manning,
+2013).19 However, some of the al gorithms listed within the five subsystem blocks may
+18A comparison of the syntax parsing accuracy of SpaC y (93%), SyntaxNet (94%), Stanford’s CoreNLP (90%),
+and others is available at https:/ /spacy.io/docs/api/ .
+19Ingersol, Morton, and Farris, http:/ /www.manning.com/books/taming-text .
+ 
+
+23 A chatbot natural language pipeline
+be new to you. We help you implement th ese in Python to accomplish various NLP
+tasks essential for most appl ications, including chatbots.
+ A chatbot requires four kind s of processing as well as a database to maintain a mem-
+ory of past statements and responses. Each of the four processing stages can contain
+one or more processing algori thms working in parallel or in series (see figure 1.3):
+1Parse —Extract features, structured numerical data, from natural language text.
+2Analyze —Generate and combine features by scoring text for sentiment, gram-
+maticality, and semantics.
+3Generate —Compose possible responses using templates, search, or language
+models.
+4Execute —Plan statements based on conversa tion history and objectives, and
+select the next response.
+Each of these four stages can be implemente d using one or more of the algorithms listed
+within the corresponding boxes in the block diagram. We show you how to use Pythonto accomplish near state-of-the-art performanc e for each of these processing steps. And
+we show you several alternative approaches  to implementing these five subsystems.
+Figure 1.3 Chatbot recirculating (recurrent) pipelineDatabase
+Statements
+responses
+scroes
+user profilesScored
+statementsScored
+statementScored
+responsesResponse
+string
+Possible
+responses3. Generate
+Search
+templates
+FSM
+MCMC
+LSTM4. Execute
+Generalize & classify
+update models
+update objective
+update dialog plan
+select response
+2. Analyze
+Check spelling
+check grammar
+analyze sentiment
+analyze humanness
+analyze style
+LSTM1. Parse
+Tokenizers
+regular expressions
+tag
+NER
+extract information
+reduce dimensionsStructured
+data
+(feature
+vector)Text
+Response
+feature
+vector
+ 
+
+24 CHAPTER  1Packets of thought (NLP overview)
+Most chatbots will contain elements of all fi ve of these subsystems (the four processing
+stages as well as the database). But many ap plications require only  simple algorithms for
+many of these steps. Some chatbots are better at answering factual questions, and oth-
+ers are better at generating lengthy, comple x, convincingly human responses. Each of
+these capabilities require different approa ches; we show you techniques for both.
+ In addition, deep learning and data-d riven programming (machine learning, or
+probabilistic language modeling) have rapidl y diversified the possible applications for
+NLP and chatbots. This data-driven approach allows ever greater sophistication for an
+NLP pipeline by providing it with greater and greater amounts of data in the domain
+you want to apply it to. And when a new ma chine learning approach is discovered that
+makes even better use of this data, with mo re efficient model generalization or regu-
+larization, then large jumps in capability are possible.
+ The NLP pipeline for a chatbot shown in fi gure 1.3 contains all the building blocks
+for most of the NLP applications that we de scribed at the start of this chapter. As in
+Taming Text , we break out our pipeline into four main subsystems or stages. In addi-
+tion, we’ve explicitly called out a database to record data required for each of these
+stages and persist their configuration and training sets over time. This can enable
+batch or online retraining of each of the st ages as the chatbot interacts with the world.
+We’ve also shown a “feedback loop” on ou r generated text resp onses so that our
+responses can be processed using the same algorithms used to pr ocess the user state-
+ments. The response “scores” or features can then be comb ined in an objective func-
+tion to evaluate and select the best po ssible response, depending on the chatbot’s
+plan or goals for the dialog. This book is focused on conf iguring this NLP pipeline for
+a chatbot, but you may also be able to see the analogy to the NLP problem of text
+retrieval or “search,” perhaps the most common NLP applicatio n. And our chatbot
+pipeline is certainly approp riate for the question answer ing application that was the
+focus of Taming Text .
+ The application of this pipeline to fina ncial forecasting or business analytics may
+not be so obvious. But imagine the features  generated by the analysis portion of your
+pipeline. These features of your analysis or feature generation can be optimized for
+your particular finance or business prediction. That way they can help you incorpo-
+rate natural language data into a machine learning pipeline for forecasting. Despite
+focusing on building a chatbot, this book  gives you the tools you need for a broad
+range of NLP applications, from search to financial forecasting.
+ One processing element in figure 1.3 that  isn’t typically employed in search, fore-
+casting, or question answerin g systems is natural language generation . For chatbots this
+is their central feature. Nonetheless, the text generation step is often incorporated
+into a search engine NLP application and ca n give such an engine a large competitive
+advantage. The ability to cons olidate or summarize search results is a winning feature
+for many popular search engines (DuckDuckGo, Bing, and Google). And you canimagine how valuable it is for a financial forecasting engine to be able to generate
+statements, tweets, or entire articles based on the business- actionable events it detects
+in natural language streams from so cial media networks and news feeds.
+ 
+
+25 Processing in depth
+ The next section shows how the layers of such a system can be combined to create
+greater sophistication and capability at each stage of the NLP pipeline. 
+1.8 Processing in depth
+The stages of a natural language processing pipeline can be thought of as layers, like
+the layers in a feed-forward neural network.  Deep learning is al l about creating more
+complex models and behavior by adding additional processing layers to the conven-
+tional two-layer machine learning model ar chitecture of feature extraction followed
+by modeling. In chapter 5, we explain how neural networks help spread the learning
+across layers by backpropagat ing model errors from the output layers back to the
+input layers. But here we talk about the to p layers and what can be done by training
+each layer independentl y of the other layers.
+ The top four layers in figure 1.4 correspond to the first two stages in the chatbot
+pipeline (feature extraction and feature an alysis) in the previous section. For exam-
+ple, the part-of-speech tagging (POS tagging) is one way to generate features withinthe Analyze stage of our chatbot pipeline. PO S tags are generated automatically by the
+default 
+SpaCY  pipeline, which includes all the top fo ur layers in this diagram. POS tag-
+ging is typically accomplished with a fini te state transducer like the methods in the
+nltk.tag  package.
+Figure 1.4 Example layers for an NLP pipeline
+Regular
+expression
+POS
+tagger(FST)
+Information
+extractor(FST)
+Logic
+compiler(FST)Data structure Algorithm Example
+.82
+.87
+.74Applications
+Cryptography, compression,
+spelling correction, predictivetext, search, dialog (chatbot)
+Search, stylistics, spam filter,
+sentiment analysis, word2vec math,semantic search, dialog (chatbot)
+Spelling and grammar correction,
+stylistics, dialog (chatbot)
+Question answering, stylistics, complex 
+dialog, grammar correction, writing coach
+Knowledge extraction and
+inference, medical diagnosis,question answering, game playing
+Theorem proving, inference,
+natural language databasequeries, artificial generalintelligence (AGI)morning daypart
+ofgood morning
+Person
+female
+EnglishRosa name
+ofEntity relationshipsSyntax treeTagged tokensTokensCharacters
+Knowledge base
+ 
+
+26 CHAPTER  1Packets of thought (NLP overview)
+The bottom two layers (Entity relationships and a Knowledge base) are used to popu-
+late a database containing information (k nowledge) about a particular domain. And
+the information extracted from a particular  statement or document using all six of
+these layers can then be used in combinatio n with that database to make inferences.
+Inferences  are logical extrapol ations from a set of conditio ns detected in the environ-
+ment, like the logic contained in the statemen t of a chatbot user. This kind of “infer-
+ence engine” in the deeper layers of this di agram is considered the domain of artificial
+intelligence, where machines can make inferences about their world and use those
+inferences to make logical de cisions. However, chatbots ca n make reasonable decisions
+without this knowledge database, using only the algorithms of the upper few layers. And
+these decisions can combine to produc e surprisingly human-like behaviors.
+ Over the next few chapters, we dive down through the top few layers of NLP. The
+top three layers are all that’s  required to perform meaningful sentiment analysis and
+semantic search, and to build human-mimicking chatbots. In fact, it’s possible to build
+a useful and interestin g chatbot using only a single layer of processing, using the text
+(character sequences) directly as the feat ures for a language model. A chatbot that
+only does string matching and search is ca pable of participating in a reasonably con-
+vincing conversation, if given enough  example statements and responses.
+ For example, the open source project ChatterBot  simplifies this pipeline by
+merely computing the string “edit distance ” (Levenshtein distance) between an input
+statement and the statements recorded in it s database. If its database of statement-
+response pairs contains a ma tching statement, the corresponding reply (from a previ-
+ously “learned” human or machine dialog) can be reused as the reply to the latest user
+statement. For this pipeline, all that is re quired is step 3 (Generate) of our chatbot
+pipeline. And within this stage, only a brut e force search algorith m is required to find
+the best response. With this simple techni que (no tokenization or feature generation
+required), ChatterBot  can maintain a convincing conversion as the dialog engine for
+Salvius, a mechanical robot built fr om salvaged parts by Gunther Cox.20
+ Will  is an open source Python chatbot fr amework by Steven Skoczen with a com-
+pletely different approach.21 Will  can only be trained to respond to statements by pro-
+gramming it with regular ex pressions. This is the labor-intensive and data-light
+approach to NLP. This grammar-based appr oach is especially effective for question
+answering systems and task-execution assist ant bots, like Lex, Siri, and Google Now.
+These kinds of systems overco me the “brittleness” of regu lar expressions by employing
+“fuzzy regular expressions”22 and other techniques for finding approximate grammar
+matches. Fuzzy regular expre ssions find the closest grammar matches among a list of
+20ChatterBot by Gunthe r Cox and others at https:/ /github.com/g unthercox/ChatterBot .
+21See the GitHub page for “Will,” a chatbot for HipC hat by Steven Skoczen and the HipChat community
+(https:/ /github.com/skoczen/will ). In 2018 it was updated to integrate with Slack.
+22The Python regex  package is backward compatible with re and adds fuzziness among other features. It will
+replace the re package in the future ( https:/ /pypi.python.org/pypi/regex ). Similarly TRE agrep , or “approx-
+imate grep,” ( https:/ /github.com/laurikari/tre ) is an alternative to the UNIX command-line application
+grep .
+ 
+
+27 Natural language IQ
+possible grammar rules (regul ar expressions) instead of  exact matches by ignoring
+some maximum number of insertion, dele tion, and substitution errors. However,
+expanding the breadth and complexity of behaviors for a grammar-based chatbot
+requires a lot of human development work . Even the most advanced grammar-based
+chatbots, built and maintained by some of  the largest corporations on the planet
+(Google, Amazon, Apple, Microsoft), remain  in the middle of the pack for depth and
+breadth of chatbot IQ.
+ A lot of powerful things can be done with shallow NLP . And little, if any , human
+supervision (labeling or curating of text) is required. Often a machine can be left to
+learn perpetually from its environment (the stream of words it can pull from T witter
+or some other source).23 We show you how to do this in chapter 6. 
+1.9 Natural language IQ
+Like human brainpower, the po wer of an NLP pipeline cannot be easily gauged with a
+single IQ score without co nsidering multiple “smarts”  dimensions. A common way to
+measure the capability of a robotic system is along the dimensions of complexity of
+behavior and degree of human supervision required. But for a natural language pro-
+cessing pipeline, the goal is to build system s that fully automate the processing of nat-
+ural language, eliminating all human supe rvision (once the model is trained and
+deployed). So a better pair of IQ dimensions should capture the breadth and depth of
+the complexity of the natural language pipeline.
+ A consumer product chatbot or virtual assist ant like Alexa or Allo is usually designed
+to have extremely broad knowledge and capabilities. However, the logic used to
+respond to requests tends to be shallow, ofte n consisting of a set of trigger phrases that
+all produce the same response  with a single if-then decision branch. Alexa (and the
+underlying Lex engine) behave like a single la yer, flat tree of (if, elif, elif, …) state-
+ments.24 Google Dialogflow (which was develope d independently of Google’s Allo and
+Google Assistant) has similar capability to Amazon Lex, Contact Flow, and Lambda, but
+without the drag-and-drop user interface for designing your dialog tree.
+ On the other hand, the Google Translat e pipeline (or any similar machine transla-
+tion system) relies on a deep tree of feat ure extractors, decision trees, and knowledge
+graphs connecting bits of knowledge about the world. Sometimes these feature extrac-
+tors, decision trees, and knowledge graphs ar e explicitly programmed into the system,
+as in figure 1.4. Another approach rapidl y overtaking this “hand-coded” pipeline is
+the deep learning data-driven approach. Fe ature extractors for deep neural networks
+are learned rather than hard -coded, but they often require much more training data
+to achieve the same performance as  intentionally de signed algorithms.
+23Simple neural networks are often used for unsupe rvised feature extraction from character and word
+sequences.
+24More complicated logic and behaviors are now possible when you incorporate Lambdas into an AWS ContactFlow dialog tree. See “Creating Call Center Bot with AWS Connect” ( https:/ /greenice.net/creating-call-
+center-bot-aws-connect-amazon-lex-can-speak-understand ).
+ 
+
+28 CHAPTER  1Packets of thought (NLP overview)
+    You’ll use both approaches
+(neural networks and hand-coded
+algorithms) as you incrementally
+build an NLP pipeline for a chat-bot capable of conversing within a
+focused knowledge domain. This
+will give you the skills you need toaccomplish the natural language
+processing tasks within your indus-
+try or business domain. Along theway you’ll probably get ideas
+about how to expand the breadth
+of things this NLP pipeline cando. Figure 1.5 puts the chatbot in
+its place among the natural lan-
+guage processing systems that are
+already out there. Imagine th e chatbots you have interacted with. Where do you think
+they might fit on a plot like this? Have you attempted to gauge their intelligence by
+probing them with diffic ult questions or something like an IQ test?
+25 You’ll get a
+chance to do exactly that in later chapters , to help you decide how your chatbot stacks
+up against some of the others in this diagram.
+ As you progress through this book, you’ll be building the elements of a chatbot.
+Chatbots require all the tools of NLP to work well:
+Feature extraction (usually to  produce a vector space model)
+Information extraction to be able to answer factual questions
+Semantic search to learn from previous ly recorded natural language text or
+dialog
+Natural language generation to compose new, meaningful statements
+Machine learning gives us a way to trick machin es into behaving as if we’d spent a life-
+time programming them with hundreds of  complex regular ex pressions or algo-
+rithms. We can teach a machine to respond to  patterns similar to the patterns defined
+in regular expressions by merely providing it examples of user statements and the
+responses we want the chatbot to mimic. And the “models” of language, the FSMs,
+produced by machine learning are much be tter. They are less picky about mispelings
+and typoz.
+ And machine learning NLP pipelines are easier to “program.” We don’t have to
+anticipate every possible use of symbols in  our language. We just have to feed the
+training pipeline with examples of the phrases that match and example phrases that
+25A good question suggested by Byron Reese is: “What’s larger? The sun or a nickel?” ( https:/ /gigaom.com/
+2017/11/20/voices-in-ai-episode-20-a- conversation-with-marie-des-jardins ). Here are a couple more ( https:/ /
+github.com/totalgood/nlpia/blob/ma ster/src/nlpia/data/iq_test.csv ) to get you started.DepthRecruiting &
+match-making
+Finance
+predictionLegal
+advice
+Sports
+reporting
+ChatterBot
+BreadthY ou are
+here(NLPIA)Siri
+Lex
+WillIQ
+(Complexity)
+Figure 1.5 2D IQ of some natural language processing 
+systems
+ 
+
+29 Summary
+don’t match. As long we label them during  training, so that the chatbot knows which
+is which, it will learn to discriminate  between them. And there are even machine
+learning approaches that requir e little if any “labeled” data.
+ We’ve given you some exciting reasons to  learn about natural language processing.
+You want to help save the world, don’t you?  And we’ve attempted to pique your interest
+with some practical NLP app lications that are revolutionizing the way we communicate,
+learn, do business, and even think. It won’t be long before you’re able to build a system
+that approaches human-like conversational behavior. And you should be able to see in
+upcoming chapters how to train a chatbot or  NLP pipeline with any domain knowledge
+that interests you—from finance and sports to  psychology and literature. If you can find
+a corpus of writing about it, then you can train a machine to understand it.
+ The rest of this book is about using ma chine learning to save us from having to
+anticipate all the ways people can say things in natural language. Each chapter incre-mentally improves on the basic NLP pipeline  for the chatbot introd uced in this chap-
+ter. As you learn the tools of natural lang uage processing, you’ll be building an NLP
+pipeline that can not only carry on a conver sation but help you accomplish your goals
+in business and in life. 
+Summary
+Good NLP may help  save the world.
+The meaning and intent of words can be deciphered by machines.
+A smart NLP pipeline will be able to deal with ambiguity.
+We can teach machines common sense kn owledge without sp ending a lifetime
+training them.
+Chatbots can be thought of as semantic search engines.
+Regular expressions are useful for more than just search.
+ 
+

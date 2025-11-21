@@ -1,0 +1,1220 @@
+Chapter 9 4243
+Formal language theory 4244
+We have now seen methods for learning to label individual words, vectors of word counts, 4245
+and sequences of words; we will soon proceed to more complex structural transforma- 4246
+tions. Most of these techniques could apply to counts or sequences from any discrete vo- 4247
+cabulary; there is nothing fundamentally linguistic about, say, a hidden Markov model. 4248
+This raises a basic question that this text has not yet considered: what is a language? 4249
+This chapter will take the perspective of formal language theory , in which a language 4250
+is deﬁned as a set of strings , each of which is a sequence of elements from a ﬁnite alphabet. 4251
+For interesting languages, there are an inﬁnite number of strings that are in the language, 4252
+and an inﬁnite number of strings that are not. For example: 4253
+•the set of all even-length sequences from the alphabet {a,b}, e.g.,{∅,aa,ab,ba,bb,aaaa,aaab,... }; 4254
+•the set of all sequences from the alphabet {a,b}that contain aaaas a substring, e.g., 4255
+{aaa,aaaa,baaa,aaab,... }; 4256
+•the set of all sequences of English words (drawn from a ﬁnite dictionary) that con- 4257
+tain at least one verb (a ﬁnite subset of the dictionary); 4258
+•thepython programming language. 4259
+Formal language theory deﬁnes classes of languages and their computational prop- 4260
+erties. Of particular interest is the computational complexity of solving the membership 4261
+problem — determining whether a string is in a language. The chapter will focus on 4262
+three classes of formal languages: regular, context-free, and “mildly” context-sensitive 4263
+languages. 4264
+A key insight of 20th century linguistics is that formal language theory can be usefully 4265
+applied to natural languages such as English, by designing formal languages that cap- 4266
+ture as many properties of the natural language as possible. For many such formalisms, a 4267
+useful linguistic analysis comes as a byproduct of solving the membership problem. The 4268
+199
+
+200 CHAPTER 9. FORMAL LANGUAGE THEORY
+membership problem can be generalized to the problems of scoring strings for their ac- 4269
+ceptability (as in language modeling), and of transducing one string into another (as in 4270
+translation). 4271
+9.1 Regular languages 4272
+Sooner or later, most computer scientists will write a regular expression . If you have, 4273
+then you have deﬁned a regular language , which is any language that can be deﬁned by 4274
+a regular expression. Formally, a regular expression can include the following elements: 4275
+•Aliteral character drawn from some ﬁnite alphabet Σ. 4276
+•The empty string ϵ. 4277
+•The concatenation of two regular expressions RS, whereRandSare both regular 4278
+expressions. The resulting expression accepts any string that can be decomposed 4279
+x=yz, whereyis accepted by Randzis accepted by S. 4280
+•The alternation R|S, whereRandSare both regular expressions. The resulting 4281
+expression accepts a string xif it is accepted by Ror it is accepted by S. 4282
+•The Kleene star R∗, which accepts any string xthat can be decomposed into a se- 4283
+quence of strings which are all accepted by R. 4284
+•Parenthesization (R), which is used to limit the scope of the concatenation, alterna- 4285
+tion, and Kleene star operators. 4286
+Here are some example regular expressions: 4287
+•The set of all even length strings on the alphabet {a,b}:((aa)|(ab)|(ba)|(bb))∗4288
+•The set of all sequences of the alphabet {a,b}that contain aaaas a substring: (a|b)∗aaa(a|b)∗4289
+•The set of all sequences of English words that contain at least one verb: W∗VW∗, 4290
+whereWis an alternation between all words in the dictionary, and Vis an alterna- 4291
+tion between all verbs ( V⊆W). 4292
+This list does not include a regular expression for the Python programming language, 4293
+because this language is not regular — there is no regular expression that can capture its 4294
+syntax. We will discuss why towards the end of this section. 4295
+Regular languages are closed under union, intersection, and concatenation. This means, 4296
+for example, that if two languages L1andL2are regular, then so are the languages L1∪L2, 4297
+L1∩L2, and the language of strings that can be decomposed as s=tu, withs∈L1and 4298
+t∈L2. Regular languages are also closed under negation: if Lis regular, then so is the 4299
+languageL={s /∈L}. 4300
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.1. REGULAR LANGUAGES 201
+q0 start q1a
+bb
+Figure 9.1: State diagram for the ﬁnite state acceptor M1.
+9.1.1 Finite state acceptors 4301
+A regular expression deﬁnes a regular language, but does not give an algorithm for de- 4302
+termining whether a string is in the language that it deﬁnes. Finite state automata are 4303
+theoretical models of computation on regular languages, which involve transitions be- 4304
+tween a ﬁnite number of states. The most basic type of ﬁnite state automaton is the ﬁnite 4305
+state acceptor (FSA) , which describes the computation involved in testing if a string is 4306
+a member of a language. Formally, a ﬁnite state acceptor is a tuple M= (Q,Σ,q0,F,δ), 4307
+consisting of: 4308
+•a ﬁnite alphabet Σof input symbols; 4309
+•a ﬁnite set of states Q={q0,q1,...,qn}; 4310
+•a start state q0∈Q; 4311
+•a set of ﬁnal states F⊆Q; 4312
+•a transition function δ:Q×(Σ∪{ϵ})→2Q. The transition function maps from a 4313
+state and an input symbol (or empty string ϵ) to a setof possible resulting states. 4314
+Apath inMis a sequence of transitions, π=t1,t2,...,tN, where each titraverses an 4315
+arc in the transition function δ. The ﬁnite state acceptor Maccepts a string ωif there is 4316
+aaccepting path , in which the initial transition t1begins at the start state q0, the ﬁnal 4317
+transitiontNterminates in a ﬁnal state in Q, and the entire input ωis consumed. 4318
+9.1.1.1 Example 4319
+Consider the following FSA, M1.
+Σ ={a,b} [9.1]
+Q={q0,q1} [9.2]
+F={q1} [9.3]
+δ={(q0,a)→q0,(q0,b)→q1,(q1,b)→q1}. [9.4]
+This FSA deﬁnes a language over an alphabet of two symbols, aand b. The transition 4320
+functionδis written as a set of arcs: (q0,a)→q0says that if the machine is in state 4321
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+202 CHAPTER 9. FORMAL LANGUAGE THEORY
+q0and reads symbol a, it stays in q0. Figure 9.1 provides a graphical representation of 4322
+M1. Because each pair of initial state and symbol has at most one resulting state, M1is 4323
+deterministic : each string ωinduces at most one accepting path. Note that there are no 4324
+transitions for the symbol ain stateq1; ifais encountered in q1, then the acceptor is stuck, 4325
+and the input string is rejected. 4326
+What strings does M1accept? The start state is q0, and we have to get to q1, since this 4327
+is the only ﬁnal state. Any number of asymbols can be consumed in q0, but absymbol is 4328
+required to transition to q1. Once there, any number of bsymbols can be consumed, but 4329
+anasymbol cannot. So the regular expression corresponding to the language deﬁned by 4330
+M1isa∗bb∗. 4331
+9.1.1.2 Computational properties of ﬁnite state acceptors 4332
+The key computational question for ﬁnite state acceptors is: how fast can we determine 4333
+whether a string is accepted? For determistic FSAs, this computation can be performed 4334
+by Dijkstra’s algorithm, with time complexity O(VlogV+E), whereVis the number of 4335
+vertices in the FSA, and Eis the number of edges (Cormen et al., 2009). Non-deterministic 4336
+FSAs (NFSAs) can include multiple transitions from a given symbol and state. Any NSFA 4337
+can be converted into a deterministic FSA, but the resulting automaton may have a num- 4338
+ber of states that is exponential in the number of size of the original NFSA (Mohri et al., 4339
+2002). 4340
+9.1.2 Morphology as a regular language 4341
+Many words have internal structure, such as preﬁxes and sufﬁxes that shape their mean- 4342
+ing. The study of word-internal structure is the domain of morphology , of which there 4343
+are two main types: 4344
+•Derivational morphology describes the use of afﬁxes to convert a word from one 4345
+grammatical category to another (e.g., from the noun grace to the adjective graceful ), 4346
+or to change the meaning of the word (e.g., from grace todisgrace ). 4347
+•Inﬂectional morphology describes the addition of details such as gender, number, 4348
+person, and tense (e.g., the -edsufﬁx for past tense in English). 4349
+Morphology is a rich topic in linguistics, deserving of a course in its own right.1The 4350
+focus here will be on the use of ﬁnite state automata for morphological analysis. The 4351
+1A good starting point would be a chapter from a linguistics textbook (e.g., Akmajian et al., 2010; Bender,
+2013). A key simpliﬁcation in this chapter is the focus on afﬁxes at the sole method of derivation and inﬂec-
+tion. English makes use of afﬁxes, but also incorporates apophony , such as the inﬂection of foottofeet. Semitic
+languages like Arabic and Hebrew feature a template-based system of morphology, in which roots are triples
+of consonants (e.g., ktb), and words are created by adding vowels: kataba(Arabic: he wrote), kutub(books),
+maktab(desk). For more detail on morphology, see texts from Haspelmath and Sims (2013) and Lieber (2015).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.1. REGULAR LANGUAGES 203
+current section deals with derivational morphology; inﬂectional morphology is discussed 4352
+in§9.1.4.3. 4353
+Suppose that we want to write a program that accepts only those words that are con- 4354
+structed in accordance with the rules of English derivational morphology: 4355
+(9.1) grace, graceful, gracefully, *gracelyful 4356
+(9.2) disgrace, *ungrace, disgraceful, disgracefully 4357
+(9.3) allure, *allureful, alluring, alluringly 4358
+(9.4) fairness, unfair, *disfair, fairly 4359
+(Recall that the asterisk indicates that a linguistic example is judged unacceptable by ﬂu- 4360
+ent speakers of a language.) These examples cover only a tiny corner of English deriva- 4361
+tional morphology, but a number of things stand out. The sufﬁx -fulconverts the nouns 4362
+grace and disgrace into adjectives, and the sufﬁx -lyconverts adjectives into adverbs. These 4363
+sufﬁxes must be applied in the correct order, as shown by the unacceptability of *grace- 4364
+lyful . The -fulsufﬁx works for only some words, as shown by the use of alluring as the 4365
+adjectival form of allure . Other changes are made with preﬁxes, such as the derivation 4366
+ofdisgrace from grace , which roughly corresponds to a negation; however, fairis negated 4367
+with the un-preﬁx instead. Finally, while the ﬁrst three examples suggest that the direc- 4368
+tion of derivation is noun →adjective→adverb, the example of fairsuggests that the 4369
+adjective can also be the base form, with the -ness sufﬁx performing the conversion to a 4370
+noun. 4371
+Can we build a computer program that accepts only well-formed English words, and 4372
+rejects all others? This might at ﬁrst seem trivial to solve with a brute-force attack: simply 4373
+make a dictionary of all valid English words. But such an approach fails to account for 4374
+morphological productivity — the applicability of existing morphological rules to new 4375
+words and names, such as Trump toTrumpy and Trumpkin , and Clinton toClintonian and 4376
+Clintonite . We need an approach that represents morphological rules explicitly, and for 4377
+this we will try a ﬁnite state acceptor. 4378
+The dictionary approach can be implemented as a ﬁnite state acceptor, with the vo- 4379
+cabulary Σequal to the vocabulary of English, and a transition from the start state to the 4380
+accepting state for each word. But this would of course fail to generalize beyond the origi- 4381
+nal vocabulary, and would not capture anything about the morphotactic rules that govern 4382
+derivations from new words. The ﬁrst step towards a more general approach is shown in 4383
+Figure 9.2, which is the state diagram for a ﬁnite state acceptor in which the vocabulary 4384
+consists of morphemes , which include stems (e.g., grace, allure ) and afﬁxes (e.g., dis-, -ing, 4385
+-ly). This ﬁnite state acceptor consists of a set of paths leading away from the start state, 4386
+with derivational afﬁxes added along the path. Except for qneg, the states on these paths 4387
+are all ﬁnal, so the FSA will accept disgrace ,disgraceful , and disgracefully , but not dis-. 4388
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+204 CHAPTER 9. FORMAL LANGUAGE THEORY
+q0 startqN1 qJ1 qA1
+grace-ful -ly
+qneg qN2 qJ2 qA2dis-grace -ful -ly
+qN3 qJ3 qA3allure-ing -ly
+qJ4 qN4 qA4fair
+-ness
+-ly
+Figure 9.2: A ﬁnite state acceptor for a fragment of English derivational morphology. Each
+path represents possible derivations from a single root form.
+This FSA can be minimized to the form shown in Figure 9.3, which makes the gen- 4389
+erality of the ﬁnite state approach more apparent. For example, the transition from q0to 4390
+qJ2can be made to accept not only fairbut any single-morpheme ( monomorphemic ) ad- 4391
+jective that takes -ness and -lyas sufﬁxes. In this way, the ﬁnite state acceptor can easily 4392
+be extended: as new word stems are added to the vocabulary, their derived forms will be 4393
+accepted automatically. Of course, this FSA would still need to be extended considerably 4394
+to cover even this small fragment of English morphology. As shown by cases like music 4395
+→musical ,athlete→athletic , English includes several classes of nouns, each with its own 4396
+rules for derivation. 4397
+The FSAs shown in Figure 9.2 and 9.3 accept allureing , not alluring . This reﬂects a dis- 4398
+tinction between morphology — the question of which morphemes to use, and in what 4399
+order — and orthography — the question of how the morphemes are rendered in written 4400
+language. Just as orthography requires dropping the epreceding the -ing sufﬁx, phonol- 4401
+ogy imposes a related set of constraints on how words are rendered in speech. As we will 4402
+see soon, these issues are handled through ﬁnite state transducers , which are ﬁnite state 4403
+automata that take inputs and produce outputs. 4404
+9.1.3 Weighted ﬁnite state acceptors 4405
+According to the FSA treatment of morphology, every word is either in or out of the lan- 4406
+guage, with no wiggle room. Perhaps you agree that musicky and ﬁshful are not valid 4407
+English words; but if forced to choose, you probably ﬁnd a ﬁshful stew ora musicky trib- 4408
+utepreferable to behaving disgracelyful . Rather than asking whether a word is acceptable, 4409
+we might like to ask how acceptable it is. Aronoff (1976, page 36) puts it another way: 4410
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.1. REGULAR LANGUAGES 205
+q0 startqneg qN1 qJ1 qA1
+dis-grace -ful -ly
+grace
+qN2allure-ing
+qJ2 qN3fair
+-ness-ly
+Figure 9.3: Minimization of the ﬁnite state acceptor shown in Figure 9.2.
+“Though many things are possible in morphology, some are more possible than others.” 4411
+But ﬁnite state acceptors give no way to express preferences among technically valid 4412
+choices. 4413
+Weighted ﬁnite state acceptors (WFSAs) are generalizations of FSAs, in which each 4414
+accepting path is assigned a score, computed from the transitions, the initial state, and the 4415
+ﬁnal state. Formally, a weighted ﬁnite state acceptor M= (Q,Σ,λ,ρ,δ )consists of: 4416
+•a ﬁnite set of states Q={q0,q1,...,qn}; 4417
+•a ﬁnite alphabet Σof input symbols; 4418
+•an initial weight function, λ:Q↦→R; 4419
+•a ﬁnal weight function ρ:Q↦→R; 4420
+•a transition function δ:Q×Σ×Q↦→R. 4421
+WFSAs depart from the FSA formalism in three ways: every state can be an initial 4422
+state, with score λ(q); every state can be an accepting state, with score ρ(q); transitions are 4423
+possible between any pair of states on any input, with a score δ(qi,ω,qj). Nonetheless, 4424
+FSAs can be viewed as a special case: for any FSA Mwe can build an equivalent WFSA 4425
+by settingλ(q) =∞for allq̸=q0,ρ(q) =∞for allq /∈F, andδ(qi,ω,qj) =∞for all 4426
+transitions{(q1,ω)→q2}that are not permitted by the transition function of M. 4427
+The total score for any path π=t1,t2,...,tNis equal to the sum of these scores, 4428
+d(π) =λ(from-state (t1)) +N∑
+nδ(tn) +ρ(to-state (tN)). [9.5]
+Ashortest-path algorithm is used to ﬁnd the minimum-cost path through a WFSA for 4429
+stringω, with time complexity O(E+VlogV), whereEis the number of edges and Vis 4430
+the number of vertices (Cormen et al., 2009).24431
+2Shortest-path algorithms ﬁnd the path with the minimum cost. In many cases, the path weights are log
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+206 CHAPTER 9. FORMAL LANGUAGE THEORY
+9.1.3.1 N-gram language models as WFSAs 4432
+Inn-gram language models (see§6.1), the probability of a sequence of tokens w1,w2,...,wM 4433
+is modeled as, 4434
+p(w1,...,wM)≈M∏
+m=1pn(wm|wm−1,...,wm−n+1). [9.6]
+The log probability under an n-gram language model can be modeled in a WFSA. First
+consider a unigram language model. We need only a single state q0, with transition scores
+δ(q0,ω,q 0) = log p1(ω). The initial and ﬁnal scores can be set to zero. Then the path score
+forw1,w2,...,wMis equal to,
+0 +M∑
+mδ(q0,wm,q0) + 0 =M∑
+mlogp1(wm). [9.7]
+For ann-gram language model with n > 1, we need probabilities that condition on
+the past history. For example, in a bigram language model, the transition weights must
+represent logp2(wm|wm−1). The transition scoring function must somehow “remember”
+the previous word or words. This can be done by adding more states: to model the bigram
+probability p2(wm|wm−1), we need a state for every possible wm−1— a total of Vstates.
+The construction indexes each state qiby a context event wm−1=i. The weights are then
+assigned as follows:
+δ(qi,ω,qj) ={
+log Pr(wm=j|wm−1=i), ω =j
+−∞, ω ̸=j
+λ(qi) = log Pr(w1=i|w0=□)
+ρ(qi) = log Pr(wM+1=■|wM=i).
+The transition function is designed to ensure that the context is recorded accurately: 4435
+we can move to state jon inputωonly ifω=j; otherwise, transitioning to state jis 4436
+forbidden by the weight of −∞. The initial weight function λ(qi)is the log probability of 4437
+receivingias the ﬁrst token, and the ﬁnal weight function ρ(qi)is the log probability of 4438
+receiving an “end-of-string” token after observing wM=i. 4439
+9.1.3.2 *Semiring weighted ﬁnite state acceptors 4440
+Then-gram language model WFSA is deterministic: each input has exactly one accepting 4441
+path, for which the WFSA computes a score. In non-deterministic WFSAs, a given input 4442
+probabilities, so we want the path with the maximum score, which can be accomplished by making each local
+score into a negative log-probability. The remainder of this section will refer to best-path algorithms , which
+are assumed to “do the right thing.”
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.1. REGULAR LANGUAGES 207
+may have multiple accepting paths. In some applications, the score for the input is ag- 4443
+gregated across all such paths. Such aggregate scores can be computed by generalizing 4444
+WFSAs with semiring notation , ﬁrst introduced in §7.7.3. 4445
+Letd(π)represent the total score for path π=t1,t2,...,tN, which is computed as, 4446
+d(π) =λ(from-state (t1))⊗δ(t1)⊗δ(t2)⊗...⊗δ(tN)⊗ρ(to-state (tN)). [9.8]
+This is a generalization of Equation 9.5 to semiring notation, using the semiring multipli- 4447
+cation operator⊗in place of addition. 4448
+Now lets(ω)represent the total score for all paths Π(ω)that consume input ω, 4449
+s(ω) =⨁
+π∈Π(ω)d(π). [9.9]
+Here, semiring addition (⊕)is used to combine the scores of multiple paths. 4450
+The generalization to semirings covers a number of useful special cases. In the log- 4451
+probability semiring, multiplication is deﬁned as logp(x)⊗logp(y) = log p(x) + log p(y), 4452
+and addition is deﬁned as logp(x)⊕logp(y) = log( p(x) +p(y)). Thus,s(ω)represents 4453
+the log-probability of accepting input ω, marginalizing over all paths π∈Π(ω). In the 4454
+boolean semiring , the⊗operator is logical conjunction, and the ⊕operator is logical 4455
+disjunction. This reduces to the special case of unweighted ﬁnite state acceptors, where 4456
+the scores(ω)is a boolean indicating whether there exists any accepting path for ω. In 4457
+thetropical semiring , the⊕operator is a maximum, so the resulting score is the score of 4458
+the best-scoring path through the WFSA. The OpenFST toolkit uses semirings and poly- 4459
+morphism to implement general algorithms for weighted ﬁnite state automata (Allauzen 4460
+et al., 2007). 4461
+9.1.3.3 *Interpolated n-gram language models 4462
+Recall from§6.2.3 that an interpolated n-gram language model combines the probabili- 4463
+ties from multiple n-gram models. For example, an interpolated bigram language model 4464
+computes probability, 4465
+ˆp(wm|wm−1) =λ1p1(wm) +λ2p2(wm|wm−1), [9.10]
+with ˆp indicating the interpolated probability, p2indicating the bigram probability, and 4466
+p1indicating the unigram probability. We set λ2= (1−λ1)so that the probabilities sum 4467
+to one. 4468
+Interpolated bigram language models can be implemented using a non-deterministic 4469
+WFSA (Knight and May, 2009). The basic idea is shown in Figure 9.4. In an interpolated 4470
+bigram language model, there is one state for each element in the vocabulary — in this 4471
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+208 CHAPTER 9. FORMAL LANGUAGE THEORY
+qA qU start qB
+a: p1(a) b: p1(b)a:λ2p2(a|a)b:λ2p2(b|a)
+b:λ2p2(b|b)
+a:λ2p2(a|b)ϵ:λ1
+ϵ2:λ1
+Figure 9.4: WFSA implementing an interpolated bigram/unigram language model, on
+the alphabet Σ ={a,b}. For simplicity, the WFSA is contrained to force the ﬁrst token to
+be generated from the unigram model, and does not model the emission of the end-of-
+sequence token.
+case, the states qAandqB— which are capture the contextual conditioning in the bigram 4472
+probabilities. To model unigram probabilities, there is an additional state qU, which “for- 4473
+gets” the context. Transitions out of qUinvolve unigram probabilities, p1(a)and p2(b); 4474
+transitions into qUemit the empty symbol ϵ, and have probability λ1, reﬂecting the inter- 4475
+polation weight for the unigram model. The interpolation weight for the bigram model is 4476
+included in the weight of the transition qA→qB. 4477
+The epsilon transitions into qUmake this WFSA non-deterministic. Consider the score 4478
+for the sequence (a,b,b ). The initial state is qU, so the symbol ais generated with score 4479
+p1(a)3Next, we can generate bfrom the unigram model by taking the transition qA→qB, 4480
+with score λ2p2(b|a). Alternatively, we can take a transition back to qUwith score λ1, 4481
+and then emit bfrom the unigram model with score p1(b). To generate the ﬁnal btoken, 4482
+we face the same choice: emit it directly from the self-transition to qB, or transition to qU 4483
+ﬁrst. 4484
+The total score for the sequence (a,b,b )is the semiring sum over all accepting paths,
+s(a,b,b ) =(
+p1(a)⊗λ2p2(b|a)⊗λ2p(b|b))
+⊕(
+p1(a)⊗λ1⊗p1(b)⊗λ2p(b|b))
+⊕(
+p1(a)⊗λ2p2(b|a)⊗p1(b)⊗p1(b))
+⊕(
+p1(a)⊗λ1⊗p1(b)⊗p1(b)⊗p1(b))
+. [9.11]
+Each line in Equation 9.11 represents the probability of a speciﬁc path through the WFSA. 4485
+In the probability semiring, ⊗is multiplication, so that each path is the product of each 4486
+3We could model the sequence-initial bigram probability p2(a|□), but for simplicity the WFSA does not
+admit this possibility, which would require another state.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.1. REGULAR LANGUAGES 209
+transition weight, which are themselves probabilities. The ⊕operator is addition, so that 4487
+the total score is the sum of the scores (probabilities) for each path. This corresponds to 4488
+the probability under the interpolated bigram language model. 4489
+9.1.4 Finite state transducers 4490
+Finite state acceptors can determine whether a string is in a regular language, and weighted 4491
+ﬁnite state acceptors can compute a score for every string over a given alphabet. Finite 4492
+state transducers (FSTs) extend the formalism further, by adding an output symbol to each 4493
+transition. Formally, a ﬁnite state transducer is a tuple T= (Q,Σ,Ω,λ,ρ,δ ), with Ωrepre- 4494
+senting an output vocabulary and the transition function δ:Q×(Σ∪ϵ)×(Ω∪ϵ)×Q→R 4495
+mapping from states, input symbols, and output symbols to states. The remaining ele- 4496
+ments (Q,Σ,λ,ρ ) are identical to their deﬁnition in weighted ﬁnite state acceptors ( §9.1.3). 4497
+Thus, each path through the FST Ttransduces the input string into an output. 4498
+9.1.4.1 String edit distance 4499
+The edit distance between two strings sandtis a measure of how many operations are
+required to transform one string into another. There are several ways to compute edit
+distance, but one of the most popular is the Levenshtein edit distance , which counts the
+minimum number of insertions, deletions, and substitutions. This can be computed by
+a one-state weighted ﬁnite state transducer, in which the input and output alphabets are
+identical. For simplicity, consider the alphabet Σ = Ω ={a,b}. The edit distance can be
+computed by a one-state transducer with the following transitions,
+δ(q,a,a,q ) =δ(q,b,b,q ) = 0 [9.12]
+δ(q,a,b,q ) =δ(q,b,a,q ) = 1 [9.13]
+δ(q,a,ϵ,q ) =δ(q,b,ϵ,q ) = 1 [9.14]
+δ(q,ϵ,a,q ) =δ(q,ϵ,b,q ) = 1. [9.15]
+The state diagram is shown in Figure 9.5. 4500
+For a given string pair, there are multiple paths through the transducer: the best- 4501
+scoring path from dessert todesert involves a single deletion, for a total score of 1; the 4502
+worst-scoring path involves seven deletions and six additions, for a score of 13. 4503
+9.1.4.2 The Porter stemmer 4504
+The Porter (1980) stemming algorithm is a “lexicon-free” algorithm for stripping sufﬁxes
+from English words, using a sequence of character-level rules. Each rule can be described
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+210 CHAPTER 9. FORMAL LANGUAGE THEORY
+q starta/a,b/b : 0
+a/b,b/a : 1a/ϵ,b/ϵ : 1
+ϵ/a,ϵ/b : 1
+Figure 9.5: State diagram for the Levenshtein edit distance ﬁnite state transducer. The
+labelx/y:cindicates a cost of cfor a transition with input xand output y.
+by an unweighted ﬁnite state transducer. The ﬁrst rule is:
+-sses→-ss e.g., dresses→dress [9.16]
+-ies→-ie.g., parties→parti [9.17]
+-ss→-ss e.g., dress→dress [9.18]
+-s→ϵe.g., cats→cat [9.19]
+The ﬁnal two lines appear to conﬂict; they are meant to be interpreted as an instruction 4505
+to remove a terminal -sunless it is part of an -ssending. A state diagram to handle just 4506
+these ﬁnal two lines is shown in Figure 9.6. Make sure you understand how this ﬁnite 4507
+state transducer handles cats,steps ,bass, and basses . 4508
+9.1.4.3 Inﬂectional morphology 4509
+Ininﬂectional morphology , word lemmas are modiﬁed to add grammatical information 4510
+such as tense, number, and case. For example, many English nouns are pluralized by the 4511
+sufﬁx -s, and many verbs are converted to past tense by the sufﬁx -ed. English’s inﬂectional 4512
+morphology is considerably simpler than many of the world’s languages. For example, 4513
+Romance languages (derived from Latin) feature complex systems of verb sufﬁxes which 4514
+must agree with the person and number of the verb, as shown in Table 9.1. 4515
+The task of morphological analysis is to read a form like canto , and output an analysis 4516
+like CANTAR +VERB+PRESIND+1P+SING, where +P RESINDdescribes the tense as present 4517
+indicative, +1 Pindicates the ﬁrst-person, and +S ING indicates the singular number. The 4518
+task of morphological generation is the reverse, going from CANTAR +VERB+PRESIND+1P+SING 4519
+tocanto . Finite state transducers are an attractive solution, because they can solve both 4520
+problems with a single model (Beesley and Karttunen, 2003). As an example, Figure 9.7 4521
+shows a fragment of a ﬁnite state transducer for Spanish inﬂectional morphology. The 4522
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.1. REGULAR LANGUAGES 211
+q1 start q2¬s/¬s
+s/ϵ
+q3
+q4
+...a/s
+b/sϵ/a
+ϵ/b
+Figure 9.6: State diagram for ﬁnal two lines of step 1a of the Porter stemming diagram.
+Statesq3andq4“remember” the observations aandbrespectively; the ellipsis ...repre-
+sents additional states for each symbol in the input alphabet. The notation ¬s/¬sis not
+part of the FST formalism; it is a shorthand to indicate a set of self-transition arcs for every
+input/output symbol except s.
+inﬁnitive cantar (to sing) comer (to eat) vivir (to live)
+yo (1st singular) canto como vivo
+tu (2nd singular) cantas comes vives
+´el, ella, usted (3rd singular) canta come vive
+nosotros (1st plural) cantamos comemos vivimos
+vosotros (2nd plural, informal) cant ´ais com ´eis viv ´ıs
+ellos, ellas (3rd plural);
+ustedes (2nd plural)cantan comen viven
+Table 9.1: Spanish verb inﬂections for the present indicative tense. Each row represents
+a person and number, and each column is a regular example from a class of verbs, as
+indicated by the ending of the inﬁnitive form.
+input vocabulary Σcorresponds to the set of letters used in Spanish spelling, and the out- 4523
+put vocabulary Ωcorresponds to these same letters, plus the vocabulary of morphological 4524
+features (e.g., +S ING, +V ERB). In Figure 9.7, there are two paths that take canto as input, 4525
+corresponding to the verb and noun meanings; the choice between these paths could be 4526
+guided by a part-of-speech tagger. By inversion , the inputs and outputs for each tran- 4527
+sition are switched, resulting in a ﬁnite state generator, capable of producing the correct 4528
+surface form for any morphological analysis. 4529
+Finite state morphological analyzers and other unweighted transducers can be de- 4530
+signed by hand. The designer’s goal is to avoid overgeneration — accepting strings or 4531
+making transductions that are not valid in the language — as well as undergeneration — 4532
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+212 CHAPTER 9. FORMAL LANGUAGE THEORY
+startc/c a/a n/n t/to/oϵ/+Noun ϵ/+Masc ϵ/+Sing
+ϵ/a ϵ/r ϵ/+Verb o/+PresInd ϵ/+1p ϵ/+Sing
+a/+PresInd
+ϵ/+3p ϵ/+Sing
+Figure 9.7: Fragment of a ﬁnite state transducer for Spanish morphology. There are two
+accepting paths for the input canto :canto +N OUN +M ASC+SING (masculine singular noun,
+meaning a song), and cantar +VERB+PRESIND+1P+SING (I sing). There is also an accept-
+ing path for canta , with output cantar +VERB+PRESIND+3P+SING (he/she sings).
+failing to accept strings or transductions that are valid. For example, a pluralization trans- 4533
+ducer that does not accept foot/feet would undergenerate. Suppose we “ﬁx” the transducer 4534
+to accept this example, but as a side effect, it now accepts boot/beet ; the transducer would 4535
+then be said to overgenerate. A transducer that accepts foot/foots but not foot/feet would 4536
+both overgenerate and undergenerate. 4537
+9.1.4.4 Finite state composition 4538
+Designing ﬁnite state transducers to capture the full range of morphological phenomena 4539
+in any real language is a huge task. Modularization is a classic computer science approach 4540
+for this situation: decompose a large and unwieldly problem into a set of subproblems, 4541
+each of which will hopefully have a concise solution. Finite state automata can be mod- 4542
+ularized through composition : feeding the output of one transducer T1as the input to 4543
+another transducer T2, writtenT2◦T1. Formally, if there exists some ysuch that (x,y)∈T1 4544
+(meaning that T1produces output yon inputx), and (y,z)∈T2, then (x,z)∈(T2◦T1). 4545
+Because ﬁnite state transducers are closed under composition, there is guaranteed to be 4546
+a single ﬁnite state transducer that T3=T2◦T1, which can be constructed as a machine 4547
+with one state for each pair of states in T1andT2(Mohri et al., 2002). 4548
+Example: Morphology and orthography In English morphology, the sufﬁx -edis added 4549
+to signal the past tense for many verbs: cook→cooked ,want→wanted , etc. However, English 4550
+orthography dictates that this process cannot produce a spelling with consecutive e’s, so 4551
+that bake→baked , not bakeed . A modular solution is to build separate transducers for mor- 4552
+phology and orthography. The morphological transducer TMtransduces from bake+PAST 4553
+tobake+ed , with the +symbol indicating a segment boundary. The input alphabet of TM 4554
+includes the lexicon of words and the set of morphological features; the output alphabet 4555
+includes the characters a-zand the +boundary marker. Next, an orthographic transducer 4556
+TOis responsible for the transductions cook+ed→cooked , and bake+ed→baked.The input 4557
+alphabet of TOmust be the same as the output alphabet for TM, and the output alphabet 4558
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.1. REGULAR LANGUAGES 213
+is simply the characters a-z. The composed transducer (TO◦TM)then transduces from 4559
+bake+PAST to the spelling baked . The design of TOis left as an exercise. 4560
+Example: Hidden Markov models Hidden Markov models (chapter 7) can be viewed as
+weighted ﬁnite state transducers, and they can be constructed by transduction. Recall that
+a hidden Markov model deﬁnes a joint probability over words and tags, p (w,y), which
+can be computed as a path through a trellis structure. This trellis is itself a weighted ﬁnite
+state acceptor, with edges between all adjacent nodes qm−1,i→qm,jon inputYm=j. The
+edge weights are log-probabilities,
+δ(qm−1,i,Ym=j,qm,j) = log p(wm,Ym=j|Ym−i=j) [9.20]
+= log p(wm|Ym=j) + log Pr(Ym=j|Ym−1=i). [9.21]
+Because there is only one possible transition for each tag Ym, this WFSA is deterministic. 4561
+The score for any tag sequence {ym}M
+m=1is the sum of these log-probabilities, correspond- 4562
+ing to the total log probability logp(w,y). Furthermore, the trellis can be constructed by 4563
+the composition of simpler FSTs. 4564
+•First, construct a “transition” transducer to represent a bigram probability model 4565
+over tag sequences, TT. This transducer is almost identical to the n-gram language 4566
+model acceptor in §9.1.3.1: there is one state for each tag, and the edge weights 4567
+equal to the transition log-probabilities, δ(qi,j,j,qj) = log Pr(Ym=j|Ym−1=i). 4568
+Note thatTTis a transducer, with identical input and output at each arc; this makes 4569
+it possible to compose TTwith other transducers. 4570
+•Next, construct an “emission” transducer to represent the probability of words given 4571
+tags,TE. This transducer has only a single state, with arcs for each word/tag pair, 4572
+δ(q0,i,j,q 0) = log Pr(Wm=j|Ym=i). The input vocabulary is the set of all tags, 4573
+and the output vocabulary is the set of all words. 4574
+•The composition TE◦TTis a ﬁnite state transducer with one state per tag, as shown 4575
+in Figure 9.8. Each state has V×Koutgoing edges, representing transitions to each 4576
+of theKother states, with outputs for each of the Vwords in the vocabulary. The 4577
+weights for these edges are equal to, 4578
+δ(qi,Ym=j,wm,qj) = log p(wm,Ym=j|Ym−1=i). [9.22]
+•The trellis is a structure with M×Knodes, for each of the Mwords to be tagged and 4579
+each of the Ktags in the tagset. It can be built by composition of (TE◦TT)against an 4580
+unweighted chain FSA MA(w)that is specially constructed to accept only a given 4581
+inputw1,w2,...,wM, shown in Figure 9.9. The trellis for input wis built from the 4582
+composition MA(w)◦(TE◦TT). Composing with the unweighted MA(w)does not 4583
+affect the edge weights from (TE◦TT), but it selects the subset of paths that generate 4584
+the word sequence w. 4585
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+214 CHAPTER 9. FORMAL LANGUAGE THEORY
+start startN
+VendN/aardvark
+N/abacus
+N/. . .
+V/aardvarkV/abacusV/. . .
+Figure 9.8: Finite state transducer for hidden Markov models, with a small tagset of nouns
+and verbs. For each pair of tags (including self-loops), there is an edge for every word in
+the vocabulary. For simplicity, input and output are only shown for the edges from the
+start state. Weights are also omitted from the diagram; for each edge from qitoqj, the
+weight is equal to logp(wm,Ym=j|Ym−1=i), except for edges to the end state, which
+are equal to log Pr(Ym=♦|Ym−1=i).
+startThey can ﬁsh
+Figure 9.9: Chain ﬁnite state acceptor for the input They can ﬁsh .
+9.1.5 *Learning weighted ﬁnite state automata 4586
+In generative models such as n-gram language models and hidden Markov models, the 4587
+edge weights correspond to log probabilities, which can be obtained from relative fre- 4588
+quency estimation. However, in other cases, we wish to learn the edge weights from in- 4589
+put/output pairs. This is difﬁcult in non-deterministic ﬁnite state automata, because we 4590
+do not observe the speciﬁc arcs that are traversed in accepting the input, or in transducing 4591
+from input to output. The path through the automaton is a latent variable . 4592
+Chapter 5 presented one method for learning with latent variables: expectation max- 4593
+imization (EM). This involves computing a distribution q(·)over the latent variable, and 4594
+iterating between updates to this distribution and updates to the parameters — in this 4595
+case, the arc weights. The forward-backward algorithm (§7.5.3.3) describes a dynamic 4596
+program for computing a distribution over arcs in the trellis structure of a hidden Markov 4597
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.2. CONTEXT-FREE LANGUAGES 215
+model, but this is a special case of the more general problem for ﬁnite state automata. 4598
+Eisner (2002) describes an expectation semiring , which enables the expected number of 4599
+transitions across each arc to be computed through a semiring shortest-path algorithm. 4600
+Alternative approaches for generative models include Markov Chain Monte Carlo (Chi- 4601
+ang et al., 2010) and spectral learning (Balle et al., 2011). 4602
+Further aﬁeld, we can take a perceptron-style approach, with each arc corresponding 4603
+to a feature. The classic perceptron update would update the weights by subtracting the 4604
+difference between the feature vector corresponding to the predicted path and the feature 4605
+vector corresponding to the correct path. Since the path is not observed, we resort to a 4606
+hidden variable perceptron . The model is described formally in §12.4, but the basic idea 4607
+is to compute an update from the difference between the features from the predicted path 4608
+and the features for the best-scoring path that generates the correct output. 4609
+9.2 Context-free languages 4610
+Beyond the class of regular languages lie the context-free languages. An example of a 4611
+language that is context-free but not ﬁnite state is the set of arithmetic expressions with 4612
+balanced parentheses. Intuitively, to accept only strings in this language, an FSA would 4613
+have to “count” the number of left parentheses, and make sure that they are balanced 4614
+against the number of right parentheses. An arithmetic expression can be arbitrarily long, 4615
+yet by deﬁnition an FSA has a ﬁnite number of states. Thus, for any FSA, there will be a 4616
+string that with too many parentheses to count. More formally, the pumping lemma is a 4617
+proof technique for showing that languages are not regular. It is typically demonstrated 4618
+for the simpler case anbn, the language of strings containing a sequence of a’s, and then 4619
+an equal-length sequence of b’s.44620
+There are at least two arguments for the relevance of non-regular formal languages 4621
+to linguistics. First, there are natural language phenomena that are argued to be iso- 4622
+morphic to anbn. For English, the classic example is center embedding , shown in Fig- 4623
+ure 9.10. The initial expression the dog speciﬁes a single dog. Embedding this expression 4624
+into the cat chased speciﬁes a particular cat — the one chased by the dog. This cat can 4625
+then be embedded again to specify a goat, in the less felicitous but arguably grammatical 4626
+expression, the goat the cat the dog chased kissed , which refers to the goat who was kissed 4627
+by the cat which was chased by the dog. Chomsky (1957) argues that to be grammatical, 4628
+a center-embedded construction must be balanced: if it contains nnoun phrases (e.g., the 4629
+cat), they must be followed by exactly n−1verbs. An FSA that could recognize such ex- 4630
+pressions would also be capable of recognizing the language anbn. Because we can prove 4631
+that no FSA exists for anbn, no FSA can exist for center embedded constructions either. En- 4632
+4Details of the proof can be found in an introductory computer science theory textbook (e.g., Sipser, 2012).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+216 CHAPTER 9. FORMAL LANGUAGE THEORY
+the dog
+the cat the dog chased
+the goat the cat the dog chased kissed
+. . .
+Figure 9.10: Three levels of center embedding
+glish includes center embedding, and so the argument goes, English grammar as a whole 4633
+cannot be regular.54634
+A more practical argument for moving beyond regular languages is modularity. Many 4635
+linguistic phenomena — especially in syntax — involve constraints that apply at long 4636
+distance. Consider the problem of determiner-noun number agreement in English: we 4637
+can say the coffee and these coffees , but not *these coffee . By itself, this is easy enough to model 4638
+in an FSA. However, fairly complex modifying expressions can be inserted between the 4639
+determiner and the noun: 4640
+(9.5) the burnt coffee 4641
+(9.6) the badly-ground coffee 4642
+(9.7) the burnt and badly-ground Italian coffee 4643
+(9.8) these burnt and badly-ground Italian coffees 4644
+(9.9) *these burnt and badly-ground Italian coffee 4645
+Again, an FSA can be designed to accept modifying expressions such as burnt and badly- 4646
+ground Italian . Let’s call this FSA FM. To reject the ﬁnal example, a ﬁnite state acceptor 4647
+must somehow “remember” that the determiner was plural when it reaches the noun cof- 4648
+feeat the end of the expression. The only way to do this is to make two identical copies 4649
+ofFM: one for singular determiners, and one for plurals. While this is possible in the 4650
+ﬁnite state framework, it is inconvenient — especially in languages where more than one 4651
+attribute of the noun is marked by the determiner. Context-free languages facilitate mod- 4652
+ularity across such long-range dependencies. 4653
+9.2.1 Context-free grammars 4654
+Context-free languages are speciﬁed by context-free grammars (CFGs) , which are tuples 4655
+(N,Σ,R,S )consisting of: 4656
+5The claim that arbitrarily deep center-embedded expressions are grammatical has drawn skepticism.
+Corpus evidence shows that embeddings of depth greater than two are exceedingly rare (Karlsson, 2007),
+and that embeddings of depth greater than three are completely unattested. If center-embedding is capped
+at some ﬁnite depth, then it is regular.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.2. CONTEXT-FREE LANGUAGES 217
+S→S O PS|NUM
+OP→+|−|×|÷
+NUM→NUMDIGIT|DIGIT
+DIGIT→0|1|2|...|9
+Figure 9.11: A context-free grammar for arithmetic expressions
+•a ﬁnite set of non-terminals N; 4657
+•a ﬁnite alphabet Σofterminal symbols ; 4658
+•a set of production rules R, each of the form A→β, whereA∈Nandβ∈(Σ∪N)∗; 4659
+•a designated start symbol S. 4660
+In the production rule A→β, the left-hand side (LHS) Amust be a non-terminal; 4661
+the right-hand side (RHS) can be a sequence of terminals or non-terminals, {n,σ}∗,n∈ 4662
+N,σ∈Σ. A non-terminal can appear on the left-hand side of many production rules. 4663
+A non-terminal can appear on both the left-hand side and the right-hand side; this is a 4664
+recursive production , and is analogous to self-loops in ﬁnite state automata. The name 4665
+“context-free” is based on the property that the production rule depends only on the LHS, 4666
+and not on its ancestors or neighbors; this is analogous to Markov property of ﬁnite state 4667
+automata, in which the behavior at each step depends only on the current state, on not on 4668
+the path by which that state was reached. 4669
+Aderivation τis a sequence of steps from the start symbol Sto a surface string w∈Σ∗, 4670
+which is the yield of the derivation. A string wis in a context-free language if there is 4671
+some derivation from Syieldingw.Parsing is the problem of ﬁnding a derivation for a 4672
+string in a grammar. Algorithms for parsing are described in chapter 10. 4673
+Like regular expressions, context-free grammars deﬁne the language but not the com- 4674
+putation necessary to recognize it. The context-free analogues to ﬁnite state acceptors are 4675
+pushdown automata , a theoretical model of computation in which input symbols can be 4676
+pushed onto a stack with potentially inﬁnite depth. For more details, see Sipser (2012). 4677
+9.2.1.1 Example 4678
+Figure 9.11 shows a context-free grammar for arithmetic expressions such as 1 + 2÷3−4. 4679
+In this grammar, the terminal symbols include the digits {1, 2, ..., 9}and the op- 4680
+erators{+,−,×,÷}. The rules include the |symbol, a notational convenience that makes 4681
+it possible to specify multiple right-hand sides on a single line: the statement A→x|y 4682
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+218 CHAPTER 9. FORMAL LANGUAGE THEORY
+S
+Num
+Digit
+4S
+S
+Num
+Digit
+3Op
+−S
+S
+Num
+Digit
+2Op
++S
+Num
+Digit
+1S
+S
+S
+Num
+Digit
+3Op
+−S
+Num
+Digit
+2Op
++S
+Num
+Digit
+1
+Figure 9.12: Some example derivations from the arithmetic grammar in Figure 9.11
+deﬁnes twoproductions, A→xandA→y. This grammar is recursive: the non-termals S 4683
+and N UMcan produce themselves. 4684
+Derivations are typically shown as trees, with production rules applied from the top 4685
+to the bottom. The tree on the left in Figure 9.12 describes the derivation of a single digit, 4686
+through the sequence of productions S →NUM→DIGIT→4(these are all unary pro- 4687
+ductions , because the right-hand side contains a single element). The other two trees in 4688
+Figure 9.12 show alternative derivations of the string 1+2−3. The existence of multiple 4689
+derivations for a string indicates that the grammar is ambiguous . 4690
+Context-free derivations can also be written out according to the pre-order tree traver-
+sal.6For the two derivations of 1 + 2 - 3 in Figure 9.12, the notation is:
+(S (S (S (Num (Digit 1))) (Op+) (S (Num (Digit 2)))) (Op-) (S (Num (Digit 3)))) [9.23]
+(S (S (Num (Digit 1))) (Op+) (S (Num (Digit 2)) (Op-) (S (Num (Digit 3))))). [9.24]
+9.2.1.2 Grammar equivalence and Chomsky Normal Form 4691
+A single context-free language can be expressed by more than one context-free grammar.
+For example, the following two grammars both deﬁne the language anbnforn>0.
+S→aSb|ab
+S→aSb|aabb|ab
+Two grammars are weakly equivalent if they generate the same strings. Two grammars 4692
+arestrongly equivalent if they generate the same strings via the same derivations. The 4693
+grammars above are only weakly equivalent. 4694
+6This is a depth-ﬁrst left-to-right search that prints each node the ﬁrst time it is encountered (Cormen
+et al., 2009, chapter 12).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.2. CONTEXT-FREE LANGUAGES 219
+InChomsky Normal Form (CNF) , the right-hand side of every production includes
+either two non-terminals, or a single terminal symbol:
+A→BC
+A→a
+All CFGs can be converted into a CNF grammar that is weakly equivalent. To convert a 4695
+grammar into CNF, we ﬁrst address productions that have more than two non-terminals 4696
+on the RHS by creating new “dummy” non-terminals. For example, if we have the pro- 4697
+duction, 4698
+W→X Y Z, [9.25]
+it is replaced with two productions,
+W→X W\X [9.26]
+W\X→Y Z. [9.27]
+In these productions, W \X is a new dummy non-terminal. This transformation binarizes 4699
+the grammar, which is critical for efﬁcient bottom-up parsing, as we will see in chapter 10. 4700
+Productions whose right-hand side contains a mix of terminal and non-terminal symbols 4701
+can be replaced in a similar fashion. 4702
+Unary non-terminal productions A→Bare replaced as follows: identify all produc- 4703
+tionsB→α, and addA→αto the grammar. For example, in the grammar described in 4704
+Figure 9.11, we would replace N UM→DIGIT with N UM→1|2|...|9. However, we 4705
+keep the production N UM→NUMDIGIT, which is a valid binary production. 4706
+9.2.2 Natural language syntax as a context-free language 4707
+Context-free grammars are widely used to represent syntax , which is the set of rules that 4708
+determine whether an utterance is judged to be grammatical. If this representation were 4709
+perfectly faithful, then a natural language such as English could be transformed into a 4710
+formal language, consisting of exactly the (inﬁnite) set of strings that would be judged to 4711
+be grammatical by a ﬂuent English speaker. We could then build parsing software that 4712
+would automatically determine if a given utterance were grammatical.74713
+Contemporary theories generally do notconsider natural languages to be context-free 4714
+(see§9.3), yet context-free grammars are widely used in natural language parsing. The 4715
+reason is that context-free representations strike a good balance: they cover a broad range 4716
+of syntactic phenomena, and they can be parsed efﬁciently. This section therefore de- 4717
+scribes how to handle a core fragment of English syntax in context-free form, following 4718
+7You are encouraged to move beyond this cursory treatment of syntax by consulting a textbook on lin-
+guistics (e.g., Akmajian et al., 2010; Bender, 2013).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+220 CHAPTER 9. FORMAL LANGUAGE THEORY
+the conventions of the Penn Treebank (PTB; Marcus et al., 1993), a large-scale annotation 4719
+of English language syntax. The generalization to “mildly” context-sensitive languages is 4720
+discussed in§9.3. 4721
+The Penn Treebank annotation is a phrase-structure grammar of English. This means 4722
+that sentences are broken down into constituents , which are contiguous sequences of 4723
+words that function as coherent units for the purpose of linguistic analysis. Constituents 4724
+generally have a few key properties: 4725
+Movement. Constituents can often be moved around sentences as units. 4726
+(9.10) Abigail gave (her brother) (a ﬁsh). 4727
+(9.11) Abigail gave (a ﬁsh) to (her brother). 4728
+In contrast, gave her and brother a cannot easily be moved while preserving gram- 4729
+maticality. 4730
+Substitution. Constituents can be substituted by other phrases of the same type. 4731
+(9.12) Max thanked (his older sister). 4732
+(9.13) Max thanked (her). 4733
+In contrast, substitution is not possible for other contiguous units like Max thanked 4734
+and thanked his . 4735
+Coordination. Coordinators like andand orcan conjoin constituents. 4736
+(9.14) (Abigail) and (her younger brother) bought a ﬁsh. 4737
+(9.15) Abigail (bought a ﬁsh) and (gave it to Max). 4738
+(9.16) Abigail (bought) and (greedily ate) a ﬁsh. 4739
+Units like brother bought and bought a cannot easily be coordinated. 4740
+These examples argue for units such as her brother and bought a ﬁsh to be treated as con- 4741
+stituents. Other sequences of words in these examples, such as Abigail gave and brother 4742
+a ﬁsh , cannot be moved, substituted, and coordinated in these ways. In phrase-structure 4743
+grammar, constituents are nested, so that the senator from New Jersey contains the con- 4744
+stituent from New Jersey , which in turn contains New Jersey . The sentence itself is the max- 4745
+imal constituent; each word is a minimal constituent, derived from a unary production 4746
+from a part-of-speech tag. Between part-of-speech tags and sentences are phrases . In 4747
+phrase-structure grammar, phrases have a type that is usually determined by their head 4748
+word : for example, a noun phrase corresponds to a noun and the group of words that 4749
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.2. CONTEXT-FREE LANGUAGES 221
+modify it, such as her younger brother ; averb phrase includes the verb and its modiﬁers, 4750
+such as bought a ﬁsh and greedily ateit. 4751
+In context-free grammars, each phrase type is a non-terminal, and each constituent is 4752
+the substring that the non-terminal yields. Grammar design involves choosing the right 4753
+set of non-terminals. Fine-grained non-terminals make it possible to represent more ﬁne- 4754
+grained linguistic phenomena. For example, by distinguishing singular and plural noun 4755
+phrases, it is possible to have a grammar of English that generates only sentences that 4756
+obey subject-verb agreement. However, enforcing subject-verb agreement is considerably 4757
+more complicated in languages like Spanish, where the verb must agree in both person 4758
+and number with subject. In general, grammar designers must trade off between over- 4759
+generation — a grammar that permits ungrammatical sentences — and undergeneration 4760
+— a grammar that fails to generate grammatical sentences. Furthermore, if the grammar is 4761
+to support manual annotation of syntactic structure, it must be simple enough to annotate 4762
+efﬁciently. 4763
+9.2.3 A phrase-structure grammar for English 4764
+To better understand how phrase-structure grammar works, let’s consider the speciﬁc 4765
+case of the Penn Treebank grammar of English. The main phrase categories in the Penn 4766
+Treebank (PTB) are based on the main part-of-speech classes: noun phrase (NP), verb 4767
+phrase (VP), prepositional phrase (PP), adjectival phrase (ADJP), and adverbial phrase 4768
+(ADVP). The top-level category is S, which conveniently stands in for both “sentence” 4769
+and the “start” symbol. Complement clauses (e.g., I take the good old fashioned ground that 4770
+the whale is a ﬁsh ) are represented by the non-terminal SBAR. The terminal symbols in 4771
+the grammar are individual words, which are generated from unary productions from 4772
+part-of-speech tags (the PTB tagset is described in §8.1). 4773
+This section explores the productions from the major phrase-level categories, explain- 4774
+ing how to generate individual tag sequences. The production rules are approached in a 4775
+“theory-driven” manner: ﬁrst the syntactic properties of each phrase type are described, 4776
+and then some of the necessary production rules are listed. But it is important to keep 4777
+in mind that the Penn Treebank was produced in a “data-driven” manner. After the set 4778
+of non-terminals was speciﬁed, annotators were free to analyze each sentence in what- 4779
+ever way seemed most linguistically accurate, subject to some high-level guidelines. The 4780
+grammar of the Penn Treebank is simply the set of productions that were required to ana- 4781
+lyze the several million words of the corpus. By design, the grammar overgenerates — it 4782
+does not exclude ungrammatical sentences. 4783
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+222 CHAPTER 9. FORMAL LANGUAGE THEORY
+9.2.3.1 Sentences 4784
+The most common production rule for sentences is,
+S→NP VP [9.28]
+which accounts for simple sentences like Abigail ate the kimchi — as we will see, the direct
+object the kimchi is part of the verb phrase. But there are more complex forms of sentences
+as well:
+S→ADVP NP VP Unfortunately Abigail ate the kimchi. [9.29]
+S→S C CS Abigail ate the kimchi and Max had a burger. [9.30]
+S→VP Eat the kimchi. [9.31]
+where ADVP is an adverbial phrase (e.g., unfortunately ,very unfortunately ) and C Cis a 4785
+coordinating conjunction (e.g., and,but).84786
+9.2.3.2 Noun phrases 4787
+Noun phrases refer to entities, real or imaginary, physical or abstract: Asha ,the steamed
+dumpling ,parts and labor ,nobody ,the whiteness of the whale , and the rise of revolutionary syn-
+dicalism in the early twentieth century. Noun phrase productions include “bare” nouns,
+which may optionally follow determiners, as well as pronouns:
+NP→NN|NNS|NNP|PRP [9.32]
+NP→DETNN|DETNNS|DETNNP [9.33]
+The tags N N, N NS, and N NPrefer to singular, plural, and proper nouns; P RPrefers to 4788
+personal pronouns, and D ETrefers to determiners. The grammar also contains terminal 4789
+productions from each of these tags, e.g., P RP→I|you|we|.... 4790
+Noun phrases may be modiﬁed by adjectival phrases (ADJP; e.g., the small Russian dog )
+and numbers (C D; e.g., the ﬁve pastries ), each of which may optionally follow a determiner:
+NP→ADJP N N|ADJP N NS|DETADJP N N|DETADJP N NS [9.34]
+NP→CDNNS|DETCDNNS|... [9.35]
+Some noun phrases include multiple nouns, such as the liberation movement and an
+antelope horn , necessitating additional productions:
+NP→NNNN|NNNNS|DETNNNN|... [9.36]
+8Notice that the grammar does not include the recursive production S →ADVP S. It may be helpful to
+think about why this production would cause the grammar to overgenerate.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.2. CONTEXT-FREE LANGUAGES 223
+These multiple noun constructions can be combined with adjectival phrases and cardinal 4791
+numbers, leading to a large number of additional productions. 4792
+Recursive noun phrase productions include coordination, prepositional phrase attach-
+ment, subordinate clauses, and verb phrase adjuncts:
+NP→NP C CNP e.g., the red and the black [9.37]
+NP→NP PP e.g., the President of the Georgia Institute of Technology [9.38]
+NP→NP SBAR e.g., a whale which he had wounded [9.39]
+NP→NP VP e.g., a whale taken near Shetland [9.40]
+These recursive productions are a major source of ambiguity, because the VP and PP non- 4793
+terminals can also generate NP children. Thus, the the President of the Georgia Institute of 4794
+Technology can be derived in two ways, as can a whale taken near Shetland in October . 4795
+But aside from these few recursive productions, the noun phrase fragment of the Penn 4796
+Treebank grammar is relatively ﬂat, containing a large of number of productions that go 4797
+from NP directly to a sequence of parts-of-speech. If noun phrases had more internal 4798
+structure, the grammar would need fewer rules, which, as we will see, would make pars- 4799
+ing faster and machine learning easier. Vadas and Curran (2011) propose to add additional 4800
+structure in the form of a new non-terminal called a nominal modiﬁer (NML), e.g., 4801
+(9.17) (NP (NN crude) (NN oil) (NNS prices)) (PTB analysis) 4802
+(NP (NML (NN crude) (NN oil)) (NNS prices)) (NML-style analysis) 4803
+Another proposal is to treat the determiner as the head of a determiner phrase (DP; 4804
+Abney, 1987). There are linguistic arguments for and against determiner phrases (e.g., 4805
+Van Eynde, 2006). From the perspective of context-free grammar, DPs enable more struc- 4806
+tured analyses of some constituents, e.g., 4807
+(9.18) (NP (DT the) (JJ white) (NN whale)) (PTB analysis) 4808
+(DP (DT the) (NP (JJ white) (NN whale))) (DP-style analysis). 4809
+9.2.3.3 Verb phrases 4810
+Verb phrases describe actions, events, and states of being. The PTB tagset distinguishes
+several classes of verb inﬂections: base form (V B;she likes to snack ), present-tense third-
+person singular (V BZ;she snacks ), present tense but not third-person singular (V BP;they
+snack ), past tense (V BD;they snacked ), present participle (V BG;they are snacking ), and past
+participle (V BN;they had snacked ).9Each of these forms can constitute a verb phrase on its
+9It bears emphasis the principles governing this tagset design are entirely English-speciﬁc: V BPis a
+meaningful category only because English morphology distinguishes third-person singular from all person-
+number combinations.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+224 CHAPTER 9. FORMAL LANGUAGE THEORY
+own:
+VP→VB|VBZ|VBD|VBN|VBG|VBP [9.41]
+More complex verb phrases can be formed by a number of recursive productions,
+including the use of coordination, modal verbs (M D;she should snack ), and the inﬁnitival
+to(TO):
+VP→MDVP Shewill snack [9.42]
+VP→VBDVP Shehad snacked [9.43]
+VP→VBZVP Shehas been snacking [9.44]
+VP→VBNVP She has been snacking [9.45]
+VP→TOVP She wants to snack [9.46]
+VP→VP C CVP Shebuys and eats many snacks [9.47]
+Each of these productions uses recursion, with the VP non-terminal appearing in both the 4811
+LHS and RHS. This enables the creation of complex verb phrases, such as She will have 4812
+wanted to have been snacking . 4813
+Transitive verbs take noun phrases as direct objects, and ditransitive verbs take two
+direct objects:
+VP→VBZNP Sheteaches algebra [9.48]
+VP→VBGNP She has been teaching algebra [9.49]
+VP→VBDNP NP Shetaught her brother algebra [9.50]
+These productions are notrecursive, so a unique production is required for each verb
+part-of-speech. They also do not distinguish transitive from intransitive verbs, so the
+resulting grammar overgenerates examples like *She sleeps sushi and *She learns Boyang
+algebra . Sentences can also be direct objects:
+VP→VBZS Asha wants to eat the kimchi [9.51]
+VP→VBZSBAR Asha knows that Boyang eats the kimchi [9.52]
+The ﬁrst production overgenerates, licensing sentences like *Asha sees Boyang eats the kim- 4814
+chi. This problem could be addressed by designing a more speciﬁc set of sentence non- 4815
+terminals, indicating whether the main verb can be conjugated. 4816
+Verbs can also be modiﬁed by prepositional phrases and adverbial phrases:
+VP→VBZPP Shestudies at night [9.53]
+VP→VBZADVP Shestudies intensively [9.54]
+VP→ADVP V BG She is not studying [9.55]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.2. CONTEXT-FREE LANGUAGES 225
+Again, because these productions are not recursive, the grammar must include produc- 4817
+tions for every verb part-of-speech. 4818
+A special set of verbs, known as copula , can take predicative adjectives as direct ob-
+jects:
+VP→VBZADJP Sheis hungry [9.56]
+VP→VBPADJP Success seems increasingly unlikely [9.57]
+The PTB does not have a special non-terminal for copular verbs, so this production gen- 4819
+erates non-grammatical examples such as *She eats tall . 4820
+Particles (PRT as a phrase; R Pas a part-of-speech) work to create phrasal verbs:
+VP→VBPRT She told them to fuck off [9.58]
+VP→VBDPRT NP They gave up their ill-gotten gains [9.59]
+As the second production shows, particle productions are required for all conﬁgurations 4821
+of verb parts-of-speech and direct objects. 4822
+9.2.3.4 Other contituents 4823
+The remaining constituents require far fewer productions. Prepositional phrases almost
+always consist of a preposition and a noun phrase,
+PP→INNP the whiteness of the whale [9.60]
+PP→TONP What the white whale was to Ahab , has been hinted. [9.61]
+Similarly, complement clauses consist of a complementizer (usually a preposition, pos-
+sibly null) and a sentence,
+SBAR→INS She said that it was spicy [9.62]
+SBAR→S She said it was spicy [9.63]
+Adverbial phrases are usually bare adverbs (ADVP →RB), with a few exceptions:
+ADVP→RBRBR They went considerably further [9.64]
+ADVP→ADVP PP They went considerably further than before [9.65]
+The tag R BRis a comparative adverb. 4824
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+226 CHAPTER 9. FORMAL LANGUAGE THEORY
+Adjectival phrases extend beyond bare adjectives (ADJP →JJ) in a number of ways:
+ADJP→RBJJ very hungry [9.66]
+ADJP→RBRJJ more hungry [9.67]
+ADJP→JJSJJ best possible [9.68]
+ADJP→RBJJR even bigger [9.69]
+ADJP→JJCCJJ high and mighty [9.70]
+ADJP→JJJJ West German [9.71]
+ADJP→RBVBN previously reported [9.72]
+The tags J JRand J JSrefer to comparative and superlative adjectives respectively. 4825
+All of these phrase types can be coordinated:
+PP→PP C CPP on time and under budget [9.73]
+ADVP→ADVP C CADVP now and two years ago [9.74]
+ADJP→ADJP C CADJP quaint and rather deceptive [9.75]
+SBAR→SBAR C CSBAR whether they want control [9.76]
+or whether they want exports
+9.2.4 Grammatical ambiguity 4826
+Context-free parsing is useful not only because it determines whether a sentence is gram- 4827
+matical, but mainly because the constituents and their relations can be applied to tasks 4828
+such as information extraction (chapter 17) and sentence compression (Jing, 2000; Clarke 4829
+and Lapata, 2008). However, the ambiguity of wide-coverage natural language grammars 4830
+poses a serious problem for such potential applications. As an example, Figure 9.13 shows 4831
+two possible analyses for the simple sentence We eat sushi with chopsticks , depending on 4832
+whether the chopsticks modify eatorsushi . Realistic grammars can license thousands or 4833
+even millions of parses for individual sentences. Weighted context-free grammars solve 4834
+this problem by attaching weights to each production, and selecting the derivation with 4835
+the highest score. This is the focus of chapter 10. 4836
+9.3 *Mildly context-sensitive languages 4837
+Beyond context-free languages lie context-sensitive languages , in which the expansion 4838
+of a non-terminal depends on its neighbors. In the general class of context-sensitive 4839
+languages, computation becomes much more challenging: the membership problem for 4840
+context-sensitive languages is PSPACE-complete. Since PSPACE contains the complexity 4841
+class NP (problems that can be solved in polynomial time on a non-deterministic Turing 4842
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.3. *MILDLY CONTEXT-SENSITIVE LANGUAGES 227
+S
+VP
+NP
+PP
+NP
+chopsticksIN
+withNP
+sushiV
+eatNP
+We
+S
+VP
+PP
+NP
+chopsticksIN
+withVP
+NP
+sushiV
+eatNP
+We
+Figure 9.13: Two derivations of the same sentence
+machine), PSPACE-complete problems cannot be solved efﬁciently if P ̸=NP . Thus, de- 4843
+signing an efﬁcient parsing algorithm for the full class of context-sensitive languages is 4844
+probably hopeless.104845
+However, Joshi (1985) identiﬁes a set of properties that deﬁne mildly context-sensitive 4846
+languages , which are a strict subset of context-sensitive languages. Like context-free lan- 4847
+guages, mildly context-sensitive languages are efﬁciently parseable. However, the mildly 4848
+context-sensitive languages include non-context-free languages, such as the “copy lan- 4849
+guage”{ww|w∈Σ∗}and the language ambncmdn. Both are characterized by cross- 4850
+serial dependencies , linking symbols at long distance across the string.11For example, in 4851
+the language anbmcndm, eachasymbol is linked to exactly one csymbol, regardless of the 4852
+number of intervening bsymbols. 4853
+9.3.1 Context-sensitive phenomena in natural language 4854
+Such phenomena are occasionally relevant to natural language. A classic example is found 4855
+in Swiss-German (Shieber, 1985), in which sentences such as we let the children help Hans 4856
+paint the house are realized by listing all nouns before all verbs, i.e., we the children Hans the 4857
+house let help paint . Furthermore, each noun’s determiner is dictated by the noun’s case 4858
+marking (the role it plays with respect to the verb). Using an argument that is analogous 4859
+to the earlier discussion of center-embedding ( §9.2), Shieber argues that these case mark- 4860
+ing constraints are a cross-serial dependency, homomorphic to ambncmdn, and therefore 4861
+not context-free. 4862
+10If PSPACE̸=NP , then it contains problems that cannot be solved in polynomial time on a non-
+deterministic Turing machine; equivalently, solutions to these problems cannot even be checked in poly-
+nomial time (Arora and Barak, 2009).
+11A further condition of the set of mildly-context-sensitive languages is constant growth : if the strings in
+the language are arranged by length, the gap in length between any pair of adjacent strings is bounded by
+some language speciﬁc constant. This condition excludes languages such as {a2n|n≥0}.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+228 CHAPTER 9. FORMAL LANGUAGE THEORY
+Abigail eats the kimchi
+NP (S\NP)/NP (NP/N)N
+>NP
+>
+S\NP
+<S
+Figure 9.14: A syntactic analysis in CCG involving forward and backward function appli-
+cation
+As with the move from regular to context-free languages, mildly context-sensitive lan- 4863
+guages can be motivated by expedience. While inﬁnite sequences of cross-serial depen- 4864
+dencies cannot be handled by context-free grammars, even ﬁnite sequences of cross-serial 4865
+dependencies are more convenient to handle using a mildly context-sensitive formalism 4866
+like tree-adjoining grammar (TAG) and combinatory categorial grammar (CCG). Fur- 4867
+thermore, TAG-inspired parsers have been shown to be particularly effective in parsing 4868
+the Penn Treebank (Collins, 1997; Carreras et al., 2008), and CCG plays a leading role in 4869
+current research on semantic parsing (Zettlemoyer and Collins, 2005). Furthermore, these 4870
+two formalisms are weakly equivalent: any language that can be speciﬁed in TAG can also 4871
+be speciﬁed in CCG, and vice versa (Joshi et al., 1991). The remainder of the chapter gives 4872
+a brief overview of CCG, but you are encouraged to consult Joshi and Schabes (1997) and 4873
+Steedman and Baldridge (2011) for more detail on TAG and CCG respectively. 4874
+9.3.2 Combinatory categorial grammar 4875
+In combinatory categorial grammar, structural analyses are built up through a small set 4876
+of generic combinatorial operations, which apply to immediately adjacent sub-structures. 4877
+These operations act on the categories of the sub-structures, producing a new structure 4878
+with a new category. The basic categories include S (sentence), NP (noun phrase), VP 4879
+(verb phrase) and N (noun). The goal is to label the entire span of text as a sentence, S. 4880
+Complex categories, or types, are constructed from the basic categories, parentheses, 4881
+and forward and backward slashes: for example, S /NP is a complex type, indicating a 4882
+sentence that is lacking a noun phrase to its right; S \NP is a sentence lacking a noun 4883
+phrase to its left. Complex types act as functions, and the most basic combinatory oper- 4884
+ations are function application to either the right or left neighbor. For example, the type 4885
+of a verb phrase, such as eats, would be S\NP. Applying this function to a subject noun 4886
+phrase to its left results in an analysis of Abigail eats as category S, indicating a successful 4887
+parse. 4888
+Transitive verbs must ﬁrst be applied to the direct object, which in English appears to 4889
+the right of the verb, before the subject, which appears on the left. They therefore have the 4890
+more complex type (S\NP)/NP. Similarly, the application of a determiner to the noun at 4891
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.3. *MILDLY CONTEXT-SENSITIVE LANGUAGES 229
+Abigail might learn Swahili
+NP (S\NP)/VP VP /NP NP
+>B
+(S\NP)/NP
+>
+S\NP
+<S
+Figure 9.15: A syntactic analysis in CCG involving function composition (example modi-
+ﬁed from Steedman and Baldridge, 2011)
+its right results in a noun phrase, so determiners have the type NP /N. Figure 9.14 pro- 4892
+vides an example involving a transitive verb and a determiner. A key point from this 4893
+example is that it can be trivially transformed into phrase-structure tree, by treating each 4894
+function application as a constituent phrase. Indeed, when CCG’s only combinatory op- 4895
+erators are forward and backward function application, it is equivalent to context-free 4896
+grammar. However, the location of the “effort” has changed. Rather than designing good 4897
+productions, the grammar designer must focus on the lexicon — choosing the right cate- 4898
+gories for each word. This makes it possible to parse a wide range of sentences using only 4899
+a few generic combinatory operators. 4900
+Things become more interesting with the introduction of two additional operators: 4901
+composition and type-raising . Function composition enables the combination of com- 4902
+plex types: X/Y◦Y/Z⇒BX/Z (forward composition) and Y\Z◦X\Y⇒BX\Z(back- 4903
+ward composition).12Composition makes it possible to “look inside” complex types, and 4904
+combine two adjacent units if the “input” for one is the “output” for the other. Figure 9.15 4905
+shows how function composition can be used to handle modal verbs. While this sen- 4906
+tence can be parsed using only function application, the composition-based analysis is 4907
+preferable because the unit might learn functions just like a transitive verb, as in the exam- 4908
+pleAbigail studies Swahili . This in turn makes it possible to analyze conjunctions such as 4909
+Abigail studies and might learn Swahili , attaching the direct object Swahili to the entire con- 4910
+joined verb phrase studies and might learn . The Penn Treebank grammar fragment from 4911
+§9.2.3 would be unable to handle this case correctly: the direct object Swahili could attach 4912
+only to the second verb learn . 4913
+Type raising converts an element of type Xto a more complex type: X⇒TT/(T\X) 4914
+(forward type-raising to type T), andX⇒TT\(T/X )(backward type-raising to type 4915
+T). Type-raising makes it possible to reverse the relationship between a function and its 4916
+argument — by transforming the argument into a function over functions over arguments! 4917
+An example may help. Figure 9.15 shows how to analyze an object relative clause, a story 4918
+that Abigail tells . The problem is that tells is a transitive verb, expecting a direct object to 4919
+its right. As a result, Abigail tells is not a valid constituent. The issue is resolved by raising 4920
+12The subscript Bfollows notation from Curry and Feys (1958).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+230 CHAPTER 9. FORMAL LANGUAGE THEORY
+a story that Abigail tells
+NP (NP\NP)/(S/NP) NP (S\NP)/NP
+>T
+S/(S\NP)
+>B
+S/NP
+>
+NP\NP
+<NP
+Figure 9.16: A syntactic analysis in CCG involving an object relative clause (based on
+slides from Alex Clark)
+Abigail from NP to the complex type (S/NP)\NP). This function can then be combined 4921
+with the transitive verb tells by forward composition, resulting in the type (S/NP), which 4922
+is a sentence lacking a direct object to its right.13From here, we need only design the 4923
+lexical entry for the complementizer that to expect a right neighbor of type (S/NP), and 4924
+the remainder of the derivation can proceed by function application. 4925
+Composition and type-raising give CCG considerable power and ﬂexibility, but at a 4926
+price. The simple sentence Abigail tells Max can be parsed in two different ways: by func- 4927
+tion application (ﬁrst forming the verb phrase tells Max ), and by type-raising and compo- 4928
+sition (ﬁrst forming the non-constituent Abigail tells ). This derivational ambiguity does 4929
+not affect the resulting linguistic analysis, so it is sometimes known as spurious ambi- 4930
+guity . Hockenmaier and Steedman (2007) present a translation algorithm for converting 4931
+the Penn Treebank into CCG derivations, using composition and type-raising only when 4932
+necessary. 4933
+Exercises 4934
+1. Sketch out the state diagram for ﬁnite-state acceptors for the following languages 4935
+on the alphabet{a,b}. 4936
+a) Even-length strings. (Be sure to include 0as an even number.) 4937
+b) Strings that contain aaaas a substring. 4938
+c) Strings containing an even number of aand an odd number of bsymbols. 4939
+d) Strings in which the substring bbbmust be terminal if it appears — the string 4940
+need not contain bbb, but if it does, nothing can come after it. 4941
+2. Levenshtein edit distance is the number of insertions, substitutions, or deletions 4942
+required to convert one string to another. 4943
+13The missing direct object would be analyzed as a trace in CFG-like approaches to syntax, including the
+Penn Treebank.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+9.3. *MILDLY CONTEXT-SENSITIVE LANGUAGES 231
+a) Deﬁne a ﬁnite-state acceptor that accepts all strings with edit distance 1from 4944
+the target string, target . 4945
+b) Now think about how to generalize your design to accept all strings with edit 4946
+distance from the target string equal to d. If the target string has length ℓ, what 4947
+is the minimal number of states required? 4948
+3. Construct an FSA in the style of Figure 9.3, which handles the following examples: 4949
+•nation /N, national /ADJ,nationalize /V, nationalizer /N 4950
+•America /N, American /ADJ,Americanize /V, Americanizer /N 4951
+Be sure that your FSA does not accept any further derivations, such as *nationalizeral 4952
+and *Americanizern . 4953
+4. Show how to construct a trigram language model in a weighted ﬁnite-state acceptor. 4954
+Make sure that you handle the edge cases at the beginning and end of the sequence 4955
+accurately. 4956
+5. Extend the FST in Figure 9.6 to handle the other two parts of rule 1a of the Porter 4957
+stemmer: -sses→ss, and -ies→-i. 4958
+6.§9.1.4.4 describes TO, a transducer that captures English orthography by transduc- 4959
+ingcook+ed→cooked and bake+ed→baked . Design an unweighted ﬁnite-state 4960
+transducer that captures this property of English orthography. 4961
+Next, augment the transducer to appropriately model the sufﬁx -swhen applied to 4962
+words ending in s, e.g. kiss+s→kisses . 4963
+7. Add parenthesization to the grammar in Figure 9.11 so that it is no longer ambigu- 4964
+ous. 4965
+8. Construct three examples — a noun phrase, a verb phrase, and a sentence — which 4966
+can be derived from the Penn Treebank grammar fragment in §9.2.3, yet are not 4967
+grammatical. Avoid reusing examples from the text. Optionally, propose corrections 4968
+to the grammar to avoid generating these cases. 4969
+9. Produce parses for the following sentences, using the Penn Treebank grammar frag- 4970
+ment from§9.2.3. 4971
+(9.19) This aggression will not stand. 4972
+(9.20) I can get you a toe. 4973
+(9.21) Sometimes you eat the bar and sometimes the bar eats you. 4974
+Then produce parses for three short sentences from a news article from this week. 4975
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+232 CHAPTER 9. FORMAL LANGUAGE THEORY
+10. * One advantage of CCG is its ﬂexibility in handling coordination: 4976
+(9.22) Abigail and Max speak Swahili 4977
+(9.23) Abigail speaks and Max understands Swahili 4978
+Deﬁne the lexical entry for andas
+and:= (X/X )\X, [9.77]
+whereXcan refer to any type. Using this lexical entry, show how to parse the two 4979
+examples above. In the second example, Swahili should be combined with the coor- 4980
+dination Abigail speaks and Max understands , and not just with the verb understands . 4981
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+

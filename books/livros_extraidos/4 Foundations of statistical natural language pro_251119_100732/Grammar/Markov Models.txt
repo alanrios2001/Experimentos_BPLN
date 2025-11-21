@@ -1,0 +1,694 @@
+p/CX /CX9 Markov Models
+Hidden Markov Models (HMM s) have been the mainstay of the sta-
+tistical modeling used in modern speech recognition systems. Despitetheir limitations, variants of
+HMM s are still the most widely used tech-
+nique in that domain, and are generally regarded as the most successful.In this chapter we will develop the basic theory of
+HMM s, touch on their
+applications, and conclude with some pointers on extending the basic
+HMM model and engineering practical implementations.
+AnHMM is nothing more than a probabilistic function of a Markov pro- HMM
+cess. We have already seen an example of Markov processes in the n-gram
+models of chapters 2 and 6. Markov processes/chains/models were ﬁrst Markov model
+developed by Andrei A. Markov (a student of Chebyshev). Their ﬁrst use
+was actually for a linguistic purpose – modeling the letter sequences in
+works of Russian literature (Markov 1913) – but Markov models were then
+developed as a general statistical tool. We will refer to vanilla Markovmodels as Visible Markov Models (
+VMM s) when we want to be careful to Visible Markov
+Models distinguish them from HMM s.
+We have placed this chapter at the beginning of the “grammar” part of
+the book because working on the order of words in sentences is a startat understanding their syntax. We will see that this is what a
+VMM does.
+HMM s operate at a higher level of abstraction by postulating additional
+“hidden” structure, and that allows us to look at the order of categories
+of words. After developing the theory of HMM s in this chapter, we look at
+the application of HMM s to part-of-speech tagging. The last two chapters
+in this part then deal with the probabilistic formalization of core notionsof grammar like phrase structure.
+
+p/CX /CX318 9 Markov Models
+9.1 Markov Models
+Often we want to consider a sequence (perhaps through time) of random
+variables that aren’t independent, but rather the value of each variable
+depends on previous elements in the sequence. For many such systems,it seems reasonable to assume that all we need to predict the future ran-dom variables is the value of the present random variable, and we don’tneed to know the values of all the past random variables in the sequence.
+For example, if the random variables measure the number of books in
+the university library, then, knowing how many books were in the librarytoday might be an adequate predictor of how many books there will be to-morrow, and we don’t really need to additionally know how many booksthe library had last week, let alone last year. That is, future elements ofthe sequence are conditionally independent of past elements, given thepresent element.
+SupposeXX
+1;:::;XTis a sequence of random variables taking
+values in some ﬁnite set S = fs1;:::;sNg, the state space. Then the Markov Markov assumption
+Properties are:
+Limited Horizon:
+PXt1skjX1;:::;XtPXt1skjXt (9.1)
+Time invariant (stationary):
+PX 2skjX1 (9.2)
+Xis then said to be a Markov chain, or to have the Markov property.
+One can describe a Markov chain by a stochastic transition matrix A:
+aijPXt1sjjXtsi (9.3)
+Here,aij0;8i;jandPN
+j1aij1;8i.
+Additionally one needs to specify , the probabilities of diﬀerent initial
+states for the Markov chain:
+iPX 1si (9.4)
+Here,PN
+i1i1. The need for this vector can be avoided by specifying
+that the Markov model always starts oﬀ in a certain extra initial state, s0,
+and then using transitions from that state contained within the matrix A
+to specify the probabilities that used to be recorded in .
+
+p/CX /CX9.1 Markov Models 319
+hap
+eti
+start1:0
+0:40:3
+0:40:6 0:30:6
+0:41:0
+1:0
+Figure 9.1 A Markov model.
+From this general description, it should be clear that the word n-gram
+models we saw in chapter 6 are Markov models. Markov models can be
+used whenever one wants to model the probability of a linear sequence of
+events. For example, they have also been used in NLPfor modeling valid
+phone sequences in speech recognition, and for sequences of speech actsin dialog systems.
+Alternatively, one can represent a Markov chain by a state diagram as
+in ﬁgure 9.1. Here, the states are shown as circles around the state name,and the single start state is indicated with an incoming arrow. Possible
+transitions are shown by arrows connecting states, and these arcs are la-
+beled with the probability of this transition being followed, given that youare in the state at the tail of the arrow. Transitions with zero probabilityare omitted from the diagram. Note that the probabilities of the outgoingarcs from each state sum to 1. From this representation, it should beclear that a Markov model can be thought of as a (nondeterministic) ﬁ-nite state automaton with probabilities attached to each arc. The Markov
+properties ensure that we have a ﬁnite state automaton. There are no
+long distance dependencies, and where one ends up next depends simplyon what state one is in.
+In a visible Markov model, we know what states the machine is passing
+through, so the state sequence or some deterministic function of it canbe regarded as the output.
+
+p/CX /CX320 9 Markov Models
+The probability of a sequence of states (that is, a sequence of random
+variables)X1;:::;XTis easily calculated for a Markov chain. We ﬁnd that
+we need merely calculate the product of the probabilities that occur onthe arcs or in the stochastic matrix:
+PX
+1;:::;XTPX 1PX 2jX1PX 3jX1;X2PXTjX1;:::;XT−1
+PX 1PX 2jX1PX 3jX2PXTjXT−1
+X1T−1Y
+t1aXtXt1
+So, using the Markov model in ﬁgure 9.1, we have:
+Pt;i;pPX 1tPX 2ijX1tPX 3pjX2i
+1:00:30:6
+0:18
+Note that what is important is whether we canencode a process as a
+Markov process, not whether we most naturally do. For example, recallthen-gram word models that we saw in chapter 6. One might think that,
+forn3, such a model is not a Markov model because it violates the
+Limited Horizon condition – we are looking a little into earlier history.
+But we can reformulate any n-gram model as a visible Markov model by
+simply encoding the appropriate amount of history into the state space(states are then n−1-grams, for example ( was,walking ,down )w o u l d
+be a state in a fourgram model). In general, any ﬁxed ﬁnite amount ofhistory can always be encoded in this way by simply elaborating the statespace as a crossproduct of multiple previous states. In such cases, we
+sometimes talk of an m
+thorder Markov model, where mis the number
+of previous states that we are using to predict the next state. Note, thus,that ann-gram model is equivalent to an n−1
+thorder Markov model.
+Exercise 9.1 [«]
+Build a Markov Model similar to ﬁgure 9.1 for one of the types of phone numbers
+in table 4.2.
+9.2 Hidden Markov Models
+In an HMM , you don’t know the state sequence that the model passes
+through, but only some probabilistic function of it.
+
+p/CX /CX9.2 Hidden Markov Models 321
+Cola
+Pref.Iced Tea
+Pref.0.3
+0.5
+start0.5 0.7
+Figure 9.2 The crazy soft drink machine, showing the states of the machine
+and the state transition probabilities.
+Example 1: Suppose you have a crazy soft drink machine: it can be in
+two states, cola preferring (CP) and iced tea preferring (IP), but it switches
+between them randomly after each purchase, as shown in ﬁgure 9.2.
+Now, if, when you put in your coin, the machine always put out a cola
+if it was in the cola preferring state and an iced tea when it was in theiced tea preferring state, then we would have a visible Markov model. Butinstead, it only has a tendency to do this. So we need symbol emission
+emission
+probability probabilities for the observations:
+POtkjXtsi;Xt1sjbijk
+For this machine, the output is actually independent of sj,a n ds oc a nb e
+described by the following probability matrix:
+(9.5) Output probability given From state
+cola iced tea lemonade
+(ice_t) (lem)
+CP 0.6 0.1 0.3
+IP 0.1 0.7 0.2
+What is the probability of seeing the output sequence {lem, ice_t} if the
+machine always starts oﬀ in the cola preferring state?
+Solution: We need to consider all paths that might be taken through the
+HMM , and then to sum over them. We know that the machine starts in
+state CP. There are then four possibilities depending on which of thetwo states the machine is in at the other two time instants. So the total
+
+p/CX /CX322 9 Markov Models
+probability is:
+0:70:30:70:10:70:30:30:1
+0:30:30:50:70:30:30:50:70:084
+Exercise 9.2 [«]
+What is the probability of seeing the output sequence {col,lem} if the machine
+always starts oﬀ in the ice tea preferring state?
+9.2.1 Why use HMM s?
+HMM s are useful when one can think of underlying events probabilisti-
+cally generating surface events. One widespread use of this is tagging– assigning parts of speech (or other classiﬁers) to the words in a text.We think of there being an underlying Markov chain of parts of speechfrom which the actual words of the text are generated. Such models arediscussed in chapter 10.
+When this general model is suitable, the further reason that
+HMM sa r e
+very useful is that they are one of a class of models for which there existeﬃcient methods of training through use of the Expectation Maximiza-tion (EM) algorithm. Given plenty of data that we assume to be generatedbysome
+HMM – where the model architecture is ﬁxed but not the proba-
+bilities on the arcs – this algorithm allows us to automatically learn themodel parameters that best account for the observed data.
+Another simple illustration of how we can use
+HMM si si ng e n e r a t i n g
+parameters for linear interpolation of n-gram models. We discussed in
+chapter 6 that one way to estimate the probability of a sentence:
+PSue drank her beer before the meal arrived 
+was with ann-gram model, such as a trigram model, but that just using
+ann-gram model with ﬁxed ntended to suﬀer because of data sparse-
+ness. Recall from section 6.3.1 that one idea of how to smooth n-gram
+estimates was to use linear interpolation ofn-gram estimates for various linear
+interpolation n, for example:
+Pliwnjwn−1;wn−21P1wn2P2wnjwn−13P3wnjwn−1;wn−2
+This way we would get some idea of how likely a particular word was,
+even if our coverage of trigrams is sparse. The question, then, is howto set the parameters 
+i. While we could make reasonable guesses as to
+
+p/CX /CX9.2 Hidden Markov Models 323
+1ab wbw1
+wawb2ab wbw2
+3ab wbwM:1
+:2
+:3w1:P1w1
+w2:P1w2
+wM
+:P1w
+M
+w1:P2w1jwb
+w2:P2w2jwb
+wM:P2wMjwbw1:P3w1jwa;wb
+w2:P3w2jwa;wb
+wM:P3wMjwa;wb
+Figure 9.3 A section of an HMM for a linearly interpolated language model. The
+notationo:pon arcs means that this transition is made with probability p, and
+that anois output when this transition is made (with probability 1).
+what parameter values to use (and we know that together they must obey
+the stochastic constraintP
+ii1), it seems that we should be able to
+ﬁnd the optimal values automatically. And, indeed, we can (Jelinek 1990).
+The key insight is that we can build an HMM with hidden states that
+represent the choice of whether to use the unigram, bigram, or trigram
+probabilities. The HMM training algorithm will determine the optimal
+weight to give to the arcs entering each of these hidden states, whichin turn represents the amount of the probability mass that should bedetermined by each n-gram model via setting the parameters 
+iabove.
+Concretely, we build an HMM with four states for each word pair, one
+for the basic word pair, and three representing each choice of n-gram
+model for calculating the next transition. A fragment of the HMM is
+shown in ﬁgure 9.3. Note how this HMM assigns the same probabilities as
+the earlier equation: there are three ways for wcto followwawband the
+total probability of seeing wcnext is then the sum of each of the n-gram
+probabilities that adorn the arcs multiplied by the corresponding param-eter
+i.T h e HMM training algorithm that we develop in this chapter can
+
+p/CX /CX324 9 Markov Models
+Set of states Sfs1;:::sNg
+Output alphabet Kfk1;:::;kMgf 1;:::;Mg
+Intial state probabilities fig;i2S
+State transition probabilities Afaijg;i;j2S
+Symbol emission probabilities Bfbijkg;i;j2S;k2K
+State sequence XX1;:::;XT1Xt:S,f1;:::;Ng
+Output sequence Oo1;:::;oTot2K
+Table 9.1 Notation used in the HMM chapter.
+then be applied to this network, and used to improve initial estimates for
+the parameters iab. There are two things to note. This conversion works
+by adding epsilon transitions – that is transitions that we wish to say do epsilon transitions
+not produce an output symbol. Secondly, as presented, we now have
+separate parameters iabfor each word pair. But we would not want to
+adjust these parameters separately, as this would make our sparse data
+problem worse not better. Rather, for a ﬁxed i,w ew i s ht ok e e pa l l( o ra t
+least classes of) the iabparameters having the same value, which we do
+by using tied states . Discussion of both of these extensions to the basic
+HMM model will be deferred to section 9.4.
+9.2.2 General form of an HMM
+AnHMM is speciﬁed by a ﬁve-tuple ( S,K,,A,B), whereSandKare the
+set of states and the output alphabet, and ,A,a n dBare the probabilities
+for the initial state, state transitions, and symbol emissions, respectively.The notation that we use in this chapter is summarized in table 9.1. Therandom variables X
+tmap from state names to corresponding integers.
+In the version presented here, the symbol emitted at time tdepends on
+both the state at time tand at timet1. This is sometimes called a
+arc-emission HMM , because we can think of the symbol as coming oﬀ the arc-emission HMM
+arc, as in ﬁgure 9.3. An alternative formulation is a state-emission HMM , state-emission HMM
+where the symbol emitted at time tdepends just on the state at time t.
+The HMM in example 1 is a state-emission HMM . But we can also regard it
+as a arc-emission HMM by simply setting up the bijkparameters so that
+8k0;k00,bijk0bijk00. This is discussed further in section 9.4.
+Given a speciﬁcation of an HMM , it is perfectly straightforward to simu-
+
+p/CX /CX9.3 The Three Fundamental Questions for HMM s 325
+1t:1;
+2Start in statesiwith probability i(i.e.,X1i)
+3forever do
+4 Move from state sito statesjwith probability aij(i.e.,Xt1j)
+5 Emit observation symbol otkwith probability bijk
+6t:t1
+7end
+Figure 9.4 A program for a Markov process.
+late the running of a Markov process, and to produce an output sequence.
+One can do it with the program in ﬁgure 9.4. However, by itself, doing
+this is not terribly interesting. The interest in HMM s comes from assum-
+ingthat some set of data was generated by a HMM , and then being able
+to calculate probabilities and probable underlying state sequences.
+9.3 The Three Fundamental Questions for HMM s
+There are three fundamental questions that we want to know about an
+HMM :
+1. Given a model A;B;, how do we eﬃciently compute how likely
+a certain observation is, that is POj?
+2. Given the observation sequence Oand a model, how do we choose a
+state sequence X1;:::;XT1that best explains the observations?
+3. Given an observation sequence O, and a space of possible models
+found by varying the model parameters A;B; , how do we ﬁnd
+the model that best explains the observed data?
+Normally, the problems we deal with are not like the soft drink machine.
+We don’t know the parameters and have to estimate them from data.
+That’s the third question. The ﬁrst question can be used to decide be-tween models which is best. The second question lets us guess whatpath was probably followed through the Markov chain, and this hiddenpath can be used for classiﬁcation, for instance in applications to part ofspeech tagging, as we see in chapter 10.
+
+p/CX /CX326 9 Markov Models
+9.3.1 Finding the probability of an observation
+Given the observation sequence Oo1;:::;oTand a model 
+A;B;, we wish to know how to eﬃciently compute POj– the prob-
+ability of the observation given the model. This process is often referred
+to as decoding . decoding
+For any state sequence XX1;:::;XT1,
+POjX;TY
+t1PotjXt;Xt1; (9.6)
+bX1X2o1bX2X3o2bXTXT1oT
+and,
+PXjX1aX1X2aX2X3aXTXT1 (9.7)
+Now,
+PO;XjPOjX;PXj (9.8)
+Therefore,POjX
+XPOjX;PXj (9.9)
+X
+X1XT1X1TY
+t1aXtXt1bXtXt1ot
+This derivation is quite straightforward. It is what we did in exam-
+ple 1 to work out the probability of an observation sequence. We simplysummed the probability of the observation occurring according to eachpossible state sequence. But, unfortunately, direct evaluation of the re-sulting expression is hopelessly ineﬃcient. For the general case (whereone can start in any state, and move to any other at each step), the calcu-lation requires 2T1N
+T1multiplications.
+Exercise 9.3 [«]
+Conﬁrm this claim.
+The secret to avoiding this complexity is the general technique of dy- dynamic
+programming namic programming ormemoization by which we remember partial re-
+memoizationsults rather than recomputing them. This general concept crops up in
+many other places in computational linguistics, such as chart parsing,
+
+p/CX /CX9.3 The Three Fundamental Questions for HMM s 327
+and in computer science more generally (see (Cormen et al. 1990: ch. 16)
+for a general introduction). For algorithms such as HMM s, the dynamic
+programming problem is generally described in terms of trellises (also trellis
+called lattices ). Here, we make a square array of states versus time, and lattice
+compute the probabilities of being at each state at each time in terms
+of the probabilities for being in each state at the preceding time instant.
+This is all best seen in pictures – see ﬁgures 9.5 and 9.6. A trellis canrecord the probability of all initial subpaths of the
+HMM that end in a cer-
+tain state at a certain time. The probability of longer subpaths can thenbe worked out in terms of one shorter subpaths.
+The forward procedure
+The form of caching that is indicated in these diagrams is called the for-
+forward procedure
+ward procedure . We describe it in terms of forward variables:
+itPo 1o2ot−1;Xtij (9.10)
+The forward variable itis stored atsi;tin the trellis and expresses
+the total probability of ending up in state siat timet(given that the obser-
+vationso1ot−1were seen). It is calculated by summing probabilities
+for all incoming arcs at a trellis node. We calculate the forward variables
+in the trellis left to right using the following procedure:
+1. Initialization
+i1i;1iN
+2. Induction
+jt1NX
+i1itaijbijot;1tT;1jN
+3. Total
+POjNX
+i1iT1
+This is a much cheaper algorithm that requires only 2 N2Tmultiplica-
+tions.
+
+p/CX /CX328 9 Markov Models
+s1
+s2
+State 3
+sN
+123
+Time,tT1
+Figure 9.5 Trellis algorithms. The trellis is a square array of states versus
+times. A node at si;tcan store information about state sequences which in-
+cludeXti. The lines show the connections between nodes. Here we have a
+fully interconnected HMM where one can move from any state to any other at
+each step.
+The backward procedure
+It should be clear that we do not need to cache results working forward
+through time like this, but rather that we could also work backward. The
+backward procedure computes backward variables which are the total backward
+procedure probability of seeing the rest of the observation sequence given that we
+were in statesiat timet. The real reason for introducing this less intu-
+itive calculation, though, is because use of a combination of forward andbackward probabilities is vital for solving the third problem of parameter
+
+p/CX /CX9.3 The Three Fundamental Questions for HMM s 329
+s1
+1t
+s2
+2t
+s3
+3tsj
+jt1
+sN
+Nt
+tt 1a
+1jb
+1jo
+t
+a2jb2jo
+t
+a3jb3jot
+aNjbNjot
+Figure 9.6 Trellis algorithms: Closeup of the computation of forward probabil-
+ities at one node. The forward probability jt1is calculated by summing the
+product of the probabilities on each incoming arc with the forward probability
+of the originating node.
+reestimation.
+Deﬁne backward variables
+itPotoTjXti; (9.11)
+Then we can calculate backward variables working from right to left
+through the trellis as follows:
+
+p/CX /CX330 9 Markov Models
+Output
+lem ice_t cola
+Time (t): 12 3 4
+CPt 1.0 0.21 0.0462 0.021294
+IPt 0.0 0.09 0.0378 0.010206
+Po 1ot−1 1.0 0.3 0.084 0.0315
+CPt 0.0315 0.045 0.6 1.0
+IPt 0.029 0.245 0.1 1.0
+Po 1oT 0.0315
+γCPt 1.0 0.3 0.88 0.676
+γIPt 0.0 0.7 0.12 0.324
+cXt CP IP CP CP
+CPt 1.0 0.21 0.0315 0.019404
+IPt 0.0 0.09 0.0315 0.008316
+ CPt CP IP CP
+ IPt CP IP CP
+ˆXt CP IP CP CP
+PˆX 0.019404
+Table 9.2 Variable calculations for O(lem, ice_t, cola).
+1. Initialization
+iT11;1iN
+2. Induction
+itNX
+j1aijbijotjt1;1tT;1iN
+3. Total
+POjNX
+i1ii1
+Table 9.2 shows the calculation of forward and backward variables, and
+other variables that we will come to later, for the soft drink machine fromexample 1, given the observation sequence O(lem, ice_t, cola).
+
+p/CX /CX9.3 The Three Fundamental Questions for HMM s 331
+Combining them
+More generally, in fact, we can use any combination of forward and back-
+ward caching to work out the probability of an observation sequence.Observe that:
+PO;X
+tijPo 1oT;Xtij
+Po 1ot−1;Xti;otoTj
+Po 1ot−1;Xtij
+PotoTjo1ot−1;Xti;
+Po 1ot−1;XtijPotoTjXti;
+itit
+Therefore:
+POjNX
+i1itit; 1tT1 (9.12)
+The previous equations were special cases of this one.
+9.3.2 Finding the best state sequence
+The second problem was worded somewhat vaguely as “ﬁnding the state
+sequence that best explains the observations.” That is because there is
+more than one way to think about doing this. One way to proceed wouldbe to choose the states individually. That is, for each t,1tT1, we
+would ﬁndX
+tthat maximizes PXtjO; .
+Let
+γitPXtijO; (9.13)
+PXti;Oj
+POj
+ititPN
+j1jtjt
+The individually most likely state cXtis:
+cXtarg max
+1iNγit; 1tT1 (9.14)
+This quantity maximizes the expected number of states that will be
+guessed correctly. However, it may yield a quite unlikely state sequence .
+
+p/CX /CX332 9 Markov Models
+Therefore, this is not the method that is normally used, but rather the
+Viterbi algorithm, which eﬃciently computes the most likely state se-quence.
+Viterbi algorithm
+Commonly we want to ﬁnd the most likely complete path, that is:
+arg max
+XPXjO;
+To do this, it is suﬃcient to maximize for a ﬁxed O:
+arg max
+XPX;Oj
+An eﬃcient trellis algorithm for computing this path is the Viterbi al- Viterbi algorithm
+gorithm . Deﬁne:
+jtmax
+X1Xt−1PX 1Xt−1;o1ot−1;Xtjj
+This variable stores for each point in the trellis the probability of the most
+probable path that leads to that node. The corresponding variable  jt
+then records the node of the incoming arc that led to this most probablepath. Using dynamic programming, we calculate the most probable paththrough the whole trellis as follows:
+1. Initialization
+
+j1j;1jN
+2. Induction
+jt1max
+1iNitaijbijot;1jN
+Store backtrace
+ jt1arg max
+1iNitaijbijot;1jN
+3. Termination and path readout (by backtracking). The most likely state
+sequence is worked out from the right backwards:
+ˆXT1arg max
+1iNiT1
+ˆXt ˆXt1t1
+PˆXmax
+1iNiT1
+
+p/CX /CX9.3 The Three Fundamental Questions for HMM s 333
+In these calculations, one may get ties. We assume that in that case one
+path is chosen randomly. In practical applications, people commonlywant to work out not only the best state sequence but the n-best se-
+quences or a graph of likely paths. In order to do this people often storethem<n best previous states at a node.
+Table 9.2 above shows the computation of the most likely states and
+state sequence under both these interpretations – for this example, theyprove to be identical.
+9.3.3 The third problem: Parameter estimation
+Given a certain observation sequence, we want to ﬁnd the values of the
+model parameters A;B; which best explain what we observed.
+Using Maximum Likelihood Estimation, that means we want to ﬁnd thevalues that maximize POj:
+arg max
+PO trainingj (9.15)
+There is no known analytic method to choose to maximizePOj.B u t
+we can locally maximize it by an iterative hill-climbing algorithm. Thisalgorithm is the Baum-Welch orForward-Backward algorithm ,w h i c hi sa
+Forward-Backward
+algorithm special case of the Expectation Maximization method which we will cover
+EM algorithmin greater generality in section 14.2.2. It works like this. We don’t know
+what the model is, but we can work out the probability of the observa-
+tion sequence using some (perhaps randomly chosen) model. Looking atthat calculation, we can see which state transitions and symbol emissionswere probably used the most. By increasing the probability of those, wecan choose a revised model which gives a higher probability to the ob-servation sequence. This maximization process is often referred to astraining the model and is performed on training data .
+training
+training dataDeﬁnepti;j; 1tT;1i;jNas shown below. This is the prob-
+ability of traversing a certain arc at time tgiven observation sequence O;
+see ﬁgure 9.7.
+pti;jPXti;Xt1jjO; (9.16)
+PXti;Xt1j;Oj
+POj
+
+p/CX /CX334 9 Markov Models
+sisj
+t−1tt 1t2aijbijot
+it jt1
+Figure 9.7 The probability of traversing an arc. Given an observation sequence
+and a model, we can work out the probability that the Markov process went fromstates
+itosjat timet.
+itaijbijotjt1
+PN
+m1mtmt
+itaijbijotjt1
+PN
+m1PN
+n1mtamnbmnotnt1
+Note thatγitPN
+j1pti;j .
+Now, if we sum over the time index, this gives us expectations (counts):
+TX
+t1γitexpected number of transitions from state iinO
+TX
+t1pti;jexpected number of transitions from state itojinO
+So we begin with some model (perhaps preselected, perhaps just cho-
+sen randomly). We then run Othrough the current model to estimate
+the expectations of each model parameter. We then change the model to
+
+p/CX /CX9.3 The Three Fundamental Questions for HMM s 335
+maximize the values of the paths that are used a lot (while still respect-
+ing the stochastic constraints). We then repeat this process, hoping toconverge on optimal values for the model parameters .
+The reestimation formulas are as follows:
+ˆ
+iexpected frequency in state iat timet1 (9.17)
+γi1
+ˆaijexpected number of transitions from state itoj
+expected number of transitions from state i(9.18)
+PT
+t1pti;jPT
+t1γit
+ˆbijkexpected number of transitions from itojwithkobserved
+expected number of transitions from itoj(9.19)
+P
+ft:otk;1tTgpti;j
+PT
+t1pti;j
+Thus, fromA;B;,w ed e r i v e ˆˆA;ˆB;ˆ. Further, as proved by
+Baum, we have that:
+POjˆPOj
+This is a general property of the EM algorithm (see section 14.2.2). There-
+fore, iterating through a number of rounds of parameter reestimation
+will improve our model. Normally one continues reestimating the pa-
+rameters until results are no longer improving signiﬁcantly. This processof parameter reestimation does not guarantee that we will ﬁnd the bestmodel, however, because the reestimation process may get stuck in a lo-
+local maximum
+cal maximum (or even possibly just at a saddle point). In most problems
+of interest, the likelihood function is a complex nonlinear surface andthere are many local maxima. Nevertheless, Baum-Welch reestimation is
+usually eﬀective for
+HMM s.
+To end this section, let us consider reestimating the parameters of the
+crazy soft drink machine HMM using the Baum-Welch algorithm. If we let
+the initial model be the model that we have been using so far, then train-ing on the observation sequence (lem, ice_t, cola) will yield the followingvalues forp
+ti;j :
+
+p/CX /CX336 9 Markov Models
+(9.20) Time (and j)
+12 3CP IP
+γ1 CP IP γ2 CP IP γ3
+iCP 0.3 0.7 1.0 0.28 0.02 0.3 0.616 0.264 0.88
+IP 0.0 0.0 0.0 0.6 0.1 0.7 0.06 0.06 0.12
+and so the parameters will be reestimated as follows:
+Original Reestimated
+CP 1.0 1.0
+IP 0.0 0.0
+CP IP CP IP
+ACP 0.7 0.3 0.5486 0.4514
+IP 0.5 0.5 0.8049 0.1951
+cola ice_t lem cola ice_t lem
+BCP 0.6 0.1 0.3 0.4037 0.1376 0.4587
+IP 0.1 0.7 0.2 0.1363 0.8537 0.0
+Exercise 9.4 [«]
+If one continued running the Baum-Welch algorithm on this HMM and this train-
+ing sequence, what value would each parameter reach in the limit? Why?
+The reason why the Baum-Welch algorithm is performing so strangely here
+should be apparent: the training sequence is far too short to accurately rep-resent the behavior of the crazy soft drink machine.
+Exercise 9.5 [«]
+Note that the parameter that is zero in stays zero. Is that a chance occurrence?
+What would be the value of the parameter that becomes zero in Bif we did an-
+other iteration of Baum-Welch reestimation? What generalization can one makeabout Baum-Welch reestimation of zero parameters?
+9.4 HMMs: Implementation, Properties, and Variants
+9.4.1 Implementation
+Beyond the theory discussed above, there are a number of practical is-
+sues in the implementation of HMM s. Care has to be taken to make the
+implementation of HMM tagging eﬃcient and accurate. The most obvious
+issue is that the probabilities we are calculating consist of keeping onmultiplying together very small numbers. Such calculations will rapidly
+
+p/CX /CX9.4 HMMs: Implementation, Properties, and Variants 337
+underﬂow the range of ﬂoating point numbers on a computer (even if you
+store them as ‘double’!).
+The Viterbi algorithm only involves multiplications and choosing the
+largest element. Thus we can perform the entire Viterbi algorithm work-ing with logarithms. This not only solves the problem with ﬂoating point
+underﬂow, but it also speeds up the computation, since additions are
+much quicker than multiplications. In practice, a speedy implementa-tion of the Viterbi algorithm is particularly important because this is theruntime algorithm, whereas training can usually proceed slowly oﬄine.
+However, in the Forward-Backward algorithm as well, something still
+has to be done to prevent ﬂoating point underﬂow. The need to performsummations makes it diﬃcult to use logs. A common solution is to em-
+ploy auxiliary scaling coeﬃcients , whose values grow with the time tso
+scaling
+coefﬁcients that the probabilities multiplied by the scaling coeﬃcient remain within
+the ﬂoating point range of the computer. At the end of each iteration,when the parameter values are reestimated, these scaling factors cancelout. Detailed discussion of this and other implementation issues canbe found in (Levinson et al. 1983), (Rabiner and Juang 1993: 365–368),(Cutting et al. 1991), and (Dermatas and Kokkinakis 1995). The main al-
+ternative is to just use logs anyway, despite the fact that one needs to
+sum. Eﬀectively then one is calculating an appropriate scaling factor atthe time of each addition:
+(9.21) funct log_add
+ify−x>logbig
+theny
+elsifx−y>logbig
+thenx
+elseminx;ylogexpx−minx;yexpy−minx;y
+ﬁ.
+where bigis a suitable large constant like 10
+30. For an algorithm like
+this where one is doing a large number of numerical computations, onealso has to be careful about round-oﬀ errors, but such concerns are welloutside the scope of this chapter.
+9.4.2 Variants
+There are many variant forms of HMM s that can be made without funda-
+mentally changing them, just as with ﬁnite state machines. One is to al-
+
+p/CX /CX338 9 Markov Models
+low some arc transitions to occur without emitting any symbol, so-called
+epsilon ornull transitions (Bahl et al. 1983). Another commonly used vari- epsilon transitions
+null transitionsant is to make the output distribution dependent just on a single state,
+rather than on the two states at both ends of an arc as you traverse anarc, as was eﬀectively the case with the soft drink machine. Under this
+model one can view the output as a function of the state chosen, rather
+than of the arc traversed. The model where outputs are a function ofthe state has actually been used more often in Statistical
+NLP, because
+it corresponds naturally to a part of speech tagging model, as we see inchapter 10. Indeed, some people will probably consider us perverse forhaving presented the arc-emission model in this chapter. But we chosethe arc-emission model because it is trivial to simulate the state-emission
+model using it, whereas doing the reverse is much more diﬃcult. As sug-
+gested above, one does not need to think of the simpler model as havingthe outputs coming oﬀ the states, rather one can view the outputs as stillcoming oﬀ the arcs, but that the output distributions happen to be thesame for all arcs that start at a certain node (or that end at a certain node,if one prefers).
+This suggests a general strategy. A problem with
+HMM models is the
+large number of parameters that need to be estimated to deﬁne the
+model, and it may not be possible to estimate them all accurately if notmuch data is available. A straightforward strategy for dealing with thissituation is to introduce assumptions that probability distributions oncertain arcs or at certain states are the same as each other. This is re-ferred to as parameter tying , and one thus gets tied states ortied arcs .
+parameter tying
+tied states
+tied arcsAnother possibility for reducing the number of parameters of the model
+is to decide that certain things are impossible (i.e., they have probability
+zero), and thus to introduce structural zeroes into the model. Makingsome things impossible adds a lot of structure to the model, and socan greatly improve the performance of the parameter reestimation al-gorithm, but is only appropriate in some circumstances.
+9.4.3 Multiple input observations
+We have presented the algorithms for a single input sequence. How doesone train over multiple inputs? For the kind of
+HMM we have been as-
+suming, where every state is connected to every other state (with a non-zero transition probability) – what is sometimes called an ergodic model
+ergodic model
+– there is a simple solution: we simply concatenate all the observation
+
+p/CX /CX9.5 Further Reading 339
+sequences and train on them as one long input. The only real disadvan-
+tage to this is that we do not get suﬃcient data to be able to reestimatethe initial probabilities 
+isuccessfully. However, often people use HMM
+models that are not fully connected. For example, people sometimes use
+afeed forward model where there is an ordered set of states and one can feed forward model
+only proceed at each time instant to the same or a higher numbered state.
+If the HMM is not fully connected – it contains structural zeroes – or if
+we do want to be able to reestimate the initial probabilities, then we needto extend the reestimation formulae to work with a sequence of inputs.Provided that we assume that the inputs are independent, this is straight-forward. We will not present the formulas here, but we do present theanalogous formulas for the
+PCFG case in section 11.3.4.
+9.4.4 Initialization of parameter values
+The reestimation process only guarantees that we will ﬁnd a local max-imum. If we would rather ﬁnd the global maximum, one approach is totry to start the
+HMM in a region of the parameter space that is near the
+global maximum. One can do this by trying to roughly estimate good val-
+ues for the parameters, rather than setting them randomly. In practice,
+good initial estimates for the output parameters Bfbijkgturn out to be
+particularly important, while random initial estimates for the parametersAandare normally satisfactory.
+9.5 Further Reading
+The Viterbi algorithm was ﬁrst described in (Viterbi 1967). The mathe-
+matical theory behind Hidden Markov Models was developed by Baumand his colleagues in the late sixties and early seventies (Baum et al.1970), and advocated for use in speech recognition in lectures by JackFerguson from the Institute for Defense Analyses. It was applied tospeech processing in the 1970s by Baker at
+CMU (Baker 1975), and by
+Jelinek and colleagues at IBM(Jelinek et al. 1975; Jelinek 1976), and then
+later found its way at IBMand elsewhere into use for other kinds of lan-
+guage modeling, such as part of speech tagging.
+There are many good references on HMM algorithms (within the context
+of speech recognition), including (Levinson et al. 1983; Knill and Young1997; Jelinek 1997). Particularly well-known are (Rabiner 1989; Rabiner
+
+p/CX /CX340 9 Markov Models
+and Juang 1993). They consider continuous HMM s (where the output is
+real valued) as well as the discrete HMM s we have considered here, con-
+tain information on applications of HMM s to speech recognition and may
+also be consulted for fairly comprehensive references on the develop-ment and the use of
+HMM s. Our presentation of HMM s is however most
+closely based on that of Paul (1990).
+Within the chapter, we have assumed a ﬁxed HMM architecture, and
+have just gone about learning optimal parameters for the HMM within
+that architecture. However, what size and shape of HMM should one
+choose for a new problem? Sometimes the nature of the problem de-termines the architecture, as in the applications of
+HMM s to tagging that
+we discuss in the next chapter. For circumstances when this is not the
+case, there has been some work on learning an appropriate HMM struc-
+ture on the principle of trying to ﬁnd the most compact HMM that can
+adequately describe the data (Stolcke and Omohundro 1993).
+HMM s are widely used to analyze gene sequences in bioinformatics. See
+for instance (Baldi and Brunak 1998; Durbin et al. 1998). As linguists, weﬁnd it a little hard to take seriously problems over an alphabet of foursymbols, but bioinformatics is a well-funded domain to which you can
+apply your new skills in Hidden Markov Modeling!
+

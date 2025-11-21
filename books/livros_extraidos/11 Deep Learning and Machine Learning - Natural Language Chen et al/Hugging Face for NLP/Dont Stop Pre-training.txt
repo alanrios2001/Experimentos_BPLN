@@ -1,0 +1,583 @@
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/four.pnum/seven.pnum
+/four.pnum./one.pnum/zero.pnum How to handle different tasks with huggingface?
+/four.pnum./one.pnum/one.pnum Don’t Stop Pre-training
+In Natural Language Processing (NLP), one of the most effect ive strategies for improving model per-
+formance is to continue pre-training. Pre-trained models l ike BERT, GPT, and RoBERTa have revolu-
+tionized NLP tasks, but their potential can be further maxim ized by additional pre-training on domain-
+speciﬁc data. This is referred to as domain-adaptive pre-training orcontinued pre-training .
+The key idea is simple: instead of directly ﬁne-tuning the mo del for a downstream task, we ﬁrst
+pre-train the model further on a corpus that is closer to the t arget domain or task. This often results
+in better performance because the model gets to adapt to the s peciﬁc characteristics of the target
+domain before ﬁne-tuning.
+In this section, we will use Hugging Face’s ‘transformers‘ l ibrary to demonstrate how to continue
+pre-training a model on new data. Speciﬁcally, we will:
+/one.pnum. Load a pre-trained model from Hugging Face.
+/two.pnum. Continue pre-training on a custom dataset.
+/three.pnum. Show how to save the updated model.
+/four.pnum./one.pnum/one.pnum./one.pnum Step-by-StepGuide
+/four.pnum./one.pnum/one.pnum./one.pnum./one.pnum Step /one.pnum: Install the Hugging Face Transformers library
+First, install the Hugging Face transformers library if you haven’t already:
+/one.pnumpip install transformers datasets
+/four.pnum./one.pnum/one.pnum./one.pnum./two.pnum Step /two.pnum: Load a Pre-trained Model and Tokenizer
+We begin by loading a pre-trained model and tokenizer from Hu gging Face. For this example, we will
+use the ‘BERT‘ model:
+/one.pnumfrom transformers import BertTokenizer, BertForMaskedLM
+/two.pnum
+/three.pnum# Load pre-trained model and tokenizer
+/four.pnummodel_name = "bert-base-uncased"
+/five.pnumtokenizer = BertTokenizer.from_pretrained(model_name)
+6model = BertForMaskedLM.from_pretrained(model_name)
+Here, we areusing‘BertForMaskedLM‘ sincewewill continue pre-training withamaskedlanguage
+modeling task. This is the same task that BERT was originally trained on, which makes it an ideal
+choice for further pre-training.
+/four.pnum./one.pnum/one.pnum./one.pnum./three.pnum Step /three.pnum: Prepare a Custom Dataset
+To continue pre-training, we need a domain-speciﬁc dataset . Hugging Face provides easy access to
+various datasets, but you can also use your own text data.
+For this example, we will use the ‘datasets‘ library to load a dataset:
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/four.pnum8
+/one.pnumfrom datasets import load_dataset
+/two.pnum
+/three.pnum# Load a text dataset
+/four.pnumdataset = load_dataset( "wikitext" ,"wikitext-2-raw-v1" , split= "train")
+This will load the WikiText-/two.pnum dataset, which is a popular ben chmark for language modeling. The
+dataset will be tokenized and prepared for training in the ne xt step.
+/four.pnum./one.pnum/one.pnum./one.pnum./four.pnum Step /four.pnum: Tokenize the Dataset
+Next, we tokenize the text data using the tokenizer loaded ea rlier. This is necessary to convert raw
+text into the format that the model understands.
+/one.pnumdef tokenize_function(examples):
+/two.pnumreturn tokenizer(examples[ "text"], truncation=True, padding= "max_length" , max_length=512)
+/three.pnum
+/four.pnum# Tokenize the dataset
+/five.pnumtokenized_datasets = dataset.map(tokenize_function, ba tched=True)
+This function tokenizes the text, ensuring that each inputi s paddedor truncated to a lengthof /five.pnum/one.pnum/two.pnum
+tokens.
+/four.pnum./one.pnum/one.pnum./one.pnum./five.pnum Step /five.pnum: Fine-tune the Model on the New Dataset
+Oncethedatasetistokenized, wecansetupthetraining loop toﬁne-tunethepre-trainedmodelonthe
+new data.
+/one.pnumfrom transformers import Trainer, TrainingArguments
+/two.pnum
+/three.pnum# Define training arguments
+/four.pnumtraining_args = TrainingArguments(
+/five.pnumoutput_dir= "./results" ,# Output directory
+6overwrite_output_dir=True, # Overwrite content
+/seven.pnumnum_train_epochs=3, # Number of training epochs
+8per_device_train_batch_size=8, # Batch size
+/nine.pnumsave_steps=10_000, # Save checkpoint every 10k steps
+/one.pnum/zero.pnumsave_total_limit=2, # Limit number of saved checkpoints
+/one.pnum/one.pnum)
+/one.pnum/two.pnum
+/one.pnum/three.pnum# Set up the trainer
+/one.pnum/four.pnumtrainer = Trainer(
+/one.pnum/five.pnummodel=model,
+/one.pnum6args=training_args,
+/one.pnum/seven.pnumtrain_dataset=tokenized_datasets,
+/one.pnum8)
+/one.pnum/nine.pnum
+/two.pnum/zero.pnum# Train the model
+/two.pnum/one.pnumtrainer.train()
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/four.pnum/nine.pnum
+This code ﬁne-tunes the model for three epochs on the tokeniz ed WikiText-/two.pnum dataset. You can
+adjust the parameters such as batch size or number of epochs t o suit your computational resources
+and speciﬁc task.
+/four.pnum./one.pnum/one.pnum./one.pnum.6 Step 6: Save the Updated Model
+Finally, after the model has been pre-trained on the new data set, we can save the updated model and
+tokenizer for later use.
+/one.pnum# Save the model and tokenizer
+/two.pnummodel.save_pretrained( "./domain_specific_bert" )
+/three.pnumtokenizer.save_pretrained( "./domain_specific_bert" )
+This saves the ﬁne-tuned model and tokenizer to a speciﬁed di rectory, making it easy to load and
+use for downstream tasks.
+/four.pnum./one.pnum/one.pnum./two.pnum Conclusion
+In this section, we walked through the process of continuing pre-training using Hugging Face trans-
+formers. This simple example showed how pre-trained models can be further adapted to domain-
+speciﬁc data by ﬁne-tuning on a custom dataset.
+The key takeaway is: don’t stop pre-training . By continuing the pre-training process, especially
+on data relevant to your downstream task, you can extract mor e performance from your model and
+achieve better results in specialized domains.
+/four.pnum./one.pnum/one.pnum./three.pnum Why Continue Pre-training?
+At this point, you might ask: why should we continue pre-trai ning instead of directly ﬁne-tuning the
+model on the downstream task? Here are some key reasons:
+•DomainAdaptation : Pre-trainedmodelslikeBERTandGPT-/two.pnumareusuallytrained onlarge,general-
+purpose datasets like Wikipedia or Common Crawl. While this gives them a strong general un-
+derstanding of language, the speciﬁc nuances of your task ma y not be covered. For instance, a
+medical NLP model would beneﬁt from additional pre-trainin g on medical literature.
+•Improved Performance : Continued pre-training on domain-speciﬁc or task-relate d data helps
+the model adapt its language understanding, improving down stream performance. Empirical
+results show that models trained this way often outperform t hose that are only ﬁne-tuned.
+•Pre-training vs Fine-tuning : Fine-tuning is task-speciﬁc and usually done on relativel y small
+datasets. If the model has not seen relevant domain data befo re ﬁne-tuning, it may not gen-
+eralize well. Continued pre-training provides a more tailo red foundation for ﬁne-tuning.
+Insummary,don’tstoppre-trainingifyouhaveaccesstomor erelevantdatathatcanhelpthemodel
+understand the nuances of your domain.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/five.pnum/zero.pnum
+/four.pnum./one.pnum/one.pnum./four.pnum Use Cases for Continued Pre-training
+To further illustrate, here are a few scenarios where contin ued pre-training can make a signiﬁcant
+difference:
+/one.pnum.MedicalTextAnalysis : Ifyouareworking withclinicalrecordsorbiomedicalpape rs,pre-training
+BERT or GPT on a corpus like PubMed articles or clinical notes can drastically improve your
+model’s performance in health-related NLP tasks.
+/two.pnum.LegalDocumentProcessing : Legallanguagehasitsownsetofcomplexitiesandterminol ogies.
+By pre-training a language model on legal documents, the mod el will better understand these
+unique language patterns, leading to more accurate results for tasks like contract analysis or
+case law classiﬁcation.
+/three.pnum.Customer Service Chatbots : If you are developing a chatbot for a speciﬁc industry, such as
+ﬁnance or retail, further pre-training on transcripts of cu stomer interactions in that industry will
+help the model handle customer queries more effectively.
+/four.pnum./one.pnum/one.pnum./five.pnum Potential Challenges and Solutions
+While continued pre-training can signiﬁcantly enhance mod el performance, there are some potential
+challenges to consider:
+•Computational Costs : Pre-training requires signiﬁcant computational resourc es, especially for
+large models like BERT or GPT. To mitigate this, you can reduc e the number of training steps or
+use a smaller pre-trained model.
+•Catastrophic Forgetting : When continuing pre-training on a speciﬁc domain, there’s a risk that
+the model might "forget" some of the general language unders tanding it gained during its ini-
+tial pre-training. To address this, you can experiment with different learning rates or alternate
+between domain-speciﬁc and general-purpose datasets duri ng pre-training.
+•DataAvailability : Insomecases,gatheringalargeenoughcorpusfordomain-s peciﬁcpre-training
+can be challenging. You can addressthis by using unsupervis eddatasets, such as web-crawled
+domain-speciﬁctext,orleveragingdataaugmentationtech niquestoartiﬁciallyexpandyourdataset.
+By beingaware of thesechallenges,you can optimize your app roach to continued pre-training and
+avoid potential pitfalls.
+/four.pnum./one.pnum/one.pnum.6 Hyperparameter Tuning for Continued Pre-training
+When continuing pre-training, selecting the right hyperpa rameters is crucial for maximizing perfor-
+mance. Below are some of the key hyperparameters to consider :
+•Learning Rate : A lower learning rate is often recommended for continued pr e-training, as the
+model has already learned a great deal from general data. You may start with a learning rate
+between /one.pnume-/five.pnum and /three.pnume-/five.pnum.
+•Batch Size : Larger batch sizes help stabilize training, but they also r equire more memory. Start
+with a batch size of /one.pnum6 or /three.pnum/two.pnum, depending on your GPU memory.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/five.pnum/one.pnum
+•Number of Epochs : You typically don’t need as many epochs for continued pre-t raining as you
+would for initial pre-training. Start with /two.pnum-/four.pnum epochs and mo nitor for signs of overﬁtting.
+•Warmup Steps : Using a warmup phase for learning rate scheduling can help s mooth the transi-
+tion from the pre-trained weights to your domain-speciﬁc da ta. A common choice is to set the
+warmup steps to about /one.pnum/zero.pnum
+Youcaneasilyadjustthesehyperparametersinthe‘Trainin gArguments‘objectfromHuggingFace’s
+‘transformers‘ library. Here’s an example:
+/one.pnumtraining_args = TrainingArguments(
+/two.pnumoutput_dir= "./results" ,
+/three.pnumnum_train_epochs=3,
+/four.pnumper_device_train_batch_size=16,
+/five.pnumwarmup_steps=500,
+6weight_decay=0.01,
+/seven.pnumlogging_dir= "./logs" ,
+8logging_steps=10,
+/nine.pnumlearning_rate=2e-5,
+/one.pnum/zero.pnum)
+/four.pnum./one.pnum/one.pnum./seven.pnum Evaluation After Pre-training
+Onceyouhavecompletedcontinuedpre-training,itisessen tialtoevaluateyourmodeltoensurethatit
+hasimproved. You can evaluatethe performanceof thenewly p re-trainedmodelon your downstream
+task or test it on an intermediate task like masked language m odeling.
+Hugging Face’s ‘Trainer‘ provides a simple way to evaluate t he model:
+/one.pnum# Load the evaluation dataset
+/two.pnumeval_dataset = load_dataset( "wikitext" ,"wikitext-2-raw-v1" , split= "validation" )
+/three.pnum
+/four.pnum# Tokenize the evaluation dataset
+/five.pnumtokenized_eval_dataset = eval_dataset.map(tokenize_fu nction, batched=True)
+6
+/seven.pnum# Evaluate the model
+8eval_results = trainer.evaluate(eval_dataset=tokenize d_eval_dataset)
+/nine.pnum
+/one.pnum/zero.pnumprint(f"Perplexity: {eval_results[’perplexity’]}" )
+In thiscase, we are using theperplexitymetric, which is aco mmon measurefor languagemodels.
+A lower perplexity indicates that the model has a better unde rstanding of the text.
+If you are ﬁne-tuning on a speciﬁc downstream task, such as te xt classiﬁcation or question an-
+swering, you should evaluate the model using task-speciﬁc m etrics like accuracy, F/one.pnum score, or exact
+match.
+/four.pnum./one.pnum/one.pnum.8 Practical Example: Fine-tuning After Continued Pre -training
+After continued pre-training, you can ﬁne-tune the model fo r your speciﬁc task. For example, if you
+are working on a text classiﬁcation task, you can load your ﬁn e-tuned BERT model and train it on a
+classiﬁcation dataset.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/five.pnum/two.pnum
+Here’s how you can set up a text classiﬁcation task using the n ewly pre-trained model:
+/one.pnumfrom transformers import BertForSequenceClassification , Trainer, TrainingArguments
+/two.pnum
+/three.pnum# Load the pre-trained model for sequence classification
+/four.pnummodel = BertForSequenceClassification.from_pretrained ("./domain_specific_bert" , num_labels=2)
+/five.pnum
+6# Load and tokenize your dataset
+/seven.pnumfrom datasets import load_dataset
+8
+/nine.pnumdataset = load_dataset( "imdb")
+/one.pnum/zero.pnumtokenized_datasets = dataset.map(tokenize_function, ba tched=True)
+/one.pnum/one.pnum
+/one.pnum/two.pnum# Set up the trainer
+/one.pnum/three.pnumtrainer = Trainer(
+/one.pnum/four.pnummodel=model,
+/one.pnum/five.pnumargs=training_args,
+/one.pnum6train_dataset=tokenized_datasets[ ’train’],
+/one.pnum/seven.pnumeval_dataset=tokenized_datasets[ ’test’],
+/one.pnum8)
+/one.pnum/nine.pnum
+/two.pnum/zero.pnum# Fine-tune the model
+/two.pnum/one.pnumtrainer.train()
+Inthisexample,weloadtheIMDb datasetforbinarysentimen tclassiﬁcationandﬁne-tuneourpre-
+trained BERT model. You can adjust the ‘num_labels‘ paramet er depending on the number of classes
+in your classiﬁcation task.
+/four.pnum./one.pnum/one.pnum./nine.pnum Conclusion
+Continuedpre-trainingisapowerfultechniquetofurtheri mprovepre-trainedmodelsondomain-speciﬁc
+data. By leveraging libraries like Hugging Face’s‘transfo rmers‘, it becomes easy to adaptstate-of-the-
+art models like BERT and GPT to your own domain with relativel y little effort. The steps outlined in
+this section should give you a clear path from loading a pre-t rained model, to continuing pre-training,
+to ﬁne-tuning on a downstream task.
+Remember, the key takeaway is: don’t stop pre-training when you have access to additional data
+that is relevant to your problem. Whether you’re working in a specialized ﬁeld like medicine, law, or
+customer support, continued pre-training can give your mod els the extra edge they need to excel.
+/four.pnum./one.pnum/one.pnum./one.pnum/zero.pnum Advanced Techniques for Continued Pre-training
+While the basic approach to continued pre-training as descr ibed above is often sufﬁcient, there are
+severaladvancedtechniquesthatcanfurtherenhancetheef fectivenessofyourmodel. Inthissection,
+we will explore a few of these methods, which you can experime nt with depending on your speciﬁc
+needs.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/five.pnum/three.pnum
+/four.pnum./one.pnum/one.pnum./one.pnum/zero.pnum./one.pnum /one.pnum. Multi-Task Pre-training
+In some cases, you may want to train your model on multiple rel ated tasks simultaneously. This is
+known as multi-task learning . By exposing the model to various tasks, it can learn richer r epresenta-
+tions that transfer better to downstream tasks.
+For example, if you are training a model for both text classiﬁ cation and named entity recognition
+(NER), you can use multi-task learning to train on both tasks at the same time. Here’s how you can
+implement multi-task pre-training with Hugging Face:
+/one.pnumfrom transformers import Trainer, TrainingArguments, Ber tForSequenceClassification,
+BertForTokenClassification
+/two.pnum
+/three.pnum# Define models for both tasks
+/four.pnumclassification_model = BertForSequenceClassification. from_pretrained( "bert-base-uncased" ,
+num_labels=2)
+/five.pnumner_model = BertForTokenClassification.from_pretraine d("bert-base-uncased" , num_labels=9)
+6
+/seven.pnum# Prepare datasets for both tasks
+8classification_dataset = load_dataset( "imdb")
+/nine.pnumner_dataset = load_dataset( "conll2003" )
+/one.pnum/zero.pnum
+/one.pnum/one.pnum# Tokenize datasets (ensure you use a shared tokenizer)
+/one.pnum/two.pnumdef tokenize_function(examples):
+/one.pnum/three.pnumreturn tokenizer(examples[ "text"], truncation=True, padding= "max_length" , max_length=512)
+/one.pnum/four.pnum
+/one.pnum/five.pnumtokenized_classification = classification_dataset.map (tokenize_function, batched=True)
+/one.pnum6tokenized_ner = ner_dataset.map(tokenize_function, bat ched=True)
+/one.pnum/seven.pnum
+/one.pnum8# Combine datasets for multi-task training
+/one.pnum/nine.pnummulti_task_train_dataset = {
+/two.pnum/zero.pnum"classification" : tokenized_classification[ ’train’],
+/two.pnum/one.pnum"ner": tokenized_ner[ ’train’]
+/two.pnum/two.pnum}
+/two.pnum/three.pnum
+/two.pnum/four.pnum# Define the Trainer (more advanced setup needed for multi-t ask)
+/two.pnum/five.pnumtraining_args = TrainingArguments(
+/two.pnum6output_dir= "./multi_task_results" ,
+/two.pnum/seven.pnumevaluation_strategy= "steps",
+/two.pnum8save_steps=10_000,
+/two.pnum/nine.pnumlogging_dir= "./logs" ,
+/three.pnum/zero.pnumlogging_steps=100,
+/three.pnum/one.pnumlearning_rate=2e-5,
+/three.pnum/two.pnumper_device_train_batch_size=16,
+/three.pnum/three.pnum)
+/three.pnum/four.pnum
+/three.pnum/five.pnumtrainer = Trainer(
+/three.pnum6model=[classification_model, ner_model], # This will require custom training loop or multi-
+head trainer logic
+/three.pnum/seven.pnumargs=training_args,
+/three.pnum8train_dataset=multi_task_train_dataset,
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/five.pnum/four.pnum
+/three.pnum/nine.pnum)
+/four.pnum/zero.pnum
+/four.pnum/one.pnumtrainer.train()
+Inthisexample,you canseethatwe’retraining bothatextcl assiﬁcation modelandanamedentity
+recognition (NER) model together. This approach can help th e model generalize better by learning
+from multiple tasks at once.
+/four.pnum./one.pnum/one.pnum./one.pnum/zero.pnum./two.pnum /two.pnum. Curriculum Learning
+Another advanced technique is curriculum learning [86]. In curriculum learning, you start training on
+easier examples and gradually move to harder ones. This appr oach is inspired by the way humans
+learn: we build foundational knowledge before tackling mor e complex topics.
+You can implement curriculum learning by ﬁrst training on ge neral data and then ﬁne-tuning on
+more difﬁcultor domain-speciﬁcdata. Here’sa high-levele xampleof how you canimplementcurricu-
+lum learning in NLP:
+/one.pnum# Step 1: Pre-train on general dataset (e.g., Wikipedia)
+/two.pnumgeneral_dataset = load_dataset( "wikipedia" ,"20220301.en" , split= "train")
+/three.pnumtokenized_general = general_dataset.map(tokenize_func tion, batched=True)
+/four.pnum
+/five.pnum# Fine-tune on general dataset
+6trainer = Trainer(
+/seven.pnummodel=model,
+8args=training_args,
+/nine.pnumtrain_dataset=tokenized_general,
+/one.pnum/zero.pnum)
+/one.pnum/one.pnumtrainer.train()
+/one.pnum/two.pnum
+/one.pnum/three.pnum# Step 2: Continue pre-training on a harder, more specific da taset (e.g., domain-specific corpus)
+/one.pnum/four.pnumdomain_dataset = load_dataset( "pubmed" , split= "train")
+/one.pnum/five.pnumtokenized_domain = domain_dataset.map(tokenize_functi on, batched=True)
+/one.pnum6
+/one.pnum/seven.pnum# Fine-tune on the harder dataset
+/one.pnum8trainer = Trainer(
+/one.pnum/nine.pnummodel=model,
+/two.pnum/zero.pnumargs=training_args,
+/two.pnum/one.pnumtrain_dataset=tokenized_domain,
+/two.pnum/two.pnum)
+/two.pnum/three.pnumtrainer.train()
+Here, theideaisto startwithageneral-purposedatasetlik eWikipediaandthenmoveon toamore
+difﬁcult domain-speciﬁc dataset like PubMed or legal text. This gradual increase in difﬁculty allows
+the model to adapt better to the target domain.
+/four.pnum./one.pnum/one.pnum./one.pnum/zero.pnum./three.pnum /three.pnum. Adapters for Efﬁcient Pre-training
+Pre-training large models from scratch or continuing pre-t raining can be computationally expensive.
+To address this, you can use adapters , which are small, trainable modules inserted into each laye r of
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/five.pnum/five.pnum
+the pre-trained model. Adapters allow you to keep the origin al model weights frozen while ﬁne-tuning
+only the smaller adapter layers, signiﬁcantly reducing com putational costs.
+The Hugging Face ‘transformers‘ library has integrated sup port for adapters. Here’s how you can
+use adapters for continued pre-training:
+/one.pnumfrom transformers import BertModel, AdapterConfig
+/two.pnum
+/three.pnum# Load pre-trained model
+/four.pnummodel = BertModel.from_pretrained( "bert-base-uncased" )
+/five.pnum
+6# Add an adapter configuration for efficient training
+/seven.pnumadapter_config = AdapterConfig.load( "pfeiffer" )
+8
+/nine.pnum# Add a new adapter to the model
+/one.pnum/zero.pnummodel.add_adapter( "domain_adapter" , config=adapter_config)
+/one.pnum/one.pnum
+/one.pnum/two.pnum# Train the adapter on the domain-specific dataset
+/one.pnum/three.pnumtrainer = Trainer(
+/one.pnum/four.pnummodel=model,
+/one.pnum/five.pnumargs=training_args,
+/one.pnum6train_dataset=tokenized_datasets,
+/one.pnum/seven.pnum)
+/one.pnum8
+/one.pnum/nine.pnum# Activate adapter for training
+/two.pnum/zero.pnummodel.train_adapter( "domain_adapter" )
+/two.pnum/one.pnumtrainer.train()
+With adapters, only the adapter layers are trained while the rest of the model remains frozen. This
+reducesthenumberofparametersthatneedtobeupdated,mak ingcontinuedpre-trainingmuchmore
+efﬁcient in terms of both memory and time.
+/four.pnum./one.pnum/one.pnum./one.pnum/zero.pnum./four.pnum /four.pnum. Knowledge Distillation
+Knowledge distillation is another advanced technique where a smaller, more efﬁcien t model (called
+thestudent)learns to mimic a larger model(the teacher). Thiscan be usefulwhenyou want to deploy
+a lightweight model for production while still beneﬁting fr om the knowledge contained in a large pre-
+trained model.
+The Hugging Face ‘transformers‘ library provides tools for distilling models. Here’s a simpliﬁed
+example of how you can distill a BERT model:
+/one.pnumfrom transformers import DistilBertForSequenceClassifi cation, Trainer
+/two.pnum
+/three.pnum# Load teacher model (a larger BERT model)
+/four.pnumteacher_model = BertForSequenceClassification.from_pr etrained( "bert-base-uncased" )
+/five.pnum
+6# Load student model (a smaller DistilBERT model)
+/seven.pnumstudent_model = DistilBertForSequenceClassification.f rom_pretrained( "distilbert-base-uncased" )
+8
+/nine.pnum# Use the Hugging Face trainer for distillation
+/one.pnum/zero.pnumtrainer = Trainer(
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/five.pnum6
+/one.pnum/one.pnummodel=student_model,
+/one.pnum/two.pnumargs=training_args,
+/one.pnum/three.pnumtrain_dataset=tokenized_datasets,
+/one.pnum/four.pnumteacher_model=teacher_model # Pass in the teacher model for distillation
+/one.pnum/five.pnum)
+/one.pnum6
+/one.pnum/seven.pnum# Train the student model with guidance from the teacher mode l
+/one.pnum8trainer.train()
+By using knowledge distillation, you can deploy models that are more computationally efﬁcient
+while retaining much of the performance of the larger, pre-t rained teacher model.
+/four.pnum./one.pnum/one.pnum./one.pnum/one.pnum Summary of Advanced Techniques
+Torecap, herearesomeoftheadvancedtechniquesyou canapp lyto continuedpre-training tofurther
+improve your model’s performance or reduce computational c osts:
+•Multi-task Learning : Train your model on multiple related tasks to improve gener alization.
+•Curriculum Learning : Start with easier data and gradually move to more complex or domain-
+speciﬁc data.
+•Adapters : Use adapters to efﬁciently continue pre-training without updating all model parame-
+ters.
+•Knowledge Distillation : Train a smaller student model to mimic a larger teacher mode l for a
+more lightweight solution.
+These techniques are particularly useful when working with large models and domain-speciﬁc
+datasets, and they can help you strike a balance between comp utational efﬁciency and model per-
+formance.
+/four.pnum./one.pnum/one.pnum./one.pnum/two.pnum Next Steps: Applying Continued Pre-training in Pra ctice
+Now that you have a solid understandingof how and why to conti nue pre-training a model, it’s time to
+put this knowledge into practice. Here are a few next steps yo u can take:
+/one.pnum.Experiment with your own data : Try applying continued pre-training on a dataset from your spe-
+ciﬁc domain. Whether you’re working with legal documents, m edical records, or any other spe-
+cialized text, continuing pre-training on relevant data ca n lead to signiﬁcant improvements in
+model performance.
+/two.pnum.Tune hyperparameters : Asmentionedearlier, hyperparametertuningcanmakeabig difference.
+Experiment with learning rates, batch sizes, and the number of training stepsto ﬁnd the optimal
+setup for your speciﬁc task.
+/three.pnum.Explore advanced techniques : Don’t hesitate to experiment with multi-task learning, cu rriculum
+learning,adapters,orknowledgedistillation. Thesetech niquescanhelpyoupushtheboundaries
+of what’s possible with continued pre-training.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/five.pnum/seven.pnum
+/four.pnum.Fine-tune on downstream tasks : After continued pre-training, apply your model to downstr eam
+tasks like text classiﬁcation, question answering, or name d entity recognition. Evaluate your
+model’s performance and iterate as needed.
+Byfollowingthesestepsandapplyingtheconceptsdiscusse dinthischapter,you’llbewellonyour
+way to mastering the art of continued pre-training in NLP. Wh ether you’re working on academic re-
+searchor buildingNLP applicationsfor industry,thistech niqueis apowerfultool for improving model
+performance in domain-speciﬁc tasks.
+/four.pnum./one.pnum/one.pnum./one.pnum/three.pnum Case Study: Domain-Speciﬁc Language Model for Lega l Text
+Let’s bring everything together with a real-world case stud y. Imagine you are working for a law ﬁrm
+and tasked with developing an NLP model to process legal cont racts. These contracts contain highly
+specialized language and jargon, which general-purpose mo dels like BERT may not fully understand.
+To address this, you decide to continue pre-training a BERT m odel on legal documents.
+Here’s how you might approach this project from start to ﬁnis h:
+/four.pnum./one.pnum/one.pnum./one.pnum/three.pnum./one.pnum Step /one.pnum: Gathering Domain-Speciﬁc Data
+The ﬁrst step in this journey is to gather a corpus of legal doc uments. This could include contracts,
+case law, legal statutes, and regulatory documents. For our case study, let’s assume that we have a
+collection of /one.pnum/zero.pnum/zero.pnum,/zero.pnum/zero.pnum/zero.pnum legal contracts in plain text format.
+You beginby preprocessing the data to remove non-text eleme nts, ensuring that the input is clean
+and ready for model consumption.
+/one.pnumimport os
+/two.pnum
+/three.pnum# Load and preprocess legal text files
+/four.pnumlegal_texts = []
+/five.pnumfor filename in os.listdir( "./legal_documents" ):
+6with open(f "./legal_documents/{filename}" ,"r") as f:
+/seven.pnum text = f.read()
+8 legal_texts.append(text)
+Withyourlegalcorpusready,thenextstepistotokenizethe textusingapre-trainedBERTtokenizer.
+/four.pnum./one.pnum/one.pnum./one.pnum/three.pnum./two.pnum Step /two.pnum: Tokenizing the Legal Corpus
+Since BERT models operate on tokenized data, you need to conv ert the legal text into token IDs that
+the model can process. Fortunately, the Hugging Face tokeni zer makes this step easy:
+/one.pnumfrom transformers import BertTokenizer
+/two.pnum
+/three.pnum# Load BERT tokenizer
+/four.pnumtokenizer = BertTokenizer.from_pretrained( "bert-base-uncased" )
+/five.pnum
+6# Tokenize the legal texts
+/seven.pnumdef tokenize_texts(texts):
+8return tokenizer(texts, truncation=True, padding= "max_length" , max_length=512)
+/nine.pnum
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/five.pnum8
+/one.pnum/zero.pnumtokenized_legal_texts = [tokenize_texts(text) for text i n legal_texts]
+Thistokenization processensuresthateachlegaldocument isbrokendownintoaformatsuitable
+for BERT, while maintaining the meaning and structure of the text.
+/four.pnum./one.pnum/one.pnum./one.pnum/three.pnum./three.pnum Step /three.pnum: Continued Pre-training on Legal Data
+Withyour legalcorpustokenized, it’stime to beginthepre- training process. Since BERTwas originally
+trained using masked languagemodeling, you will continue t his training task on the legal documents.
+This way, the model learns the patterns and terminology uniq ue to legal language.
+Here’s how you initiate the continued pre-training:
+/one.pnumfrom transformers import BertForMaskedLM, Trainer, Train ingArguments
+/two.pnum
+/three.pnum# Load pre-trained BERT model
+/four.pnummodel = BertForMaskedLM.from_pretrained( "bert-base-uncased" )
+/five.pnum
+6# Define training arguments
+/seven.pnumtraining_args = TrainingArguments(
+8output_dir= "./legal_bert_model" ,
+/nine.pnumoverwrite_output_dir=True,
+/one.pnum/zero.pnumnum_train_epochs=3,
+/one.pnum/one.pnumper_device_train_batch_size=8,
+/one.pnum/two.pnumsave_steps=10_000,
+/one.pnum/three.pnumsave_total_limit=2,
+/one.pnum/four.pnum)
+/one.pnum/five.pnum
+/one.pnum6# Initialize the Hugging Face Trainer
+/one.pnum/seven.pnumtrainer = Trainer(
+/one.pnum8model=model,
+/one.pnum/nine.pnumargs=training_args,
+/two.pnum/zero.pnumtrain_dataset=tokenized_legal_texts,
+/two.pnum/one.pnum)
+/two.pnum/two.pnum
+/two.pnum/three.pnum# Start the continued pre-training
+/two.pnum/four.pnumtrainer.train()
+In this step, you are continuing pre-training for three epoc hs, allowing the model to better under-
+stand legal-speciﬁc text by adapting its knowledge to the nu ances of contract language, legal deﬁni-
+tions, and other specialized terms.
+/four.pnum./one.pnum/one.pnum./one.pnum/three.pnum./four.pnum Step /four.pnum: Evaluating the Pre-trained Model
+Afterthepre-trainingprocessiscomplete,it’stimetoeva luatehowwellthemodelhasadaptedtolegal
+text. For evaluation, you can use masked language modeling o n a validation set of legal contracts to
+see if the model has improved its understanding.
+/one.pnum# Load evaluation dataset (a subset of legal contracts)
+/two.pnumvalidation_texts = tokenized_legal_texts[:1000] # Assuming first 1000 are for validation
+/three.pnum
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum/five.pnum/nine.pnum
+/four.pnum# Evaluate the model
+/five.pnumeval_results = trainer.evaluate(eval_dataset=validati on_texts)
+6
+/seven.pnumprint(f"Perplexity: {eval_results[’perplexity’]}" )
+Here, perplexity is used as the evaluation metric, where a lo wer perplexity score indicates that the
+modelhasgainedabetterunderstandingoflegallanguage. T ypically, afterseveralepochsofdomain-
+speciﬁcpre-training,you’llobserveanoticeableimprove mentinthisscorecomparedtothepre-trained
+BERT model.
+/four.pnum./one.pnum/one.pnum./one.pnum/three.pnum./five.pnum Step /five.pnum: Fine-tuning for Contract Classiﬁcation
+Oncethemodelhasbeenpre-trainedonlegaldocuments,youc anﬁne-tuneitforspeciﬁcdownstream
+tasks. Forexample,let’ssayyouneedtoclassifylegalcont ractsintodifferentcategories: employment
+agreements ,NDAs, andservice contracts .
+You can ﬁne-tune the model on a labeled dataset of contracts u sing the following approach:
+/one.pnumfrom transformers import BertForSequenceClassification
+/two.pnum
+/three.pnum# Load the pre-trained legal BERT model
+/four.pnummodel = BertForSequenceClassification.from_pretrained ("./legal_bert_model" , num_labels=3)
+/five.pnum
+6# Fine-tune the model for contract classification
+/seven.pnumtrainer = Trainer(
+8model=model,
+/nine.pnumargs=training_args,
+/one.pnum/zero.pnumtrain_dataset=tokenized_contract_classification_dat a,
+/one.pnum/one.pnumeval_dataset=tokenized_contract_validation_data,
+/one.pnum/two.pnum)
+/one.pnum/three.pnum
+/one.pnum/four.pnum# Train the model
+/one.pnum/five.pnumtrainer.train()
+In this case, you are leveraging your pre-trained legal BERT model, ﬁne-tuning it on a task-speciﬁc
+dataset with three labels (representing the contract types ). After ﬁne-tuning, you can evaluate the
+model on a test set and measure its performance using metrics such as accuracy or F/one.pnum score.
+/four.pnum./one.pnum/one.pnum./one.pnum/three.pnum.6 Step 6: Deploying the Model in Production
+After ﬁne-tuning, the ﬁnal step is deploying the model into p roduction. You can save the model and
+tokenizer for later use in contract analysis or automated le gal document classiﬁcation:
+/one.pnum# Save the fine-tuned legal BERT model
+/two.pnummodel.save_pretrained( "./fine_tuned_legal_bert" )
+/three.pnumtokenizer.save_pretrained( "./fine_tuned_legal_bert" )
+Withtheﬁne-tunedmodelsaved,itcanbeloadedanddeployed inanysystemthatneedstoprocess
+legal contracts. Whether used for automated classiﬁcation , document analysis, or contract review,
+the model will now have a much deeper understandingof legal l anguagethanks to the continued pre-
+training on legal data.
+
+CHAPTER /four.pnum. HUGGING FACE FOR NLP /one.pnum6/zero.pnum
+/four.pnum./one.pnum/one.pnum./one.pnum/four.pnum Lessons Learned from the Case Study
+This case study illustrates the practical application of co ntinued pre-training in a specialized domain
+like legal text processing. Several important lessons can b e drawn from this:
+•Dataiskey : Thequalityandrelevanceofthedomain-speciﬁccorpusare crucialtothesuccessof
+continuedpre-training. Forlegalcontracts,usingactual legaldocumentsprovidedthenecessary
+domain knowledge.
+•Task-speciﬁcﬁne-tuning : Whilecontinuedpre-traininghelpsthemodelbetterunder standdomain-
+speciﬁc text, ﬁne-tuning on the actual task (e.g., contract classiﬁcation) is still necessary for
+optimal performance.
+•Evaluation matters : Proper evaluation, using metrics like perplexity for lang uage modeling or
+accuracy for classiﬁcation tasks, is essential to ensure th e model is improving as expected.
+•Practicalbeneﬁts : Bycontinuingpre-trainingonlegaldocuments,themodeli sfarbetterequipped
+tohandlethecomplexitiesoflegaltextcomparedtoagenera l-purposeBERTmodel,demonstrat-
+ing the real-world beneﬁts of this approach.
+/four.pnum./one.pnum/one.pnum./one.pnum/five.pnum Final Thoughts on Continued Pre-training
+We began this journey by exploring the importance of continu ing pre-training for domain-speciﬁc
+tasks. As demonstrated through the examples and case study, this technique can signiﬁcantly im-
+provemodelperformancewhendealingwithspecializeddoma inslikelaw, medicine,oranyotherﬁeld
+where general-purpose language models might struggle.
+The process of continuing pre-training is more than just an e nhancement—it’s a necessary step in
+many real-world applications where the model’s understand ing of general language must be tailored
+to the speciﬁc language patterns of a particular domain.
+Moving forward, as you embark on your own projects, remember the core principles:
+/one.pnum. Start with a strong base model that has been pre-trained on a large corpus.
+/two.pnum. Continue pre-training with domain-speciﬁc data to adapt the model to the specialized language.
+/three.pnum. Fine-tune the model for the downstream task to ensure opti mal performance.
+By following these steps, you can leverage the power of state -of-the-art NLP models and adapt
+them to excel in any domain you are working with. The potentia l for continued pre-training is vast,
+and as the ﬁeld of NLP continues to evolve, this technique wil l remain a cornerstone for pushing the
+boundaries of what language models can achieve.
+/four.pnum./one.pnum/two.pnum Token Classiﬁcation
+Token classiﬁcation is a common task in Natural LanguagePro cessing (NLP) that involves assigning
+a label to each token (word or subword) in a sequence. This tas k is widely used in applications such
+as Named Entity Recognition (NER), Part of Speech (POS) tagg ing, and chunking.
+Inthissection,wewillwalkthroughasimpleimplementatio noftokenclassiﬁcationusingHugging
+Face’s Transformers library. Speciﬁcally, we will use a pre -trained model to perform Named Entity
+Recognition (NER).
+

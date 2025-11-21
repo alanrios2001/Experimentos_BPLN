@@ -1,0 +1,1049 @@
+11
+Statistical Parsing
+Joakim Nivre
+UppsalaUniversity11.1 Introduction ..........................................................23711.2 BasicConceptsandTerminology ..................................238
+SyntacticRepresentations •StatisticalParsingModels •ParserEvaluation
+11.3 ProbabilisticContext-FreeGrammars.............................241
+BasicDeﬁnitions •PCFGsasStatisticalParsingModels •Learningand
+Inference
+11.4 GenerativeModels ...................................................244
+History-BasedModels •PCFGTransformations •Data-OrientedParsing
+11.5 DiscriminativeModels ...............................................249
+LocalDiscriminativeModels •GlobalDiscriminativeModels
+11.6 BeyondSupervisedParsing .........................................255
+WeaklySupervisedParsing •UnsupervisedParsing
+11.7 SummaryandConclusions..........................................257Acknowledgments ..........................................................258References....................................................................258
+This chapter describes techniques for statistical parsing, that is, methods for syntactic analysis thatmake use of statistical inference from samples of natural language text. The major topics covered areprobabilistic context-free grammars (PCFGs), supervised parsing using generative and discriminativemodels,andmodelsforunsupervisedparsing.
+11.1 Introduction
+Bystatisticalparsing wemeantechniquesforsyntacticanalysisthatarebasedonstatisticalinferencefrom
+samplesofnaturallanguage.Statisticalinferencemaybeinvokedfordiﬀerentaspectsoftheparsingprocessbutisprimarilyusedasatechniquefordisambiguation,thatis,forselectingthemostappropriateanalysisofasentencefromalargersetofpossibleanalyses, forexample, thoselicensedbyaformalgrammar. Inthisway, statisticalparsingmethodscomplementandextendtheclassicalparsingalgorithmsforformalgrammarsdescribedinChapter4.
+The application of statistical methods to parsing started in the 1980s, drawing on work in the area
+of corpus linguistics, inspired by the success of statistical speech recognition, and motivated by someof the perceived weaknesses of parsing systems rooted in the generative linguistics tradition and basedsolelyonhand-builtgrammarsanddisambiguationheuristics.Instatisticalparsing,thesegrammarsandheuristics are wholly or partially replaced by statistical models induced from corpus data. By capturingdistributional tendencies in the data, these models can rank competing analyses for a sentence, whichfacilitates disambiguation,andcanthereforeaﬀordtoimposefewerconstraintsonthelanguageaccepted,
+237
+
+238 HandbookofNaturalLanguageProcessing
+whichincreases robustness.Moreover,sincemodelscanbeinducedautomaticallyfromdata,itisrelatively
+easytoportsystemstonewlanguagesanddomains,aslongasrepresentativedatasetsareavailable.
+Against this, however, it must be said that most of the models currently used in statistical parsing
+require data in the form of syntactically annotated sentences—a treebank—which can turn out to be
+quite a severe bottleneck in itself, in some ways even more severe than the old knowledge acquisitionbottleneckassociatedwithlarge-scalegrammardevelopment.Sincetherangeoflanguagesanddomainsforwhichtreebanksareavailableisstilllimited,theinvestigationofmethodsforlearningfromunlabeleddata, particularly when adapting a system to a new domain, is therefore an important problem on thecurrent research agenda. Nevertheless, practically all high-precision parsing systems currently availablearedependentonlearningfromtreebankdata,althoughoftenincombinationwithhand-builtgrammarsorotherindependent resources. Itisthemodels andtechniquesusedinthosesystemsthatarethetopicofthischapter.
+The rest of the chapter is structured as follows. Section 11.2 introduces a conceptual framework for
+characterizing statistical parsing systems in terms of syntactic representations, statistical models, andalgorithms for learning and inference. Section 11.3 is devoted to the framework of PCFG, which isarguablythemostimportantmodelforstatisticalparsing, notonlybecauseitiswidelyusedinitselfbutbecause some of its perceived limitations have played an important role in guiding the research towardimproved models, discussed in the rest of the chapter. Section 11.4 is concerned with approaches thatare based on generative statistical models, of which the PCFG model is a special case, and Section 11.5discusses methods that instead make use of conditional or discriminative models. While the techniquesreviewedinSections11.4and11.5aremostlybasedonsupervisedlearning,thatis,learningfromsentenceslabeled with their correct analyses, Section 11.6 is devoted to methods that start from unlabeled data,eitheraloneorincombinationwithlabeleddata.Finally,inSection11.7,wesummarizeandconclude.
+11.2 Basic Concepts and Terminology
+The task of a statistical parser is to map sentences in natural language to their preferred syntacticrepresentations, either by providing a ranked list of candidate analyses or by selecting a single optimalanalysis. Since the latter case can be regarded as a special case of the former (a list of length one), wewillassumewithoutlossofgeneralitythattheoutputisalwaysarankedlist.Wewilluse
+Xforthesetof
+possible inputs, where each input x∈Xis assumed to be a sequence of tokens x=w1,...,wn,a n dw e
+willuse Yforthesetofpossiblesyntacticrepresentations.Inotherwords,wewillassumethattheinputto
+aparsercomespre-tokenizedandsegmentedintosentences,andwerefertoChapter2fortheintricacieshidden in this assumption when dealing with raw text. Moreover, we will not deal directly with caseswhere the input does not take the form of a string, such as word-lattice parsing for speech recognition,eventhoughmanyofthetechniquescoveredinthischaptercanbegeneralizedtosuchcases.
+11.2.1 Syntactic Representations
+Theset Yofpossiblesyntacticrepresentationsisusuallydeﬁnedbyaparticulartheoreticalframeworkor
+treebankannotationschemebutnormallytakestheformofacomplexgraphortreestructure.Themostcommontypeofrepresentationisa constituentstructure (orphrasestructure ),whereasentenceisrecur-
+sively decomposed into smaller segments that are categorized according to their internal structure intonoun phrases, verb phrases , etc. Constituent structures are naturally induced by context-free grammars
+(CFGs) (Chomsky 1956) and are assumed in many theoretical frameworks of natural language syntax,forexample,LexicalFunctionalGrammar(LFG)(KaplanandBresnan1982;Bresnan2000),TreeAdjoin-ingGrammar(TAG)(Joshi1985, 1997), andHead-DrivenPhraseStructureGrammar(HPSG)(Pollardand Sag 1987, 1994). They are also widely used in annotation schemes for treebanks, such as the PennTreebank scheme for English (Marcus et al. 1993; Marcus et al. 1994), and in the adaptations of this
+
+StatisticalParsing 239
+JJ
+EconomicNN
+newsNP
+VBD
+hadVPS
+JJ
+littleNN
+eﬀectNPNP
+IN
+onPP
+JJ
+financialNNS
+marketsNP .
+.
+FIGURE11.1 ConstituentstructureforanEnglishsentencetakenfromthePennTreebank.
+JJ
+EconomicNMOD
+NN
+newsSBJ
+VBD
+hadJJ
+littleNMOD
+NN
+eﬀectOBJ
+IN
+onNMOD
+JJ
+financialNMOD
+NNS
+marketsPMOD
+.
+.P
+FIGURE11.2 DependencystructureforanEnglishsentencetakenfromthePennTreebank.
+scheme that have been developed for Chinese (Xue et al. 2004), Korean (Han et al. 2002), Arabic
+(Maamouri and Bies 2004), and Spanish (Moreno et al. 2003). Figure 11.1 shows a typical constituent
+structureforanEnglishsentence,takenfromthe WallStreetJournal sectionofthePennTreebank.
+Anotherpopulartypeofsyntacticrepresentationisa dependencystructure ,whereasentenceisanalyzed
+by connecting its words by binary asymmetrical relations called dependencies , and where words are
+categorizedaccordingtotheirfunctionalroleinto subject,object,etc.Dependencystructuresareadopted
+intheoreticalframeworkssuchasFunctionalGenerativeDescription(Sgalletal.1986)andMeaning-Text
+Theory(Mel’čuk1988)andareusedfortreebankannotationespeciallyforlanguageswithfreeorﬂexible
+word order. Thebest known dependency treebankis thePrague Dependency Treebank of Czech(Hajič
+et al. 2001; Böhmová et al. 2003), but dependency-based annotation schemes have been developed also
+for Arabic (Hajič et al. 2004), Basque (Aduriz et al. 2003), Danish (Kromann 2003), Greek (Prokopidis
+etal.2005),Russian(Boguslavskyetal.2000),Slovene(Džeroskietal.2006),Turkish(Oﬂazeretal.2003),
+and other languages. Figure 11.2 shows a typical dependency representation of the same sentence as in
+Figure11.1.
+Athirdkindofsyntacticrepresentationisfoundin categorialgrammar ,whichconnectssyntactic(and
+semantic)analysistoinferenceinalogicalcalculus.Thesyntacticrepresentationsusedincategorialgram-
+marareessentiallyprooftrees,whichcannotbereducedtoconstituencyordependencyrepresentations,
+although they have aﬃnities with both. In statistical parsing, categorial grammar is mainly represented
+by Combinatory Categorial Grammar (CCG) (Steedman 2000), which is also the framework used in
+CCGbank (Hockenmaier and Steedman 2007), a reannotation of the Wall Street Journal s e c t i o no ft h e
+PennTreebank.
+In most of this chapter, we will try to abstract away from the particular representations used and
+concentrate on concepts of statistical parsing that cut across diﬀerent frameworks, and we will make
+reference to diﬀerent syntactic representations only when this is relevant. Thus, when we speak about
+assigningananalysis y∈Ytoaninputsentence x∈X,itwillbeunderstoodthattheanalysisisasyntactic
+representationasdeﬁnedbytherelevantframework.
+
+240 HandbookofNaturalLanguageProcessing
+11.2.2 Statistical Parsing Models
+Conceptually,astatisticalparsingmodelcanbeseenasconsistingoftwocomponents:
+1. Agenerative componentGENthatmapsaninput xtoasetofcandidateanalyses {y1,...,yk},that
+is,GEN (x)⊆Y(forx∈X).
+2. Anevaluative component EVAL that ranks candidate analyses via a numerical scoring scheme,
+thatis,EVAL(y )∈R(fory∈GEN(x )).
+Boththegenerativeandtheevaluativecomponentmayincludeparametersthatneedtobeestimatedfromempiricaldatausingstatisticalinference.Thisisthe learningproblemforastatisticalparsingmodel,and
+the data set used for estimation is called the training set.L e a r n i n gm a yb e supervised orunsupervised,
+depending on whether sentences in the training set are labeled with their correct analyses or not (cf.Chapter9).Inaddition,thereare weaklysupervised learningmethods,whichcombinetheuseoflabeled
+andunlabeleddata.
+The distinction between the generative and evaluative components of a statistical parsing model
+is related to, but not the same as, the distinction between generative and discriminative models (cf.Chapter 9). In our setting, a generative model is one that deﬁnes a joint probability distribution overinputs and outputs, that is, that deﬁnes the probability P(x,y)for any input x∈
+Xand output y∈Y.
+Bycontrast,adiscriminativemodelonlymakesuseoftheconditionalprobabilityoftheoutputgiventheinput,thatis,theprobability P(y|x).Asaconsequence,discriminativemodelsareoftenusedtoimplement
+the evaluative component of a complete parsing model, while generative models usually integrate thegenerative and evaluative components into one model. However, as we shall see in later sections, thereareanumberofvariationspossibleonthisbasictheme.
+Given that a statistical parsing model has been learned from data, we need an eﬃcient way of con-
+structingandrankingthecandidateanalysesforagiveninputsentence.Thisisthe inference problemfor
+a statistical parser. Inference may be exactorapproximate , depending on whether or not the inference
+algorithmisguaranteedtoﬁndtheoptimalsolutionaccordingtothemodel.Weshallseethatthereisoftena trade-oﬀ between having the advantage of a more complex model but needing to rely on approximateinference, ontheonehand, andadoptingamoresimplisticmodelbutbeingabletouseexactinference,ontheother.
+11.2.3 Parser Evaluation
+Theaccuracyofastatisticalparser,thatis,thedegreetowhichitsucceedsinﬁndingthepreferredanalysis
+foraninputsentence,isusuallyevaluatedbyrunningtheparseronasampleofsentences X={x1,...,xm}
+from a treebank, called the test set. Assuming that the treebank annotation yifor each sentence xi∈X
+represents the preferred analysis, the gold standard parse, we can measure the test set accuracy of the
+parserbycomparingitsoutput f(xi)tothegoldstandardparse yi,andwecanusethetestsetaccuracyto
+estimatetheexpectedaccuracyoftheparseronsentencesfromthelargerpopulationrepresentedbythetestset.
+Thesimplestwayofmeasuringtestsetaccuracyistousethe exactmatch metric,whichsimplycounts
+the number of sentences for which the parser output is identical to the treebank annotation, that is,f(x
+i)=yi. This is a rather crude metric, since an error in the analysis of a single word or constituent
+has exactly the same impact on the result as the failure to produce any analysis whatsoever, and themostwidelyusedevaluationmetricstodayarethereforebasedonvariouskindsofpartialcorrespondencebetweentheparseroutputandthegoldstandardparse.
+For parsers that output constituent structures, the most well-known evaluation metrics are the
+PARSEVAL metrics (Black et al. 1991; Grishman et al. 1992), which consider the number of match-ingconstituentsbetweentheparseroutputandthegoldstandard.Fordependencystructures,theclosestcorrespondent to these metrics is the attachment score (Buchholz and Marsi 2006), which measures the
+
+StatisticalParsing 241
+proportion of words in a sentence that are attached to the correct head according to the gold standard.Finally,tobeabletocompareparsersthatusediﬀerentsyntacticrepresentations,severalresearchershaveproposed evaluation schemes where both the parser output and the gold standard parse are convertedintosetsofmoreabstractdependencyrelations,so-called dependencybanks (Lin1995,1998;Carrolletal.
+1998,2003;Kingetal.2003;Forstetal.2004).
+The use of treebank data for parser evaluation is in principle independent of its use in parser devel-
+opment and is not limited to the evaluation of statistical parsing systems. However, the development ofstatisticalparsersnormallyinvolvesaniterativetraining-evaluationcycle, whichmakesstatisticalevalu-ation an integral part of the development. This gives rise to certain methodological issues, in particularthe need to strictly separate data that are used for repeated testing during development— development
+sets—fromdatathatareusedfortheevaluationoftheﬁnalsystem—testsets.
+It is important in this context to distinguish two diﬀerent but related problems: model selection and
+model assessment. Model selection is the problem of estimating the performance of diﬀerent models inordertochoosethe(approximate)bestone,whichcanbeachievedbytestingondevelopmentsetsorbycross-validation on the entire training set. Model assessment is the problem of estimating the expectedaccuracyoftheﬁnallyselectedmodel,whichiswhattestsetsaretypicallyusedfor.
+11.3 Probabilistic Context-Free Grammars
+Intheprecedingsection,weintroducedthebasicconceptsandterminologythatweneedtocharacterizediﬀerent models for statistical parsing, including methods for learning, inference, and evaluation. WestartourexplorationofthesemodelsandmethodsinthissectionbyexaminingtheframeworkofPCFG.
+11.3.1 Basic Deﬁnitions
+A PCFG is a simple extension of a CFG in which every production rule is associated with a probability(BoothandThompson1973).Formally,aPCFGisaquintuple G=(/Sigma1,N,S,R,D),where /Sigma1isaﬁniteset
+ofterminalsymbols, Nisaﬁnitesetofnonterminalsymbols(disjointfrom /Sigma1),S∈Nisthestartsymbol,
+Risaﬁnitesetofproductionrulesoftheform A→α,whereA∈Nandα∈(/Sigma1∪N)
+∗,andD:R→[0,1]
+is a function that assigns a probability to each member of R(cf. Chapter 4 on context-free grammars).
+Figure11.3showsaPCFGcapableofgeneratingthesentenceinFigure11.1withitsassociatedparsetree.Althoughtheactualprobabilitiesassignedtothediﬀerentrulesarecompletelyunrealisticbecauseoftheverylimitedcoverageofthegrammar,itneverthelessservestoillustratethebasicformofaPCFG.
+As usual, we use L(G)to denote the string language generated by G, that is, the set of strings xover
+theterminal alphabet /Sigma1for which thereexists a derivation S⇒
+∗xusing rules in R. In addition, we use
+T(G)to denote the tree language generated by G, that is, the set of parse trees corresponding to valid
+derivationsofstringsin L(G).Givenaparsetree y∈T(G),weuse YIELD(y)fortheterminalstringin L(G)
+S→NPVP. 1.00 JJ →Economic 0.33
+VP→VPPP 0.33 JJ→little 0.33
+VP→VBDNP 0.67 JJ→ﬁnancial 0.33
+NP→NPPP 0.14 NN →news 0.50
+NP→JJNN 0.57 NN →eﬀect 0.50
+NP→JJNNS 0.29 NNS →markets 1.00
+PP→INNP 1.00 VBD →had 1.00
+.→.1 .00I N→on 1.00
+FIGURE11.3 PCFGforafragmentofEnglish.
+
+242 HandbookofNaturalLanguageProcessing
+associated with y,COUNT (i,y)for the number of times that the ith production rule ri∈Ris used in the
+derivationof y,andLHS(i)forthenonterminalsymbolintheleft-handsideof ri.
+Theprobabilityofaparsetree y∈T(G)isdeﬁnedastheproductofprobabilitiesofallruleapplications
+inthederivationof y:
+P(y)=|R|∏
+i=1D(ri)COUNT (i,y)(11.1)
+Thisfollowsfrombasicprobabilitytheoryontheassumptionthattheapplicationofaruleinthederivationofatreeisindependentofallotherruleapplicationsinthattree,aratherdrasticindependenceassumptionthat we will come back to. Since the yield of a parse tree uniquely determines the string associated withthetree,thejointprobabilityofatree y∈T(G)andastring x∈L(G)iseither0orequaltotheprobability
+ofy,dependingonwhetherornotthestringmatchestheyield:
+P(x,y)={P(y)if
+YIELD(y)=x
+0o t h e r w i s e(11.2)
+Itfollowsthattheprobabilityofastringcanbeobtainedbysumminguptheprobabilitiesofallparsetreescompatiblewiththestring:
+P(x)=∑
+y∈T(G):YIELD (y)=xP(y) (11.3)
+A PCFG is properifPdeﬁnes a proper probability distribution over every subset of rules that have the
+sameleft-handside A∈N:∗∑
+ri∈R:LHS(i)=AD(ri)=1 (11.4)
+APCFGis consistent ifitdeﬁnesaproperprobabilitydistributionoverthesetoftreesthatitgenerates
+∑
+y∈T(G)P(y)=1 (11.5)
+Consistency can also be deﬁned in terms of the probability distribution over stringsgenerated by the
+grammar.GivenEquation11.3,thetwonotionsareequivalent.
+11.3.2 PCFGs as Statistical Parsing Models
+PCFGs have many applications in natural language processing, for example, in language modeling forspeech recognition or statistical machine translation, where they can be used to model the probabilitydistributionofastringlanguage.Inthischapter,however,weareonlyinterestedintheiruseasstatisticalparsingmodels,whichcanbeconceptualizedasfollows:
+•The set
+Xof possible inputs is the set /Sigma1∗of strings over the terminal alphabet, and the set Yof
+syntacticrepresentationsisthesetofallparsetreesover /Sigma1andN.
+•ThegenerativecomponentistheunderlyingCFG,thatis,GEN (x)={y∈T(G)|YIELD(x)=y}.
+•Theevaluativecomponentistheprobabilitydistributionoverparsetrees,thatis,EVAL (y)=P(y).
+Forexample, eventheminimalPCFGinFigure11.3generatestwotreesforthesentenceinFigure11.1,thesecondofwhichisshowninFigure11.4.Accordingtothegrammar,theprobabilityoftheparsetreein Figure 11.1 is 0.0000794, while the probability of the parse tree in Figure 11.4 is 0.0001871. In other
+∗The notion of properness is sometimes considered to be part of the deﬁnition of a PCFG, and the term weighted CFG
+(WCFG)isthenusedforanon-properPCFG(SmithandJohnson2007).
+
+StatisticalParsing 243
+JJ
+Economic
+NN
+newsHH
+NP
+VBD
+had
+
+
+ 
+VPS
+JJ
+little
+NN
+eﬀectHHHH!!!!!
+NPVP
+IN
+on   HHHHPP
+JJ
+ﬁnancial
+NNS
+marketsHHHH
+NP .
+.QQQQQQQQQQQQ
+FIGURE 11.4 Alternative constituent structure for an English sentence taken from the Penn Treebank (cf.
+Figure11.1).
+words, using this PCFG for disambiguation, we would prefer the second analysis, which attaches thePPon ﬁnancial markets to the verb had, rather than to the noun eﬀect. According to the gold standard
+annotationinthePennTreebank,thiswouldnotbethecorrectchoice.
+Note that the score P(y)is equal to the joint probability P(x,y)of the input sentence and the output
+tree,whichmeansthataPCFGisagenerativemodel(cf.Chapter9).Forevaluationinaparsingmodel,itmayseemmorenaturaltousetheconditionalprobability P(y|x)instead,sincethesentence xisgivenas
+inputtothemodel. TheconditionalprobabilitycanbederivedasshowninEquation11.6, butsincetheprobability P(x)is a constant normalizing factor, this will never change the internal ranking of analyses
+inGEN(x ).
+P(y|x)=P(x,y)
+∑
+y′∈GEN (x)P(y′)(11.6)
+11.3.3 Learning and Inference
+ThelearningproblemforthePCFGmodelcanbedividedintotwoparts:learningaCFG, G=(/Sigma1,N,S,R),
+and learning the probability assignment Dfor rules in R. If a preexisting CFG is used, then only the
+rule probabilities need to be learned. Broadly speaking, learning is either supervised or unsupervised,dependingonwhetheritpresupposesthatsentencesinthetrainingsetareannotatedwiththeirpreferredanalysis.
+The simplest method for supervised learning is to extract a so-called treebank grammar (Charniak
+1996), where the context-free grammar contains all and only the symbols and rules needed to generatethe trees in the training set Y={y
+1,...,ym}, and where the probability of each rule is estimated by its
+relativefrequencyamongruleswiththesameleft-handside:
+D(ri)=∑mj=1COUNT (i,yj)
+∑mj=1∑
+rk∈R:LHS(rk)=LHS(ri)COUNT (k,yj)(11.7)
+To give a simple example, the grammar in Figure 11.3 is in fact a treebank grammar for the treebankconsisting of the two trees in Figures 11.1 and 11.4. The grammar contains exactly the rules needed togenerate the two trees, and rule probabilities are estimated by the frequency of each rule relative to allthe rules for the same nonterminal. Treebank grammars have a number of appealing properties. Firstof all, relative frequency estimation is a special case of maximum likelihood estimation (MLE), which
+
+244 HandbookofNaturalLanguageProcessing
+is a well understood and widely used method in statistics (cf. Chapter 9). Secondly, treebank grammarsare guaranteed to be both proper and consistent (Chi and Geman 1998). Finally, both learning andinference is simple and eﬃcient. However, although early investigations reported encouraging resultsfor treebank grammars, especially in combination with other statistical models (Charniak 1996, 1997),empiricalresearchhasclearlyshownthattheydonotyieldthemostaccurateparsingmodels,forreasonsthatwewillreturntoinSection11.4.
+Iftreebankdataarenotavailableforlearning,buttheCFGisgiven,thenunsupervisedmethodsforMLE
+canbeusedtolearnrulesprobabilities.ThemostcommonlyusedmethodistheInside–Outsidealgorithm(Baker1979),whichisaspecialcaseofExpectation-Maximization(EM),asdescribedinChapter9.Thisalgorithm was used in early work on PCFG parsing to estimate the probabilistic parameters of hand-crafted CFGs from raw text corpora (Fujisaki et al. 1989; Pereira and Schabes 1992). Like treebankgrammars,PCFGsinducedbytheInside–Outsidealgorithmareguaranteedtobeproperandconsistent(SánchezandBenedí1997;ChiandGeman1998).WewillreturntounsupervisedlearningforstatisticalparsinginSection11.6.
+Theinference problem for the PCFG model is to compute, given a speciﬁc grammar Gand an input
+sentencex,t h es e tG E N (x)of candidate representations and to score each candidate by the probability
+P(y), as deﬁned by the grammar. The ﬁrst part is simply the parsing problem for CFGs, and many of
+the algorithms for this problem discussed in Chapter 4 have a straightforward extension that computestheprobabilitiesofparsetreesinthesameprocess.Thisistrue,forexample,oftheCKYalgorithm(Ney1991), Earley’s algorithm (Stolcke 1995), and the algorithm for bilexical CFGs described in Eisner andSatta(1999)andEisner(2000).
+These algorithms are all based on dynamic programming, which makes it possible to compute the
+probability of a substructure at the time when it is being composed of smaller substructures and useViterbi search to ﬁnd the highest scoring analysis in O(n
+3)time, where nis the length of the input
+sentence. However, this also means that, although the model as such deﬁnes a complete ranking overall the candidate analyses in GEN(x ), these parsing algorithms only compute the single best analysis.
+Nevertheless, the inference is exact in the sense that the analysis returned by the parser is guaranteedto be the most probable analysis according to the model. There are generalizations of this scheme thatinsteadextractthe kbestanalyses,forsomeconstant k,withvaryingeﬀectsontimecomplexity(Jiménez
+andMarzal2000;CharniakandJohnson2005;HuangandChiang2005).AcomprehensivetreatmentofmanyofthealgorithmsusedinPCFGparsingcanbefoundinGoodman(1999).
+11.4 Generative Models
+Usingasimpletreebankgrammarofthekinddescribedintheprecedingsectiontorankalternativeanalysesgenerally does not lead to very high parsing accuracy. The reason is that, because of the independenceassumptions built into the PCFG model, such a grammar does not capture the dependencies that aremostimportantfordisambiguation.Inparticular,theprobabilityofaruleapplicationisindependentofthelargertreecontextinwhichitoccurs.
+Thismaymean, for example, thattheprobabilitywithwhichanoun phraseisexpandedinto asingle
+pronoun is constant for all structural contexts, even though it is a well-attested fact for many languagesthat this type of noun phrase is found more frequently in subject position than in object position. Itmay also mean that diﬀerent verb phrase expansions (i.e., diﬀerent conﬁgurations of complements andadjuncts)aregeneratedindependentlyofthelexicalverbthatfunctionsasthesyntacticheadoftheverbphrase,despitethefactthatdiﬀerentverbshavediﬀerentsubcategorizationrequirements.
+In addition to the lack of structural and lexical sensitivity, a problem with this model is that the
+children of a node are all generated in a single atomic event, which means that variants of the samestructuralrealizations(e.g.,thesamecomplementincombinationwithdiﬀerentsetsofadjunctsoreven
+
+StatisticalParsing 245
+punctuation)aretreatedasdisjointevents.Sincethetreesfoundinmanytreebankstendtoberatherﬂat,with a high average branching factor, this often leads to a very high number of distinct grammar ruleswith data sparseness as a consequence. In an often cited experiment, Charniak (1996) counted 10,605rules in a treebank grammar extracted from a 300,000 word subset of the Penn Treebank, only 3,943 ofwhichoccurredmorethanonce.
+TheselimitationsofsimpletreebankPCFGshavebeenveryimportantinguidingresearchonstatistical
+parsing during the last 10–15 years, and many of the models proposed can be seen as targeting speciﬁcweaknesses of these simple generative models. In this section, we will consider techniques based onmorecomplexgenerativemodels,withmoreadequateindependenceassumptions.InSection11.4.1,wewill discuss approaches that abandon the generative paradigm in favor of conditional or discriminativemodels.
+11.4.1 History-Based Models
+One of the most inﬂuential approaches in statistical parsing is the use of a history-based model,w h e r e
+the derivation of a syntactic structure is modeled by a stochastic process and the diﬀerent steps in theprocess are conditioned on events in the derivation history. The general form of such a model is thefollowing:
+P(y)=
+m∏
+i=1P(di|/Phi1(d1,...,di−1)) (11.8)
+where
+D=d1,...,dmisaderivationof y
+/Phi1isafunctionthatdeﬁneswhicheventsinthehistoryaretakenintoaccountinthemodel∗
+By way of example, let us consider one of the three generative lexicalized models proposed by Collins(1997). In these models, nonterminals have the form A(a),w h e r e Ais an ordinary nonterminal label
+(suchasNPorVP)anda isaterminalcorrespondingtothelexicalheadof A.InModel2,theexpansion
+ofanode A(a)isdeﬁnedasfollows:
+1. Chooseaheadchild Hwithprobability P
+h(H|A,a).
+2. Choose left and right subcat frames, LCandRC, with probabilities Plc(LC|A,H,h)and
+Prc(RC|A,H,h).
+3. Generate the left and right modiﬁers (siblings of H(a))L1(l1),...,Lk(lk)andR1(r1),...,Rm(rm)
+withprobabilities Pl(Li,li|A,H,h,δ(i−1),LC)andPr(Ri,ri|A,H,h,δ(i−1),RC).
+Inthethirdstep,childrenaregeneratedinside-outfromthehead,meaningthat L1(l1)andR1(r1)arethe
+childrenclosesttotheheadchild H(a).Moreover,inordertoguaranteeacorrectprobabilitydistribution,
+thefarthestchildfromtheheadoneachsideisadummychildlabeledSTOP.Thesubcatframes LCand
+RCaremultisetsofordinary(non-lexicalized)nonterminals,andelementsofthesemultisetsgetdeleted
+as the corresponding children are generated. The distance metric δ(j)is a function of the surface string
+from the head word hto the outermost edge of the jth child on the same side, which returns a vector
+of three features: (1) Is the string of zero length? (2) Does the string contain a verb? (3) Does the stringcontain0,1,2,ormorethan2commas?
+∗Note that the standard PCFG model can be seen as a special case of this, for example, by letting Dbe a left-
+most derivation of yaccording to the CFG and by letting /Phi1(d1,...,di−1)be the left-hand side of the production
+usedindi.
+
+246 HandbookofNaturalLanguageProcessing
+Toseewhatthismeansforaconcreteexample,considerthefollowingphrase,occurringaspartofan
+analysisfor LastweekMarksboughtBrooks :
+P(S(bought) →NP(week )NP-C(Marks) VP(bought)) =
+Ph(VP|S,bought)×
+Plc({NP-C }|S,VP,bought )×
+Prc({}|S,VP,bought )×
+Pl(NP-C (Marks)|S,VP,bought, ⟨1,0,0⟩, {NP-C })×
+Pl(NP(week )|S,VP,bought, ⟨0,0,0⟩, {})×
+Pl(STOP|S,VP,bought, ⟨0,0,0⟩, {})×
+Pr(STOP|S,VP,bought, ⟨0,0,0⟩, {})(11.9)
+This phrase should be compared with the corresponding treebank PCFG, which has a single modelparameterfortheconditionalprobabilityofallthechildnodesgiventheparentnode.
+Thenotionofahistory-basedgenerativemodelforstatisticalparsingwasﬁrstproposedbyresearchers
+at IBM as a complement to hand-crafted grammars (Black et al. 1993). The kind of model exempliﬁedabove is sometimes referred to as head-driven, given the central role played by syntactic heads, and this
+type of model is found in many state-of-the art systems for statistical parsing using phrase structurerepresentations (Collins 1997, 1999; Charniak 2000), dependency representations (Collins 1996; Eisner1996), and representations from speciﬁc theoretical frameworks such as TAG (Chiang 2000), HPSG(Toutanova et al. 2002), and CCG (Hockenmaier 2003). In addition to top-down head-driven models,there are also history-based models that use derivation steps corresponding to a particular parsingalgorithm, such as left-corner derivations (Henderson 2004) or transition-based dependency parsing(TitovandHenderson2007).
+Summing up, in a generative, history-based parsing model, the generative component GEN (x)is
+deﬁned by a (stochastic) system of derivations that is not necessarily constrained by a formal grammar.Asaconsequence,thenumberofcandidateanalysesinGEN (x)isnormallymuchlargerthanforasimple
+treebankgrammar.TheevaluativecomponentEVAL(y )isamultiplicativemodelofthejointprobability
+P(x,y), factored into the conditional probability P(d
+i|/Phi1(d1,...,di−1))of each derivation step digiven
+relevantpartsofthederivationhistory.
+Thelearningproblemforthesemodelsthereforeconsistsinestimatingtheconditionalprobabilitiesof
+diﬀerent derivation steps, a problem that can be solved using relative frequency estimation as describedearlierforPCFGs.However,becauseoftheaddedcomplexityofthemodels,thedatawillbemuchmoresparse and hence the need for smoothing more pressing. The standard approach for dealing with thisproblem is to back oﬀ to more general events, for example, from bilexical to monolexical probabilities,and from lexical items to parts of speech. An alternative to relative frequency estimation is to use adiscriminative training technique, where parameters are set to maximize the conditional probabilityof the output trees given the input strings, instead of the joint probability of trees and strings. Thediscriminative training of generative models has sometimes been shown to improve parsing accuracy(Johnson2001;Henderson2004).
+Theinferenceproblem,althoughconceptuallythesame,isgenerallyharderforahistory-basedmodel
+than for a simple treebank PCFG, which means that there is often a trade-oﬀ between accuracy indisambiguationandeﬃciencyinprocessing.Forexample,whereascomputingthemostprobableanalysiscan be done in O(n
+3)time with an unlexicalized PCFG, a straightforward application of the same
+techniquestoafullylexicalizedmodeltakes O(n5)time, althoughcertainoptimizationsarepossible(cf.
+Chapter4).Moreover,thegreatlyincreasednumberofcandidateanalysesduetothelackofhardgrammarconstraintsmeansthat,evenifparsingdoesnotbecomeintractableinprinciple,thetimerequiredforan
+
+StatisticalParsing 247
+exhaustivesearchof the analysisspaceis no longer practical. In practice, most systems of this kind onlyapplythefullprobabilisticmodeltoasubsetofallpossibleanalyses,resultingfromaﬁrstpassbasedonaneﬃcientapproximationof thefull model. Thisﬁrstpassisnormally implementedassome kindof chartparsingwithbeamsearch,usinganestimateoftheﬁnalprobabilitytoprunethesearchspace(CaraballoandCharniak1998).
+11.4.2 PCFG Transformations
+Althoughhistory-basedmodelswereoriginallyconceivedasanalternative(orcomplement)tostandardPCFGs, it has later been shown that many of the dependencies captured in history-based models can infactbemodeledinaplainPCFG,providedthatsuitabletransformationsareappliedtothebasictreebankgrammar(Johnson1998;KleinandManning2003).Forexample,ifanonterminalnodeNPwithparentS is instead labeled NP
+∧S, then the dependence on structural context noted earlier in connection with
+pronominalNPscanbemodeledinastandardPCFG,sincethegrammarwillhavediﬀerentparametersforthetworulesNP
+∧S→PRPandNP∧VP→PRP.Thissimpletechnique,knownas parentannotation,
+hasbeenshowntodramaticallyimprovetheparsingaccuracyachievedwithasimpletreebankgrammar(Johnson1998).ItisillustratedinFigure11.5,whichshowsaversionofthetreeinFigure11.1,whereallthenonterminalnodesexceptpreterminalshavebeenreannotatedinthisway.
+Parent annotation is an example of the technique known as state splitting , which consists in splitting
+the coarse linguistic categories that are often found in treebank annotation into more ﬁne-grainedcategories that are better suited for disambiguation. An extreme example of state splitting is the use oflexicalizedcategoriesoftheform A(a)thatwesawearlierinconnectionwithhead-drivenhistory-based
+models, where nonterminal categories are split into one distinct subcategory for each possible lexicalhead.Exhaustivelexicalizationandthemodelingofbilexicalrelations,thatis,relationsholdingbetweentwo lexical heads, were initially thought to be an important explanation for the success of these models,but more recent research has called this into question by showing that these relations are rarely used bythe parser and account for a very small part of the increase in accuracy compared to simple treebankgrammars(Gildea2001;Bikel2004).
+These results suggest that what is important is that coarse categories are split into ﬁner and more
+discriminativesubcategories,whichmaysometimescorrespondtolexicalizedcategoriesbutmayalsobeconsiderablymorecoarse-grained.Thus,inanoftencitedstudy,KleinandManning(2003)showedthatacombinationofcarefullydeﬁnedstatesplitsandothergrammartransformationscouldgivealmostthesamelevelofparsingaccuracyasthebestlexicalizedparsersatthetime.Morerecently,modelshavebeenproposed where nonterminal categories are augmented with latent variables so that state splits can be
+JJ
+Economic
+NN
+newsHH
+NPˆS
+VBD
+had       VPˆSSˆROOT
+JJ
+little
+NN
+eﬀectHH"""""HH
+NPˆNPNPˆVP
+IN
+on   HHPPˆNP
+JJ
+ﬁnancial
+NNS
+marketsHHHH
+NPˆPP .
+.QQQQQQQQQQQQ
+FIGURE11.5 Constituentstructurewithparentannotation(cf.Figure11.1).
+
+248 HandbookofNaturalLanguageProcessing
+learnedautomaticallyusingunsupervisedlearningtechniquessuchasEM(Matsuzakietal.2005;Prescher2005; Dreyer and Eisner 2006; Petrov et al. 2006; Liang et al. 2007; Petrov and Klein 2007). For phrasestructureparsing, theselatentvariablemodelshavenowachievedthesamelevelofperformanceasfullylexicalized generative models (Petrov et al. 2006; Petrov and Klein 2007). An attempt to apply the sametechniquetodependencyparsing,usingPCFGtransformations,didnotachievethesamesuccess(MusilloandMerlo2008),whichsuggeststhatbilexicalrelationsaremoreimportantinsyntacticrepresentationsthatlacknonterminalcategoriesotherthanpartsofspeech.
+OneﬁnaltypeoftransformationthatiswidelyusedinPCFGparsingis markovization,whichtransforms
+ann-ary grammar rule into a set of unary and binary rules, where each child node in the original rule
+is introduced in a separaterule, and where augmented nonterminals are used to encode elements of thederivationhistory.Forexample,theruleVP →VBNPPPcouldbetransformedinto
+VP→⟨VP:VB... PP⟩
+⟨VP:VB... PP⟩→⟨VP:VB... NP⟩PP
+⟨VP:VB... NP⟩→⟨VP:VB⟩NP
+⟨VP:VB⟩→VB(11.10)
+TheﬁrstunaryruleexpandsVPintoanewsymbol ⟨VP:VB ...PP⟩,signifyingaVPwithheadchildVBand
+rightmostchildPP.ThesecondbinaryrulegeneratesthePPchildnexttoachildlabeled ⟨VP:VB ...NP⟩,
+representingaVPwithheadchildVBandrightmostchildNP.ThethirdrulegeneratestheNPchild,andthe fourth rule ﬁnally generates the head child VB. In this way, we can use a standard PCFG to model ahead-drivenstochasticprocess.
+Grammar transformations such as markovization and state splitting make it possible to capture the
+essence of history-based models without formally going beyond the PCFG model. This is a distinctadvantage, because it means that all the theoretical results and methods developed for PCFGs can betaken over directly. Once we have ﬁxed the set of nonterminals and rules in the grammar, whether byingenioushand-craftingorbylearningoverlatentvariables,wecanusestandardmethodsforlearningandinference,asdescribedearlierinSection11.3.3.However,itisimportanttorememberthattransformationscan have quite dramatic eﬀects on the number of nonterminals and rules in the grammar, and this inturnhasanegativeeﬀectonparsingeﬃciency.Thus,eventhoughexactinferenceforaPCFGisfeasibleinO(n
+3·|R|)(where |R|is the number of grammar rules), heavy pruning is often necessary to achieve
+reasonableeﬃciencyinpractice.
+11.4.3 Data-Oriented Parsing
+AnalternativeapproachtoincreasingthestructuralsensitivityofgenerativemodelsforstatisticalparsingistheframeworkknownasData-OrientedParsing(DOP)(Scha1990; Bod 1995, 1998, 2003). Thebasicidea in the DOP model is that new sentences are parsed by combining fragments of the analyses ofpreviouslyseensentences, typicallyrepresentedbyatrainingsamplefromatreebank.
+∗Thisideacanbe
+(andhasbeen)implementedinmanyways,butthestandardversionofDOPcanbedescribedasfollows(Bod1998):
+•The set GEN (x)of candidate analyses for a given sentence xis deﬁned by a tree substitution
+grammar overallsubtreesofparsetreesinthetrainingsample.
+•ThescoreEVAL(y )ofagivenanalysis y∈
+Yisthejointprobability P(x,y), whichisequaltothe
+sumofprobabilitiesofallderivationsof yinthetreesubstitutiongrammar.
+Atreesubstitutiongrammarisaquadruple (/Sigma1,N,S,T),where /Sigma1,N,andSarejustlikeinaCFG,andT
+isasetof elementarytrees havingrootandinternalnodeslabeledbyelementsof Nandleaveslabeledby
+∗TherearealsounsupervisedversionsofDOP,butwewillleavethemuntilSection11.6.
+
+StatisticalParsing 249
+elementsof /Sigma1∪N.Twoelementarytrees αandβcanbecombinedbythesubstitutionoperation α◦β
+to produce a uniﬁed tree only if the root of βhas the same label as the leftmost nonterminal node in α,
+in which case α◦βis the tree obtained by replacing the leftmost nonterminal node in αbyβ.T h et r e e
+language T(G)generatedbyatreesubstitutiongrammar Gisthesetofalltreeswithrootlabel Sthatcan
+bederivedusingthesubstitutionofelementarytrees. Inthisway, anordinaryCFGcanbethoughtofasatreesubstitutiongrammarwhereallelementarytreeshavedepth1.
+This kind of model has been applied to a variety of diﬀerent linguistic representations, including
+lexical-functional representations (Bod and Kaplan 1998) and compositional semantic representations(Bonnema et al. 1997), but most of the work has been concerned with syntactic parsing using phrasestructure trees. Characteristic of all these models is the fact that one and the same analysis typically hasseveraldistinctderivationsinthetreesubstitutiongrammar. Thismeansthattheprobability P(x,y)has
+tobecomputedasasumoverallderivations dthatderives y(d⇒y),andtheprobabilityofaderivation
+disnormallytakentobetheproductoftheprobabilitiesofallsubtrees tusedind(t∈d):
+P(x,y)=∑
+d⇒y∏
+t∈dP(t) (11.11)
+Thisassumesthatthesubtreesofaderivationareindependentofeachother,justasthelocaltreesdeﬁnedby production rules are independent in a PCFG derivation. The diﬀerence is that subtrees in a DOPderivation can be of arbitrary size and can therefore capture dependencies that are outside the scope ofa PCFG. A consequence of the sum-of-products model is also that the most probable analysis may notbetheanalysiswiththemostprobablederivation,apropertythatappearstobebeneﬁcialwithrespecttoparsingaccuracybutthatunfortunatelymakesexactinferenceintractable.
+The learning problem for the DOP model consists in estimating the probabilities of subtrees, where
+themostcommonapproachhasbeentouserelativefrequencyestimation,thatis,settingtheprobabilityofasubtreeequaltothenumberoftimesthatitisseeninthetrainingsampledividedbythenumberofsubtreeswiththesamerootlabel(Bod1995,1998).Althoughthismethodseemstoworkﬁneinpractice,it has been shown to produce a biased and inconsistent estimator (Johnson 2002), and other methodshavethereforebeenproposedinitsplace(Bonnemaetal.2000;BonnemaandScha2003;ZollmannandSima’an2005).
+Asalreadynoted,inferenceisahardproblemintheDOPmodel.Whereascomputingthemostprobable
+derivation can be done in polynomial time, computing the most probable analysis(which requires
+summingoverallderivations)isNPcomplete(Sima’an1996a,1999).ResearchoneﬃcientparsingwithintheDOPframeworkhasthereforefocusedonﬁndingeﬃcientapproximationsthatpreservetheadvantagegained in disambiguation by considering several distinct derivations of the same analysis. While earlywork focused on a kind of randomized search strategy called Monte Carlo disambiguation (Bod 1995,1998),thedominantstrategyhasnowbecometheuseofdiﬀerentkindsofPCFGreductions(Goodman1996; Sima’an 1996b; Bod 2001, 2003). This again underlines the centrality of the PCFG model forgenerativeapproachestostatisticalparsing.
+11.5 Discriminative Models
+ThestatisticalparsingmodelsconsideredinSection11.4.3areallgenerativeinthesensethattheymodelthe joint probability P(x,y)of the input xand output y(which in many cases is equivalent to P(y)).
+Because of this, there is often a tight integration between the system of derivations deﬁning GEN (x)
+and the parameters of the scoring function EVAL(y ). Generative models have many advantages, such
+as the possibility of deriving the related probabilities P(y|x)andP(x)through conditionalization and
+marginalization,whichmakesitpossibletousethesamemodelforbothparsingandlanguagemodeling.Another attractive property is the fact that the learning problem for these models often has a clean
+
+250 HandbookofNaturalLanguageProcessing
+analytical solution, such as the relative frequency estimation for PCFGs, which makes learning bothsimpleandeﬃcient.
+The main drawback with generative models is that they force us to make rigid independence
+assumptions, thereby severely restricting the range of dependencies that can be taken into accountfor disambiguation. As we have seen Section 11.4, the search for more adequate independence assump-tions has been an important driving force in research on statistical parsing, but we have also seen thatmorecomplexmodelsinevitablymakesparsingcomputationallyharderandthatwemustthereforeoftenresort to approximate algorithms. Finally, it has been pointed out that the usual approach to training agenerativestatisticalparsermaximizesaquantity—usuallythejointprobabilityofinputsandoutputsinthetrainingset—thatisonlyindirectlyrelatedtothegoalofparsing,thatis,tomaximizetheaccuracyoftheparseronunseensentences.
+Adiscriminativemodelonlymakesuseoftheconditionalprobability P(y|x)ofacandidateanalysis y
+giventheinputsentence x.Althoughthismeansthatitisnolongerpossibletoderivethejointprobability
+P(x,y),ithasthedistinctadvantagethatwenolongerneedtoassumeindependencebetweenfeaturesthat
+are relevant for disambiguation and can incorporate more global features of syntactic representations.It also means that the evaluative component EVAL (y)of the parsing model is not directly tied to any
+particular generative component GEN (x), as long as we have some way of generating a set of candidate
+analyses.Finally,itmeansthatwecantrainthemodeltomaximizetheprobabilityoftheoutputgiventheinputoreventominimizealossfunctioninmappinginputstooutputs.Onthedownside,itmustbesaidthatthesetrainingregimesnormallyrequiretheuseofnumericaloptimizationtechniques,whichcanbecomputationallyveryintensive.
+In discussing discriminative parsing models, we will make a distinction between localandglobal
+models. Local discriminative models try to maximize the probability of local decisions in the derivationof an analysis y, given the input x, hoping to ﬁnd a globally optimal solution by making a sequence
+of locally optimal decisions. Global discriminative models instead try to maximize the probability ofa complete analysis y, given the input x. As we shall see, local discriminative models can often be
+regarded as discriminative versions of generative models, with local decisions given by independenceassumptions, while global discriminative models more fully exploit the potential of having features ofarbitrarycomplexity.
+11.5.1 Local Discriminative Models
+Local discriminative models generally take the form of conditional history-based models, where thederivationofacandidateanalysis yismodeledasasequenceofdecisionswitheachdecisionconditioned
+on relevant parts of the derivation history. However, unlike their generative counterparts described inSection11.4.1,theyalsoincludetheinputsentence xasaconditioningvariable:
+P(y|x)=
+m∏
+i=1P(di|/Phi1(d1,...,di−1,x)) (11.12)
+This makes it possible to condition decisions on arbitrary properties of the input, for example, by usinga lookahead such that the next ktokens of the input sentence can inﬂuence the probability of a given
+decision.Therefore,conditionalhistory-basedmodelshaveoftenbeenusedtoconstructincrementalandnear-deterministic parsers that parse a sentence in a single left-to-right pass over the input, using beamsearch or some other pruning strategy to eﬃciently compute an approximation of the most probableanalysisygiventheinputsentence x.
+In this kind of setup, it is not strictly necessary to estimate the conditional probabilities exactly, as
+long as the model provides a ranking of the alternatives in terms of decreasing probability. Sometimesa distinction is therefore made between conditional models , where probabilities are modeled explicitly,
+anddiscriminative models proper, that rank alternatives without computing their probability (Jebara
+
+StatisticalParsing 251
+2004). A special case of (purely) discriminative models are those used by deterministic parsers, suchas the transition-based dependency parsers discussed below, where only the mode of the conditionaldistribution(i.e.,thesinglemostprobablealternative)needstobecomputedforeachdecision.
+Conditionalhistory-basedmodelswereﬁrstproposedinphrasestructureparsing,asawayofintroduc-
+ingmorestructuralcontextfordisambiguationcomparedtostandardgrammarrules(BriscoeandCarroll1993; Jelinek et al. 1994; Magerman 1995; Carroll and Briscoe 1996). Today it is generally consideredthat, although parsers based on such models can be implemented very eﬃciently to run in linear time(Ratnaparkhi 1997, 1999; Sagae and Lavie 2005, 2006a), their accuracy lags a bit behind the best-performinggenerativemodelsandglobaldiscriminativemodels.Interestingly,thesamedoesnotseemtoholdfordependencyparsing,wherelocaldiscriminativemodelsareusedinsomeofthebestperformingsystemsknownas transition-based dependencyparsers(YamadaandMatsumoto2003;Isozakietal.2004;
+Nivreetal. 2004; Attardi2006; Nivre2006b; Nivretoappear). Letusbrieﬂyconsiderthearchitectureofsuchasystem.
+WebeginbynotingthatadependencystructureofthekinddepictedinFigure11.2canbedeﬁnedasa
+labeled,directedtree y=(V,A),wheretheset Vofnodesissimplythesetoftokensintheinputsentence
+(indexedbytheirlinearpositioninthestring); Aisasetoflabeled,directedarcs (w
+i,l,wj),wherewi,wj
+are nodes and lis a dependency label (such as SBJ,OBJ); and every node except the root node has exactly
+oneincomingarc.
+Atransition system for dependency parsing consists of a set Cof conﬁgurations, representing partial
+analyses of sentences, and a set Dof transitions from conﬁgurations to new conﬁgurations. For every
+sentencex=w1,...,wn,thereisauniqueinitialconﬁguration ci(x)∈CandasetCt(x)⊆Cofterminal
+conﬁgurations,eachrepresentingacompleteanalysis yofx.
+Forexample,ifweletaconﬁgurationbeatriple c=(σ,β,A),where σisastackofnodes/tokens, βis
+abuﬀerofremaininginputnodes/tokens,and Aisasetoflabeleddependencyarcs,thenwecandeﬁnea
+transitionsystemfordependencyparsingasfollows:
+•Theinitialconﬁguration ci(x)=([],[w1,...,wn],∅)
+•Thesetofterminalconﬁgurations Ct(x)={c∈C|c=([wi],[],A)}
+•ThesetDoftransitionsinclude:
+1. Shift: (σ,[wi|β],A)⇒([σ|wi],β,A)
+2. Right-Arc(l ):([σ|wi,wj],β,A)⇒([σ|wi],β,A∪{(wi,l,wj)})
+3. Left-Arc(l ):([σ|wi,wj],β,A)⇒([σ|wj],β,A∪{(wj,l,wi)})
+The initial conﬁguration has an empty stack, an empty arc set, and all the input tokens in the buﬀer. Aterminal conﬁguration has a single token on the stack and an empty buﬀer. The Shift transition movesthe next token in the buﬀer onto the stack, while the Right-Arc(l )and Left-Arc(l )transitions add a
+dependencyarcbetweenthetwotoptokensonthestackandreplacethembytheheadtokenofthatarc.It is easy to show that, for any sentence x=w
+1,...,wnwith a projective dependency tree y,∗t h e r ei sa
+transitionsequencethatbuilds yinexactly2n −1stepsstartingfrom ci(x). Overtheyears,anumberof
+diﬀerenttransitionsystemshavebeenproposedfordependencyparsing,someofwhicharerestrictedtoprojective dependency trees (Kudo and Matsumoto 2002; Nivre 2003; Yamada and Matsumoto 2003),whileotherscanalsoderivenon-projectivestructures(Attardi2006;Nivre2006a,2007).
+Given a scoring function S(/Phi1(c),d), which scores possible transitions dout of a conﬁguration c,
+represented by a high-dimensional feature vector /Phi1(c), and given a way of combining the scores of
+individual transitions into scores for complete sequences, parsing can be performed as search for thehighest-scoring transition sequence. Diﬀerent search strategies are possible, but most transition-baseddependency parsers implement some form of beam search, with a ﬁxed constant beam width k,w h i c h
+meansthatparsingcanbeperformedin O(n)timefortransitionsystemswherethelengthofatransition
+sequenceislinearinthelengthofthesentence.Infact,manysystemsset kto1,whichmeansthatparsing
+∗Adependencytreeisprojectiveiﬀeverysubtreehasacontiguousyield.
+
+252 HandbookofNaturalLanguageProcessing
+is completely deterministic given the scoring function. If the scoring function S(/Phi1(c),d)is designed to
+estimate (or maximize) the conditional probability of a transition dgiven the conﬁguration c, then this
+is a local, discriminative model. It is discriminative because the conﬁguration cencodes properties both
+of the input sentence and of the transition history; and it is local because each transition dis scored in
+isolation.
+Summing up, in statistical parsers based on local, discriminative models, the generative component
+GEN(x )istypicallydeﬁnedbyaderivationalprocess,suchasatransitionsystemorabottom-upparsing
+algorithm, while the evaluative component EVAL(y )is essentially a model for scoring local decisions,
+conditioned on the input and parts of the derivation history, together with a way of combining localscoresintoglobalscores.
+The learning problem for these models is to learn a scoring function for local decisions, conditioned
+on the input and derivation history, a problem that can be solved using many diﬀerent techniques.Early history-based models for phrase structure parsing used decision tree learning (Jelinek et al. 1994;Magerman 1995), but more recently log-linear models have been the method of choice (Ratnaparkhi1997, 1999; Sagae and Lavie 2005, 2006a). The latter method has the advantage that it gives a proper,conditional probability model, which facilitates the combination of local scores into global scores. Intransition-baseddependencyparsing,purelydiscriminativeap
+proachessuchassupportvectormachines(Kudo and Matsumoto 2002; Yamada and Matsumoto 2003; Isozaki et al. 2004; Nivre et al. 2006),perceptronlearning(CiaramitaandAttardi2007),andmemory-basedlearning(Nivreetal.2004;Attardi2006)havebeenmorepopular,althoughlog-linearmodelshavebeenusedinthiscontextaswell(Chengetal.2005;Attardi2006).
+The inference problem is to compute the optimal decision sequence, given the scoring function, a
+problem that is usually tackled by some kind of approximate search, such as beam search (with greedy,deterministicsearchasaspecialcase).Thisguaranteesthatinferencecanbeperformedeﬃcientlyevenwithexponentiallymanyderivationsandamodelstructurethatisoftenunsuitedfordynamicprogramming.Asalreadynoted,parsersbasedonlocal,discriminativemodelscanbemadetorunveryeﬃciently,oftenin linear time, either as a theoretical worst-case (Nivre 2003; Sagae and Lavie 2005) or as an empiricalaverage-case(Ratnaparkhi1997,1999).
+11.5.2 Global Discriminative Models
+In a local discriminative model, the score of an analysis y, given the sentence x, factors into the scores
+of diﬀerent decisions in the derivation of y. In a global discriminative model, by contrast, no such
+factorization is assumed, and component scores can all be deﬁned on the entire analysis y.T h i sh a s
+the advantage that the model may incorporate features that capture global properties of the analysis,without being restricted to a particular history-based derivation of the analysis (whether generative ordiscriminative).
+Inaglobaldiscriminativemodel,ascoringfunction S(x,y)istypicallydeﬁnedastheinnerproductof
+afeaturevector f(x,y)=⟨f
+1(x,y),...,fk(x,y)⟩andaweightvector w=⟨w1,...,wk⟩:
+S(x,y)=f(x,y)·w=k∑
+i=1wi·fi(x,y) (11.13)
+where each fi(x,y)is a (numerical) feature of xandy,a n de a c h wiis a real-valued weight quantifying
+the tendency of feature fi(x,y)to co-occur with optimal analyses. A positive weight indicates a positive
+correlation, a negative weight indicates a negative correlation, and by summing up all feature–weightproductsweobtainaglobalestimateoftheoptimalityoftheanalysis yforsentence x.
+The main strength of this kind of model is that there are no restrictions on the kind of features
+that may be used, except that they must be encoded as numerical features. For example, it is perfectlystraightforwardtodeﬁnefeaturesindicatingthepresenceorabsenceofaparticularsubstructure,suchas
+
+StatisticalParsing 253
+the tree of depth 1 corresponding to a PCFG rule. In fact, we can represent the entire scoring functionof the standard PCFG model by having one feature f
+i(x,y)for each grammar rule ri,w h o s ev a l u ei st h e
+numberoftimes riisusedinthederivationof y,andsetting witothelogoftheruleprobabilityfor ri.The
+global score will then be equivalent to the log of the probability P(x,y)as deﬁned by the corresponding
+PCFG,invirtueofthefollowingequivalence:
+log⎡⎣|R|∏
+i=1D(ri)COUNT (i,y)⎤⎦=|R|∑
+1=1logD(ri)·COUNT (i,y) (11.14)
+However,themainadvantageofthesemodelsliesinfeaturesthatgobeyondthecapacityoflocalmodelsand capture more global properties of syntactic structures, for example, features that indicate conjunctparallelismincoordinatestructures,featuresthatencodediﬀerencesinlengthbetweenconjuncts,featuresthatcapture the degree of right branching in a parse tree, or features that signal the presence of “heavy”constituentsofdiﬀerenttypes(CharniakandJohnson2005).Itisalsopossibletousefeaturesthatencodethescoresassignedtoaparticularanalysisbyotherparsers,whichmeansthatthemodelcanalsobeusedasaframeworkforparsercombination.
+The learning problem for a global discriminative model is to estimate the weight vector w.T h i sc a n
+be solved by setting the weights to maximize the conditional likelihood of the preferred analyses in thetrainingdataaccordingtothefollowingmodel:
+P(y|x)=exp[
+f(x,y)·w]
+∑
+y′∈GEN (x)exp[
+f(x,y′)·w] (11.15)
+Theexponentiatedscoreofanalysis yforsentence xisnormalizedtoaconditionalprobabilitybydividing
+it with the sum of exponentiated scores of all alternative analyses y′∈GEN(x ). This kind of model is
+usually called a log-linear model, or an exponential model. The problem of ﬁnding the optimal weightshasnoclosedformsolution,butthereareavarietyofnumericaloptimizationtechniquesthatcanbeused,includingiterativescalingandconjugategradienttechniques,makinglog-linearmodelsoneofthemostpopularchoicesforglobaldiscriminativemodels(Johnsonetal.1999;Riezleretal.2002;Toutanovaetal.2002;Miyaoetal.2003;ClarkandCurran2004).
+Analternativeapproachis to use apurely discriminativelearning method, whichdoes not estimatea
+conditional probability distribution but simply tries to separate the preferred analyses from alternativeanalyses, settingtheweightssothatthefollowingcriterionisupheldforeverysentence xwithpreferred
+analysisyinthetrainingset:
+y=argmax
+y′∈GEN (x)f(x,y′)·w (11.16)
+In case the set of constraints is not satisﬁable, techniques such as slack variables can be used to allowsomeconstraintstobeviolatedwithapenalty. Methodsinthisfamilyinclude theperceptronalgorithmand max-margin methods such as support vector machines, which are also widely used in the literature(Collins2000;CollinsandDuﬀy2002;Taskaretal.2004;CollinsandKoo2005;McDonaldetal.2005a).Commontoallofthesemethods,whetherconditionalordiscriminative,istheneedtorepeatedlyreparsethetrainingcorpus,whichmakesthelearningofglobaldiscriminativemodelscomputationallyintensive.
+Theuseoftrulyglobalfeaturesisanadvantagefromthepointofviewofparsingaccuracybuthasthe
+drawback of making inference intractable in the general case. Since there is no restriction on the scopethat features may take, it is not possible to use standard dynamic programming techniques to computetheoptimalanalysis.Thisisrelevantnotonlyatparsingtimebutalsoduringlearning,giventheneedtorepeatedlyreparsethetrainingcorpusduringoptimization.
+The most common way of dealing with this problem is to use a diﬀerent model to deﬁne GEN (x)
+and to use the inference method for this base model to derive what is typically a restricted subset of
+
+254 HandbookofNaturalLanguageProcessing
+all candidate analyses. This approach is especially natural in grammar-driven systems, where the baseparser is used to derive the set of candidates that are compatible with the constraints of the grammar,and the global discriminative model is applied only to this subset. This methodology underlies manyof the best performing broad-coverage parsers for theoretical frameworks such as LFG (Johnson et al.1999;Riezleretal.2002),HPSG(Toutanovaetal.2002;Miyaoetal.2003),andCCG(ClarkandCurran2004), some of which are based on hand-crafted grammars while others use theory-speciﬁc treebankgrammars.
+Thetwo-levelmodelisalsocommonlyusedindata-drivensystems,wherethebaseparserresponsible
+for the generative component GEN (x)is typically a parser using a generative model. These parsers are
+knownas reranking parsers,sincetheglobaldiscriminativemodelisusedtorerankthe ktopcandidates
+already ranked by the generative base parser. Applying a discriminative reranker on top of a generativebase parser usually leads to a signiﬁcant improvement in parsing accuracy (Collins 2000; Collins andDuﬀy 2002; Charniak and Johnson 2005; Collins and Koo 2005). However, it is worth noting that thesinglemostimportantfeatureintheglobaldiscriminativemodelisnormallythelogprobabilityassignedtoananalysisbythegenerativebaseparser.
+A potential problem with the standard reranking approach to discriminative parsing is that GEN (x)
+isusuallyrestrictedtoasmallsubsetofallpossibleanalyses,whichmeansthatthetrulyoptimalanalysismay not even be included in the set of analyses that are considered by the discriminative model. Thatthis is a real problem was shown in the study of Collins (2000), where 41% of the correct analyses werenot included in theset of 30 best parses considered by thereranker. In order to overcome this problem,discriminative models with global inference have been proposed, either using dynamic programmingand restricting the scope of features (Taskar et al. 2004) or using approximate search (Turian andMelamed 2006), but eﬃciency remains a problem for these methods, which do not seem to scale up tosentencesofarbitrarylength.Arecentalternativeis forestreranking (Huang2008),amethodthatreranks
+a packed forest of trees, instead of complete trees, and uses approximate inference to make trainingtractable.
+Theeﬃciencyproblemsassociatedwithinferenceforglobaldiscriminativemodelsaremostseverefor
+phrasestructurerepresentationsandothermoreexpressiveformalisms.Dependencyrepresentations,bycontrast, are more tractable in this respect, and one of the most successful approaches to dependencyparsing in recent years, known as spanning tree parsing (or graph-based parsing), is based on exact
+inferencewithglobal,discriminativemodels.
+The starting point for spanning tree parsing is the observation that the set GEN (x)of all dependency
+treesforasentence x(givensomesetofdependencylabels)canbecompactlyrepresentedasadensegraph
+G=(V,A),where Visthesetofnodescorrespondingtotokensof x,andAcontainsallpossiblelabeled
+directedarcs (w
+i,l,wj)connectingnodesin V.Givenamodelforscoringdependencytrees,theinference
+problemfordependencyparsingthenbecomestheproblemofﬁndingthehighestscoringspanningtreeinG(McDonaldetal.2005b).
+Withsuitablyfactoredmodels,theoptimumspanningtreecanbecomputedin O(n
+3)timeforprojective
+dependencytreesusingEisner’salgorithm(Eisner1996,2000),andin O(n2)timeforarbitrarydependency
+trees using the Chu–Liu–Edmonds algorithm (Chu and Liu 1965; Edmonds 1967). This makes globaldiscriminative training perfectly feasible, and spanning tree parsing has become one of the dominantparadigms for statistical dependency parsing (McDonald et al. 2005a,b; McDonald and Pereira 2006;Carreras2007).Althoughexactinferenceisonlypossibleiffeaturesarerestrictedtosmallsubgraphs(evensinglearcsifnon-projectivetreesareallowed),varioustechniqueshavebeendevelopedforapproximateinference with more global features (McDonald and Pereira 2006; Riedel et al. 2006; Nakagawa 2007).Moreover,usingageneralizationoftheChu–Liu–Edmondsalgorithmsto k-bestparsing,itispossibleto
+addadiscriminativererankerontopofthediscriminativespanningtreeparser(Hall2007).
+To conclude, the common denominator of the models discussed in this section is an evaluative
+componentwherethescoreEVAL( y)isdeﬁnedbyalinearcombinationofweightedfeaturesthatarenot
+restrictedbyaparticularderivationprocess,andwhereweightsarelearnedusingdiscriminativetechniques
+
+StatisticalParsing 255
+suchasconditionallikelihoodestimationorperceptronlearning.Exactinferenceisintractableingeneral,whichiswhythesetGEN( x)ofcandidatesisoftenrestrictedtoasmallsetgeneratedbyagrammar-driven
+or generative statistical parser, a set that can be searched exhaustively. Exact inference has so far beenpracticallyusefulmainlyinthecontextofgraph-baseddependencyparsing.
+11.6 Beyond Supervised Parsing
+Allthemethodsforstatisticalparsingdiscussedsofarinthischapterrelyonsupervisedlearninginsomeform. That is, they need to have access to sentences labeled with their preferred analyses in order toestimatemodelparameters.Asnotedintheintroduction,thisisaseriouslimitation,giventhattherearefewlanguagesintheworldforwhichthereexistanysyntacticallyannotateddata,nottomentionthewiderangeofdomainsandtexttypesforwhichnolabeleddataareavailableeveninwell-resourcedlanguagessuch as English. Consequently, the development of methods that can learn from unlabeled data, eitheralone or in combination with labeled data, should be of primary importance, even though it has so farplayed a rather marginal role in the statistical parsing community. In this ﬁnal section, we will brieﬂyreviewsomeoftheexistingworkinthisarea.
+11.6.1 Weakly Supervised Parsing
+Weaklysupervised(orsemi-supervised)learningreferstotechniquesthatuselabeleddataasinsupervisedlearningbutcomplementsthiswithlearningfromunlabeleddata,usuallyinmuchlargerquantitiesthanthe labeled data, hence reducing the need for manual annotation to produce labeled data. The mostcommon approach is to use the labeled data to train one or more systems that can then be used tolabel new data, and to retrain the systems on a combination of the original labeled data and the new,automatically labeled data. One of the key issues in the design of such a method is how to decide whichautomaticallylabeleddatainstancestoincludeinthenewtrainingset.
+Inco-training (Blum and Mitchell 1998), two or more systems with complementary views of the
+data are used, so that each data instance is described using two diﬀerent feature sets that providediﬀerent,complementaryinformationabouttheinstance.Ideally,thetwoviewsshouldbeconditionallyindependent and each view suﬃcient by itself. The two systems are ﬁrst trained on the labeled data andusedtoanalyzetheunlabeleddata.Themostconﬁdentpredictionsofeachsystemontheunlabeleddataare then used to iteratively construct additional labeled training data for the other system. Co-traininghasbeenappliedtosyntacticparsingbuttheresultssofararerathermixed(Sarkar2001;Steedmanetal.2003). One potential use of co-training is in domain adaptation, where systems have been trained onlabeledout-of-domaindataandneedtobetunedusingunlabeledin-domaindata.Inthissetup,asimplevariationonco-traininghasproveneﬀective,whereanautomaticallylabeledinstanceisaddedtothenewtrainingsetonlyifbothsystemsagreeonitsanalysis(SagaeandTsujii2007).
+Inself-training, one and the same system is used to label its own training data. According to the
+received wisdom, this scheme should be less eﬀective than co-training, given that it does not providetwo independent views of the data, and early studies of self-training for statistical parsing seemed toconﬁrmthis(Charniak1997;Steedmanetal.2003).Morerecently,however,self-traininghasbeenusedsuccessfully to improve parsing accuracy on both in-domain and out-of-domain data (McClosky et al.2006a,b,2008).Itseemsthatmoreresearchisneededtounderstandtheconditionsthatarenecessaryinorderforself-trainingtobeeﬀective(McCloskyetal.2008).
+11.6.2 Unsupervised Parsing
+Unsupervisedparsingamountstotheinductionofastatisticalparsingmodelfromrawtext.EarlyworkinthisareawasbasedonthePCFGmodel,tryingtolearnruleprobabilitiesforaﬁxed-formgrammarusing
+
+256 HandbookofNaturalLanguageProcessing
+theInside–Outsidealgorithm(Baker1979;LariandYoung1990)butwithratherlimitedsuccess(CarrollandCharniak1992;PereiraandSchabes1992).Morerecentworkhasinsteadfocusedonmodelsinspiredby successful approaches to supervised parsing, in particular history-based models and data-orientedparsing.
+Asanexample,letusconsidertheConstituent-ContextModel(CCM)(KleinandManning2002;Klein
+2005).Let x=w
+1,...,wnbeasentence,let ybeatreefor x,andletyijbetrueifwi,...,wjisaconstituent
+accordingto yandfalseotherwise.Thejointprobability P(x,y)ofasentence xandatree yisequivalent
+toP(y)P(x|y),whereP(y)istheaprioriprobabilityofthetree(usuallyassumedtocomefromauniform
+distribution),and P(x|y)ismodeledasfollows:
+P(x|y)=∏
+1≤i<j≤nP(wi,...,wj|yij)P(wi−1,wj+1|yij) (11.17)
+Thetwoconditionalprobabilitiesontheright-handsideoftheequationarereferredtoasthe constituent
+andthecontextprobabilities,respectively,eventhoughtheyaredeﬁnednotonlyforconstituentsbutfor
+all spans of the sentence x. Using the EM algorithm to estimate the parameters of the constituent and
+context distributions resulted in the ﬁrst model to beat the right-branching baseline when evaluated onthedatasetknownasWSJ10, consistingofpart-of-speechsequencesforallsentencesuptolength10intheWallStreetJournal sectionofthePennTreebank(KleinandManning2002;Klein2005).
+∗Theresults
+canbeimprovedfurtherbycombiningCCMwiththedependency-basedDMVmodel,whichisinspiredby the head-driven history-based models described in Section 11.4.1 (Klein and Manning 2004; Klein2005)andfurtherdiscussedbelow.
+Another class of models that have achieved competitive results are the various unsupervised versions
+oftheDOPmodel(cf.Section11.4.3).WhereaslearninginthesupervisedDOPmodeltakesintoaccountallpossiblesubtreesofthepreferredparsetree yforsentence x,learningintheunsupervisedsettingtakes
+into account all possible subtrees of allpossible parse trees of x. There are diﬀerent ways to train such a
+model, butapplyingtheEMalgorithmtoaneﬃcientPCFGreduction(theso-calledUML-DOPmodel)givesempiricalresultsonaparwiththecombinedCCM +DMVmodel(Bod2007).
+An alternative approach to unsupervised phrase structure parsing is the common-cover-link model
+(Seginer 2007), which uses a linear-time incremental parsing algorithm for a link-based representationof phrase structure and learns from very simple surface statistics. Unlike the other models discussed inthis section, this model is eﬃcient enough to learn from plain words (not part-of-speech tags) withoutany upper bound on sentence length. Although evaluation results are not directly comparable, thecommon-cover-linkmodelappearstogivecompetitiveaccuracy.
+The work discussed so far has all been concerned with unsupervised phrase structure parsing, but
+there has also been work on inducing models for dependency parsing. Early proposals involved modelsthat start by generating an abstract dependency tree (without words) and then populate the tree withwordsaccordingtoadistributionwhereeachwordisconditionedonlyonitsheadandonthedirectionofattachment(Yuret1998;Paskin2001a,b).However,aproblemwiththiskindofmodelisthatittendsto link words that have high mutual information regardless of whether they are plausibly syntacticallyrelated.
+In order to overcome the problems of the earlier models, the DMV model mentioned earlier was
+proposed (Klein and Manning 2004; Klein 2005). DMV is short for Dependency Model with Valence,and the model is clearly inspired by the head-driven history-based models used in supervised parsing(cf. Section 11.4.1). In this model, a dependency (sub)tree rooted at h,d e n o t e d T(h), is generated as
+follows:
+∗Theright-branchingbaselineassignstoeverysentenceastrictlyright-branching,binarytree.SinceparsetreesforEnglish
+arepredominantlyright-branching,thisconstitutesaratherdemandingbaselineforunsupervisedparsing.
+
+StatisticalParsing 257
+P(T(h))=∏
+d∈{l,r}⎡⎣∏
+a∈D(h,d)P!(¬!|h,d,?)Pv(a|h,d)P(T(a))⎤⎦P
+!(!|h,d,?) (11.18)
+Inthisequation, disavariableoverthedirectionofthedependency–left( l)orright(r );D(h,d)istheset
+ofdependentsof hindirection d;P!(!|h,d,?)istheprobabilityofstoppingthegenerationofdependents
+in direction dand ? is a binary variable indicating whether any dependents have been generated or not;
+Pv(a|h,d)istheprobabilityofgeneratingthedependentword a,conditionedonthehead handdirection
+d;andP (T(a))is(recursively)theprobabilityofthesubtreerootedat a.
+The DMV has not only improved results for unsupervised dependency parsing but has also been
+combined with the CCM model to improve results for both phrase structure parsing and dependencyparsing. The original work on the DMV used the EM algorithm for parameter estimation (Klein andManning 2004; Klein 2005), but results have later been improved substantially through the use ofalternativeestimationmethodssuchascontrastiveestimationandstructuredannealing(Smith2006).
+11.7 Summary and Conclusions
+Inthischapter,wehavetriedtogiveanoverviewofthemostprominentapproachestostatisticalparsingthat are found in the ﬁeld today, characterizing the diﬀerent models in terms of their generative andevaluative components and discussing the problems of learning and inference that they give rise to.Overall, the ﬁeld is dominated by supervised approaches that make use of generative or discriminativestatisticalmodelstorankthecandidateanalysesforagiveninputsentence.Intermsofempiricalaccuracy,discriminativemodelsseemtohaveaslightedgeovergenerativemodels,especiallydiscriminativemodelsthatincorporateglobalfeatures,butitisimportanttorememberthatmanydiscriminativeparsersincludetheoutputofagenerativemodelintheirfeaturerepresentations.Forbothgenerativeanddiscriminativemodels, we can see a clear development toward models that take more global structure into account,whichimprovestheircapacityfordisambiguationbutmakesparsingcomputationallyharder.Inthisway,thereisaninevitabletrade-oﬀbetweenaccuracyandeﬃciencyinstatisticalparsing.
+Parsers that learn from unlabeled data—instead of or in addition to labeled data—have so far played
+a marginal role in statistical parsing but are likely to become more important in the future. Developinga large-scale treebank for every new language and domain we want to parse is simply not a scalablesolution, soresearchonmethodsthatdonotrely(only)onlabeleddataisamajorconcernfortheﬁeld.Althoughtheempiricalresultsintermsof parsingaccuracyhavesofar notbeenon aparwiththoseforsupervisedapproaches,resultsaresteadilyimproving.Moreover,itisclearthatthecomparisonhasbeenbiasedinfavorofthesupervisedsystems,becausetheoutputsofbothsystemshavebeencomparedtothekindofrepresentationsthatsupervisedparserslearnfrom.Onewaytogetaroundthisproblemistouseapplication-driven evaluation instead, and there are signs that in this context unsupervised approachescanalreadycompetewithsupervisedapproachesforsomeapplications(Bod2007).
+Finally, it is worth pointing out that this survey of statistical parsing is by no means exhaustive. We
+havechosentoconcentrateonthetypesofmodelsthathavebeenimportantfordrivingthedevelopmentof the ﬁeld and that are also found in the best performing systems today, without describing any of thesystemsindetail.Onetopicthatwehavenottoucheduponatallis systemcombination,thatis,techniques
+forimprovingparsingaccuracybycombiningseveralmodels, eitheratlearningtimeoratparsingtime.Infact,manyofthebestperformingparsersavailabletodayfordiﬀerenttypesofsyntacticrepresentationsdoinsomewayinvolvesystemcombination.Thus,CharniakandJohnson’srerankingparser(CharniakandJohnson2005)includesCharniak’sgenerativeparser(Charniak2000)asacomponent,andtherearemany dependency parsers that combine several models either by voting (Zeman and Žabokrtský 2005;Sagae and Lavie 2006b; Hall 2007) or by stacking (Nivre and McDonald 2008). It is likely that system
+
+258 HandbookofNaturalLanguageProcessing
+combination will remain an important technique for boosting accuracy, even if single models becomeincreasinglymoreaccuratebythemselvesinthefuture.
+Acknowledgments
+IwanttothankJohnCarrollandJasonEisnerforvaluablecommentsonanearlierversionofthischapter.I am also grateful to Peter Ljunglöf and Mats Wirén for discussions about the organization of the twoparsingchapters(Chapter4andthisone).
+References
+Aduriz, I., M. J. Aranzabe, J. M. Arriola, A. Atutxa, A. Díaz de Ilarraza, A. Garmendia, and M. Oronoz
+(2003). ConstructionofaBasquedependencytreebank. In ProceedingsoftheSecondWorkshopon
+TreebanksandLinguisticTheories(TLT) ,Växjö,Sweden,pp.201–204.
+Attardi,G.(2006).Experimentswithamultilanguagenon-projectivedependencyparser.In Proceedingsof
+the10thConferenceonComputationalNaturalLanguageLearning(CoNLL) ,NewYork,pp.166–170.
+Baker, J. (1979). Trainable grammars for speech recognition. In Speech Communication Papers for the
+97thMeetingoftheAcousticalSocietyofAmerica ,Cambridge,MA,pp.547–550.
+Bikel, D.(2004). Ontheparameterspaceofgenerativelexicalizedstatisticalparsingmodels. PhDthesis,
+UniversityofPennsylvania,Philadelphia,PA.
+Black,E.,S.Abney,D.Flickinger,C.Gdaniec,R.Grishman,P.Harrison,D.Hindle,R.Ingria,F.Jelinek,
+J. Klavans, M. Liberman, S. Roukos, B. Santorini, and T. Strzalkowski (1991). A procedure forquantitativelycomparingthesyntacticcoverageofEnglishgrammars.In ProceedingsoftheFourth
+DARPASpeechandNaturalLanguageWorkshop ,PaciﬁcGrove,CA,pp.306–311.
+Black,E.,R.Garside,andG.Leech(Eds.)(1993). Statistically-DrivenComputerGrammarsofEnglish:The
+IBM/LancasterApproach.Rodopi,Amsterdam,theNetherlands.
+Blum,A.andT.Mitchell(1998).Combininglabeledandunlabeleddatawithco-training.In Proceedings
+oftheWorkshoponComputationalLearningTheory(COLT) ,Madison,WI,pp.92–100.
+Bod,R.(1995).Enrichinglinguisticswithstatistics:Performancemodelsofnaturallanguage.PhDthesis,
+UniversityofAmsterdam,Amsterdam,theNetherlands.
+Bod,R.(1998). BeyondGrammar .CSLIPublications,Stanford,CA.
+Bod,R.(2001).Whatistheminimalsetoffragmentsthatachievesmaximalparseaccuracy?In Proceedings
+ofthe39thAnnualMeetingoftheAssociationforComputationalLinguistics(ACL) ,Toulouse,France,
+pp.66–73.
+Bod,R.(2003).AneﬃcientimplementationofanewDOPmodel.In Proceedingsofthe10thConferenceof
+theEuropeanChapteroftheAssociationforComputationalLinguistics(EACL) ,Budapest,Hungary,
+pp.19–26.
+Bod,R.(2007).Istheendofsupervisedparsinginsight?In Proceedingsofthe45thAnnualMeetingofthe
+AssociationofComputationalLinguistics,Prague,CzechRepublic,pp.400–407.
+Bod, R. and R. Kaplan (1998). A probabilistic corpus-driven model for lexical-functional analysis. In
+Proceedingsofthe36thAnnualMeetingoftheAssociationforComputationalLinguistics(ACL)andthe17thInternationalConferenceonComputationalLinguistics(COLING) ,Montreal,QC,Canada,
+pp.145–151.
+Bod,R.,R.Scha,andK.Sima’an(Eds.)(2003). Data-OrientedParsing .CSLIPublications,Stanford,CA.
+Boguslavsky, I., S. Grigorieva, N. Grigoriev, L. Kreidlin, and N. Frid (2000). Dependency treebank for
+Russian: Concept, tools, types of information. In Proceedings of the 18th International Conference
+onComputationalLinguistics(COLING) ,Saarbrucken,Germany,pp.987–991.
+
+StatisticalParsing 259
+Böhmová,A.,J.Hajič,E.Hajičová,andB.Hladká(2003).ThePragueDependencyTreebank:Athree-level
+annotation scenario. In A. Abeillé (Ed.), Treebanks: Building and Using Parsed Corpora , Kluwer,
+Dordrecht,theNetherlands,pp.103–127.
+Bonnema, R.andR.Scha(2003). ReconsideringtheprobabilitymodelforDOP.InR.Bod, R.Scha, and
+K.Sima’an(Eds.), Data-OrientedParsing ,CSLIPublications,Stanford,CA,pp.25–41.
+Bonnema,R.,R.Bod,andR.Scha(1997).ADOPmodelforsemanticinterpretation.In Proceedingsofthe
+35thAnnualMeetingoftheAssociationforComputationalLinguistics(ACL)andthe8thConferenceof the European Chapter of the Association for Computational Linguistics (EACL) , Madrid, Spain,
+pp.159–167.
+Bonnema,R.,P.Buying,andR.Scha(2000).Parsetreeprobabilityindataorientedparsing.In Proceedings
+oftheConferenceonIntelligentTextProcessingandComputationalLinguistics ,MexicoCity,Mexico,
+pp.219–232.
+Booth, T. L. and R. A. Thompson (1973). Applying probability measures to abstract languages. IEEE
+TransactionsonComputersC-22 ,442–450.
+Bresnan,J.(2000). Lexical-FunctionalSyntax.Blackwell,Oxford,U.K.
+Briscoe,E.andJ.Carroll(1993).GeneralisedprobabilisticLRparsingofnaturallanguage(corpora)with
+uniﬁcation-basedgrammars. ComputationalLinguistics19,25–59.
+Buchholz, S. and E. Marsi (2006). CoNLL-X shared task on multilingual dependency parsing. In Pro-
+ceedingsofthe10thConferenceonComputationalNaturalLanguageLearning(CoNLL) ,NewYork,
+pp.149–164.
+Caraballo, S. A. and E. Charniak (1998). New ﬁgures of merit for best-ﬁrst probabilistic chart parsing.
+ComputationalLinguistics24,275–298.
+Carreras,X.(2007).Experimentswithahigher-orderprojectivedependencyparser.In Proceedingsofthe
+CoNLLSharedTaskofEMNLP-CoNLL2007,Prague,CzechRepublic,pp.957–961.
+Carroll, J. and E. Briscoe (1996). Apportioning development eﬀort in a probabilistic LR parsing system
+through evaluation. In Proceedings of the Conference on Empirical Methods in Natural Language
+Processing(EMNLP),Philadelphia,PA,pp.92–100.
+Carroll, G. and E. Charniak (1992). Two experiments on learning probabilistic dependency grammars
+from corpora. Technical Report TR-92, Department of Computer Science, Brown University,Providence,RI.
+Carroll, J., E. Briscoe, and A. Sanﬁlippo (1998). Parser evaluation: A survey and a new proposal. In
+Proceedings of the First International Conference on Language Resources and Evaluation (LREC) ,
+Granda,Spain,pp.447–454.
+Carroll,J.,G.Minnen,andE.Briscoe(2003).Parserevaluationusingagrammaticalrelationannotation
+scheme.InA.Abeillé(Ed.), Treebanks,Kluwer,Dordrecht,theNetherlands,pp.299–316.
+Charniak, E. (1996). Tree-bank grammars. In Proceedings of the 13th National Conference on Artiﬁcial
+Intelligence ,Portland,OR,pp.1031–1036.
+Charniak,E.(1997).Statisticalparsingwithacontext-freegrammarandwordstatistics.In Proceedingsof
+AAAI/IAAI,MenloPark,CA,pp.598–603.
+Charniak, E. (2000). A maximum-entropy-inspired parser. In Proceedings of the First Meeting of the
+North American Chapter of the Association for Computational Linguistics (NAACL) , Seattle, WA,
+pp.132–139.
+Charniak,E.andM.Johnson(2005).Coarse-to-ﬁne n-bestparsingandMaxEntdiscriminativereranking.
+InProceedings of the 43rd Annual Meeting of the Association for Computational Linguistics (ACL) ,
+AnnArbor,MI,pp.173–180.
+Cheng,Y.,M.Asahara,andY.Matsumoto(2005).Machinelearning-baseddependencyanalyzerforChi-
+nese.InProceedingsofInternationalConferenceonChineseComputing(ICCC) ,Bangkok,Thailand,
+pp.66–73.
+Chi, Z. and S. Geman (1998). Estimation of probabilistic context-free grammars. Computational
+Linguistics24,299–305.
+
+260 HandbookofNaturalLanguageProcessing
+Chiang, D. (2000). Statistical parsing with an automatically-extracted tree adjoining grammar. In Pro-
+ceedings of the 38th Annual Meeting of the Association for Computational Linguistics , Hong Kong,
+pp.456–463.
+Chomsky, N. (1956). Three models for the description of language. IRE Transactions on Information
+TheoryIT-2,113–124.
+Chu, Y. J. and T. H. Liu (1965). On the shortest arborescence of a directed graph. Science Sinica 14,
+1396–1400.
+Ciaramita, M. and G. Attardi (2007, June). Dependency parsing with second-order feature maps and
+annotated semantic information. In Proceedings of the 10th International Conference on Parsing
+Technologies ,Prague,CzechRepublic,pp.133–143.
+Clark, S. and J. R. Curran (2004). Parsing the WSJ using CCG and log-linear models. In Proceedings of
+the42ndAnnualMeetingoftheAssociationforComputationalLinguistics(ACL) ,Barcelona,Spain,
+pp.104–111.
+Collins, M. (1996). A new statistical parser based on bigram lexical dependencies. In Proceedings of
+the 34th Annual Meeting of the Association for Computational Linguistics (ACL) , Santa Cruz, CA,
+pp.184–191.
+Collins, M.(1997). Threegenerative, lexicalisedmodelsforstatisticalparsing. In Proceedingsofthe35th
+Annual Meeting of the Association for Computational Linguistics (ACL) and the Eighth Conferenceof the European Chapter of the Association for Computational Linguistics (EACL) , Madrid, Spain,
+pp.16–23.
+Collins,M.(1999).Head-drivenstatisticalmodelsfornaturallanguageparsing.PhDthesis,Universityof
+Pennsylvania,Philadelphia,PA.
+Collins, M. (2000). Discriminative reranking for natural language parsing. In Proceedings of the 17th
+InternationalConferenceonMachineLearning,Stanford,CA,pp.175–182.
+Collins, M.andN.Duﬀy(2002). Newrankingalgorithmsforparsingandtagging: Kernelsoverdiscrete
+structures and the voted perceptron. In Proceedings of the 40th Annual Meeting of the Association
+forComputationalLinguistics(ACL) ,Philadelphia,PA,pp.263–270.
+Collins, M. and T. Koo (2005). Discriminative reranking for natural language parsing. Computational
+Linguistics31,25–71.
+Curran, J. R. and S. Clark (2004). The importance of supertagging for wide-coverage CCG parsing. In
+Proceedingsofthe20thInternationalConferenceonComputationalLinguistics(COLING) ,Geneva,
+Switzerland,pp.282–288.
+Dreyer, M. and J. Eisner (2006). Better informed training of latent syntactic features. In Proceedings of
+theConferenceonEmpiricalMethodsinNaturalLanguageProcessing(EMNLP) ,Sydney,Australia,
+pp.317–326.
+Džeroski, S., T. Erjavec, N. Ledinek, P. Pajas, Z. Žabokrtsky, and A. Žele (2006). Towards a Slovene
+dependency treebank. In Proceedings of the Fifth International Conference on Language Resources
+andEvaluation(LREC),Genoa,Italy.
+Edmonds,J.(1967).Optimumbranchings. JournalofResearchoftheNationalBureauofStandards71B ,
+233–240.
+Eisner,J.M.(1996).Threenewprobabilisticmodelsfordependencyparsing:Anexploration.In Proceed-
+ings of the 16th International Conference on Computational Linguistics (COLING) , Copenhagen,
+Denmark,pp.340–345.
+Eisner, J. M. (2000). Bilexical grammars and their cubic-time parsing algorithms. In H. Bunt and A.
+Nijholt (Eds.), Advances in Probabilistic and Other Parsing Technologies , Kluwer, Dordrecht, the
+Netherlands,pp.29–62.
+Eisner, J.andG.Satta(1999). Eﬃcientparsingforbilexicalcontext-freegrammarsandheadautomaton
+grammars.In Proceedingsofthe37thAnnualMeetingoftheAssociationforComputationalLinguistics
+(ACL),CollegePark,MD,pp.457–464.
+
+StatisticalParsing 261
+Forst,M.,N.Bertomeu,B.Crysmann,F.Fouvry,S.Hansen-Schirra,andV.Kordoni(2004).TheTIGER
+dependency bank. In Proceedings of the Fifth International Workshop on Linguistically Interpreted
+Corpora,Geneva,Switzerland,pp.31–37.
+Fujisaki,T.,F.Jelinek,J.Cocke,E.Black,andT.Nishino(1989).Aprobabilisticmethodforsentencedis-
+ambiguation.In ProceedingsoftheFirstInternationalWorkshoponParsingTechnologies,Pittsburgh,
+PA,pp.105–114.
+Gildea,D.(2001).Corpusvariationandparserperformance.In ProceedingsoftheConferenceonEmpirical
+MethodsinNaturalLanguageProcessing(EMNLP) ,Pittsburgh,PA,pp.167–202.
+Goodman, J. (1996). Parsing algorithms and metrics. In Proceedings of the 34th Annual Meeting of the
+AssociationforComputationalLinguistics(ACL) ,SantaCruz,CA,pp.177–183.
+Goodman,J.(1999).Semiringparsing. ComputationalLinguistics25,573–605.
+Grishman, R., C.Macleod, andJ.Sterling(1992). Evaluatingparsingstrategiesusingstandardizedparse
+ﬁles.InProceedingsoftheThirdConferenceonAppliedNaturalLanguageProcessing(ANLP) ,Trento,
+Italy,pp.156–161.
+Hajič, J., B. Vidova Hladká, J. Panevová, E. Hajičová, P. Sgall, and P. Pajas (2001). Prague Dependency
+Treebank1.0.LDC,2001T10.
+Hajič, J., O. Smrž, P. Zemánek, J. Šnaidauf, and E. Beška (2004). Prague Arabic Dependency Treebank:
+Developmentindataandtools.In ProceedingsoftheNEMLARInternationalConferenceonArabic
+LanguageResourcesandTools ,Cairo,Egypt,pp.110–117.
+Hall,K.(2007).K-bestspanningtreeparsing.In Proceedingsofthe45thAnnualMeetingoftheAssociation
+forComputationalLinguistics(ACL) ,Prague,CzechRepublic,pp.392–399.
+Hall, J., J. Nilsson, J. Nivre, G. Eryiğit, B. Megyesi, M. Nilsson, and M. Saers (2007). Single malt or
+blended? Astudyinmultilingualparseroptimization. In Proceedingsofthe CoNLL SharedTask of
+EMNLP-CoNLL2007,Prague,CzechRepublic.
+Han, C.-H., N.-R. Han, E.-S. Ko, and M. Palmer (2002). Development and evaluation of a Korean
+treebank and its application to NLP. In Proceedings of the Third International Conference on
+LanguageResourcesandEvaluation(LREC) ,LasPalmas,CanaryIslands,Spain,pp.1635–1642.
+Henderson, J. (2004). Discriminative training of a neural network statistical parser. In Proceedings of
+the42ndAnnualMeetingoftheAssociationforComputationalLinguistics(ACL) ,Barcelona,Spain,
+pp.96–103.
+Hockenmaier, J. (2003). Data and models for statistical parsing with combinatory categorial grammar.
+PhDthesis,UniversityofEdinburgh,Edinburgh,U.K.
+Hockenmaier, J. and M. Steedman (2007). CCGbank: A corpus of CCG derivations and dependency
+structuresextractedfromthePennTreebank. ComputationalLinguistics33,355–396.
+Huang, L. (2008). Forest reranking: Discriminative parsing with non-local features. In Proceedings of
+the46thAnnualMeetingoftheAssociationforComputationalLinguistics(ACL) ,Philadelphia,PA,
+pp.586–594.
+Huang,L.andD.Chiang(2005).Better k-bestparsing.In Proceedingsofthe9thInternationalWorkshop
+onParsingTechnologies(IWPT) ,Vancouver,BC,Canada.
+Isozaki, H., H. Kazawa, and T. Hirao (2004). A deterministic word dependency analyzer enhanced
+with preference learning. In Proceedings of the 20th International Conference on Computational
+Linguistics(COLING),Morristown,NJ,pp.275–281.
+Jebara,T.(2004). MachineLearning:DiscriminativeandGenerative .Kluwer,Boston,MA.
+Jelinek,F.,J.Laﬀerty,D.M.Magerman,R.Mercer,A.Ratnaparkhi,andS.Roukos(1994).Decisiontree
+parsingusingahiddenderivationmodel.In ProceedingsoftheARPAHumanLanguageTechnology
+Workshop,Plainsboro,NJ,pp.272–277.
+Jiménez, V.M.andA.Marzal(2000). Computationofthe nbestparsetreesforweightedandstochastic
+context-free grammars. In Proceedings of the Joint IAPR International Workshops on Advances in
+PatternRecognition,Alicante,Spain.
+
+262 HandbookofNaturalLanguageProcessing
+Johnson, M. (1998). PCFG models of linguistic tree representations. Computational Linguistics 24,
+613–632.
+Johnson, M. (2001). Joint and conditional estimation of tagging and parsing models. In Proceedings of
+the39thAnnualMeetingoftheAssociationforComputationalLinguistics(ACL) ,Toulouse,France
+pp.314–321.
+Johnson, M. (2002). A simple pattern-matching algorithm for recovering empty nodes and their
+antecedents. In Proceedings of the 40th Annual Meeting of the Association for Computational
+Linguistics(ACL),Philadelphia,PA,pp.136–143.
+Johnson, M., S. Geman, S. Canon, Z. Chi, and S. Riezler (1999). Estimators for stochastic “uniﬁcation-
+based” grammars. In Proceedings of the 37th Annual Meeting of the Association for Computational
+Linguistics(ACL),Morristown,NJ,pp.535–541.
+Joshi, A. (1985). How much context-sensitivity is necessary for assigning structural descriptions: Tree
+adjoining grammars. In D. Dowty, L. Karttunen, and A. Zwicky (Eds.), Natural Language Pro-
+cessing: Psycholinguistic, ComputationalandTheoreticalPerspectives , CambridgeUniversityPress,
+NewYork,pp.206–250.
+Joshi, A. K. (1997). Tree-adjoining grammars. In G. Rozenberg and A. Salomaa (Eds.), Handbook of
+FormalLanguages.Volume3:BeyondWords ,Springer,Berlin,Germany,pp.69–123.
+Kaplan, R. and J. Bresnan (1982). Lexical-Functional Grammar: A formal system for grammatical rep-
+resentation. In J. Bresnan (Ed.), The Mental Representation of Grammatical Relations , MIT Press,
+Cambridge,MA,pp.173–281.
+King, T. H., R. Crouch, S. Riezler, M. Dalrymple, and R. M. Kaplan (2003). The PARC 700 dependency
+bank. In Proceedings of the Fourth International Workshop on Linguistically Interpreted Corpora ,
+Budapest,Hungary,pp.1–8.
+Klein,D.(2005).Theunsupervisedlearningofnaturallanguagestructure.PhDthesis,StanfordUniversity,
+Stanford,CA.
+Klein,D.andC.D.Manning(2002).ConditionalstructureversusconditionalestimationinNLPmodels.
+InProceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP) ,
+Philadelphia,PA,pp.9–16.
+Klein, D. and C. D. Manning (2003). Accurate unlexicalized parsing. In Proceedings of the 41st Annual
+MeetingoftheAssociationforComputationalLinguistics(ACL) ,Stanford,CA,pp.423–430.
+Klein,D.andC.D.Manning(2004).Corpus-basedinductionofsyntacticstructure:Modelsofdependency
+andconstituency. In Proceedingsofthe42ndAnnualMeetingoftheAssociationforComputational
+Linguistics(ACL),Barcelona,Spain,pp.479–486.
+Kromann,M.T.(2003).TheDanishDependencyTreebankandtheDTAGtreebanktool.In Proceedings
+ofthesecondWorkshoponTreebanksandLinguisticTheories(TLT),Växjö,Sweden,pp.217–220.
+Kudo, T. and Y. Matsumoto (2002). Japanese dependency analysis using cascaded chunking. In Pro-
+ceedings of the Sixth Workshop on Computational Language Learning (CoNLL) , Taipei, Taiwan,
+pp.63–69.
+Lari, K. and S. S. Young (1990). The estimation of stochastic context-free grammars using the inside-
+outsidealgorithm. ComputerSpeechandLanguage4 ,35–56.
+Liang, P., S. Petrov, M. Jordan, and D. Klein (2007). The inﬁnite PCFG using hierarchical Dirichlet
+processes. In Proceedings of the 2007 Joint Conference on Empirical Methods in Natural Lan-
+guageProcessingandComputationalNaturalLanguageLearning(EMNLP-CoNLL) ,Prague,Czech
+Republic,pp.688–697.
+Lin, D. (1995). A dependency-based method for evaluating broad-coverage parsers. In Proceedings of
+IJCAI-95,Montreal,QC,Canada,pp.1420–1425.
+Lin, D. (1998). A dependency-based method for evaluating broad-coverage parsers. Journal of Natural
+LanguageEngineering4,97–114.
+
+StatisticalParsing 263
+Maamouri, M. and A. Bies (2004). Developing an Arabic treebank: Methods, guidelines, procedures,
+and tools. In Proceedings of the Workshop on Computational Approaches to Arabic Script-Based
+Languages ,Geneva,Switzerland,pp.2–9.
+Magerman, D.M.(1995). Statisticaldecision-treemodelsforparsing. In Proceedingsofthe33rdAnnual
+MeetingoftheAssociationforComputationalLinguistics(ACL) ,Cambridge,MA,pp.276–283.
+Marcus, M. P., B. Santorini, and M. A. Marcinkiewicz (1993). Building a large annotated corpus of
+English:ThePennTreebank. ComputationalLinguistics19,313–330.
+Marcus, M. P., B. Santorini, M. A. Marcinkiewicz, R. MacIntyre, A. Bies, M. Ferguson, K. Katz,
+and B. Schasberger (1994). The Penn Treebank: Annotating predicate-argument structure. InProceedingsoftheARPAHumanLanguageTechnologyWorkshop ,Princeton,NJ,pp.114–119.
+Matsuzaki, T., Y. Miyao, and J. Tsujii (2005). Probabilistic CFG with latent annotations. In Proceedings
+ofthe43rdAnnualMeetingoftheAssociationforComputationalLinguistics(ACL) ,AnnArbor,MI,
+pp.75–82.
+McClosky, D., E. Charniak, and M. Johnson (2006a). Eﬀective self-training for parsing. In Proceed-
+ings of the Human Language Technology Conference of the NAACL, Main Conference , New York,
+pp.152–159.
+McClosky,D.,E.Charniak,andM.Johnson(2006b).Rerankingandself-trainingforparseradaptation.In
+Proceedingsofthe21stInternationalConferenceonComputationalLinguisticsandthe44thAnnualMeetingoftheAssociationforComputationalLinguistics ,Sydney,Australia,pp.337–344.
+McClosky, D., E. Charniak, and M. Johnson (2008). When is self-training eﬀective for parsing? In Pro-
+ceedingsofthe22ndInternationalConferenceonComputationalLinguistics(COLING) ,Manchester,
+U.K.,pp.561–568.
+McDonald,R.andF.Pereira(2006).Onlinelearningofapproximatedependencyparsingalgorithms.In
+Proceedings of the 11th Conference of the European Chapter of the Association for ComputationalLinguistics(EACL) ,Philadelphia,PA,pp.81–88.
+McDonald,R.,K.Crammer,andF.Pereira(2005a).Onlinelarge-margintrainingofdependencyparsers.
+InProceedings of the 43rd Annual Meeting of the Association for Computational Linguistics (ACL) ,
+AnnArbor,MI,pp.91–98.
+McDonald, R., F. Pereira, K. Ribarov, and J. Hajič (2005b). Non-projective dependency parsing using
+spanning tree algorithms. In Proceedings of the Human Language Technology Conference and the
+ConferenceonEmpiricalMethodsinNaturalLanguageProcessing(HLT/EMNLP) ,Vancouver,BC,
+Canada,pp.523–530.
+Mel’čuk,I.(1988). DependencySyntax:TheoryandPractice.StateUniversityofNewYorkPress,NewYork.
+Miyao, Y., T. Ninomiya, and J. Tsujii (2003). Probabilistic modeling of argument structures including
+non-local dependencies. In Proceedings of the International Conference on Recent Advances in
+NaturalLanguageProcessing(RANLP),Borovets,Bulgaria,pp.285–291.
+Moreno, A., S. López, F. Sánchez, and R. Grishman (2003). Developing a Spanish treebank. In A.
+Abeillé(Ed.), Treebanks:BuildingandUsingParsedCorpora ,pp.149–163.Kluwer,Dordrecht,the
+Netherlands.
+Musillo, G. and P. Merlo (2008). Unlexicalised hidden variable models of split dependency grammars.
+InProceedings of the 46th Annual Meeting of the Association for Computational Linguistics (ACL) ,
+Columbus,OH,pp.213–216.
+Nakagawa,T.(2007).Multilingualdependencyparsingusingglobalfeatures.In ProceedingsoftheCoNLL
+SharedTaskofEMNLP-CoNLL2007 ,Prague,CzechRepublic,pp.952–956.
+Ney, H. (1991). Dynamic programming parsing for context-free grammars in continuous speech
+recognition. IEEETransactionsonSignalProcessing39 ,336–340.
+Nivre, J. (2003). An eﬃcient algorithm for projective dependency parsing. In Proceedings of the Eighth
+InternationalWorkshoponParsingTechnologies(IWPT) ,Nancy,France,pp.149–160.
+
+264 HandbookofNaturalLanguageProcessing
+Nivre,J.(2006a).Constraintsonnon-projectivedependencygraphs.In Proceedingsofthe11thConference
+of the European Chapter of the Association for Computational Linguistics (EACL) , Trento, Italy,
+pp.73–80.
+Nivre,J.(2006b). InductiveDependencyParsing.Springer,NewYork.
+Nivre, J. (2007). Incremental non-projective dependency parsing. In Proceedings of Human Lan-
+guage Technologies: The Annual Conference of the North American Chapter of the AssociationforComputationalLinguistics(NAACLHLT),Rochester,NY,pp.396–403.
+Nivre,J.(2008).Algorithmsfordeterministicincrementaldependencyparsing. ComputationalLinguistics
+34,513–553.
+Nivre, J. and R. McDonald (2008). Integrating graph-based and transition-based dependency parsers.
+InProceedings of the 46th Annual Meeting of the Association for Computational Linguistics (ACL) ,
+Columbus,OH.
+Nivre, J., J.Hall, andJ.Nilsson(2004). Memory-baseddependencyparsing. In ProceedingsoftheEighth
+ConferenceonComputationalNaturalLanguageLearning ,Boston,MA,pp.49–56.
+Nivre, J., J. Hall, J. Nilsson, G. Eryiğit, and S. Marinov (2006). Labeled pseudo-projective dependency
+parsing with support vector machines. In Proceedings of the 10th Conference on Computational
+NaturalLanguageLearning(CoNLL),NewYork,pp.221–225.
+Oﬂazer, K., B. Say, D. Z. Hakkani-Tür, and G. Tür (2003). Building a Turkish treebank. In A. Abeillé
+(Ed.),Treebanks: Building and Using Parsed Corpora , pp. 261–277. Kluwer, Dordrecht, the
+Netherlands.
+Paskin, M. A. (2001a). Cubic-time parsing and learning algorithms for grammatical bigram mod-
+els. Technical Report UCB/CSD-01-1148, Computer Science Division, University of California,Berkeley,CA.
+Paskin, M. A. (2001b). Grammatical bigrams. In Advances in Neural Information Processing Systems
+(NIPS),Vancouver,BC,Canada,pp.91–97.
+Pereira, F. C. and Y. Schabes (1992). Inside-outside reestimation from partially bracketed corpora. In
+Proceedings of the 30th Annual Meeting of the Association for Computational Linguistics (ACL) ,
+Newark,DE,pp.128–135.
+Petrov, S. and D. Klein (2007). Improved inference for unlexicalized parsing. In Proceedings of Human
+Language Technologies: The Annual Conference of the North American Chapter of the AssociationforComputationalLinguistics(NAACLHLT),NewYork,pp.404–411.
+Petrov, S., L. Barrett, R. Thibaux, and D. Klein (2006). Learning accurate, compact, and interpretable
+tree annotation. In Proceedings of the 21st International Conference on Computational Linguistics
+and the 44th Annual Meeting of the Association for Computational Linguistics , Sydney, Australia,
+pp.433–440.
+Pollard,C.andI.A.Sag(1987). Information-BasedSyntaxandSemantics.CSLIPublications,Stanford,CA.
+Pollard,C.andI.A.Sag(1994). Head-DrivenPhraseStructureGrammar .CSLIPublications,Stanford,CA.
+Prescher, D. (2005). Head-driven PCFGs with latent-head statistics. In Proceedings of the Ninth
+InternationalWorkshoponParsingTechnologies(IWPT) ,Vancouver,BC,Canada,pp.115–124.
+Prokopidis,P.,E.Desypri,M.Koutsombogera,H.Papageorgiou,andS.Piperidis(2005).Theoreticaland
+practical issues in the construction of a Greek dependency treebank. In Proceedings of the Third
+WorkshoponTreebanksandLinguisticTheories(TLT),Barcelona,Spain,pp.149–160.
+Ratnaparkhi, A. (1997). A linear observed time statistical parser based on maximum entropy models.
+InProceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP) ,
+Providence,RI,pp.1–10.
+Ratnaparkhi, A. (1999). Learning to parse natural language with maximum entropy models. Machine
+Learning34,151–175.
+Riedel,S.,R.Çakıcı,andI.Meza-Ruiz(2006).Multi-lingualdependencyparsingwithincrementalinteger
+linear programming. In Proceedings of the 10th Conference on Computational Natural Language
+Learning(CoNLL),NewYork,pp.226–230.
+
+StatisticalParsing 265
+Riezler, S., M. H. King, R. M. Kaplan, R. Crouch, J. T. Maxwell III, and M. Johnson (2002). Parsing the
+WallStreetJournalusingaLexical-FunctionalGrammaranddiscriminativeestimationtechniques.InProceedings of the 40th Annual Meeting of the Association for Computational Linguistics (ACL) ,
+Philadelphia,PA,pp.271–278.
+Sagae, K. and A. Lavie (2005). A classiﬁer-based parser with linear run-time complexity. In Proceedings
+of the Ninth International Workshop on Parsing Technologies (IWPT) , Vancouver, BC, Canada,
+pp.125–132.
+Sagae, K. and A. Lavie (2006a). A best-ﬁrst probabilistic shift-reduce parser. In Proceedings of the
+COLING/ACL2006MainConferencePosterSessions ,Sydney,Australia,pp.691–698.
+Sagae, K. and A. Lavie (2006b). Parser combination by reparsing. In Proceedings of the Human
+Language Technology Conference of the NAACL, Companion Volume: Short Papers ,N e wY o r k ,
+pp.129–132.
+Sagae, K. and J. Tsujii (2007). Dependency parsing and domain adaptation with LR models and parser
+ensembles. In Proceedings of the CoNLL Shared Task of EMNLP-CoNLL 2007 , Prague, Czech
+Republic,pp.1044–1050.
+Sánchez,J.A.andJ.M.Benedí(1997).Consistencyofstochasticcontext-freegrammarsfromprobabilistic
+estimation based on growth transformations. IEEE Transactions on Pattern Analysis and Machine
+Intelligence19,1052–1055.
+Sarkar, A. (2001). Applying co-training methods to statistical parsing. In Proceedings of the Second
+MeetingoftheNorthAmericanChapteroftheAssociationforComputationalLinguistics(NAACL) ,
+Pittsburgh,PA,pp.175–182.
+Scha, R. (1990). Taaltheorie en taaltechnologie; competence en performance [language theory and lan-
+guage technology; competence and performance]. In R. de Kort and G. L. J. Leerdam (Eds.),ComputertoepassingenindeNeerlandistiek ,LVVN,Almere,theNetherlands,pp.7–22.
+Seginer, Y.(2007). Fastunsupervised incremental parsing. In Proceedings of the 45th Annual Meeting of
+theAssociationofComputationalLinguistics ,Prague,CzechRepublic,pp.384–391.
+Sgall,P.,E.Hajičová,andJ.Panevová(1986). TheMeaningoftheSentenceinItsPragmaticAspects .Reidel,
+Dordrecht,theNetherlands.
+Sima’an, K. (1996a). Computational complexity of probabilistic disambiguation by means of tree gram-
+mar. InProceedings of the 16th International Conference on Computational Linguistics (COLING) ,
+Copenhagen,Denmark,pp.1175–1180.
+Sima’an, K. (1996b). An optimized algorithm for data-oriented parsing. In R. Mitkov and N. Nicolov
+(Eds.),Recent Advances in Natural Language Processing. Selected Papers from RANLP ’95 ,J o h n
+Benjamins,Amsterdam,theNetherlands,pp.35–47.
+Sima’an,K.(1999).Learningeﬃcientdisambiguation.PhDthesis,UniversityofAmsterdam,Amsterdam,
+theNetherlands.
+Smith, N.A.(2006). Novelestimationmethodsforunsuperviseddiscoveryoflatentstructureinnatural
+languagetext.PhDthesis,JohnsHopkinsUniversity,Baltimore,MD.
+Smith, N. A. and M. Johnson (2007). Weighted and probabilistic context-free grammars are equally
+expressive. ComputationalLinguistics33,477–491.
+Steedman,M.(2000). TheSyntacticProcess .MITPress,Cambridge,MA.
+Steedman, M., R. Hwa, M. Osborne, and A. Sarkar (2003). Corrected co-training for statistical parsers.
+InProceedings of the International Conference on Machine Learning (ICML) , Washington, DC,
+pp.95–102.
+Stolcke, A. (1995). An eﬃcient probabilistic context-free parsing algorithm that computes preﬁx
+probabilities. ComputationalLinguistics21,165–202.
+Taskar,B.,D.Klein,M.Collins,D.Koller,andC.Manning(2004).Max-marginparsing.In Proceedingsof
+the Conference on Empirical Methods in Natural Language Processing (EMNLP) , Barcelona, Spain,
+pp.1–8.
+
+266 HandbookofNaturalLanguageProcessing
+Titov,I.andJ.Henderson(2007).Alatentvariablemodelforgenerativedependencyparsing.In Proceed-
+ingsofthe10thInternationalConferenceonParsingTechnologies(IWPT) ,Prague,CzechRepublic,
+pp.144–155.
+Toutanova, K., C.D.Manning, S.M.Shieber, D.Flickinger, andS.Oepen(2002). Parsedisambiguation
+forarichHPSGgrammar.In ProceedingsoftheFirstWorkshoponTreebanksandLinguisticTheories
+(TLT),Prague,CzechRepublic,pp.253–263.
+Turian,J.andI.D.Melamed(2006).Advancesindiscriminativeparsing.In Proceedingsofthe21stInter-
+national Conference on Computational Linguistics and the 44th Annual Meeting of the AssociationforComputationalLinguistics ,Sydney,Australia,pp.873–880.
+Xue, N., F. Xia, F.-D. Chiou, and M. Palmer (2004). The Penn Chinese Treebank: Phase structure
+annotationofalargecorpus. JournalofNaturalLanguageEngineering11,207–238.
+Yamada,H.andY.Matsumoto(2003).Statisticaldependencyanalysiswithsupportvectormachines.In
+ProceedingsoftheEighthInternationalWorkshoponParsingTechnologies(IWPT) ,Nancy,France,
+pp.195–206.
+Yuret, D. (1998). Discovery of linguistic relations using lexical attraction. PhD thesis, Massachusetts
+InstituteofTechnology,Cambridge,MA.
+Zeman, D. and Z. Žabokrtský (2005). Improving parsing accuracy by combining diverse dependency
+parsers. In Proceedings of the Ninth International Workshop on Parsing Technologies (IWPT) ,
+Vancouver,BC,Canada,pp.171–178.
+Zollmann, A. and K. Sima’an (2005). A consistent and eﬃcient estimator for data-oriented parsing.
+JournalofAutomata,LanguagesandCombinatorics10 (2/3),367–388.
+

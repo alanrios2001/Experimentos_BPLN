@@ -1,0 +1,939 @@
+Chapter 15 7598
+Reference Resolution 7599
+References are one of the most noticeable forms of linguistic ambiguity, afﬂicting not just 7600
+automated natural language processing systems, but also ﬂuent human readers. Warn- 7601
+ings to avoid “ambiguous pronouns” are ubiquitous in manuals and tutorials on writing 7602
+style. But referential ambiguity is not limited to pronouns, as shown in the text in Fig- 7603
+ure 15.1. Each of the bracketed substrings refers to an entity that is introduced earlier 7604
+in the passage. These references include the pronouns heand his, but also the shortened 7605
+name Cook , and nominals such as the ﬁrm and the ﬁrm’s biggest growth market . 7606
+Reference resolution subsumes several subtasks. This chapter will focus on corefer- 7607
+ence resolution , which is the task of grouping spans of text that refer to a single underly- 7608
+ing entity, or, in some cases, a single event: for example, the spans Tim Cook ,he, and Cook 7609
+are all coreferent . These individual spans are called mentions , because they mention an 7610
+entity; the entity is sometimes called the referent . Each mention has a set of antecedents , 7611
+which are preceding mentions that are coreferent; for the ﬁrst mention of an entity, the an- 7612
+tecedent set is empty. The task of pronominal anaphora resolution requires identifying 7613
+only the antecedents of pronouns. In entity linking , references are resolved not to other 7614
+spans of text, but to entities in a knowledge base. This task is discussed in chapter 17. 7615
+Coreference resolution is a challenging problem for several reasons. Resolving differ- 7616
+ent types of referring expressions requires different types of reasoning: the features and 7617
+methods that are useful for resolving pronouns are different from those that are useful 7618
+to resolve names and nominals. Coreference resolution involves not only linguistic rea- 7619
+soning, but also world knowledge and pragmatics: you may not have known that China 7620
+was Apple’s biggest growth market, but it is likely that you effortlessly resolved this ref- 7621
+erence while reading the passage in Figure 15.1.1A further challenge is that coreference 7622
+1This interpretation is based in part on the assumption that a cooperative author would not use the
+expression the ﬁrm’s biggest growth market to refer to an entity not yet mentioned in the article (Grice, 1975).
+Pragmatics is the discipline of linguistics concerned with the formalization of such assumptions (Huang,
+359
+
+360 CHAPTER 15. REFERENCE RESOLUTION
+(15.1) [[Apple Inc] Chief Executive Tim Cook] has jetted into [China] for talks with
+government ofﬁcials as [he] seeks to clear up a pile of problems in [[the ﬁrm]
+’s biggest growth market] ... [Cook] is on [his] ﬁrst trip to [the country] since
+taking over...
+Figure 15.1: Running example (Yee and Jones, 2012). Coreferring entity mentions are
+underlined and bracketed.
+resolution decisions are often entangled: each mention adds information about the entity, 7623
+which affects other coreference decisions. This means that coreference resolution must 7624
+be addressed as a structure prediction problem. But as we will see, there is no dynamic 7625
+program that allows the space of coreference decisions to be searched efﬁciently. 7626
+15.1 Forms of referring expressions 7627
+There are three main forms of referring expressions — pronouns, names, and nominals. 7628
+15.1.1 Pronouns 7629
+Pronouns are a closed class of words that are used for references. A natural way to think 7630
+about pronoun resolution is S MASH (Kehler, 2007): 7631
+•Search for candidate antecedents; 7632
+•Match against hard agreement constraints; 7633
+•AndSelect using Heuristics, which are “soft” constraints such as recency, syntactic 7634
+prominence, and parallelism. 7635
+15.1.1.1 Search 7636
+In the search step, candidate antecedents are identiﬁed from the preceding text or speech.27637
+Any noun phrase can be a candidate antecedent, and pronoun resolution usually requires 7638
+2015).
+2Pronouns whose referents come later are known as cataphora , as in this example from M ´arquez (1970):
+(15.1) Many years later, as [he] faced the ﬁring squad, [Colonel Aureliano Buend ´ıa] was to remember that
+distant afternoon when his father took him to discover ice.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.1. FORMS OF REFERRING EXPRESSIONS 361
+parsing the text to identify all such noun phrases.3Filtering heuristics can help to prune 7639
+the search space to noun phrases that are likely to be coreferent (Lee et al., 2013; Durrett 7640
+and Klein, 2013). In nested noun phrases, mentions are generally considered to be the 7641
+largest unit with a given head word: thus, Apple Inc. Chief Executive Tim Cook would be 7642
+included as a mention, but Tim Cook would not, since they share the same head word, 7643
+Cook . 7644
+15.1.1.2 Matching constraints for pronouns 7645
+References and their antecedents must agree on semantic features such as number, person, 7646
+gender, and animacy. Consider the pronoun hein this passage from the running example: 7647
+(15.2) Tim Cook has jetted in for talks with ofﬁcials as [he] seeks to clear up a pile of 7648
+problems... 7649
+The pronoun and possible antecedents have the following features: 7650
+•he: singular, masculine, animate, third person 7651
+•ofﬁcials : plural, animate, third person 7652
+•talks : plural, inanimate, third person 7653
+•Tim Cook : singular, masculine, animate, third person 7654
+The S MASH method searches backwards from he, discarding ofﬁcials and talks because they 7655
+do not satisfy the agreements constraints. 7656
+Another source of constraints comes from syntax — speciﬁcally, from the phrase struc- 7657
+ture trees discussed in chapter 10. Consider a parse tree in which both xandyare phrasal 7658
+constituents. The constituent xc-commands the constituent yiff the ﬁrst branching node 7659
+abovexalso dominates y. For example, in Figure 15.2a, Abigail c-commands her, because 7660
+the ﬁrst branching node above Abigail , S, also dominates her. Now, ifxc-commands y, 7661
+government and binding theory (Chomsky, 1982) states that ycan refer to xonly if it is 7662
+areﬂexive pronoun (e.g., herself ). Furthermore, if yis a reﬂexive pronoun, then its an- 7663
+tecedent must c-command it. Thus, in Figure 15.2a, hercannot refer to Abigail ; conversely, 7664
+if we replace herwith herself , then the reﬂexive pronoun must refer to Abigail , since this is 7665
+the only candidate antecedent that c-commands it. 7666
+Now consider the example shown in Figure 15.2b. Here, Abigail does not c-command 7667
+her, but Abigail’s mom does. Thus, hercan refer to Abigail — and we cannot use reﬂexive 7668
+3In the OntoNotes coreference annotations, verbs can also be antecedents, if they are later referenced by
+nominals (Pradhan et al., 2011):
+(15.1) Sales of passenger cars [grew] 22%. [The strong growth] followed year-to-year increases.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+362 CHAPTER 15. REFERENCE RESOLUTION
+S
+VP
+PP
+her withspeaksNP
+Abigail
+(a)
+S
+VP
+PP
+her withspeaksNP
+mom’s Abigail (b)
+S
+VP
+S
+VP
+her with speaksNP
+sheV
+hopesNP
+Abigail (c)
+Figure 15.2: In (a), Abigail c-commands her; in (b), Abigail does not c-command her, but
+Abigail’s mom does; in (c), the scope of Abigail is limited by the S non-terminal, so that she
+orhercan bind to Abigail , but not both.
+herself in this context, unless we are talking about Abigail’s mom. However, herdoes not 7669
+have to refer to Abigail . Finally, Figure 15.2c shows the how these constraints are limited. 7670
+In this case, the pronoun shecan refer to Abigail , because the S non-terminal puts Abigail 7671
+outside the domain of she. Similarly, hercan also refer to Abigail . But sheand hercannot be 7672
+coreferent, because shec-commands her. 7673
+15.1.1.3 Heuristics 7674
+After applying constraints, heuristics are applied to select among the remaining candi- 7675
+dates. Recency is a particularly strong heuristic. All things equal, readers will prefer 7676
+the more recent referent for a given pronoun, particularly when comparing referents that 7677
+occur in different sentences. Jurafsky and Martin (2009) offer the following example: 7678
+(15.3) The doctor found an old map in the captain’s chest. Jim found an even older map 7679
+hidden on the shelf. [It] described an island. 7680
+Readers are expected to prefer the older map as the referent for the pronoun it. 7681
+However, subjects are often preferred over objects, and this can contradict the prefer- 7682
+ence for recency when two candidate referents are in the same sentence. For example, 7683
+(15.4) Asha loaned Mei a book on Spanish. [She] is always trying to help people. 7684
+Here, we may prefer to link shetoAsha rather than Mei, because of Asha ’s position in the 7685
+subject role of the preceding sentence. (Arguably, this preference would not be strong 7686
+enough to select Asha if the second sentence were She is visiting Valencia next month .) 7687
+A third heuristic is parallelism: 7688
+(15.5) Asha loaned Mei a book on Spanish. Olya loaned [her] a book on Portuguese. 7689
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.1. FORMS OF REFERRING EXPRESSIONS 363
+S
+VP
+PP
+NP
+SBAR
+S
+VP
+PP
+NP
+NNP
+LondonTO
+toNP 1
+PRP
+itVBD
+movedNP
+PRP
+heWHP
+whenCD
+536IN
+untilNP
+NP
+PP
+NP
+NN
+kingDET
+theIN
+ofNN
+residenceDET
+theVBD
+remainedNP
+PP
+NP
+NNP
+CamelotIN
+inNN
+castleDET
+The
+Figure 15.3: Left-to-right breadth-ﬁrst tree traversal (Hobbs, 1978), indicating that the
+search for an antecedent for it(NP 1) would proceed in the following order: 536;the castle
+in Camelot ;the residence of the king ;Camelot ;the king . Hobbs (1978) proposes semantic con-
+straints to eliminate 536and the castle in Camelot as candidates, since they are unlikely to
+be the direct object of the verb move .
+Here Mei is preferred as the referent for her, contradicting the preference for the subject 7690
+Asha in the preceding sentence. 7691
+The recency and subject role heuristics can be uniﬁed by traversing the document in 7692
+a syntax-driven fashion (Hobbs, 1978): each preceding sentence is traversed breadth-ﬁrst, 7693
+left-to-right (Figure 15.3). This heuristic successfully handles (15.4): Asha is preferred as 7694
+the referent for shebecause the subject NP is visited ﬁrst. It also handles (15.3): the older 7695
+map is preferred as the referent for itbecause the more recent sentence is visited ﬁrst. (An 7696
+alternative uniﬁcation of recency and syntax is proposed by centering theory (Grosz et al., 7697
+1995), which is discussed in detail in chapter 16.) 7698
+In early work on reference resolution, the number of heuristics was small enough that 7699
+a set of numerical weights could be set by hand (Lappin and Leass, 1994). More recent 7700
+work uses machine learning to quantify the importance of each of these factors. However, 7701
+pronoun resolution cannot be completely solved by constraints and heuristics alone. This 7702
+is shown by the classic example pair (Winograd, 1972): 7703
+(15.6) The [city council] denied [the protesters] a permit because [they] advocated/feared 7704
+violence. 7705
+Without reasoning about the motivations of the city council and protesters, it is unlikely 7706
+that any system could correctly resolve both versions of this example. 7707
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+364 CHAPTER 15. REFERENCE RESOLUTION
+15.1.1.4 Non-referential pronouns 7708
+While pronouns are generally used for reference, they need not refer to entities. The fol- 7709
+lowing examples show how pronouns can refer to propositions, events, and speech acts. 7710
+(15.7) They told me that I was too ugly for show business, but I didn’t believe [it]. 7711
+(15.8) Asha saw Babak get angry, and I saw [it] too. 7712
+(15.9) Asha said she worked in security. I suppose [that]’s one way to put it. 7713
+These forms of reference are generally not annotated in large-scale coreference resolution 7714
+datasets such as OntoNotes (Pradhan et al., 2011). 7715
+Pronouns may also have generic referents : 7716
+(15.10) A poor carpenter blames [her] tools. 7717
+(15.11) On the moon, [you] have to carry [your] own oxygen. 7718
+(15.12) Every farmer who owns a donkey beats [it]. (Geach, 1962) 7719
+In the OntoNotes dataset, coreference is not annotated for generic referents, even in cases 7720
+like these examples, in which the same generic entity is mentioned multiple times. 7721
+Some pronouns do not refer to anything at all: 7722
+(15.13) [It]’s
+[Il]raining.
+pleut. (Fr)7723
+(15.14) [It] ’s money that she’s really after. 7724
+(15.15) [It] is too bad that we have to work so hard. 7725
+How can we automatically distinguish these usages of itfrom referential pronouns? 7726
+Consider the the difference between the following two examples (Bergsma et al., 2008): 7727
+(15.16) You can make [it] in advance. 7728
+(15.17) You can make [it] in showbiz. 7729
+In the second example, the pronoun itis non-referential. One way to see this is by substi- 7730
+tuting another pronoun, like them , into these examples: 7731
+(15.18) You can make [them] in advance. 7732
+(15.19) ? You can make [them] in showbiz. 7733
+The questionable grammaticality of the second example suggests that itis not referential. 7734
+Bergsma et al. (2008) operationalize this idea by comparing distributional statistics for the 7735
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.1. FORMS OF REFERRING EXPRESSIONS 365
+n-grams around the word it, testing how often other pronouns or nouns appear in the 7736
+same context. In cases where nouns and other pronouns are infrequent, the itis unlikely 7737
+to be referential. 7738
+15.1.2 Proper Nouns 7739
+If a proper noun is used as a referring expression, it often corefers with another proper 7740
+noun, so that the coreference problem is simply to determine whether the two names 7741
+match. Subsequent proper noun references often use a shortened form, as in the running 7742
+example (Figure 15.1): 7743
+(15.20) Apple Inc Chief Executive [Tim Cook] has jetted into China . . . [Cook] is on his 7744
+ﬁrst business trip to the country . . . 7745
+A typical solution for proper noun coreference is to match the syntactic head words 7746
+of the reference with the referent. In §10.5.2, we saw that the head word of a phrase can 7747
+be identiﬁed by applying head percolation rules to the phrasal parse tree; alternatively, 7748
+the head can be identiﬁed as the root of the dependency subtree covering the name. For 7749
+sequences of proper nouns, the head word will be the ﬁnal token. 7750
+There are a number of caveats to the practice of matching head words of proper nouns. 7751
+•In the European tradition, family names tend to be more speciﬁc than given names, 7752
+and family names usually come last. However, other traditions have other practices: 7753
+for example, in Chinese names, the family name typically comes ﬁrst; in Japanese, 7754
+honoriﬁcs come after the name, as in Nobu-San (Mr. Nobu ). 7755
+•In organization names, the head word is often not the most informative, as in Georgia 7756
+Tech and Virginia Tech . Similarly, Lebanon does not refer to the same entity as South- 7757
+ern Lebanon , necessitating special rules for the speciﬁc case of geographical modi- 7758
+ﬁers (Lee et al., 2011). 7759
+•Proper nouns can be nested, as in [the CEO of [Microsoft]] , resulting in head word 7760
+match without coreference. 7761
+Despite these difﬁculties, proper nouns are the easiest category of references to re- 7762
+solve (Stoyanov et al., 2009). In machine learning systems, one solution is to include a 7763
+range of matching features, including exact match, head match, and string inclusion. In 7764
+addition to matching features, competitive systems (e.g., Bengtson and Roth, 2008) in- 7765
+clude large lists, or gazetteers , of acronyms (e.g, the National Basketball Association /NBA ), 7766
+demonyms (e.g., the Israelis /Israel ), and other aliases (e.g., the Georgia Institute of Technol- 7767
+ogy/Georgia Tech ). 7768
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+366 CHAPTER 15. REFERENCE RESOLUTION
+15.1.3 Nominals 7769
+In coreference resolution, noun phrases that are neither pronouns nor proper nouns are 7770
+referred to as nominals . In the running example (Figure 15.1), nominal references include: 7771
+the ﬁrm (Apple Inc );the ﬁrm’s biggest growth market (China ); and the country (China ). 7772
+Nominals are especially difﬁcult to resolve (Denis and Baldridge, 2007; Durrett and 7773
+Klein, 2013), and the examples above suggest why this may be the case: world knowledge 7774
+is required to identify Apple Inc as a ﬁrm, and China as a growth market . Other difﬁcult 7775
+examples include the use of colloquial expressions, such as coreference between Clinton 7776
+campaign ofﬁcials and the Clinton camp (Soon et al., 2001). 7777
+15.2 Algorithms for coreference resolution 7778
+The ground truth training data for coreference resolution is a set of mention sets, where all
+mentions within each set refer to a single entity.4In the running example from Figure 15.1,
+the ground truth coreference annotation is:
+c1={Apple Inc1:2,the ﬁrm27:28} [15.1]
+c2={Apple Inc Chief Executive Tim Cook1:6,he17,Cook 33,his36} [15.2]
+c3={China 10,the ﬁrm ’s biggest growth market27:32,the country40:41} [15.3]
+Each row speciﬁes the token spans that mention an entity. (“Singleton” entities, which are 7779
+mentioned only once (e.g., talks ,government ofﬁcials ), are excluded from the annotations.) 7780
+Equivalently, if given a set of Mmentions,{mi}M
+i=1, each mention ican be assigned to a 7781
+clusterzi, wherezi=zjifiandjare coreferent. The cluster assignments zare invariant 7782
+under permutation. The unique clustering associated with the assignment zis written 7783
+c(z). 7784
+Mention identiﬁcation The task of identifying mention spans for coreference resolution 7785
+is often performed by applying a set of heuristics to the phrase structure parse of each 7786
+sentence. A typical approach is to start with all noun phrases and named entities, and 7787
+then apply ﬁltering rules to remove nested noun phrases with the same head (e.g., [Apple 7788
+CEO [Tim Cook]] ), numeric entities (e.g., [100 miles] ,[97%] ), non-referential it, etc (Lee 7789
+et al., 2013; Durrett and Klein, 2013). In general, these deterministic approaches err in 7790
+favor of recall, since the mention clustering component can choose to ignore false positive 7791
+mentions, but cannot recover from false negatives. An alternative is to consider all spans 7792
+4In many annotations, the term markable is used to refer to spans of text that can potentially mention an
+entity. The set of markables includes non-referential pronouns, which does not mention any entity. Part of the
+job of the coreference system is to avoid incorrectly linking these non-referential markables to any mention
+chains.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.2. ALGORITHMS FOR COREFERENCE RESOLUTION 367
+(up to some ﬁnite length) as candidate mentions, performing mention identiﬁcation and 7793
+clustering jointly (Daum ´e III and Marcu, 2005; Lee et al., 2017). 7794
+Mention clustering The overwhelming majority of research on coreference resolution 7795
+addresses the subtask of mention clustering, and this will be the focus of the remainder of 7796
+this chapter. There are two main sets of approaches. In mention-based models , the scoring 7797
+function for a coreference clustering decomposes over pairs of mentions. These pairwise 7798
+decisions are then aggregated, using a clustering heuristic. Mention-based coreference 7799
+clustering can be treated as a fairly direct application of supervised classiﬁcation or rank- 7800
+ing. However, the mention-pair locality assumption can result in incoherent clusters, like 7801
+{Hillary Clinton←Clinton←Mr Clinton}, in which the pairwise links score well, but the 7802
+overall result is unsatisfactory. Entity-based models address this issue by scoring entities 7803
+holistically. This can make inference more difﬁcult, since the number of possible entity 7804
+groupings is exponential in the number of mentions. 7805
+15.2.1 Mention-pair models 7806
+In the mention-pair model , a binary label yi,j∈{0,1}is assigned to each pair of mentions 7807
+(i,j), wherei < j . Ifiandjcorefer (zi=zj), thenyi,j= 1; otherwise, yi,j= 0. The 7808
+mention hein Figure 15.1 is preceded by ﬁve other mentions: (1) Apple Inc ; (2) Apple Inc 7809
+Chief Executive Tim Cook ; (3) China ; (4) talks ; (5) government ofﬁcials . The correct mention 7810
+pair labeling is y2,6= 1andyi̸=2,6= 0for all other i. If a mention jintroduces a new entity, 7811
+such as mention 3in the example, then yi,j= 0for alli. The same is true for “mentions” 7812
+that do not refer to any entity, such as non-referential pronouns. If mention jrefers to an 7813
+entity that has been mentioned more than once, then yi,j= 1for alli<j that mention the 7814
+referent. 7815
+By transforming coreference into a set of binary labeling problems, the mention-pair 7816
+model makes it possible to apply an off-the-shelf binary classiﬁer (Soon et al., 2001). This 7817
+classiﬁer is applied to each mention jindependently, searching backwards from juntil 7818
+ﬁnding an antecedent iwhich corefers with jwith high conﬁdence. After identifying a 7819
+single antecedent , the remaining mention pair labels can be computed by transitivity: if 7820
+yi,j= 1andyj,k= 1, thenyi,k= 1. 7821
+Since the ground truth annotations give entity chains cbut not individual mention- 7822
+pair labelsy, an additional heuristic must be employed to convert the labeled data into 7823
+training examples for classiﬁcation. A typical approach is to generate at most one pos- 7824
+itive labeled instance yaj,j= 1 for mention j, whereajis the index of the most recent 7825
+antecedent, aj= max{i:i < j∧zi=zj}. Negative labeled instances are generated for 7826
+all for alli∈{aj+ 1,...,j}. In the running example, the most recent antecedent of the 7827
+pronoun heisa6= 2, so the training data would be y2,6= 1 andy3,6=y4,6=y5,6= 0. 7828
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+368 CHAPTER 15. REFERENCE RESOLUTION
+The variable y1,6is not part of the training data, because the ﬁrst mention appears before 7829
+the true antecedent a6= 2. 7830
+15.2.2 Mention-ranking models 7831
+Inmention ranking (Denis and Baldridge, 2007), the classiﬁer learns to identify a single
+antecedent ai∈{ϵ,1,2,...,i−1}for each referring expression i,
+ˆai= argmax
+a∈{ϵ,1,2,...,i−1}ψM(a,i), [15.4]
+whereψM(a,i)is a score for the mention pair (a,i). Ifa=ϵ, then mention idoes not refer 7832
+to any previously-introduced entity — it is not anaphoric . Mention-ranking is similar to 7833
+the mention-pair model, but all candidates are considered simultaneously, and at most 7834
+a single antecedent is selected. The mention-ranking model explicitly accounts for the 7835
+possibility that mention iis not anaphoric, through the score ψM(ϵ,i). The determination 7836
+of anaphoricity can be made by a special classiﬁer in a preprocessing step, so that non- ϵ 7837
+antecedents are identiﬁed only for spans that are determined to be anaphoric (Denis and 7838
+Baldridge, 2008). 7839
+As a learning problem, ranking can be trained using the same objectives as in dis- 7840
+criminative classiﬁcation. For each mention i, we can deﬁne a gold antecedent a∗
+i, and an 7841
+associated loss, such as the hinge loss, ℓi= (1−ψM(a∗
+i,i) +ψM(ˆa,i))+or the negative 7842
+log-likelihood, ℓi=−logp(a∗
+i|i;θ). (For more on learning to rank, see §17.1.1.) But as 7843
+with the mention-pair model, there is a mismatch between the labeled data, which comes 7844
+in the form of mention sets, and the desired supervision, which would indicate the spe- 7845
+ciﬁc antecedent of each mention. The antecedent variables {ai}M
+i=1relate to the mention 7846
+sets in a many-to-one mapping: each set of antecedents induces a single clustering, but a 7847
+clustering can correspond to many different settings of antecedent variables. 7848
+A heuristic solution is to set a∗
+i= max{j:j <i∧zj=zi}, the most recent mention in
+the same cluster as i. But the most recent mention may not be the most informative: in the
+running example, the most recent antecedent of the mention Cook is the pronoun he, but
+a more useful antecedent is the earlier mention Apple Inc Chief Executive Tim Cook . Rather
+than selecting a speciﬁc antecedent to train on, the antecedent can be treated as a latent
+variable, in the manner of the latent variable perceptron from§12.4.2 (Fernandes et al.,
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.2. ALGORITHMS FOR COREFERENCE RESOLUTION 369
+2014):
+ˆa= argmax
+aM∑
+i=1ψM(ai,i) [15.5]
+a∗= argmax
+a∈A(c)M∑
+i=1ψM(ai,i) [15.6]
+θ←θ+M∑
+i=1∂L
+∂θψM(a∗
+i,i)−M∑
+i=1∂L
+∂θψM(ˆai,i) [15.7]
+whereA(c)is the set of antecedent structures that is compatible with the ground truth
+coreference clustering c. Another alternative is to sum over all the conditional probabili-
+ties of antecedent structures that are compatible with the ground truth clustering (Durrett
+and Klein, 2013; Lee et al., 2017). For the set of mention m, we compute the following
+probabilities:
+p(c|m) =∑
+a∈A(c)p(a|m) =∑
+a∈A(c)M∏
+i=1p(ai|i,m) [15.8]
+p(ai|i,m) =exp (ψM(ai,i))∑
+a′∈{ϵ,1,2,...,i−1}exp (ψM(a′,i)). [15.9]
+This objective rewards models that assign high scores for all valid antecedent structures. 7849
+In the running example, this would correspond to summing the probabilities of the two 7850
+valid antecedents for Cook ,heand Apple Inc Chief Executive Tim Cook . In one of the exer- 7851
+cises, you will compute the number of valid antecedent structures for a given clustering. 7852
+15.2.3 Transitive closure in mention-based models 7853
+A problem for mention-based models is that individual mention-level decisions may be
+incoherent. Consider the following mentions:
+m1=Hillary Clinton [15.10]
+m2=Clinton [15.11]
+m3=Bill Clinton [15.12]
+A mention-pair system might predict ˆy1,2= 1,ˆy2,3= 1,ˆy1,3= 0. Similarly, a mention- 7854
+ranking system might choose ˆa2= 1 andˆa3= 2. Logically, if mentions 1and3are both 7855
+coreferent with mention 2, then all three mentions must refer to the same entity. This 7856
+constraint is known as transitive closure . 7857
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+370 CHAPTER 15. REFERENCE RESOLUTION
+Transitive closure can be applied post hoc , revising the independent mention-pair or 7858
+mention-ranking decisions. However, there are many possible ways to enforce transitive 7859
+closure: in the example above, we could set ˆy1,3= 1, orˆy1,2= 0, orˆy2,3= 0. For docu- 7860
+ments with many mentions, there may be many violations of transitive closure, and many 7861
+possible ﬁxes. Transitive closure can be enforced by always adding edges, so that ˆy1,3= 1 7862
+is preferred (e.g., Soon et al., 2001), but this can result in overclustering, with too many 7863
+mentions grouped into too few entities. 7864
+Mention-pair coreference resolution can be viewed as a constrained optimization prob-
+lem,
+max
+y∈{0,1}MM∑
+j=1j∑
+i=1ψM(i,j)×yi,j
+s.t.yi,j+yj,k−1≤yi,k,∀i<j <k,
+with the constraint enforcing transitive closure. This constrained optimization problem 7865
+is equivalent to graph partitioning with positive and negative edge weights: construct a 7866
+graph where the nodes are mentions, and the edges are the pairwise scores ψM(i,j); the 7867
+goal is to partition the graph so as to maximize the sum of the edge weights between all 7868
+nodes within the same partition (McCallum and Wellner, 2004). This problem is NP-hard, 7869
+motivating approximations such as correlation clustering (Bansal et al., 2004) and integer 7870
+linear programming (Klenner, 2007; Finkel and Manning, 2008, also see §13.2.2). 7871
+15.2.4 Entity-based models 7872
+A weakness of mention-based models is that they treat coreference resolution as a classiﬁ-
+cation or ranking problem, when it is really a clustering problem: the goal is to group the
+mentions together into clusters that correspond to the underlying entities. Entity-based
+approaches attempt to identify these clusters directly. Such methods require a scoring
+function at the entity level, measuring whether each set of mentions is internally consis-
+tent. Coreference resolution can then be viewed as the following optimization,
+max
+z∑
+e=1ψE({i:zi=e}), [15.13]
+whereziindicates the entity referenced by mention i, andψE({i:zi=e})is a scoring 7873
+function applied to all mentions ithat are assigned to entity e. 7874
+Entity-based coreference resolution is conceptually similar to the unsupervised clus-
+tering problems encountered in chapter 5: the goal is to obtain clusters of mentions that
+are internally coherent. The number of possible clusterings is the Bell number , which is
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.2. ALGORITHMS FOR COREFERENCE RESOLUTION 371
+{Abigail }{Abigail, she }
+{Abigail },{she}{Abigail, she, her }
+{Abigail, she },{her}
+{Abigail },{she, her }
+{Abigail, her },{she}
+{Abigail },{she},{her}
+Figure 15.4: The Bell Tree for the sentence Abigail hopes she speaks with her . Which paths
+are excluded by the syntactic constraints mentioned in §15.1.1?
+deﬁned by the following recurrence (Bell, 1934; Luo et al., 2004),
+Bn=n−1∑
+k=0Bk(n−1
+k)
+=1
+e∞∑
+k=0kn
+k!. [15.14]
+This recurrence is illustrated by the Bell tree, which is applied to a short coreference prob- 7875
+lem in Figure 15.4. The Bell number Bngrows exponentially with n, making exhaustive 7876
+search of the space of clusterings impossible. For this reason, entity-based coreference 7877
+resolution typically involves incremental search, in which clustering decisions are based 7878
+on local evidence, in the hope of approximately optimizing the full objective in Equa- 7879
+tion 15.13. This approach is sometimes called cluster ranking , in contrast to mention 7880
+ranking. 7881
+*Generative models of coreference Entity-based cooreference can be approached through 7882
+probabilistic generative models , in which the mentions in the document are conditioned 7883
+on a set of latent entities (Haghighi and Klein, 2007, 2010). An advantage of these meth- 7884
+ods is that they can be learned from unlabeled data (Poon and Domingos, 2008, e.g.,); a 7885
+disadvantage is that probabilistic inference is required not just for learning, but also for 7886
+prediction. Furthermore, generative models require independence assumptions that are 7887
+difﬁcult to apply in coreference resolution, where the diverse and heterogeneous features 7888
+do not admit an easy decomposition into mutually independent subsets. 7889
+15.2.4.1 Incremental cluster ranking 7890
+The S MASH method (§15.1.1) can be extended to entity-based coreference resolution by 7891
+building up coreference clusters while moving through the document (Cardie and Wagstaff, 7892
+1999). At each mention, the algorithm iterates backwards through possible antecedent 7893
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+372 CHAPTER 15. REFERENCE RESOLUTION
+clusters; but unlike S MASH , a cluster is selected only if allmembers of its cluster are com- 7894
+patible with the current mention. As mentions are added to a cluster, so are their features 7895
+(e.g., gender, number, animacy). In this way, incoherent chains like {Hillary Clinton ,Clinton,Bill Clinton} 7896
+can be avoided. However, an incorrect assignment early in the document — a search error 7897
+— might lead to a cascade of errors later on. 7898
+More sophisticated search strategies can help to ameliorate the risk of search errors. 7899
+One approach is beam search (§11.3), in which a set of hypotheses is maintained through- 7900
+out search. Each hypothesis represents a path through the Bell tree (Figure 15.4). Hy- 7901
+potheses are “expanded” either by adding the next mention to an existing cluster, or by 7902
+starting a new cluster. Each expansion receives a score, based on Equation 15.13, and the 7903
+topKhypotheses are kept on the beam as the algorithm moves to the next step. 7904
+Incremental cluster ranking can be made more accurate by performing multiple passes 7905
+over the document, applying rules (or “sieves”) with increasing recall and decreasing 7906
+precision at each pass (Lee et al., 2013). In the early passes, coreference links are pro- 7907
+posed only between mentions that are highly likely to corefer (e.g., exact string match 7908
+for full names and nominals). Information can then be shared among these mentions, 7909
+so that when more permissive matching rules are applied later, agreement is preserved 7910
+across the entire cluster. For example, in the case of {Hillary Clinton ,Clinton,she}, the 7911
+name-matching sieve would link Clinton and Hillary Clinton , and the pronoun-matching 7912
+sieve would then link sheto the combined cluster. A deterministic multi-pass system 7913
+won nearly every track of the 2011 CoNLL shared task on coreference resolution (Prad- 7914
+han et al., 2011). Given the dominance of machine learning in virtually all other areas 7915
+of natural language processing — and more than ﬁfteen years of prior work on machine 7916
+learning for coreference — this was a surprising result, even if learning-based methods 7917
+have subsequently regained the upper hand (e.g., Lee et al., 2017, the state-of-the-art at 7918
+the time of this writing). 7919
+15.2.4.2 Incremental perceptron 7920
+Incremental coreference resolution can be learned with the incremental perceptron , as
+described in§11.3.2. At mention i, each hypothesis on the beam corresponds to a cluster-
+ing of mentions 1...i−1, or equivalently, a path through the Bell tree up to position i−1.
+As soon as none of the hypotheses on the beam are compatible with the gold coreference
+clustering, a perceptron update is made (Daum ´e III and Marcu, 2005). For concreteness,
+consider a linear cluster ranking model,
+ψE({i:zi=e}) =∑
+i:zi=eθ·f(i,{j:j <i∧zj=e}), [15.15]
+where the score for each cluster is computed as the sum of scores of all mentions that are 7921
+linked into the cluster, and f(i,∅)is a set of features for the non-anaphoric mention that 7922
+initiates the cluster. 7923
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.2. ALGORITHMS FOR COREFERENCE RESOLUTION 373
+Using Figure 15.4 as an example, suppose that the ground truth is, 7924
+c∗={Abigail, her},{she}, [15.16]
+but that with a beam of size one, the learner reaches the hypothesis, 7925
+ˆc={Abigail, she}. [15.17]
+This hypothesis is incompatible with c∗, so an update is needed:
+θ←θ+f(c∗)−f(ˆc) [15.18]
+=θ+ (f(Abigail,∅) +f(she,∅))−(f(Abigail,∅) +f(she,{Abigail})) [15.19]
+=θ+f(she,∅)−f(she,{Abigail}). [15.20]
+This style of incremental update can also be applied to a margin loss between the gold 7926
+clustering and the top clustering on the beam. By backpropagating from this loss, it is also 7927
+possible to train a more complicated scoring function, such as a neural network in which 7928
+the score for each entity is a function of embeddings for the entity mentions (Wiseman 7929
+et al., 2015). 7930
+15.2.4.3 Reinforcement learning 7931
+Reinforcement learning is a topic worthy of a textbook of its own (Sutton and Barto, 7932
+1998),5so this section will provide only a very brief overview, in the context of coreference 7933
+resolution. A stochastic policy assigns a probability to each possible action , conditional 7934
+on the context. The goal is to learn a policy that achieves a high expected reward, or 7935
+equivalently, a low expected cost. 7936
+In incremental cluster ranking, a complete clustering on Mmentions can be produced 7937
+by a sequence of Mactions, in which the action zieither merges mention iwith an existing 7938
+cluster or begins a new cluster. We can therefore create a stochastic policy using the cluster 7939
+scores (Clark and Manning, 2016), 7940
+Pr(zi=e;θ) =expψE(i∪{j:zj=e};θ)∑
+e′expψE(i∪{j:zj=e′}′;θ), [15.21]
+whereψE(i∪{j:zj=e};θ)is the score under parameters θfor assigning mention ito 7941
+clustere. This score can be an arbitrary function of the mention i, the cluster eand its 7942
+(possibly empty) set of mentions; it can also include the history of actions taken thus far. 7943
+5A draft of the second edition can be found here: http://incompleteideas.net/book/
+the-book-2nd.html . Reinforcement learning has been used in spoken dialogue systems (Walker, 2000)
+and text-based game playing (Branavan et al., 2009), and was applied to coreference resolution by Clark and
+Manning (2015).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+374 CHAPTER 15. REFERENCE RESOLUTION
+If a policy assigns probability p (c;θ)to clustering c, then its expected loss is, 7944
+L(θ) =∑
+c∈C(m)pθ(c)×ℓ(c), [15.22]
+whereC(m)is the set of possible clusterings for mentions m. The lossℓ(c)can be based on 7945
+any arbitrary scoring function, including the complex evaluation metrics used in corefer- 7946
+ence resolution (see §15.4). This is an advantage of reinforcement learning, which can be 7947
+trained directly on the evaluation metric — unlike traditional supervised learning, which 7948
+requires a loss function that is differentiable and decomposable across individual deci- 7949
+sions. 7950
+Rather than summing over the exponentially many possible clusterings, we can ap-
+proximate the expectation by sampling trajectories of actions, z= (z1,z2,...,zM), from
+the current policy. Each action zicorresponds to a step in the Bell tree: adding mention
+mito an existing cluster, or forming a new cluster. Each trajectory zcorresponds to a
+single clustering c, and so we can write the loss of an action sequence as ℓ(c(z)). The
+policy gradient algorithm computes the gradient of the expected loss as an expectation
+over trajectories (Sutton et al., 2000),
+∂
+∂θL(θ) =Ez∼Z(m)ℓ(c(z))M∑
+i=1∂
+∂θlogp(zi|z1:i−1,m) [15.23]
+≈1
+KK∑
+k=1ℓ(c(z(k)))M∑
+i=1∂
+∂θlogp(z(k)
+i|z(k)
+1:i−1,m) [15.24]
+[15.25]
+where the action sequence z(k)is sampled from the current policy. Unlike the incremental 7951
+perceptron, an update is not made until the complete action sequence is available. 7952
+15.2.4.4 Learning to search 7953
+Policy gradient can suffer from high variance: while the average loss over Ksamples is 7954
+asymptotically equal to the expected reward of a given policy, this estimate may not be 7955
+accurate unless Kis very large. This can make it difﬁcult to allocate credit and blame to 7956
+individual actions. In learning to search , this problem is addressed through the addition 7957
+of an oracle policy, which is known to receive zero or small loss. The oracle policy can be 7958
+used in two ways: 7959
+•The oracle can be used to generate partial hypotheses that are likely to score well, 7960
+by generating iactions from the initial state. These partial hypotheses are then used 7961
+as starting points for the learned policy. This is known as roll-in . 7962
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.3. REPRESENTATIONS FOR COREFERENCE RESOLUTION 375
+Algorithm 18 Learning to search for entity-based coreference resolution
+1:procedure COMPUTE -GRADIENT (mentionsm, loss function ℓ, parameters θ)
+2:L(θ)←0
+3:z∼p(z|m;θ) ⊿Sample a trajectory from the current policy
+4: fori∈{1,2,...M}do
+5: foractionz∈Z(z1:i−1,m)do⊿All possible actions after history z1:i−1
+6:h←z1:i−1⊕z ⊿ Concatenate history z1:i−1with action z
+7: forj∈{i+ 1,i+ 2,...,M}do ⊿Roll-out
+8: hj←argminhℓ(h1:j−1⊕h)⊿Oracle selects action with minimum loss
+9: L(θ)←L(θ) +p(z|z1:i−1,m;θ)×ℓ(h) ⊿Update expected loss
+10: return∂
+∂θL(θ)
+•The oracle can be used to compute the minimum possible loss from a given state, by 7963
+generating M−iactions from the current state until completion. This is known as 7964
+roll-out . 7965
+The oracle can be combined with the existing policy during both roll-in and roll-out, sam- 7966
+pling actions from each policy (Daum ´e III et al., 2009). One approach is to gradually 7967
+decrease the number of actions drawn from the oracle over the course of learning (Ross 7968
+et al., 2011). 7969
+In the context of entity-based coreference resolution, Clark and Manning (2016) use 7970
+the learned policy for roll-in and the oracle policy for roll-out. Algorithm 18 shows how 7971
+the gradients on the policy weights are computed in this case. In this application, the 7972
+oracle is “noisy”, because it selects the action that minimizes only the local loss — the 7973
+accuracy of the coreference clustering up to mention i— rather than identifying the action 7974
+sequence that will lead to the best ﬁnal coreference clustering on the entire document. 7975
+When learning from noisy oracles, it can be helpful to mix in actions from the current 7976
+policy with the oracle during roll-out (Chang et al., 2015). 7977
+15.3 Representations for coreference resolution 7978
+Historically, coreference resolution has employed an array of hand-engineered features 7979
+to capture the linguistic constraints and preferences described in §15.1 (Soon et al., 2001). 7980
+Later work has documented the utility of lexical and bilexical features on mention pairs (Bj ¨orkelund 7981
+and Nugues, 2011; Durrett and Klein, 2013). The most recent and successful methods re- 7982
+place many (but not all) of these features with distributed representations of mentions 7983
+and entities (Wiseman et al., 2015; Clark and Manning, 2016; Lee et al., 2017). 7984
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+376 CHAPTER 15. REFERENCE RESOLUTION
+15.3.1 Features 7985
+Coreference features generally rely on a preprocessing pipeline to provide part-of-speech 7986
+tags and phrase structure parses. This pipeline makes it possible to design features that 7987
+capture many of the phenomena from §15.1, and is also necessary for typical approaches 7988
+to mention identiﬁcation. However, the pipeline may introduce errors that propagate 7989
+to the downstream coreference clustering system. Furthermore, the existence of such 7990
+a pipeline presupposes resources such as treebanks, which do not exist for many lan- 7991
+guages.67992
+15.3.1.1 Mention features 7993
+Features of individual mentions can help to predict anaphoricity. In systems where men- 7994
+tion detection is performed jointly with coreference resolution, these features can also 7995
+predict whether a span of text is likely to be a mention. For mention i, typical features 7996
+include: 7997
+Mention type. Each span can be identiﬁed as a pronoun, name, or nominal, using the 7998
+part-of-speech of the head word of the mention: both the Penn Treebank and Uni- 7999
+versal Dependencies tagsets ( §8.1.1) include tags for pronouns and proper nouns, 8000
+and all other heads can be marked as nominals (Haghighi and Klein, 2009). 8001
+Mention width. The number of tokens in a mention is a rough predictor of its anaphoric- 8002
+ity, with longer mentions being less likely to refer back to previously-deﬁned enti- 8003
+ties. 8004
+Lexical features. The ﬁrst, last, and head words can help to predict anaphoricity; they are 8005
+also useful in conjunction with features such as mention type and part-of-speech, 8006
+providing a rough measure of agreement (Bj ¨orkelund and Nugues, 2011). The num- 8007
+ber of lexical features can be very large, so it can be helpful to select only frequently- 8008
+occurring features (Durrett and Klein, 2013). 8009
+Morphosyntactic features. These features include the part-of-speech, number, gender, 8010
+and dependency ancestors. 8011
+The features for mention iand candidate antecedent acan be conjoined, producing 8012
+joint features that can help to assess the compatibility of the two mentions. For example, 8013
+Durrett and Klein (2013) conjoin each feature with the mention types of the anaphora 8014
+and the antecedent. Coreference resolution corpora such as ACE and OntoNotes contain 8015
+6The Universal Dependencies project has produced dependency treebanks for more than sixty languages.
+However, coreference features and mention detection are generally based on phrase structure trees, which
+exist for roughly two dozen languages. A list is available here: https://en.wikipedia.org/wiki/
+Treebank
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.3. REPRESENTATIONS FOR COREFERENCE RESOLUTION 377
+documents from various genres. By conjoining the genre with other features, it is possible 8016
+to learn genre-speciﬁc feature weights. 8017
+15.3.1.2 Mention-pair features 8018
+For any pair of mentions iandj, typical features include: 8019
+Distance. The number of intervening tokens, mentions, and sentences between iandj 8020
+can all be used as distance features. These distances can be computed on the surface 8021
+text, or on a transformed representation reﬂecting the breadth-ﬁrst tree traversal 8022
+(Figure 15.3). Rather than using the distances directly, they are typically binned, 8023
+creating binary features. 8024
+String match. A variety of string match features can be employed: exact match, sufﬁx 8025
+match, head match, and more complex matching rules that disregard irrelevant 8026
+modiﬁers (Soon et al., 2001). 8027
+Compatibility. Building on the model, features can measure the anaphor and antecedent 8028
+agree with respect to morphosyntactic attributes such as gender, number, and ani- 8029
+macy. 8030
+Nesting. If one mention is nested inside another (e.g., [The President of [France]] ), they 8031
+generally cannot corefer. 8032
+Same speaker. For documents with quotations, such as news articles, personal pronouns 8033
+can be resolved only by determining the speaker for each mention (Lee et al., 2013). 8034
+Coreference is also more likely between mentions from the same speaker. 8035
+Gazetteers. These features indicate that the anaphor and candidate antecedent appear in 8036
+a gazetteer of acronyms (e.g., USA /United States ,GATech /Georgia Tech ), demonyms 8037
+(e.g., Israel /Israeli ), or other aliases (e.g., Knickerbockers /New York Knicks ). 8038
+Lexical semantics. These features use a lexical resource such as WordNet to determine 8039
+whether the head words of the mentions are related through synonymy, antonymy, 8040
+and hypernymy ( §4.2). 8041
+Dependency paths. The dependency path between the anaphor and candidate antecedent 8042
+can help to determine whether the pair can corefer, under the government and bind- 8043
+ing constraints described in §15.1.1. 8044
+Comprehensive lists of mention-pair features are offered by Bengtson and Roth (2008) and 8045
+Rahman and Ng (2011). Neural network approaches use far fewer mention-pair features: 8046
+for example, Lee et al. (2017) include only speaker, genre, distance, and mention width 8047
+features. 8048
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+378 CHAPTER 15. REFERENCE RESOLUTION
+Semantics In many cases, coreference seems to require knowledge and semantic in- 8049
+ferences, as in the running example, where we link China with a country and a growth 8050
+market . Some of this information can be gleaned from WordNet , which deﬁnes a graph 8051
+over synsets (see§4.2). For example, one of the synsets of China is an instance of an 8052
+Asiannation#1 , which in turn is a hyponym of country#2 , a synset that includes 8053
+country .7Such paths can be used to measure the similarity between concepts (Pedersen 8054
+et al., 2004), and this similarity can be incorporated into coreference resolution as a fea- 8055
+ture (Ponzetto and Strube, 2006). Similar ideas can be applied to knowledge graphs in- 8056
+duced from Wikipedia (Ponzetto and Strube, 2007). But while such approaches improve 8057
+relatively simple classiﬁcation-based systems, they have proven less useful when added 8058
+to the current generation of techniques.8For example, Durrett and Klein (2013) employ 8059
+a range of semantics-based features — WordNet synonymy and hypernymy relations on 8060
+head words, named entity types (e.g., person, organization), and unsupervised cluster- 8061
+ing over nominal heads — but ﬁnd that these features give minimal improvement over a 8062
+baseline system using surface features. 8063
+15.3.1.3 Entity features 8064
+Many of the features for entity-mention coreference are generated by aggregating mention- 8065
+pair features over all mentions in the candidate entity (Culotta et al., 2007; Rahman and 8066
+Ng, 2011). Speciﬁcally, for each binary mention-pair feature f(i,j), we compute the fol- 8067
+lowing entity-mention features for mention iand entitye={j:j <i∧zj=e}. 8068
+•ALL-TRUE: Featuref(i,j)holds for all mentions j∈e. 8069
+•MOST-TRUE: Featuref(i,j)holds for at least half and fewer than all mentions j∈e. 8070
+•MOST-FALSE : Featuref(i,j)holds for at least one and fewer than half of all men- 8071
+tionsj∈e. 8072
+•NONE : Featuref(i,j)does not hold for any mention j∈e. 8073
+For scalar mention-pair features (e.g., distance features), aggregation can be performed by 8074
+computing the minimum, maximum, and median values across all mentions in the cluster. 8075
+Additional entity-mention features include the number of mentions currently clustered in 8076
+the entity, and A LL-X and M OST-X features for each mention type. 8077
+15.3.2 Distributed representations of mentions and entities 8078
+Recent work has emphasized distributed representations of both mentions and entities. 8079
+One potential advantage is that pre-trained embeddings could help to capture the se- 8080
+7teletype font is used to indicate wordnet synsets, and italics is used to indicate strings.
+8This point was made by Michael Strube at a 2015 workshop, noting that as the quality of the machine
+learning models in coreference has improved, the beneﬁt of including semantics has become negligible.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.3. REPRESENTATIONS FOR COREFERENCE RESOLUTION 379
+mantic compatibility underlying nominal coreference, helping with difﬁcult cases like 8081
+(Apple,the ﬁrm )and (China,the ﬁrm’s biggest growth market ). Furthermore, a distributed 8082
+representation of entities can be trained to capture semantic features that are added by 8083
+each mention. 8084
+15.3.2.1 Mention embeddings 8085
+Entity mentions can be embedded into a vector space, providing the base layer for neural 8086
+networks that score coreference decisions (Wiseman et al., 2015). 8087
+Constructing the mention embedding Various approaches for embedding multiword 8088
+units can be applied (see §14.8). Figure 15.5 shows a recurrent neural network approach, 8089
+which begins by running a bidirectional LSTM over the entire text, obtaining hidden states 8090
+from the left-to-right and right-to-left passes, hm= [← −hm;− →hm]. Each candidate mention 8091
+span (s,t)is then represented by the vertical concatenation of four vectors: 8092
+u(s,t)= [u(s,t)
+ﬁrst;u(s,t)
+last;u(s,t)
+head;φ(s,t)], [15.26]
+whereu(s,t)
+ﬁrst=hs+1is the embedding of the ﬁrst word in the span, u(s,t)
+last=htis the 8093
+embedding of the last word, u(s,t)
+headis the embedding of the “head” word, and φ(s,t)is a 8094
+vector of surface features, such as the length of the span (Lee et al., 2017). 8095
+Attention over head words Rather than identifying the head word from the output of a
+parser, it can be computed from a neural attention mechanism :
+˜αm=θα·hm [15.27]
+a(s,t)=SoftMax ([˜αs+1,˜αs+2,..., ˜αt]) [15.28]
+u(s,t)
+head=t∑
+m=s+1a(s,t)
+mhm. [15.29]
+Each token mgets a scalar score ˜αm=θα·hm, which is the dot product of the LSTM 8096
+hidden state hmand a vector of weights θα. The vector of scores for tokens in the span 8097
+m∈{s+ 1,s+ 2,...,t}is then passed through a softmax layer, yielding a vector a(s,t)8098
+that allocates one unit of attention across the span. This eliminates the need for syntactic 8099
+parsing to recover the head word; instead, the model learns to identify the most important 8100
+words in each span. Attention mechanisms were introduced in neural machine transla- 8101
+tion (Bahdanau et al., 2014), and are described in more detail in §18.3.1. 8102
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+380 CHAPTER 15. REFERENCE RESOLUTION
+uﬁrst uhead ulast
+· · · · · ·
+in the ﬁrm ’s biggest growth market .
+Figure 15.5: A bidirectional recurrent model of mention embeddings. The mention is
+represented by its ﬁrst word, its last word, and an estimate of its head word, which is
+computed from a weighted average (Lee et al., 2017).
+Using mention embeddings Given a set of mention embeddings, each mention iand
+candidate antecedent ais scored as,
+ψ(a,i) =ψS(a) +ψS(i) +ψM(a,i) [15.30]
+ψS(a) =FeedForward S(u(a)) [15.31]
+ψS(i) =FeedForward S(u(i)) [15.32]
+ψM(a,i) =FeedForward M([u(a);u(i);u(a)⊙u(i);f(a,i,w)]), [15.33]
+whereu(a)andu(i)are the embeddings for spans aandirespectively, as deﬁned in Equa- 8103
+tion 15.26. 8104
+•The scoresψS(a)quantify whether span ais likely to be a coreferring mention, inde- 8105
+pendent of what it corefers with. This allows the model to learn identify mentions 8106
+directly, rather than identifying mentions with a preprocessing step. 8107
+•The scoreψM(a,i)computes the compatibility of spans aandi. Its base layer is a 8108
+vector that includes the embeddings of spans aandi, their elementwise product 8109
+u(a)⊙u(i), and a vector of surface features f(a,i,w), including distance, speaker, 8110
+and genre information. 8111
+Lee et al. (2017) provide an error analysis that shows how this method can correctly link 8112
+ablaze and a ﬁre, while incorrectly linking pilots and ﬁght attendants . In each case, the 8113
+coreference decision is based on similarities in the word embeddings. 8114
+Rather than embedding individual mentions, Clark and Manning (2016) embed men- 8115
+tion pairs. At the base layer, their network takes embeddings of the words in and around 8116
+each mention, as well as one-hot vectors representing a few surface features, such as the 8117
+distance and string matching features. This base layer is then passed through a multilayer 8118
+feedforward network with ReLU nonlinearities, resulting in a representation of the men- 8119
+tion pair. The output of the mention pair encoder ui,jis used in the scoring function of 8120
+a mention-ranking model, ψM(i,j) =θ·ui,j. A similar approach is used to score cluster 8121
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.4. EVALUATING COREFERENCE RESOLUTION 381
+pairs, constructing a cluster-pair encoding by pooling over the mention-pair encodings 8122
+for all pairs of mentions within the two clusters. 8123
+15.3.2.2 Entity embeddings 8124
+In entity-based coreference resolution, each entity should be represented by properties of 8125
+its mentions. In a distributed setting, we maintain a set of vector entity embeddings, ve. 8126
+Each candidate mention receives an embedding ui; Wiseman et al. (2016) compute this 8127
+embedding by a single-layer neural network, applied to a vector of surface features. The 8128
+decision of whether to merge mention iwith entity ecan then be driven by a feedforward 8129
+network,ψE(i,e) = Feedforward ([ve;ui]). Ifiis added to entity e, then its representa- 8130
+tion is updated recurrently, ve←f(ve,ui), using a recurrent neural network such as a 8131
+long short-term memory (LSTM; chapter 6). Alternatively, we can apply a pooling oper- 8132
+ation, such as max-pooling or average-pooling (chapter 3), setting ve←Pool(ve,ui). In 8133
+either case, the update to the representation of entity ecan be thought of as adding new 8134
+information about the entity from mention i. 8135
+15.4 Evaluating coreference resolution 8136
+The state of coreference evaluation is aggravatingly complex. Early attempts at sim- 8137
+ple evaluation metrics were found to under-penalize trivial baselines, such as placing 8138
+each mention in its own cluster, or grouping all mentions into a single cluster. Follow- 8139
+ing Denis and Baldridge (2009), the CoNLL 2011 shared task on coreference (Pradhan 8140
+et al., 2011) formalized the practice of averaging across three different metrics: M UC(Vi- 8141
+lain et al., 1995), B-C UBED (Bagga and Baldwin, 1998a), and C EAF (Luo, 2005). Refer- 8142
+ence implementations of these metrics are available from Pradhan et al. (2014) at https: 8143
+//github.com/conll/reference-coreference-scorers . 8144
+Additional resources 8145
+Ng (2010) surveys coreference resolution through 2010. Early work focused exclusively 8146
+on pronoun resolution, with rule-based (Lappin and Leass, 1994) and probabilistic meth- 8147
+ods (Ge et al., 1998). The full coreference resolution problem was popularized in a shared 8148
+task associated with the sixth Message Understanding Conference, which included coref- 8149
+erence annotations for training and test sets of thirty documents each (Grishman and 8150
+Sundheim, 1996). An inﬂuential early paper was the decision tree approach of Soon et al. 8151
+(2001), who introduced mention ranking. A comprehensive list of surface features for 8152
+coreference resolution is offered by Bengtson and Roth (2008). Durrett and Klein (2013) 8153
+improved on prior work by introducing a large lexicalized feature set; subsequent work 8154
+has emphasized neural representations of entities and mentions (Wiseman et al., 2015). 8155
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+382 CHAPTER 15. REFERENCE RESOLUTION
+Exercises 8156
+1. Select an article from today’s news, and annotate coreference for the ﬁrst twenty 8157
+noun phrases that appear in the article (include nested noun phrases). That is, 8158
+group the noun phrases into entities, where each entity corresponds to a set of noun 8159
+phrases. Then specify the mention-pair training data that would result from the ﬁrst 8160
+ﬁve noun phrases. 8161
+2. Using your annotations from the preceding problem, compute the following statis- 8162
+tics: 8163
+•The number of times new entities are introduced by each of the three types of 8164
+referring expressions: pronouns, proper nouns, and nominals. Include “single- 8165
+ton” entities that are mentioned only once. 8166
+•For each type of referring expression, compute the fraction of mentions that are 8167
+anaphoric. 8168
+3. Apply a simple heuristic to all pronouns in the article from the previous exercise. 8169
+Speciﬁcally, link each pronoun to the closest preceding noun phrase that agrees in 8170
+gender, number, animacy, and person. Compute the following evaluation: 8171
+•True positive: a pronoun that is linked to a noun phrase with which it is coref- 8172
+erent, or is correctly labeled as the ﬁrst mention of an entity. 8173
+•False positive: a pronoun that is linked to a noun phrase with which it is not 8174
+coreferent. (This includes mistakenly linking singleton or non-referential pro- 8175
+nouns.) 8176
+•False negative: a pronoun that is not linked to a noun phrase with which it is 8177
+coreferent. 8178
+Compute the F-MEASURE for your method, and for a trivial baseline in which ev- 8179
+ery mention is its own entity. Are there any additional heuristics that would have 8180
+improved the performance of this method? 8181
+4. Durrett and Klein (2013) compute the probability of the gold coreference clustering 8182
+by summing over all antecedent structures that are compatible with the clustering. 8183
+Compute the number of antecedent structures for a single entity with Kmentions. 8184
+5. Use the policy gradient algorithm to compute the gradient for the following sce- 8185
+nario, based on the Bell tree in Figure 15.4: 8186
+•The gold clustering c∗is{Abigail,her},{she}. 8187
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+15.4. EVALUATING COREFERENCE RESOLUTION 383
+•Drawing a single sequence of actions ( K= 1) from the current policy, you
+obtain the following incremental clusterings:
+c(a1) ={Abigail}
+c(a1:2) ={Abigail, she}
+c(a1:3) ={Abigail, she},{her}.
+•At each mention t, the action space Atis to merge the mention with each exist- 8188
+ing cluster, or the empty cluster, with probability, 8189
+Pr(Merge (mt,c(a1:t−1)))∝expψE(mt∪c(a1:t−1)), [15.34]
+where the cluster score ψE(mt∪c)is deﬁned in Equation 15.15. 8190
+Compute the gradient∂
+∂θL(θ)in terms of the loss ℓ(c(a))and the features of each 8191
+(potential) cluster. Explain the differences between the gradient-based update θ←θ−∂
+∂θL(θ) 8192
+and the incremental perceptron update from this sample example. 8193
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+
+

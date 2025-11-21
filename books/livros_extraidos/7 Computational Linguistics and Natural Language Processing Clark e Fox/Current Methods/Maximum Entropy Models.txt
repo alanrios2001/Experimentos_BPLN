@@ -1,0 +1,563 @@
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 133 — #1
+5 Maximum Entropy Models
+ROBERT MALOUF
+1 Introduction
+Maximum entropy (MaxEnt) models, variously known as log-linear, Gibbs,exponential, and multinomial logit models, provide a general-purpose machinelearning technique for classiﬁcation and prediction which has been successfullyapplied to ﬁelds as diverse as computer vision and econometrics. In naturallanguage processing, recent years have seen MaxEnt techniques used for sentenceboundary detection, part-of-speech tagging, parse selection and ambiguity resolu-tion, machine translation, and stochastic attribute value grammars, to name just afew applications (Berger et al., 1996; Abney 1997; Ratnaparkhi 1998; Johnson et al.,1999; Foster 2000). Beyond these purely practical applications, statistical modelingtechniques also offer a powerful set of tools for analyzing natural language data. Agood statistical model can both clarify what the patterns are in a complex, possiblynoisy, set of observations and at the same time shed light on the underlyingprocesses that lead to those patterns (Breiman 2001b; McCullagh 2002).
+The fundamental problem for stochastic data analysis is model selection. How
+do we choose a model out of a given hypothesis space which best ﬁts our observa-tions? In all but the most trivial cases, our hypothesis space will provide an inﬁniterange of possible models. This is a general problem: how do we pick a probabilitydistribution given possibly incomplete information?
+More technically, suppose we have a random variable X, which can take on
+values x
+1,...,xn. How do we choose a model, or an assignment of probabilities
+to outcomes? Any distribution we choose must satisfy this constraint:∑
+iP(x i)=1
+In addition, we presumably have some information about the real-world phe-nomenon that we are attempting to model, and we would like our probabilitydistribution to reﬂect that knowledge.
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 134 — #2
+134 Robert Malouf
+The principle of insufﬁcient reason (variously attributed to Bernoulli, Laplace,
+Bayes, etc.) provides one model selection criterion: in the absence of any reasonto believe that one outcome is more likely than another, we must assume that alloutcomes are equally likely. More speciﬁcally, if all we know about a random vari-able Xis that it has npossible outcomes, then each outcome should be assigned
+the probability
+1
+n.
+But what if we are not in a position of ‘insufﬁcient reason,’ and we have a strong
+suspicion that not all outcomes are equally likely? Suppose that we have recordedthe outcome of a very large number of ﬂips of a coin, and from that we can seethat heads came up much more often than tails. A uniform distribution is still apossible model for this coin. After all, in any ﬁnite sample, we will probably notget exactly as many heads as tails. However, if there are many more heads thantails, intuitively it seems like some non-uniform distribution would be a bettermodel.
+For this situation, Jaynes (1957) proposed an alternative to the principle of insuf-
+ﬁcient reason – the maximum entropy principle: the least informative probability
+distribution maximizes the entropy Hsubject to known constraints. Here Jaynes is
+proposing to use Shannon’s information entropy Has a measure of our ignorance
+about the value of X:
+H(X)=−∑
+iP(x i)logP(x i)
+By choosing the distribution which maximizes the entropy, we are choosing thedistribution with the least informational content. In other words, our probabilityestimates should reﬂect what we know and what we do not know: in general,ignorance is preferable to error.
+Observations of the real world, in the form of training data, impose a set of con-
+straints on our models. In most cases, however, the constraints underdeterminethe model: many models will be consistent with the observed facts yet lead tovery different conclusions. The MaxEnt principle gives us a general way of select-ing a model out of the inﬁnite range of possible models. MaxEnt models divergefrom a uniform distribution only enough to respect the constraints. In the casewhere there are no known constraints beyond the number of possible outcomes,the distribution which maximizes the entropy is simply the uniform distribution.Given other kinds of empirical constraints, the MaxEnt principle leads to a widevariety of distributions (Kapur 1993; Jaynes 2003). In this chapter, we will considerdistributions which are derived from the MaxEnt principle which are particularlyuseful for computational linguistics and natural language processing.
+If the goal is to minimize the information content of the model, it is still
+reasonable to ask why one would want to maximize this particular measureof information content. Both Shannon and Jaynes show that other measuresof information content either are equivalent to the information entropy Hor
+lead to inconsistencies. Jaynes (1986) also offers another rationale for choosingthe distribution that maximizes the information entropy while still satisfying
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 135 — #3
+Maximum Entropy Models 135
+the constraints created by the testable information. Suppose that, rather thanconstructing the model ourselves, we can leave model construction to an impar-tial third party – say, research assistants, or in Jaynes’ example, monkeys. Wegive our assistants nballs, each worth δ=1/nof the available probability mass,
+and have them randomly throw them into bins representing the mpossible
+outcomes.
+After all the balls have been distributed, we can count the balls in each bin, and
+assign a probability to each outcome. If outcome ireceived n
+iballs, then we say its
+probability isp
+i=niδ=ni
+n
+If the resulting distribution ﬁts the constraints, then we are done. We have founda distribution which ﬁts the testable information but is otherwise free of bias or apriori assumptions. If it does not ﬁt the constraints, though, we retrieve the ballsfor our assistants and try again.
+For a method like this to give good results even as a thought experiment, n
+needs to be much larger than m, and we might need a lot of attempts before we
+get a distribution that ﬁts the constraints. Instead of actually carrying out thisprocedure, we can ﬁnd the most likely distribution of balls into bins given somesimple assumptions.
+The probability of any particular assignment of nballs into mbins n
+1...nmis
+given by the multinomial distribution:P(n
+1,...,nm)=(n
+n1,...,nm)
+m−n=n!
+n1! ··· nm!m−n
+Since nand mare ﬁxed, the most likely assignment is one that maximizes:
+W=n!
+n1! ··· nm!
+Equivalently, we could maximize a monotonic increasing function of W,f o r
+example,1
+nlogW:
+1
+nlogW=1
+nlogn!
+n1! ··· nm!
+=1
+nlogn!
+np1! ··· npm!
+=1
+n(
+logn!−∑
+ilognpi!)
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 136 — #4
+136 Robert Malouf
+Now we can bring in Stirling’s approximation (log n!≈n logn−n)t og e t :
+1
+nlogW=1
+n(nlogn−n−∑
+i(np ilognpi−npi)
+=−∑
+ipilogpi
+Thus, the distribution which our research assistants are most likely to achieve bythrowing balls into bins is the one which maximizes the information entropy ofthe resulting distribution. So, by maximizing the entropy, we are constructing amodel which imposes the least structure on the problem beyond what is enforcedby the choice of constraints.
+2 Maximum Entropy and Exponential Distributions
+The MaxEnt principle provides a general strategy for choosing distributions givencertain testable pieces of information, but does not in itself lead to any speciﬁcdistribution. The particular parametric form for a ‘maximum entropy’ distributionwill depend on the nature of the testable information we have about the situation.As we have seen, in the simple case where all we know is the number of possibleoutcomes, the uniform distribution is the one which maximizes the entropy. Inmost situations, however, we will have some additional useful information aboutthe problem we are trying to model.
+For many problems in computational linguistics, the testable information con-
+sists of event counts derived from a training corpus. In a large annotated sampleof text, we can, for example, count how many times the word respect is tagged as a
+noun, or how many times the token Mr.ends a sentence. By itself, the raw count is
+difﬁcult to interpret, since it is in large part determined by the size of the corpus,which in turn is generally determined by external non-linguistic factors. But wecan take the observed count as an estimate of the expected count given a corpusof a particular size.
+More speciﬁcally, we can divide the training corpus into observational units or
+events (words, sentences, etc.), each of which can be described by d-dimensional
+real-valued feature vector function f. For a part-of-speech tagging application,
+the events might be word/tag pairs, and one feature might be the indicatorfunction:f
+m(w,t)={
+1i f wis ‘respect’ and tisNOUN
+0 otherwise
+In the context of a probabilistic context-free parser, an event might be a tree, andone feature would be the number of times a particular rule was applied in thederivation of the tree.
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 137 — #5
+Maximum Entropy Models 137
+In any case, the collected feature vectors constitute the testable information for
+the problem. For each possible event type xin the space of possible event types X,
+we can estimate the expected value of the feature vector:
+ˆE[f]=∑
+x∈Xˆp(x)f(x)
+from the observed probability of xin the training data. Our goal now is to
+construct a model distribution pwhich satisﬁes the constraints imposed by the
+empirical distribution ˆp, in the sense that:
+(1) E[f]=ˆE[f]
+Additionally, our model pmust be a proper probability distribution:
+(2)∑
+x∈Xp(x)=1
+In general, this problem is ill posed: a wide range of models will ﬁt the constraintsin (1) and (2). In accordance with the principle of maximum entropy, we need toﬁnd among these the distribution which maximizes the entropy H(p).
+This is a constrained optimization problem – maximize a function given a set of
+constraints – which can be solved using the method of Lagrange multipliers. First,we restate the constraints:0=∑
+i∑
+xp(x)f i(x)−ˆE[fi]
+0=∑
+xp(x)−1
+Next, we introduce the Lagrangian function:L(p,λ,γ)=−∑
+xp(x) logp(x)−∑
+iλi(∑
+xp(x)f i(x)−ˆE[fi])
+−γ(∑
+xp(x)−1)
+The new variables, one −λifor each feature in the testable information plus −γ
+for the requirement that pbe a proper probability distribution, are the Lagrange
+multipliers corresponding to the constraints. Since both the objective function andthe constraints are convex, the maximum of Lcorresponds to a solution to the con-
+strained problem posed above. We can now solve this unconstrained optimizationproblem by ﬁnding the pwhere the gradient of Lis zero:
+∇L(p,λ,γ)=0
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 138 — #6
+138 Robert Malouf
+We start with the partial derivative of Lwith respect to pfor some particular event
+type x:
+0=∂
+∂pL(p,λ,γ)
+=−(1+logp(x))+∑
+iλifi(x)+γ
+Solving for p(x),w eg e t :
+p(x)=exp(γ−1)exp(∑
+iλifi(x))
+We know that any solution pmust satisfy the constraint in (2), so:
+∑
+xp(x)=1
+∑
+xexp(γ−1)exp(∑
+iλifi(x))
+=1
+exp(γ−1)=(∑
+xexp(∑
+iλifi(x)))−1
+Finally, substituting in p(x), we get the parametric form of the MaxEnt distribution
+given known expected values:(3) p(x)=exp(
+λ
+Tf(x))
+∑
+y∈Xexp(
+λTf(y))
+where λis ad-dimensional parameter vector and λTf(x)is the inner product of the
+parameter vector and a feature vector.
+3 Parameter Estimation
+Given the general model form in (3), a set of event types, a feature function overevents, and empirical expected values derived from a training corpus, the nextstep in constructing a MaxEnt distribution is to ﬁnd values for the parameters λ
+i
+such that:∑
+xp(x)f i(x)=ˆE[fi(x)]
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 139 — #7
+Maximum Entropy Models 139
+Unfortunately, while parameter estimation for MaxEnt models is conceptuallystraightforward, in practice MaxEnt models for typical natural language tasks arevery large. Estimation of such large models is not only expensive, but also, due tosparsely distributed features, sensitive to round-off errors. Thus, highly efﬁcient,accurate, scalable methods are required for estimating the parameters of practicalmodels.
+One theoretical complication which makes models of this form difﬁcult to apply
+to problems in natural language processing is that the events space Xis often very
+large or even inﬁnite, making the denominator in (3) impossible to compute. Onemodiﬁcation we can make to avoid this problem is to consider conditional prob-ability distributions instead (Berger et al., 1996; Chi 1998; Johnson et al., 1999).Suppose now that in addition to the event space Xand the feature function f,w e
+have also a set of contexts Wand a function Ywhich partitions the members of
+X. In our PCFG example, Wmight be the set of possible strings of words, and
+Y(w)the set of trees whose yield is w∈W. Computing the conditional probability
+p(x|w) of an event xin context was
+(4) p(x|w) =exp(
+λ
+Tf(x))
+∑
+y∈Y(w)exp(
+λTf(y))
+now involves evaluating a more much tractable sum in the denominator.
+Given the parametric form of a MaxEnt model in (4), ﬁtting a MaxEnt model
+to a collection of training data entails ﬁnding values for the parameter vector λ
+which minimize the Kullback–Leibler divergence between the model pλand the
+empirical distribution ˆp:
+D(ˆp||pλ)=∑
+w,xˆp(x, w)logˆp(x|w)
+pλ(x|w)
+or, equivalently, which maximize the log-likelihood:
+(5) L(λ)=∑
+w,xˆp(w, x)logpλ(x|w)
+Again, we are faced with ﬁnding the maximum of a concave function, and weproceed in the same way as we did in the previous section. The gradient of thelog-likelihood function, or the vector of its ﬁrst derivatives with respect to theparameter, λ,i s :
+G(λ)=∂L(λ)
+∂λi
+=∑
+x,yˆp(x, y)f(y)−∑
+x,yˆp(x)p λ(y|x)f(y)
+or, simply:(6) G(λ)=ˆE[f]−E
+pλ[f]
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 140 — #8
+140 Robert Malouf
+Since the likelihood function (5) is concave over the parameter space, it has a
+global maximum where the gradient is zero (when ˆE[f]=E pλ[f]). Unfortunately,
+simply setting G(λ)=0 and solving for λdoes not yield a closed form solution, so
+we proceed iteratively, following this general schema:
+ESTIMATE (ˆp)
+1λ0←0
+2k←0
+3repeat
+4 compute p(k)fromλ(k)
+5 compute update δ(k)
+6 λ(k+1)←λ(k)+δ(k)
+7 k←k+1
+8 until converged
+9return λ(k)
+At each step, we adjust an estimate of the parameters λ(k)to a new estimate
+λ(k+1)based on the divergence between the estimated probability distribution
+p(k)and the empirical distribution ˆp. We continue until successive improvements
+fail to yield a sufﬁciently large decrease in the divergence. Since the functionthat is being maximized is convex, this algorithm will converge to a uniquesolution.
+While all parameter estimation algorithms we will consider take the same gen-
+eral form, the method for computing the updates δ
+(k)at each search step differs
+substantially. This difference can have a dramatic impact on the number of updatesrequired to reach convergence.
+3.1 Iterative scaling
+One widely used method for iteratively reﬁning the model parameters is gener-
+alized iterative scaling (GIS), due to Darroch and Ratcliff (1972). An extension of
+iterative proportional ﬁtting (Deming & Stephan 1940), GIS scales the probabilitydistribution p
+(k)by a factor proportional to the ratio of ˆE[f]toEp(k)[f],w i t ht h e
+restriction that∑
+jfj(x)=Cfor some constant cand for each event xin the training
+data (a condition which can be easily satisﬁed by the addition of a ‘correction’ fea-ture). We can adapt GIS to estimate the model parameters λrather than the model
+probabilities p, yielding the update rule:
+δ
+(k)=log(ˆE[f]
+Ep(k)[f])1
+C
+GIS has the advantage of being very simple, both conceptually and in terms
+of its implementation. However, in Malouf’s (2002) comparison, GIS performedquite poorly. A key limitation of GIS is that the step size, and thus the rate of
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 141 — #9
+Maximum Entropy Models 141
+convergence, depends on the constant C: the larger the value of C, the smaller the
+step size. In case not all rows of the training data sum to a constant, the additionof a correction feature effectively slows convergence to match the most difﬁcultcase. Both Goodman (2002) and Curran and Clark (2003) consider variations ontraditional GIS which avoid this problem, leading to methods which convergemore quickly.
+In an earlier move to improve on the slow convergence of GIS and the need for
+a correction feature, Della Pietra et al. (1997) propose an improved iterative scaling
+(IIS) algorithm, whose update rule is the solution to the equation:
+ˆE[f]=∑
+w,xˆp(w)p(k)(x|w)f (x)exp(M(x)δ(k))
+where M(x) is the sum of the feature values for an event xin the training data.
+This is a polynomial in exp(δ(k)), and the solution can be found straightforwardly
+using, for example, the Newton–Raphson method.
+3.2 First-order methods
+Iterative scaling algorithms have a long tradition in statistics and are still widelyused for analysis of contingency tables. Their primary strength is that on eachiteration they only require computation of the expected values E
+p(k). They do
+not depend on evaluation of the gradient of the log-likelihood function, which,depending on the distribution, could be prohibitively expensive or simply impos-sible. In the case of MaxEnt models, however, the vector of expected valuesrequired by iterative scaling essentially isthe gradient G. Thus, it makes sense
+to consider methods which use the gradient directly.
+The most obvious way of making explicit use of the gradient is by Cauchy’s
+method, or the method of steepest ascent (Zhu et al., 1997). The gradient of a func-
+tion is a vector which points in the direction in which the function’s value increasesmost rapidly. Since our goal is to maximize the log-likelihood function, a naturalstrategy is to shift our current estimate of the parameters in the direction of thegradient via the update rule:δ
+(k)=α(k)G(λ(k))
+where the step size α(k)is chosen to maximize L(λ(k)+δ(k)). Finding the opti-
+mal step size is itself an optimization problem, though only in one dimensionand, in practice, only an approximate solution is required to guarantee globalconvergence.
+Since the log-likelihood function is concave, the method of steepest ascent is
+guaranteed to ﬁnd the global maximum. However, while the steps taken on eachiteration are in a very narrow sense locally optimal, the global convergence rateof steepest ascent is very poor. Each new search direction is orthogonal (or, ifan approximate line search is used, nearly so) to the previous direction, leading
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 142 — #10
+142 Robert Malouf
+to a characteristic ‘zig-zag’ ascent with convergence slowing as the maximum isapproached.
+One way of looking at the problem with steepest ascent is that it considers the
+same search directions many times. We would prefer an algorithm which consid-ered each possible search direction only once, in each iteration taking a step ofexactly the right length in a direction orthogonal to all previous search directions.This intuition underlies conjugate gradient methods which choose a search direc-
+tion which is a linear combination of the steepest ascent direction and the previoussearch direction. The step size is selected by an approximate line search, as in thesteepest ascent method. Several non-linear conjugate gradient methods, such astheFletcher–Reeves and the Polak–Ribière positive algorithms, have been proposed.
+While theoretically equivalent, they use slightly different update rules and thusshow different numeric properties.
+3.3 Second-order methods
+Another way of looking at the problem with steepest ascent is that, while it takesinto account the gradient of the log-likelihood function, it fails to take into accountits curvature, or the gradient of the gradient. The usefulness of the curvature ismade clear if we consider a second-order Taylor series approximation of L(λ+δ):
+(7) L(λ+δ)≈L(λ)+δ
+TG(λ)+1
+2δTH(λ)δ
+where HisHessian matrix of the log-likelihood function, the d×dmatrix of its
+second partial derivatives with respect to λ. If we set the derivative of (7) to zero
+and solve for δ,w eg e tt h eu p d a t er u l ef o r Newton’s method:
+(8)δ(k)=H−1(λ(k))G(λ(k))
+Newton’s method converges very quickly (for quadratic objective functions, inone step), but it requires the computation of the inverse of the Hessian matrix oneach iteration.
+While the log-likelihood function for ME models in (5) is twice differentiable,
+for large-scale problems the evaluation of the Hessian matrix is computationallyimpractical, and Newton’s method is not competitive with iterative scaling or ﬁrst-order methods. Variable metric orquasi-Newton methods avoid explicit evaluation
+of the Hessian by building up an approximation of it using successive evaluationsof the gradient. That is, we replace H
+−1(λ(k))in (8) with a local approximation of
+the inverse Hessian B(k):
+δ(k)=B(k)G(λ(k))
+with B(k)a symmatric, positive deﬁnite matrix which satisﬁes the equation:
+B(k)y(k)=δ(k−1)
+where y(k)=G(λ(k))−G(λ(k−1)).
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 143 — #11
+Maximum Entropy Models 143
+Variable metric methods also show excellent convergence properties and can be
+much more efﬁcient than using true Newton updates, but, for large-scale problemswith hundreds of thousands of parameters, even storing the approximate Hessianis prohibitively expensive. For such cases, we can apply limited memory variable
+metric methods, which implicitly approximate the Hessian matrix in the vicinity
+of the current estimate of λ
+(k)using the previous mvalues of y(k)andδ(k). Since in
+practical applications values of mbetween 3 and 10 sufﬁce, this can offer a sub-
+stantial saving in storage requirements over variable metric methods, while stillgiving favorable convergence properties (for algorithmic details and theoreticalanalysis of ﬁrst- and second-order methods, see, e.g., Nocedal & Wright 1999).
+3.4 Comparing parameter estimation methods
+The performance of optimization algorithms is highly dependent on the spe-ciﬁc properties of the problem to be solved. Worst-case analysis typically doesnot reﬂect the actual behavior on actual problems. Therefore, in order to evalu-ate the performance of the optimization techniques sketched in previous sectionswhen applied to the problem of parameter estimation, we need to compare theperformance of actual implementations on realistic data sets (Dolan & Moré 2002).
+Minka (2001) offers a comparison of iterative scaling with other algorithms for
+parameter estimation in logistic regression, a problem similar to the one consid-ered here, but it is difﬁcult to transfer Minka’s results to MaxEnt models. First,he evaluates the algorithms with randomly generated training data. However,the performance and accuracy of optimization algorithms can be sensitive to thespeciﬁc numerical properties of the function being optimized; results based onrandom data may or may not carry over to more realistic problems. Second,Minka measures performance in terms of the number of ﬂoating point opera-tions required to achieve a particular precision. But large-scale sparse problemsare typically memory bandwidth bound, not CPU bound. Therefore, the numberof ﬂoating point operations is not a very good indicator of the total time requiredto ﬁnd a solution. And the test problems Minka considers are relatively small(100–500 dimensions). As we have seen, though, algorithms which perform wellfor small- and medium-scale problems may not always be applicable to problemswith many thousands of dimensions.
+To address these issues, Malouf (2002) undertook an empirical evaluation of
+several parameter estimation algorithms. This implementation (now availableas the Toolkit for Advanced Discriminative Modeling),
+1was based on PETSc
+(the Portable, Extensible Toolkit for Scientiﬁc Computation), a software librarydesigned to ease development of programs which solve large systems of partialdifferential equations (Balay et al., 2002). PETSc offers data structures and rou-tines for parallel and sequential storage, manipulation, and visualization of verylarge sparse matrices.
+For any of the estimation techniques, the most expensive operation is comput-
+ing the probability distribution pand the expectations E
+p[f]for each iteration. In
+order to make use of the facilities provided by PETSc, we can store the training
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 144 — #12
+144 Robert Malouf
+data as a (sparse) matrix F, with rows corresponding to events and columns to
+features. Then, given a parameter vector λ, the unnormalized probabilities ˙pλare
+the matrix–vector product:
+˙pλ=exp Fλ
+and the feature expectations are the transposed matrix–vector product:e
+pλ[f]=FTpλ
+By expressing these computations as matrix–vector operations, we can take advan-tage of the high-performance sparse matrix primitives of PETSc. In addition, thereare many possible optimizations which can be applied for particular classes ofMaxEnt models (Lafferty & Suhm 1996; Wu & Khudanpur 2000; Lafferty et al.,2001) to speed up normalization of the probability distribution p. These improve-
+ments take advantage of a model’s structure to simplify the evaluation of thedenominator in (4). For general data sets and feature functions, such optimiza-tions are unlikely to give any improvement. However, when these optimizationsare appropriate, they will give a proportional speed-up to all of the algorithms.Thus, the use of such optimizations is independent of the choice of parameterestimation method.
+In Malouf’s (2002) evaluation experiments, iterative scaling methods performed
+relatively poorly, while Benson and Moré’s (2001) limited memory variable met-ric algorithm as implemented in TAO (Benson et al., 2007) consistently performedthe best, both in speed of convergence and in the accuracy of the ﬁnal model.These results have been further supported by evaluations based on differenttypes of realistic data sets (e.g., Sha & Pereira 2003). In comparing GIS andIIS, while IIS converges in fewer steps than GIS it takes substantially moretime, as the additional bookkeeping overhead required by IIS more than cancelsany improvements in speed offered by accelerated convergence for unstructuredproblems.
+In addition, the agreement between the estimated model and real held-out data
+was more or less the same for all of the algorithms for most of the data sets.Some degree of variability is to be expected, since all of the data sets consid-ered in the evaluation were badly underdetermined and ill-conditioned. With avery large number of very rare features, the accumulation of numerical errorsbecomes important and many (apparently) different parameter settings will yieldessentially the same likelihood. Which of these models the algorithm ultimatelyconverges to will be determined by the particular sequence of arithmetic oper-ations, and differences in test accuracy between these models is generally wellbelow the threshold of statistical signiﬁcance.
+In a few cases, however, the prediction accuracy differs more substantially. For
+some problems, GIS showed a small advantage over the other methods. More dra-matically, both iterative scaling methods performed very poorly on the one verysparse data set. In this case, many features were nearly ‘pseudo-minimal’ in the
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 145 — #13
+Maximum Entropy Models 145
+sense of Johnson et al. (1999). That is, for many features fi, event types xfor which
+fi(x)̸=0 are not observed in the training data. For these features, ˆE[fi]=andλi
+receives values approaching −∞. Smoothing the reference probabilities or apply-
+ing model regularization (see the next section) would likely improve the results forall of the methods and reduce the observed differences. However, this does sug-gest that gradient-based methods are robust to certain problems with the trainingdata.
+4 Regularization
+The procedures described in the previous section ﬁnd a parameter vector λwhich
+minimizes the KL divergence between the model and the training data. In otherwords, we ﬁnd the model which maximizes the likelihood of the training data.Maximum likelihood estimation of model parameters from natural language train-ing data is well known to run into problems. Natural language data is notoriousfor being noisy and incomplete, with many event types occurring only once andmany more possible event types (by chance) failing to occur at all. Just as maxi-mum likelihood estimation causes problems for simple n-gram models, it often
+leads to overtraining effects and poor model performance in MaxEnt modelsas well.
+In addition to the well-known problems with maximum likelihood estimation
+in general, the particular form of MaxEnt models makes them especially sus-ceptible to sparse data problems. For a maximum likelihood bigram model, say,any sentence which contains a bigram which did not occur in the training datawill be assigned a probability of 0 (clearly an undesirable result). For sentenceswhich contain only attested bigrams, however, the model will still perform well.For a MaxEnt model, on the other hand, the only way an event type xcan be
+assigned a probability of 0 (or 1) is if one or more of the parameters λ
+ifor the fea-
+tures fisuch that fi(x)> 0 has the value −∞ (or∞). Given the iterative algorithm
+used to estimate MaxEnt models, no feature will ever be assigned a non-ﬁniteweight. Instead, the magnitude of the weights will become larger and largeron each iteration, leading to poor numerical accuracy for all the weights in themodel.
+Therefore, addressing sparse data problems is at least as important for MaxEnt
+models as it is for other model classes. And, in fact, the same methods devel-oped for use with n-gram models (e.g., Chen & Goodman 1996) can be applied
+directly to smoothing the empirical expectations ˆE[f]. However, a more widely
+used approach to smoothing MaxEnt models that is more in keeping with theMaxEnt principle’s Bayesian roots is to incorporate a prior distribution overparameter values into the estimation procedure. That is, we replace the maximumlikelihood estimation of the previous section, which ﬁnds λsuch that:
+λ
+MLE=argmax
+λp(x|w; λ)
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 146 — #14
+146 Robert Malouf
+with a maximum a posteriori estimate:λ
+MAP=argmax
+λq(x|w; λ)p(λ)
+The prior p(λ) is the probability of a particular parameter vector, independent from
+any evidence derived from the training data – in effect, the maximum likelihoodestimates assumes a uniform p(λ).
+Building on an idea they attribute to Lafferty, Chen and Rosenfeld (1999) explore
+using a Gaussian prior distribution with a mean of 0 and a variance of σforp(λ).
+In the previous section, we found the parameter vector which maximized the log-likeliood (5). To ﬁnd the parameters which maximize the posterior probability, wecan maximize the penalized log-likelihood:
+L
+′(λ)=L(λ)+∑
+ilog1√
+2πσ2exp(−λi
+2σ2)
+(9)
+=L(λ)−∑
+iλ2i
+2σ2+C
+and the gradient Gin (6) becomes:
+G′(λ)=G(λ)−∑
+iλi
+σ2
+i
+Like L,L′is a concave function and can be maximized using the same methods.
+The hyperparameter σcontrols the inﬂuence of the prior in the ﬁnal estimate, with
+smaller values of σleading to more aggressive smoothing. While it is possible to
+set different values of σifor each feature i, in practice a single value is typically
+used, with its value selected by cross-validation.
+As Chen and Rosenfeld (1999) point out, using a Gaussian prior has much the
+same effect as discounting feature counts. At the solution, the constraints (1) arenot met exactly. Instead, we ﬁnd λsuch that:
+E
+λ[fi]=ˆE[fi]−λi
+σ2
+i
+Effectively reducing the observed count for feature ibyλi/σ2
+i, the observed expec-
+tation is discounted by λi/σ2
+i, an amount that increases logarithmically with the
+observed frequency.
+While the Gaussian prior is justiﬁed on Bayesian grounds and Chen and
+Rosenfeld (1999) explore its similarity to n-gram smoothing methods, it is also
+worth noting the similarity between the penalized log-likelihood (9) and theloss function minimized by support vector machines (SVMs), a non-parametericmachine learning method based on statistical learning theory (Vapnik 1996). As
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 147 — #15
+Maximum Entropy Models 147
+Hastie et al. (2001) observe, both MaxEnt models and SVMs involve maximizinga penalized loss function. In the case of MaxEnt models, the loss function is thelog-likelihood (5), while for classical SVMs the loss function is the ‘hinge loss,’ anupper bound on the error rate of the model on the training data. In both cases, thepenalty is the same: the sum of the squares of the model parameters. For SVMs,however, the quadratic penalty is not introduced as a prior. For SVMs, the penaltyterm is used to control the representational capacity of the learner. By controlling the
+capacity of the model, we can avoid overtraining, the tendency for complex modelsto simply memorize accidental properties of noisy training data and miss the largergeneralizations. The structural risk minimization principle, a key part of Vapnik’s
+statistical learning theory, shows how model complexity can be balanced againstthe model’s ﬁt to the training data in order to maximize the model’s expectedaccuracy on new, unseen data. This provides an alternative explanation as to whya Gaussian prior is as successful as it is for such a wide range of applications.
+More recently, researchers have begun exploring the use of alternative regular-
+ization terms in the penalized likelihood. One that has received a fair amountof attention is the exponential prior over parameter values (Tibshirani 1996;Goodman 2004; Kazama & Tsujii 2005). This leads to the following penalizedlikelihood:(10) L
+′(λ)=L(λ)−∑
+iαi|λi|
+While the penalized likelihood in (9) tends to give models with parameter val-ues close to zero, the likelihood in (10) yields models with many parametersexactly equal to zero. Since these parameters will have no effect in the ﬁnal model,the corresponding features can be ignored, and the resulting sparse models canbe applied much more efﬁciently than standard MaxEnt models. Unfortunately,(10) does not have a smooth gradient and so the model parameters cannot befound using standard efﬁcient optimization techniques. However, a number ofspecialized algorithms have been proposed for estimating these models (Riezler &Vasserman 2004; Andrew & Gao 2007; Schmidt et al., 2007).
+5 Model Applications
+Maximum entropy models of the form (3) or (4) can be applied to any task innatural language processing which requires one to assign a probability to an eventwhich can be described by a feature vector.
+5.1 Classiﬁcation
+Berger et al. (1996), early proponents of MaxEnt models in NLP , consider two casestudies in the use of MaxEnt models in statistical machine translation systems.One of these is a good example of a classiﬁcation problem, a type of task which is
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 148 — #16
+148 Robert Malouf
+frequently encountered in NLP and for which MaxEnt models are well suited. Inthis problem, Berger et al. are concerned with translations of French noun phrasesof the form
+NOUN deNOUN into English. In some cases a word-for-word transla-
+tion is best (e.g., conﬂit d’intérêts →conﬂict of interest), but in other cases translation
+as a compound noun is preferable (e.g., taux d’intérêt →interest rate). Berger et al.
+approach this as a classiﬁcation problem: for each French NOUN deNOUN source
+phrase, we assign the label no-interchange if a direct translation is best and
+the label interchange if a compound noun translation is best. The training data
+consists of a collection of French noun phrase types, with their labels. The featurevector is made up of indicator functions which pick out conjunctions of a wordand a class. For example, one feature might be:f(x,y)={
+1i f x’s left member is système and yisinterchange
+0 otherwise
+This feature will be ‘active’ for events like système de surveillance and système de
+quota, noun phrases whose left member is système and which are best translated
+as compound nouns. This feature will be inactive for noun phrases whose leftmember is not système and/or which should not be translated as a compound.
+Other features might depend on the right member or both members of the Frenchnoun phrases.
+After training, each feature f
+iwill be associated with a weight λi. Given a novel
+noun phrase type x, the class ˆypredicted by the model is the one which maximizes
+the conditional probability p(y|x):
+ˆy=argmax
+yp(y|x)
+=argmax
+y∑
+iλifi(x,y)∑
+iλifi(x,interchange )+∑
+iλifi(x,no-interchange )
+=argmax
+y∑
+iλifi(x,y)
+In the experiments reported by Berger et al., the model assigned p(interchange
+|x)≈0 for noun phrases like chambre de commerce (‘chamber of commerce’) and
+p(interchange |x)≈1 for noun phrases like saison d’hiver (‘winter season’).
+Many noun phrases like coût de transport (‘transport cost, cost of transport’),
+which can be translated either way, received model probabilities p(interchange
+|x)≈p(no-interchange |x). Overall, the model chose the right translation for
+80.4 percent of the noun phrases in a test sample, compared to 70.2 percentaccuracy for a simple model which translated all noun phrases directly.
+This same basic strategy can be applied to any classiﬁcation problem. The sys-
+tem builder needs to deﬁne a set of feature templates which pick out properties of
+the events to be classiﬁed. The model features then will be conjunctions of feature
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 149 — #17
+Maximum Entropy Models 149
+templates and classes. In the noun phrase translation example, the feature tem-plates looked at the ﬁrst word, the second word, and both words in the Frenchnoun phrases. For a problem like text classiﬁcation, the feature templates may bebased on a bag-of-words model. Nigam et al. (1999) propose a MaxEnt version ofa naïve Bayes text classiﬁer which uses features of the type:(11) f
+w(d,c)={N(d,w)
+N(d)ifd’s class is c
+0 otherwise
+where N(d,w)is the number of times word woccurs in document d,a n d N(d)is
+the total number of words in d. Nigam et al. report that their MaxEnt model out-
+performs a standard naïve Bayes classiﬁer on the majority of test samples. Others(e.g., Kazama & Tsujii 2005) have explored using features values that combine theterm frequency as in (11) with inverse document frequency, with broadly similarresults.
+5.2 Sequence models
+MaxEnt models are also widely used for sequence labeling tasks, such as part-of-speech tagging and named entity recognition (Ratnaparkhi 1998; Borthwick1999; McCallum et al., 2000). In the simplest sequence labeling models, the tagprobabilities depend only on the current word:P(t
+1...tn|w1...wn)=∏
+i=1, nP(ti|wi)
+The effect of this is that each word in the test data will be assigned the tag whichoccurred most frequently with that word in the training data. Such a model doesmaximize the entropy given the constraints, but the constraints are too simple tocapture very much of the linguistic reality of what we are trying to model. A moreuseful approach is suggested by a simple hidden Markov model (DeRose 1988;Charniak 1993), in which the tag probabilities depend on the current word andthe previous tag. Suppose we assume that the word/tag probabilities and the tagsequence probabilities are independent, or:(12) P(w
+i|ti,ti−1)=P(w i|ti)P(t i|ti−1)
+Then by Bayes’s theorem and the Markov property, we have:P(t
+1...tn|w1...wn)=P(w 1...wn|t1...tn)P(t 1...tn)
+P(w 1...wn)
+=∏
+i=1, nP(w i|ti)P(t i|ti−1)
+P(w 1...wn)
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 150 — #18
+150 Robert Malouf
+Since the probability of the word sequence P(w 1...wn)i st h es a m ef o ra l l
+candidate tag sequences, the optimal sequence of tags satisﬁes:(13) S=argmax
+t1...tn∏
+i=1, nP(w i|ti)P(t i|ti−1)
+The probabilities P(w i|ti)and P(ti|ti−1)can easily be estimated from training data.
+Using (13) to calculate the probability of a candidate tag sequence, the optimalsequence of tags can be found efﬁciently using dynamic programming (Viterbi1967).
+While this kind of HMM is simple and easy to construct and apply, it has its
+limitations. For one, (13) depends on the independence assumption in (12). Onecan avoid this by using a conditional MaxEnt model to estimate tag probabilities.In such a model, the optimal tag sequence satisﬁes:S=argmax
+t1...tn∏
+i=1, nP(ti|wi,ti−1)
+where(14) P(t
+i|wi,ti−1)=exp(∑
+jλjfj(ti−1,wi,ti))
+∑
+τ∈Texp(∑
+jλjfj(ti−1,wi,τ))
+The indicator functions fj‘ﬁre’ for particular combinations of contexts and
+tags. For instance, in the context of a named entity recognition system, one suchfunction might indicate the occurrence of the word Javier with the tag B-PER:
+(15) f(t
+i−1,wi,ti)={
+1i f wi=Javier & ti=B-PER
+0 otherwise
+and another might indicate the tag sequence O B-PER:
+(16) f(ti−1,wi,ti)={
+1i f ti−1=O&ti=B-PER
+0 otherwise
+Each indicator fjfunction also has an associated weight λj, which is chosen so
+that the probabilities (14) minimize the relative entropy between the empiricaldistribution ˜P(derived from the training data) and the model probabilities P,
+or, equivalently, which maximize the likelihood of the training data. Unlike theparameters of an HMM, there is no closed form expression for estimating theparameters of a MaxEnt model from the training data. However, the iterativemethods described in the previous section can be used to efﬁciently estimate themodel’s parameters.
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 151 — #19
+Maximum Entropy Models 151
+Using indicator functions of the type in (15) and (16), the model encodes exactly
+the same information as the HMM in (13), but with much weaker independenceassumptions. This means we can add information to the model from partiallyredundant and overlapping sources. Features that have been explored for use inMaxEnt tagging models include capitalization features, which indicate whetherthe current word is capitalized, all upper case, all lower case, mixed case, or non-alphanumeric, and whether or not the word is the ﬁrst word in the sentence. Wecan also add additional context sensitivity, so that the tag probabilities depend onthe previous word, as well as the previous tag and the current word.
+One potential problem with MaxEnt Markov models is what Lafferty et al.
+(2001) call the label bias problem : all probability going into one state in the model
+is passed on to successors and, in general, states with fewer outgoing transitionswill be preferred to those with more. Lafferty et al. (2001) propose the use of con-ditional random ﬁelds to eliminate this source of error by assigning a probabilityto an entire labeled sequence in one step:p(t
+1...tn|w1...wn)=1
+Z(w 1...wn)exp∑
+iλifi(w1...wn,t1...tn)
+The challenge in applying conditional random ﬁelds is to compute the partitionfunction Z(w
+1...wn), as in general there will be a very large number of possi-
+ble tag sequences for a given word sequence. However, if our features are likethose from typical HMM taggers, we can use a variant of the forward–backwardalgorithm to compute feature expectations during training.
+5.3 Parsing models
+As is the case for simple models like naïve Bayes text classiﬁers and hiddenMarkov models for tagging, we can easily construct a MaxEnt version of prob-abilistic context-free grammars (PCFGs). In a standard PCFG, we assume that theprobability of a tree tis the product of the individual rule probabilities:
+(17) p(t)=∏
+ip(ri(t))
+This depends crucially on the assumption that rule probabilities are independent.This assumption does not generally hold in the case of context-free grammarsand, as Abney (1997) shows, is systematically violated by attribute value grammarrules.
+Fortunately, the model in (17) can be straightforwardly recast as a MaxEnt
+model, with rules as features:(18) p(t)=exp∑
+iλiri(t)∑
+t′exp∑
+iλiri(t′)
+This version removes the independence assumptions of (17), allowing it to beapplied in a wider range of situations (Abney 1997; Johnson et al., 1999; Riezler
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 152 — #20
+152 Robert Malouf
+et al., 2002; Malouf & van Noord 2004; Clark & Curran 2007b). However, a potentialdrawback of MaxEnt models is that even the conditional version of equation (18)requires access to all parses of a given corpus sentence to compute the denominator.As the number of parses for a sentence grows exponentially with the length of thesentence, this model is difﬁcult to use in practice.
+Two classes of solutions to this problem have been proposed. On the one hand,
+Geman and Johnson (2002) and Miyao and Tsujii (2002) present approaches wheretraining data consists of parse (or feature) forests rather than sets of independentparses. If we enforce a strong locality condition on features, the denominator in(18) can be computed efﬁciently by dynamic programming. Geman and Johnson(2002) suggest that it is always possible to localize arbitrary features in an attributevalue grammar. However, for some classes of features used in practical systems,this localization would dramatically complicate the grammar and have severeimpacts on parsing efﬁciency. Another type of solution which does not dependon feature locality is offered in Osborne (2000). Osborne shows that it sufﬁcesto provide training instances from an ‘informative sample’ of Y(w). The feature
+weights chosen by maximizing (18) depend only on the expected values of thefeatures in the training data. So any subsample of the parses in the training datawhich yields unbiased estimates of the feature expectations should result in asaccurate a model as the complete set of parses. The vast majority of possibleparses have a very small probability and do not contribute much to the sum inthe denominator, so a relatively small sample can yield a fairly good estimate ofthe normalizing factor in (18).
+A remaining issue is how the model, once it has been learned from the train-
+ing data, can be applied efﬁciently. In the approaches of Geman and Johnson(2002) and Miyao and Tsujii (2002) features are localized, and therefore an efﬁ-cient dynamic programming algorithm can be used to extract the best parse froma parse forest. Malouf and van Noord (2004) present a beam-search generalizationof such an algorithm, and they show that the algorithm can be used efﬁciently torecover the best parse even in the presence of non-local features.
+6 Prospects
+MaxEnt models provide a general technique for constructing models givenlimited information integrated from multiple potentially overlapping sources.While MaxEnt models have been successfully used in many applications, theyhave recently fallen out of favor for classiﬁcation problems and have been replacedby non-parameteric methods like the support vector machine. However, activeresearch on MaxEnt models continues on at least two fronts.
+As alluded to in section 4 above, MaxEnt models and SVMs share many
+important properties. Both incorporate information from training data via sets ofconstraints on feature functions, and both depend on minimization of a penalizedloss function. So, while these two model classes have very different theoreticalorigins, in actual practice their application is not as different as one might expect.
+
+“9781405155816_4_005” — 2010/5/14 — 17:16 — page 153 — #21
+Maximum Entropy Models 153
+This has led to the development of hybrid methods which incorporate aspects ofboth MaxEnt and SVM estimation in model construction (Sears 2007). For exam-ple, Smith et al. (2007) explores alternative loss functions for MaxEnt models, andLafferty et al. (2004) and Zhu and Hastie (2005) consider the use of kernel functionsto allow MaxEnt models to capture non-linear decision boundaries.
+Another area in which active development of MaxEnt models continues is for
+applications in which non-parametric methods are not appropriate. For exam-ple, state-of-the-art machine translation systems based on noisy channel modelscombine probabilities estimated using several different models. Unlike classiﬁca-tion systems, in which the identity of an assigned label is more important thanthe estimate of its probability, Bayesian and noisy channel models depend onaccurate estimation of complete probability distributions. Systems which replacecomponents of the noisy channel model with MaxEnt distributions have shownconsiderable promise (Och & Ney 2001; Varea et al., 2002).
+NOTE
+1 http://tadm.sourceforge.net
+

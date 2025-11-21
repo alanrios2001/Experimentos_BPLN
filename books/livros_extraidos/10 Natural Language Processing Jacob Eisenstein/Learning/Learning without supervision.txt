@@ -1,0 +1,1008 @@
+Chapter 5 2423
+Learning without supervision 2424
+So far we’ve assumed the following setup: 2425
+•atraining set where you get observations xand labelsy; 2426
+•atest set where you only get observations x. 2427
+Without labeled data, is it possible to learn anything? This scenario is known as unsu- 2428
+pervised learning , and we will see that indeed it is possible to learn about the underlying 2429
+structure of unlabeled observations. This chapter will also explore some related scenarios: 2430
+semi-supervised learning , in which only some instances are labeled, and domain adap- 2431
+tation , in which the training data differs from the data on which the trained system will 2432
+be deployed. 2433
+5.1 Unsupervised learning 2434
+To motivate unsupervised learning, consider the problem of word sense disambiguation 2435
+(§4.2). Our goal is to classify each instance of a word, such as bank into a sense, 2436
+•bank#1 : a ﬁnancial institution 2437
+•bank#2 : the land bordering a river 2438
+It is difﬁcult to obtain sufﬁcient training data for word sense disambiguation, because 2439
+even a large corpus will contain only a few instances of all but the most common words. 2440
+Is it possible to learn anything about these different senses without labeled data? 2441
+Word sense disambiguation is usually performed using feature vectors constructed 2442
+from the local context of the word to be disambiguated. For example, for the word 2443
+107
+
+108 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+0 10 20 30 40
+density of word group 102040density of word group 2
+Figure 5.1: Counts of words from two different context groups
+bank , the immediate context might typically include words from one of the following two 2444
+groups: 2445
+1.ﬁnancial, deposits, credit, lending, capital, markets, regulated, reserve, liquid, assets 2446
+2.land, water, geography, stream, river, ﬂow, deposits, discharge, channel, ecology 2447
+Now consider a scatterplot, in which each point is a document containing the word bank . 2448
+The location of the document on the x-axis is the count of words in group 1, and the 2449
+location on the y-axis is the count for group 2. In such a plot, shown in Figure 5.1, two 2450
+“blobs” might emerge, and these blobs correspond to the different senses of bank . 2451
+Here’s a related scenario, from a different problem. Suppose you download thousands 2452
+of news articles, and make a scatterplot, where each point corresponds to a document: 2453
+thex-axis is the frequency of the group of words ( hurricane, winds, storm ); they-axis is the 2454
+frequency of the group ( election, voters, vote ). This time, three blobs might emerge: one 2455
+for documents that are largely about a hurricane, another for documents largely about a 2456
+election, and a third for documents about neither topic. 2457
+These clumps represent the underlying structure of the data. But the two-dimensional 2458
+scatter plots are based on groupings of context words, and in real scenarios these word 2459
+lists are unknown. Unsupervised learning applies the same basic idea, but in a high- 2460
+dimensional space with one dimension for every context word. This space can’t be di- 2461
+rectly visualized, but the idea is the same: try to identify the underlying structure of the 2462
+observed data, such that there are a few clusters of points, each of which is internally 2463
+coherent. Clustering algorithms are capable of ﬁnding such structure automatically. 2464
+5.1.1 K-means clustering 2465
+Clustering algorithms assign each data point to a discrete cluster, zi∈1,2,...K . One of 2466
+the best known clustering algorithms is K-means , an iterative algorithm that maintains 2467
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.1. UNSUPERVISED LEARNING 109
+Algorithm 8 K-means clustering algorithm
+1:procedureK-MEANS (x1:N,K)
+2: fori∈1...N do ⊿initialize cluster memberships
+3:z(i)←RandomInt (1,K)
+4: repeat
+5: fork∈1...K do ⊿recompute cluster centers
+6:νk←1
+δ(z(i)=k)∑N
+i=1δ(z(i)=k)x(i)
+7: fori∈1...N do ⊿reassign instances to nearest clusters
+8: z(i)←argmink||x(i)−νk||2
+9: until converged
+10: return{z(i)} ⊿return cluster assignments
+a cluster assignment for each instance, and a central (“mean”) location for each cluster. 2468
+K-means iterates between updates to the assignments and the centers: 2469
+1. each instance is placed in the cluster with the closest center; 2470
+2. each center is recomputed as the average over points in the cluster. 2471
+This is formalized in Algorithm 8. The term ||x(i)−ν||2refers to the squared Euclidean 2472
+norm,∑V
+j=1(x(i)
+j−νj)2. 2473
+SoftK-means is a particularly relevant variant. Instead of directly assigning each 2474
+point to a speciﬁc cluster, soft K-means assigns each point a distribution over clusters 2475
+q(i), so that∑K
+k=1q(i)(k) = 1 , and∀k,q(i)(k)≥0. The soft weight q(i)(k)is computed from 2476
+the distance of x(i)to the cluster center νk. In turn, the center of each cluster is computed 2477
+from a weighted average of the points in the cluster, 2478
+νk=1∑N
+i=1q(i)(k)N∑
+i=1q(i)(k)x(i). [5.1]
+We will now explore a probablistic version of soft K-means clustering, based on expec- 2479
+tation maximization (EM). Because EM clustering can be derived as an approximation to 2480
+maximum-likelihood estimation, it can be extended in a number of useful ways. 2481
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+110 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+5.1.2 Expectation Maximization (EM) 2482
+Expectation maximization combines the idea of soft K-means with Na ¨ıve Bayes classiﬁ-
+cation. To review, Na ¨ıve Bayes deﬁnes a probability distribution over the data,
+logp(x,y;φ,µ) =N∑
+i=1log(
+p(x(i)|y(i);φ)×p(y(i);µ))
+[5.2]
+Now suppose that you never observe the labels. To indicate this, we’ll refer to the label
+of each instance as z(i), rather than y(i), which is usually reserved for observed variables.
+By marginalizing over the latent variablesz, we compute the marginal probability of the
+observed instances x:
+logp(x;φ,µ) =N∑
+i=1logp(x(i);φ,µ) [5.3]
+=N∑
+i=1logK∑
+z=1p(x(i),z;φ,µ) [5.4]
+=N∑
+i=1logK∑
+z=1p(x(i)|z;φ)×p(z;µ). [5.5]
+To estimate the parameters φandµ, we can maximize the marginal likelihood in Equa- 2483
+tion 5.5. Why is this the right thing to maximize? Without labels, discriminative learning 2484
+is impossible — there’s nothing to discriminate. So maximum likelihood is all we have. 2485
+When the labels are observed, we can estimate the parameters of the Na ¨ıve Bayes 2486
+probability model separately for each label. But marginalizing over the labels couples 2487
+these parameters, making direct optimization of logp(x)intractable. We will approximate 2488
+the log-likelihood by introducing an auxiliary variable q(i), which is a distribution over the 2489
+label setZ={1,2,...,K}. The optimization procedure will alternate between updates to 2490
+qand updates to the parameters (φ,µ). Thus,q(i)plays here as in soft K-means. 2491
+To derive the updates for this optimization, multiply the right side of Equation 5.5 by
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.1. UNSUPERVISED LEARNING 111
+the ratioq(i)(z)
+q(i)(z)= 1,
+logp(x;φ,µ) =M∑
+i=1logK∑
+z=1p(x(i)|z;φ)×p(z;µ)×q(i)(z)
+q(i)(z)[5.6]
+=M∑
+i=1logK∑
+z=1q(i)(z)×p(x(i)|z;φ)×p(z;µ)×1
+q(i)(z)[5.7]
+=M∑
+i=1logEq(i)[
+p(x(i)|z;φ)p(z;µ)
+q(i)(z)]
+, [5.8]
+whereEq(i)[f(z)] =∑K
+z=1q(i)(z)×f(z)refers to the expectation of the function funder 2492
+the distribution z∼q(i). 2493
+Jensen’s inequality says that because logis a concave function, we can push it inside
+the expectation, and obtain a lower bound.
+logp(x;φ,µ)≥N∑
+i=1Eq(i)[
+logp(x(i)|z;φ)p(z;µ)
+q(i)(z)]
+[5.9]
+J≜N∑
+i=1Eq(i)[
+logp(x(i)|z;φ) + log p(z;µ)−logq(i)(z)]
+[5.10]
+=N∑
+i=1Eq(i)[
+logp(x(i),z;φ,µ)]
++H(q(i)) [5.11]
+We will focus on Equation 5.10, which is the lower bound on the marginal log-likelihood 2494
+of the observed data, logp(x). Equation 5.11 shows the connection to the information 2495
+theoretic concept of entropy ,H(q(i)) =−∑K
+z=1q(i)(z) logq(i)(z), which measures the av- 2496
+erage amount of information produced by a draw from the distribution q(i). The lower 2497
+boundJis a function of two groups of arguments: 2498
+•the distributions q(i)for each instance; 2499
+•the parameters µandφ. 2500
+The expectation-maximization (EM) algorithm maximizes the bound with respect to each 2501
+of these arguments in turn, while holding the other ﬁxed. 2502
+5.1.2.1 The E-step 2503
+The step in which we update q(i)is known as the E-step , because it updates the distribu-
+tion under which the expectation is computed. To derive this update, ﬁrst write out the
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+112 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+expectation in the lower bound as a sum,
+J=N∑
+i=1K∑
+z=1q(i)(z)[
+logp(x(i)|z;φ) + log p(z;µ)−logq(i)(z)]
+. [5.12]
+When optimizing this bound, we must also respect a set of “sum-to-one” constraints,∑K
+z=1q(i)(z) = 1 for alli. Just as in Na ¨ıve Bayes, this constraint can be incorporated into a
+Lagrangian:
+Jq=N∑
+i=1K∑
+z=1q(i)(z)(
+logp(x(i)|z;φ) + log p(z;µ)−logq(i)(z))
++λ(i)(1−K∑
+z=1q(i)(z)),
+[5.13]
+whereλ(i)is the Lagrange multiplier for instance i. 2504
+The Lagrangian is maximized by taking the derivative and solving for q(i):
+∂Jq
+∂q(i)(z)= log p(x(i)|z;φ) + log p(z;θ)−logq(i)(z)−1−λ(i)[5.14]
+logq(i)(z) = log p(x(i)|z;φ) + log p(z;µ)−1−λ(i)[5.15]
+q(i)(z)∝p(x(i)|z;φ)×p(z;µ). [5.16]
+Applying the sum-to-one constraint gives an exact solution,
+q(i)(z) =p(x(i)|z;φ)×p(z;µ)∑K
+z′=1p(x(i)|z′;φ)×p(z′;µ)[5.17]
+=p(z|x(i);φ,µ). [5.18]
+After normalizing, each q(i)— which is the soft distribution over clusters for data x(i)— 2505
+is set to the posterior probability p (z|x(i);φ,µ)under the current parameters. Although 2506
+the Lagrange multipliers λ(i)were introduced as additional parameters, they drop out 2507
+during normalization. 2508
+5.1.2.2 The M-step 2509
+Next, we hold ﬁxed the soft assignments q(i), and maximize with respect to the pa-
+rameters,φandµ. Let’s focus on the parameter φ, which parametrizes the likelihood
+p(x|z;φ), and leaveµfor an exercise. The parameter φis a distribution over words for
+each cluster, so it is optimized under the constraint that∑V
+j=1φz,j= 1. To incorporate this
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.1. UNSUPERVISED LEARNING 113
+constraint, we introduce a set of Lagrange multiplers {λz}K
+z=1, and from the Lagrangian,
+Jφ=N∑
+i=1K∑
+z=1q(i)(z)(
+logp(x(i)|z;φ) + log p(z;µ)−logq(i)(z))
++K∑
+z=1λz(1−V∑
+j=1φz,j).
+[5.19]
+The term logp(x(i)|z;φ)is the conditional log-likelihood for the multinomial, which 2510
+expands to, 2511
+logp(x(i)|z,φ) =C+V∑
+j=1xjlogφz,j, [5.20]
+whereCis a constant with respect to φ— see Equation 2.12 in §2.1 for more discussion 2512
+of this probability function. 2513
+Setting the derivative of Jφequal to zero,
+∂Jφ
+∂φz,j=N∑
+i=1q(i)(z)×x(i)
+j
+φz,j−λz [5.21]
+φz,j∝N∑
+i=1q(i)(z)×x(i)
+j. [5.22]
+Becauseφzis constrained to be a probability distribution, the exact solution is computed
+as,
+φz,j=∑N
+i=1q(i)(z)×x(i)
+j∑V
+j′=1∑N
+i=1q(i)(z)×x(i)
+j′=Eq[count (z,j)]∑V
+j′=1Eq[count (z,j′)], [5.23]
+where the counter j∈{1,2,...,V}indexes over base features, such as words. 2514
+This update sets φzequal to the relative frequency estimate of the expected counts under 2515
+the distribution q. As in supervised Na ¨ıve Bayes, we can smooth these counts by adding 2516
+a constantα. The update for µis similar:µz∝∑N
+i=1q(i)(z) =Eq[count (z)], which is the 2517
+expected frequency of cluster z. These probabilities can also be smoothed. In sum, the 2518
+M-step is just like Na ¨ıve Bayes, but with expected counts rather than observed counts. 2519
+The multinomial likelihood p (x|z)can be replaced with other probability distribu- 2520
+tions: for example, for continuous observations, a Gaussian distribution can be used. In 2521
+some cases, there is no closed-form update to the parameters of the likelihood. One ap- 2522
+proach is to run gradient-based optimization at each M-step; another is to simply take a 2523
+single step along the gradient step and then return to the E-step (Berg-Kirkpatrick et al., 2524
+2010). 2525
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+114 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+0 2 4 6 8
+iteration430000440000450000negative log-likelihood bound
+Figure 5.2: Sensitivity of expectation maximization to initialization. Each line shows the
+progress of optimization from a different random initialization.
+5.1.3 EM as an optimization algorithm 2526
+Algorithms that alternate between updating subsets of the parameters are called coordi- 2527
+nate ascent algorithms. The objective J(the lower bound on the marginal likelihood of 2528
+the data) is separately convex in qand(µ,φ), but it is not jointly convex in all terms; this 2529
+condition is known as biconvexity . Each step of the expectation-maximization algorithm 2530
+is guaranteed not to decrease the lower bound J, which means that EM will converge 2531
+towards a solution at which no nearby points yield further improvements. This solution 2532
+is alocal optimum — it is as good or better than any of its immediate neighbors, but is 2533
+notguaranteed to be optimal among all possible conﬁgurations of (q,µ,φ). 2534
+The fact that there is no guarantee of global optimality means that initialization is 2535
+important: where you start can determine where you ﬁnish. To illustrate this point, 2536
+Figure 5.2 shows the objective function for EM with ten different random initializations: 2537
+while the objective function improves monotonically in each run, it converges to several 2538
+different values.1For the convex objectives that we encountered in chapter 2, it was not 2539
+necessary to worry about initialization, because gradient-based optimization guaranteed 2540
+to reach the global minimum. But in expectation-maximization — and in the deep neural 2541
+networks from chapter 3 — initialization matters. 2542
+Inhard EM , eachq(i)distribution assigns probability of 1to a single label ˆz(i), and zero 2543
+probability to all others (Neal and Hinton, 1998). This is similar in spirit to K-means clus- 2544
+tering, and can outperform standard EM in some cases (Spitkovsky et al., 2010). Another 2545
+variant of expectation maximization incorporates stochastic gradient descent (SGD): after 2546
+performing a local E-step at each instance x(i), we immediately make a gradient update 2547
+to the parameters (µ,φ). This algorithm has been called incremental expectation maxi- 2548
+mization (Neal and Hinton, 1998) and online expectation maximization (Sato and Ishii, 2549
+2000; Capp ´e and Moulines, 2009), and is especially useful when there is no closed-form 2550
+1The ﬁgure shows the upper bound on the negative log-likelihood, because optimization is typically
+framed as minimization rather than maximization.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.1. UNSUPERVISED LEARNING 115
+optimum for the likelihood p (x|z), and in online settings where new data is constantly 2551
+streamed in (see Liang and Klein, 2009, for a comparison for online EM variants). 2552
+5.1.4 How many clusters? 2553
+So far, we have assumed that the number of clusters Kis given. In some cases, this as- 2554
+sumption is valid. For example, a lexical semantic resource like WordNet might deﬁne the 2555
+number of senses for a word. In other cases, the number of clusters could be a parameter 2556
+for the user to tune: some readers want a coarse-grained clustering of news stories into 2557
+three or four clusters, while others want a ﬁne-grained clustering into twenty or more. 2558
+But many times there is little extrinsic guidance for how to choose K. 2559
+One solution is to choose the number of clusters to maximize a metric of clustering 2560
+quality. The other parameters µandφare chosen to maximize the log-likelihood bound 2561
+J, so this might seem a potential candidate for tuning K. However, Jwill never decrease 2562
+withK: if it is possible to obtain a bound of JKwithKclusters, then it is always possible 2563
+to do at least as well with K+ 1clusters, by simply ignoring the additional cluster and 2564
+setting its probability to zero in qandµ. It is therefore necessary to introduce a penalty 2565
+for model complexity, so that fewer clusters are preferred. For example, the Akaike Infor- 2566
+mation Crition (AIC; Akaike, 1974) is the linear combination of the number of parameters 2567
+and the log-likelihood, 2568
+AIC = 2M−2J, [5.24]
+whereMis the number of parameters. In an expectation-maximization clustering algo- 2569
+rithm,M=K×V+K. Since the number of parameters increases with the number of 2570
+clustersK, the AIC may prefer more parsimonious models, even if they do not ﬁt the data 2571
+quite as well. 2572
+Another choice is to maximize the predictive likelihood on heldout data. This data 2573
+is not used to estimate the model parameters φandµ, and so it is not the case that the 2574
+likelihood on this data is guaranteed to increase with K. Figure 5.3 shows the negative 2575
+log-likelihood on training and heldout data, as well as the AIC. 2576
+*Bayesian nonparametrics An alternative approach is to treat the number of clusters as 2577
+another latent variable. This requires statistical inference over a set of models with a vari- 2578
+able number of clusters. This is not possible within the framework of expectation max- 2579
+imization, but there are several alternative inference procedures which can be applied, 2580
+including Markov Chain Monte Carlo (MCMC) , which is brieﬂy discussed in §5.5 (for 2581
+more details, see Chapter 25 of Murphy, 2012). Bayesian nonparametrics have been ap- 2582
+plied to the problem of unsupervised word sense induction, learning not only the word 2583
+senses but also the number of senses per word (Reisinger and Mooney, 2010). 2584
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+116 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+10 20 30 40 50
+Number of clusters220000240000260000
+Negative log-likelihood bound
+AIC
+10 20 30 40 50
+Number of clusters750008000085000
+Out-of-sample negative log likelihood
+Figure 5.3: The negative log-likelihood and AIC for several runs of expectation maximiza-
+tion, on synthetic data. Although the data was generated from a model with K= 10 , the
+optimal number of clusters is ˆK= 15 , according to AIC and the heldout log-likelihood.
+The training set log-likelihood continues to improve as Kincreases.
+5.2 Applications of expectation-maximization 2585
+EM is not really an “algorithm” like, say, quicksort. Rather, it is a framework for learning 2586
+with missing data. The recipe for using EM on a problem of interest is: 2587
+•Introduce latent variables z, such that it is easy to write the probability P(x,z). It 2588
+should also be easy to estimate the associated parameters, given knowledge of z. 2589
+•Derive the E-step updates for q(z), which is typically factored as q(z) =∏N
+i=1qz(i)(z(i)), 2590
+whereiis an index over instances. 2591
+•The M-step updates typically correspond to the soft version of a probabilistic super- 2592
+vised learning algorithm, like Na ¨ıve Bayes. 2593
+This section discusses a few of the many applications of this general framework. 2594
+5.2.1 Word sense induction 2595
+The chapter began by considering the problem of word sense disambiguation when the 2596
+senses are not known in advance. Expectation-maximization can be applied to this prob- 2597
+lem by treating each cluster as a word sense. Each instance represents the use of an 2598
+ambiguous word, and x(i)is a vector of counts for the other words that appear nearby: 2599
+Sch¨utze (1998) uses all words within a 50-word window. The probability p (x(i)|z)can be 2600
+set to the multinomial distribution, as in Na ¨ıve Bayes. The EM algorithm can be applied 2601
+directly to this data, yielding clusters that (hopefully) correspond to the word senses. 2602
+Better performance can be obtained by ﬁrst applying truncated singular value decom-
+position (SVD) to the matrix of context-counts Cij=count (i,j), where count (i,j)is the
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.2. APPLICATIONS OF EXPECTATION-MAXIMIZATION 117
+count of word jin the context of instance i. Truncated singular value decomposition ap-
+proximates the matrix Cas a product of three matrices, U,S,V, under the constraint that
+UandVare orthonormal, and Sis diagonal:
+min
+U,S,V||C−USV⊤||F [5.25]
+s.t.U∈RV×K,UU⊤=I
+S=Diag (s1,s2,...,sK)
+V⊤∈RNp×K,VV⊤=I,
+where||·||Fis the Frobenius norm, ||X||F=√∑
+i,jX2
+i,j. The matrix Ucontains the 2603
+left singular vectors of C, and the rows of this matrix can be used as low-dimensional 2604
+representations of the count vectors ci. EM clustering can be made more robust by setting 2605
+the instance descriptions x(i)equal to these rows, rather than using raw counts (Sch ¨utze, 2606
+1998). However, because the instances are now dense vectors of continuous numbers, the 2607
+probability p (x(i)|z)must be deﬁned as a multivariate Gaussian distribution. 2608
+In truncated singular value decomposition, the hyperparameter Kis the truncation 2609
+limit: when Kis equal to the rank of C, the norm of the difference between the original 2610
+matrix Cand its reconstruction USV⊤will be zero. Lower values of Kincrease the recon- 2611
+struction error, but yield vector representations that are smaller and easier to learn from. 2612
+Singular value decomposition is discussed in more detail in chapter 14. 2613
+5.2.2 Semi-supervised learning 2614
+Expectation-maximization can also be applied to the problem of semi-supervised learn- 2615
+ing: learning from both labeled and unlabeled data in a single model. Semi-supervised 2616
+learning makes use of ground truth annotations, ensuring that each label ycorresponds 2617
+to the desired concept. By adding unlabeled data, it is possible cover a greater fraction 2618
+of the features than would be possible using labeled data alone. Other methods for semi- 2619
+supervised learning are discussed in §5.3, but for now, let’s approach the problem within 2620
+the framework of expectation-maximization (Nigam et al., 2000). 2621
+Suppose we have labeled data {(x(i),y(i))}Nℓ
+i=1, and unlabeled data {x(i)}Nℓ+Nu
+i=Nℓ+1, where
+Nℓis the number of labeled instances and Nuis the number of unlabeled instances. We can
+learn from the combined data by maximizing a lower bound on the joint log-likelihood,
+L=Nℓ∑
+i=1logp(x(i),y(i);µ,φ) +Nℓ+Nu∑
+j=Nℓ+1logp(x(j);µ,φ) [5.26]
+=Nℓ∑
+i=1(
+logp(x(i)|y(i);φ) + log p(y(i);µ))
++Nℓ+Nu∑
+j=Nℓ+1logK∑
+y=1p(x(j),y;µ,φ). [5.27]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+118 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+Algorithm 9 Generative process for the Na ¨ıve Bayes classiﬁer with hidden components
+forDocument i∈{1,2,...,N}do:
+Draw the label y(i)∼Categorical (µ);
+Draw the component z(i)∼Categorical (βy(i));
+Draw the word counts x(i)|y(i),z(i)∼Multinomial (φz(i)).
+The left sum is identical to the objective in Na ¨ıve Bayes; the right sum is the marginal log- 2622
+likelihood for expectation-maximization clustering, from Equation 5.5. We can construct a 2623
+lower bound on this log-likelihood by introducing distributions q(j)for allj∈{Nℓ+ 1,...,Nℓ+Nu}. 2624
+The E-step updates these distributions; the M-step updates the parameters φandµ, us- 2625
+ing the expected counts from the unlabeled data and the observed counts from the labeled 2626
+data. 2627
+A critical issue in semi-supervised learning is how to balance the impact of the labeled 2628
+and unlabeled data on the classiﬁer weights, especially when the unlabeled data is much 2629
+larger than the labeled dataset. The risk is that the unlabeled data will dominate, caus- 2630
+ing the parameters to drift towards a “natural clustering” of the instances — which may 2631
+not correspond to a good classiﬁer for the labeled data. One solution is to heuristically 2632
+reweight the two components of Equation 5.26, tuning the weight of the two components 2633
+on a heldout development set (Nigam et al., 2000). 2634
+5.2.3 Multi-component modeling 2635
+As a ﬁnal application, let’s return to fully supervised classiﬁcation. A classic dataset for 2636
+text classiﬁcation is 20 newsgroups, which contains posts to a set of online forums, called 2637
+newsgroups. One of the newsgroups is comp.sys.mac.hardware , which discusses Ap- 2638
+ple computing hardware. Suppose that within this newsgroup there are two kinds of 2639
+posts: reviews of new hardware, and question-answer posts about hardware problems. 2640
+The language in these components of themac.hardware class might have little in com- 2641
+mon; if so, it would be better to model these components separately, rather than treating 2642
+their union as a single class. However, the component responsible for each instance is not 2643
+directly observed. 2644
+Recall that Na ¨ıve Bayes is based on a generative process, which provides a stochastic 2645
+explanation for the observed data. In Na ¨ıve Bayes, each label is drawn from a categorical 2646
+distribution with parameter µ, and each vector of word counts is drawn from a multi- 2647
+nomial distribution with parameter φy. For multi-component modeling, we envision a 2648
+slightly different generative process, incorporating both the observed label y(i)and the 2649
+latent component z(i). This generative process is shown in Algorithm 9. A new parameter 2650
+βy(i)deﬁnes the distribution of components, conditioned on the label y(i). The component, 2651
+and not the class label, then parametrizes the distribution over words. 2652
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.3. SEMI-SUPERVISED LEARNING 119
+(5.1), Villeneuve a bel et bien r´ eussi son pari de changer de perspectives tout en assurant
+une coh ´erence `a la franchise.2
+(5.2)/ Il est ´egalement trop long et bancal dans sa narration, ti `ede dans ses intentions, et
+tiraill ´e entre deux personnages et directions qui ne parviennent pas `a coexister en har-
+monie.3
+(5.3) Denis Villeneuve a r´ eussi une suite parfaitement maitris ´ee4
+(5.4) Long ,bavard , hyper design, `a peine agit ´e (le comble de l’action : une bagarre dans la
+ﬂotte), m ´etaphysique et, surtout, ennuyeux jusqu’ `a la catalepsie.5
+(5.5) Une suite d’une ´ecrasante puissance, m ˆelant parfaitement le contemplatif au narratif.6
+(5.6) Le ﬁlm impitoyablement bavard ﬁnit quand m ˆeme par se taire quand se l `eve l’esp `ece
+de bouquet ﬁnal o `u semble se d ´echa ˆıner, comme en libre parcours de poulets d ´ecapit ´es,
+l’arm ´ee des graphistes num ´eriques griffant nerveusement la palette graphique entre ag-
+onie et orgasme.7
+Table 5.1: Labeled and unlabeled reviews of the ﬁlms Blade Runner 2049 and Transformers:
+The Last Knight .
+The labeled data includes (x(i),y(i)), but notz(i), so this is another case of missing
+data. Again, we sum over the missing data, applying Jensen’s inequality to as to obtain a
+lower bound on the log-likelihood,
+logp(x(i),y(i)) = logKz∑
+z=1p(x(i),y(i),z;µ,φ,β) [5.28]
+≥logp(y(i);µ) +Eq(i)
+Z|Y[logp(x(i)|z;φ) + log p(z|y(i);β)−logq(i)(z)].
+[5.29]
+We are now ready to apply expectation maximization. As usual, the E-step updates
+the distribution over the missing data, q(i)
+Z|Y. The M-step updates the parameters,
+βy,z=Eq[count (y,z)]∑Kz
+z′=1Eq[count (y,z′)][5.30]
+φz,j=Eq[count (z,j)]∑V
+j′=1Eq[count (z,j′)]. [5.31]
+5.3 Semi-supervised learning 2653
+In semi-supervised learning, the learner makes use of both labeled and unlabeled data. 2654
+To see how this could help, suppose you want to do sentiment analysis in French. In Ta- 2655
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+120 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+ble 5.1, there are two labeled examples, one positive and one negative. From this data, a 2656
+learner could conclude that r´ eussi is positive and long is negative. This isn’t much! How- 2657
+ever, we can propagate this information to the unlabeled data, and potentially learn more. 2658
+•If we are conﬁdent that r´ eussi is positive, then we might guess that (5.3) is also posi- 2659
+tive. 2660
+•That suggests that parfaitement is also positive. 2661
+•We can then propagate this information to (5.5), and learn from this words in this 2662
+example. 2663
+•Similarly, we can propagate from the labeled data to (5.4), which we guess to be 2664
+negative because it shares the word long. This suggests that bavard is also negative, 2665
+which we propagate to (5.6). 2666
+Instances (5.3) and (5.4) were “similar” to the labeled examples for positivity and negativ- 2667
+ity, respectively. By using these instances to expand the models for each class, it became 2668
+possible to correctly label instances (5.5) and (5.6), which didn’t share any important fea- 2669
+tures with the original labeled data. This requires a key assumption: that similar instances 2670
+will have similar labels. 2671
+In§5.2.2, we discussed how expectation maximization can be applied to semi-supervised 2672
+learning. Using the labeled data, the initial parameters φwould assign a high weight for 2673
+r´ eussi in the positive class, and a high weight for long in the negative class. These weights 2674
+helped to shape the distributions qfor instances (5.3) and (5.4) in the E-step. In the next 2675
+iteration of the M-step, the parameters φare updated with counts from these instances, 2676
+making it possible to correctly label the instances (5.5) and (5.6). 2677
+However, expectation-maximization has an important disadvantage: it requires using 2678
+a generative classiﬁcation model, which restricts the features that can be used for clas- 2679
+siﬁcation. In this section, we explore non-probabilistic approaches, which impose fewer 2680
+restrictions on the classiﬁcation model. 2681
+5.3.1 Multi-view learning 2682
+EM semi-supervised learning can be viewed as self-training : the labeled data guides the 2683
+initial estimates of the classiﬁcation parameters; these parameters are used to compute 2684
+a label distribution over the unlabeled instances, q(i); the label distributions are used to 2685
+update the parameters. The risk is that self-training drifts away from the original labeled 2686
+data. This problem can be ameliorated by multi-view learning . Here we take the as- 2687
+sumption that the features can be decomposed into multiple “views”, each of which is 2688
+conditionally independent, given the label. For example, consider the problem of classi- 2689
+fying a name as a person or location: one view is the name itself; another is the context in 2690
+which it appears. This situation is illustrated in Table 5.2. 2691
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.3. SEMI-SUPERVISED LEARNING 121
+x(1)x(2)y
+1. Peachtree Street located on LOC
+2. Dr. Walker said PER
+3. Zanzibar located in ? →LOC
+4. Zanzibar ﬂew to ? →LOC
+5. Dr. Robert recommended ? →PER
+6. Oprah recommended ? →PER
+Table 5.2: Example of multiview learning for named entity classiﬁcation
+Co-training is an iterative multi-view learning algorithm, in which there are separate 2692
+classiﬁers for each view (Blum and Mitchell, 1998). At each iteration of the algorithm, each 2693
+classiﬁer predicts labels for a subset of the unlabeled instances, using only the features 2694
+available in its view. These predictions are then used as ground truth to train the classiﬁers 2695
+associated with the other views. In the example shown in Table 5.2, the classiﬁer on x(1)2696
+might correctly label instance #5 as a person, because of the feature Dr; this instance would 2697
+then serve as training data for the classiﬁer on x(2), which would then be able to correctly 2698
+label instance #6, thanks to the feature recommended . If the views are truly independent, 2699
+this procedure is robust to drift. Furthermore, it imposes no restrictions on the classiﬁers 2700
+that can be used for each view. 2701
+Word-sense disambiguation is particularly suited to multi-view learning, thanks to the 2702
+heuristic of “one sense per discourse”: if a polysemous word is used more than once in 2703
+a given text or conversation, all usages refer to the same sense (Gale et al., 1992). This 2704
+motivates a multi-view learning approach, in which one view corresponds to the local 2705
+context (the surrounding words), and another view corresponds to the global context at 2706
+the document level (Yarowsky, 1995). The local context view is ﬁrst trained on a small 2707
+seed dataset. We then identify its most conﬁdent predictions on unlabeled instances. The 2708
+global context view is then used to extend these conﬁdent predictions to other instances 2709
+within the same documents. These new instances are added to the training data to the 2710
+local context classiﬁer, which is retrained and then applied to the remaining unlabeled 2711
+data. 2712
+5.3.2 Graph-based algorithms 2713
+Another family of approaches to semi-supervised learning begins by constructing a graph, 2714
+in which pairs of instances are linked with symmetric weights ωi,j, e.g., 2715
+ωi,j= exp(−α×||x(i)−x(j)||2). [5.32]
+The goal is to use this weighted graph to propagate labels from a small set of labeled 2716
+instances to larger set of unlabeled instances. 2717
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+122 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+Inlabel propagation , this is done through a series of matrix operations (Zhu et al., 2718
+2003). Let Qbe a matrix of size N×K, in which each row q(i)describes the labeling 2719
+of instance i. When ground truth labels are available, then q(i)is an indicator vector, 2720
+withq(i)
+y(i)= 1 andq(i)
+y′̸=y(i)= 0. Let us refer to the submatrix of rows containing labeled 2721
+instances as QL, and the remaining rows as QU. The rows of QUare initialized to assign 2722
+equal probabilities to all labels, qi,k=1
+K. 2723
+Now, letTi,jrepresent the “transition” probability of moving from node jto nodei, 2724
+Ti,j≜Pr(j→i) =ωi,j∑N
+k=1ωk,j. [5.33]
+We compute values of Ti,jfor all instances jand all unlabeled instancesi, forming a matrix
+of sizeNU×N. If the dataset is large, this matrix may be expensive to store and manip-
+ulate; a solution is to sparsify it, by keeping only the κlargest values in each row, and
+setting all other values to zero. We can then “propagate” the label distributions to the
+unlabeled instances,
+˜QU←TQ [5.34]
+s←˜QU1 [5.35]
+QU←Diag (s)−1˜QU. [5.36]
+The expression ˜QU1indicates multiplication of ˜QUby a column vector of ones, which is 2725
+equivalent to computing the sum of each row of ˜QU. The matrix Diag (s)is a diagonal 2726
+matrix with the elements of son the diagonals. The product Diag (s)−1˜QUhas the effect 2727
+of normalizing the rows of ˜QU, so that each row of QUis a probability distribution over 2728
+labels. 2729
+5.4 Domain adaptation 2730
+In many practical scenarios, the labeled data differs in some key respect from the data 2731
+to which the trained model is to be applied. A classic example is in consumer reviews: 2732
+we may have labeled reviews of movies (the source domain ), but we want to predict the 2733
+reviews of appliances (the target domain ). A similar issues arise with genre differences: 2734
+most linguistically-annotated data is news text, but application domains range from social 2735
+media to electronic health records. In general, there may be several source and target 2736
+domains, each with their own properties; however, for simplicity, this discussion will 2737
+focus mainly on the case of a single source and target domain. 2738
+The simplest approach is “direct transfer”: train a classiﬁer on the source domain, 2739
+and apply it directly to the target domain. The accuracy of this approach depends on the 2740
+extent to which features are shared across domains. In review text, words like outstanding 2741
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.4. DOMAIN ADAPTATION 123
+and disappointing will apply across both movies and appliances; but others, like terrifying , 2742
+may have meanings that are domain-speciﬁc. Domain adaptation algorithms attempt 2743
+to do better than direct transfer, by learning from data in both domains. There are two 2744
+main families of domain adaptation algorithms, depending on whether any labeled data 2745
+is available in the target domain. 2746
+5.4.1 Supervised domain adaptation 2747
+In supervised domain adaptation, there is a small amount of labeled data in the target 2748
+domain, and a large amount of data in the source domain. The simplest approach would 2749
+be to ignore domain differences, and simply merge the training data from the source and 2750
+target domains. There are several other baseline approaches to dealing with this sce- 2751
+nario (Daum ´e III, 2007): 2752
+Interpolation. Train a classiﬁer for each domain, and combine their predictions. For ex- 2753
+ample, 2754
+ˆy= argmax
+yλsΨs(x,y) + (1−λs)Ψt(x,y), [5.37]
+where ΨsandΨtare the scoring functions from the source and target domain clas- 2755
+siﬁers respectively, and λsis the interpolation weight. 2756
+Prediction. Train a classiﬁer on the source domain data, use its prediction as an additional 2757
+feature in a classiﬁer trained on the target domain data. 2758
+Priors. Train a classiﬁer on the source domain data, and use its weights as a prior distri- 2759
+bution on the weights of the classiﬁer for the target domain data. This is equivalent 2760
+to regularizing the target domain weights towards the weights of the source domain 2761
+classiﬁer (Chelba and Acero, 2006), 2762
+ℓ(θt) =N∑
+i=1ℓ(i)(x(i),y(i);θt) +λ||θt−θs||2
+2, [5.38]
+whereℓ(i)is the prediction loss on instance i, andλis the regularization weight. 2763
+An effective and “frustratingly simple” alternative is EasyAdapt (Daum ´e III, 2007),
+which creates copies of each feature: one for each domain and one for the cross-domain
+setting. For example, a negative review of the ﬁlm Wonder Woman begins, As boring and
+ﬂavorless as a three-day-old grilled cheese sandwich. . . .8The resulting bag-of-words feature
+8http://www.colesmithey.com/capsules/2017/06/wonder-woman.HTML , accessed October 9.
+2017.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+124 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+vector would be,
+f(x,y,d) ={(boring,−,MOVIE ) : 1,(boring,−,∗) : 1,
+(ﬂavorless,−,MOVIE ) : 1,(ﬂavorless,−,∗) : 1,
+(three-day-old ,−,MOVIE ) : 1,(three-day-old ,−,∗) : 1,
+...},
+with (boring,−,MOVIE )indicating the word boring appearing in a negative labeled doc- 2764
+ument in the MOVIE domain, and (boring,−,∗)indicating the same word in a negative 2765
+labeled document in anydomain. It is up to the learner to allocate weight between the 2766
+domain-speciﬁc and cross-domain features: for words that facilitate prediction in both 2767
+domains, the learner will use the cross-domain features; for words that are relevant only 2768
+to a single domain, the domain-speciﬁc features will be used. Any discriminative classi- 2769
+ﬁer can be used with these augmented features.92770
+5.4.2 Unsupervised domain adaptation 2771
+In unsupervised domain adaptation, there is no labeled data in the target domain. Un- 2772
+supervised domain adaptation algorithms cope with this problem by trying to make the 2773
+data from the source and target domains as similar as possible. This is typically done by 2774
+learning a projection function , which puts the source and target data in a shared space, 2775
+in which a learner can generalize across domains. This projection is learned from data in 2776
+both domains, and is applied to the base features — for example, the bag-of-words in text 2777
+classiﬁcation. The projected features can then be used both for training and for prediction. 2778
+5.4.2.1 Linear projection 2779
+In linear projection, the cross-domain representation is constructed by a matrix-vector 2780
+product, 2781
+g(x(i)) =Ux(i). [5.39]
+The projected vectors g(x(i))can then be used as base features during both training (from 2782
+the source domain) and prediction (on the target domain). 2783
+The projection matrix Ucan be learned in a number of different ways, but many ap- 2784
+proaches focus on compressing and reconstructing the base features (Ando and Zhang, 2785
+2005). For example, we can deﬁne a set of pivot features , which are typically chosen be- 2786
+cause they appear in both domains: in the case of review documents, pivot features might 2787
+include evaluative adjectives like outstanding and disappointing (Blitzer et al., 2007). For 2788
+each pivot feature j, we deﬁne an auxiliary problem of predicting whether the feature is 2789
+9EasyAdapt can be explained as a hierarchical Bayesian model, in which the weights for each domain
+are drawn from a shared prior (Finkel and Manning, 2009).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.4. DOMAIN ADAPTATION 125
+present in each example, using the remaining base features. Let φjdenote the weights of 2790
+this classiﬁer, and us horizontally concatenate the weights for each of the Nppivot features 2791
+into a matrix Φ= [φ1,φ2,...,φNP]. 2792
+We then perform truncated singular value decomposition on Φ, as described in§5.2.1, 2793
+obtaining Φ≈USV⊤.The rows of the matrix Usummarize information about each base 2794
+feature: indeed, the truncated singular value decomposition identiﬁes a low-dimension 2795
+basis for the weight matrix Φ, which in turn links base features to pivot features. Sup- 2796
+pose that a base feature reliable occurs only in the target domain of appliance reviews. 2797
+Nonetheless, it will have a positive weight towards some pivot features (e.g., outstanding , 2798
+recommended ), and a negative weight towards others (e.g., worthless ,unpleasant ). A base 2799
+feature such as watchable might have the same associations with the pivot features, and 2800
+therefore,ureliable≈uwatchable . The matrix Ucan thus project the base features into a 2801
+space in which this information is shared. 2802
+5.4.2.2 Non-linear projection 2803
+Non-linear transformations of the base features can be accomplished by implementing 2804
+the transformation function as a deep neural network, which is trained from an auxiliary 2805
+objective. 2806
+Denoising objectives One possibility is to train a projection function to reconstruct a 2807
+corrupted version of the original input. The original input can be corrupted in various 2808
+ways: by the addition of random noise (Glorot et al., 2011; Chen et al., 2012), or by the 2809
+deletion of features (Chen et al., 2012; Yang and Eisenstein, 2015). Denoising objectives 2810
+share many properties of the linear projection method described above: they enable the 2811
+projection function to be trained on large amounts of unlabeled data from the target do- 2812
+main, and allow information to be shared across the feature space, thereby reducing sen- 2813
+sitivity to rare and domain-speciﬁc features. 2814
+Adversarial objectives The ultimate goal is for the transformed representations g(x(i)) 2815
+to be domain-general. This can be made an explicit optimization criterion by comput- 2816
+ing the similarity of transformed instances both within and between domains (Tzeng 2817
+et al., 2015), or by formulating an auxiliary classiﬁcation task, in which the domain it- 2818
+self is treated as a label (Ganin et al., 2016). This setting is adversarial , because we want 2819
+to learn a representation that makes this classiﬁer perform poorly. At the same time, we 2820
+wantg(x(i))to enable accurate predictions of the labels y(i). 2821
+To formalize this idea, let d(i)represent the domain of instance i, and letℓd(g(x(i)),d(i);θd) 2822
+represent the loss of a classiﬁer (typically a deep neural network) trained to predict d(i)2823
+from the transformed representation g(x(i)), using parameters θd. Analogously, let ℓy(g(x(i)),y(i);θy) 2824
+represent the loss of a classiﬁer trained to predict the label y(i)fromg(x(i)), using param- 2825
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+126 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+ℓdℓy
+d(i)y(i)
+xg(x)
+Figure 5.4: A schematic view of adversarial domain adaptation. The loss ℓyis computed
+only for instances from the source domain, where labels y(i)are available.
+etersθy. The transformation gcan then be trained from two criteria: it should yield accu- 2826
+rate predictions of the labels y(i), while making inaccurate predictions of the domains d(i). 2827
+This can be formulated as a joint optimization problem, 2828
+min
+f,θgθy,θdNℓ+Nu∑
+i=1ℓd(g(x(i);θg),d(i);θd)−Nℓ∑
+i=1ℓy(g(x(i)),y(i);θy), [5.40]
+whereNℓis the number of labeled instances and Nuis the number of unlabeled instances, 2829
+with the labeled instances appearing ﬁrst in the dataset. This setup is shown in Figure 5.4. 2830
+The loss can be optimized by stochastic gradient descent, jointly training the parameters 2831
+of the non-linear transformation θg, and the parameters of the prediction models θdand 2832
+θy. 2833
+5.5 *Other approaches to learning with latent variables 2834
+Expectation maximization provides a general approach to learning with latent variables, 2835
+but it has limitations. One is the sensitivity to initialization; in practical applications, 2836
+considerable attention may need to be devoted to ﬁnding a good initialization. A second 2837
+issue is that EM tends to be easiest to apply in cases where the latent variables have a clear 2838
+decomposition (in the cases we have considered, they decompose across the instances). 2839
+For these reasons, it is worth brieﬂy considering some alternatives to EM. 2840
+5.5.1 Sampling 2841
+In EM clustering, there is a distribution q(i)for the missing data related to each instance. 2842
+The M-step consists of updating the parameters of this distribution. An alternative is to 2843
+draw samples of the latent variables. If the sampling distribution is designed correctly, 2844
+this procedure will eventually converge to drawing samples from the true posterior over 2845
+the missing data, p (z(1:Nz)|x(1:Nx)). For example, in the case of clustering, the missing 2846
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.5. *OTHER APPROACHES TO LEARNING WITH LATENT VARIABLES 127
+dataz(1:Nz)is the set of cluster memberships, y(1:N), so we draw samples from the pos- 2847
+terior distribution over clusterings of the data. If a single clustering is required, we can 2848
+select the one with the highest conditional likelihood, ˆz= argmaxzp(z(1:Nz)|x(1:Nx)). 2849
+This general family of algorithms is called Markov Chain Monte Carlo (MCMC) :
+“Monte Carlo” because it is based on a series of random draws; “Markov Chain” because
+the sampling procedure must be designed such that each sample depends only on the
+previous sample, and not on the entire sampling history. Gibbs sampling is an MCMC
+algorithm in which each latent variable is sampled from its posterior distribution,
+z(n)|x,z(−n)∼p(z(n)|x,z(−n)), [5.41]
+wherez(−n)indicates{z\z(n)}, the set of all latent variables except for z(n). Repeatedly
+drawing samples over all latent variables constructs a Markov chain, and which is guar-
+anteed to converge to a sequence of samples from, p (z(1:Nz)|x(1:Nx)). In probabilistic
+clustering, the sampling distribution has the following form,
+p(z(i)|x,z(−i)) =p(x(i)|z(i);φ)×p(z(i);µ)∑K
+z=1p(x(i)|z;φ)×p(z;µ)[5.42]
+∝Multinomial (x(i);φz(i))×µz(i). [5.43]
+In this case, the sampling distribution does not depend on the other instances x(−i),z(−i): 2850
+given the parameters φandµ, the posterior distribution over each z(i)can be computed 2851
+fromx(i)alone. 2852
+In sampling algorithms, there are several choices for how to deal with the parameters. 2853
+One possibility is to sample them too. To do this, we must add them to the generative 2854
+story, by introducing a prior distribution. For the multinomial and categorical parameters 2855
+in the EM clustering model, the Dirichlet distribution is a typical choice, since it deﬁnes 2856
+a probability on exactly the set of vectors that can be parameters: vectors that sum to one 2857
+and include only non-negative numbers.102858
+To incorporate this prior, the generative model must augmented to indicate that each 2859
+φz∼Dirichlet (αφ), andµ∼Dirichlet (αµ). The hyperparameters αare typically set to 2860
+10If∑K
+iθi= 1andθi≥0for alli, thenθis said to be on the K−1simplex . A Dirichlet distribution with
+parameterα∈RK
++has support over the K−1simplex,
+pDirichlet(θ|α) =1
+B(α)K∏
+i=1θαi−1
+i [5.44]
+B(α) =∏K
+i=1Γ(αi)
+Γ(∑K
+i=1αi), [5.45]
+with Γ(·)indicating the gamma function, a generalization of the factorial function to non-negative reals.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+128 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+a constant vector α= [α,α,...,α ]. Whenαis large, the Dirichlet distribution tends to 2861
+generate vectors that are nearly uniform; when αis small, it tends to generate vectors that 2862
+assign most of their probability mass to a few entries. Given prior distributions over φ 2863
+andµ, we can now include them in Gibbs sampling, drawing values for these parameters 2864
+from posterior distributions that are conditioned on the other variables in the model. 2865
+Unfortunately, sampling φandµusually leads to slow convergence, meaning that a 2866
+large number of samples is required before the Markov chain breaks free from the initial 2867
+conditions. The reason is that the sampling distributions for these parameters are tightly 2868
+constrained by the cluster memberships y(i), which in turn are tightly constrained by the 2869
+parameters. There are two solutions that are frequently employed: 2870
+•Empirical Bayesian methods maintain φandµas parameters rather than latent 2871
+variables. They still employ sampling in the E-step of the EM algorithm, but they 2872
+update the parameters using expected counts that are computed from the samples 2873
+rather than from parametric distributions. This EM-MCMC hybrid is also known 2874
+as Monte Carlo Expectation Maximization (MCEM; Wei and Tanner, 1990), and is 2875
+well-suited for cases in which it is difﬁcult to compute q(i)directly. 2876
+•Incollapsed Gibbs sampling , we analytically integrate φandµout of the model. 2877
+The cluster memberships y(i)are the only remaining latent variable; we sample them 2878
+from the compound distribution, 2879
+p(y(i)|x(1:N),y(−i);αφ,αµ) =∫
+φ,µp(φ,µ|y(−i),x(1:N);αφ,αµ)p(y(i)|x(1:N),y(−i),φ,µ)dφdµ.
+[5.46]
+For multinomial and Dirichlet distributions, the sampling distribution can be com- 2880
+puted in closed form. 2881
+MCMC algorithms are guaranteed to converge to the true posterior distribution over 2882
+the latent variables, but there is no way to know how long this will take. In practice, the 2883
+rate of convergence depends on initialization, just as expectation-maximization depends 2884
+on initialization to avoid local optima. Thus, while Gibbs Sampling and other MCMC 2885
+algorithms provide a powerful and ﬂexible array of techniques for statistical inference in 2886
+latent variable models, they are not a panacea for the problems experienced by EM. 2887
+5.5.2 Spectral learning 2888
+Another approach to learning with latent variables is based on the method of moments ,
+which makes it possible to avoid the problem of non-convex log-likelihood. Write x(i)for
+the normalized vector of word counts in document i, so thatx(i)=x(i)/∑V
+j=1x(i)
+j. Then
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.5. *OTHER APPROACHES TO LEARNING WITH LATENT VARIABLES 129
+we can form a matrix of word-word co-occurrence probabilities,
+C=N∑
+i=1x(i)(x(i))⊤. [5.47]
+The expected value of this matrix under p (x|φ,µ), as
+E[C] =N∑
+i=1K∑
+k=1Pr(Z(i)=k;µ)φkφ⊤
+k [5.48]
+=K∑
+kNµkφkφ⊤
+k [5.49]
+=ΦDiag (Nµ)Φ⊤, [5.50]
+where Φis formed by horizontally concatenating φ1...φK, and Diag (Nµ)indicates a
+diagonal matrix with values Nµkat position (k,k). Setting Cequal to its expectation
+gives,
+C=ΦDiag (Nµ)Φ⊤, [5.51]
+which is similar to the eigendecomposition C=QΛQ⊤. This suggests that simply by 2889
+ﬁnding the eigenvectors and eigenvalues of C, we could obtain the parameters φandµ, 2890
+and this is what motivates the name spectral learning . 2891
+While moment-matching and eigendecomposition are similar in form, they impose 2892
+different constraints on the solutions: eigendecomposition requires orthonormality, so 2893
+thatQQ⊤=I; in estimating the parameters of a text clustering model, we require that µ 2894
+and the columns of Φare probability vectors. Spectral learning algorithms must therefore 2895
+include a procedure for converting the solution into vectors that are non-negative and 2896
+sum to one. One approach is to replace eigendecomposition (or the related singular value 2897
+decomposition) with non-negative matrix factorization (Xu et al., 2003), which guarantees 2898
+that the solutions are non-negative (Arora et al., 2013). 2899
+After obtaining the parameters φandµ, the distribution over clusters can be com- 2900
+puted from Bayes’ rule: 2901
+p(z(i)|x(i);φ,µ)∝p(x(i)|z(i);φ)×p(z(i);µ). [5.52]
+Spectral learning yields provably good solutions without regard to initialization, and can 2902
+be quite fast in practice. However, it is more difﬁcult to apply to a broad family of gen- 2903
+erative models than more generic techniques like EM and Gibbs Sampling. For more on 2904
+applying spectral learning across a range of latent variable models, see Anandkumar et al. 2905
+(2014). 2906
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+130 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+Additional resources 2907
+There are a number of other learning paradigms that deviate from supervised learning. 2908
+•Active learning : the learner selects unlabeled instances and requests annotations (Set- 2909
+tles, 2012). 2910
+•Multiple instance learning : labels are applied to bags of instances, with a positive 2911
+label applied if at least one instance in the bag meets the criterion (Dietterich et al., 2912
+1997; Maron and Lozano-P ´erez, 1998). 2913
+•Constraint-driven learning : supervision is provided in the form of explicit con- 2914
+straints on the learner (Chang et al., 2007; Ganchev et al., 2010). 2915
+•Distant supervision : noisy labels are generated from an external resource (Mintz 2916
+et al., 2009, also see §17.2.3). 2917
+•Multitask learning : the learner induces a representation that can be used to solve 2918
+multiple classiﬁcation tasks (Collobert et al., 2011). 2919
+•Transfer learning : the learner must solve a classiﬁcation task that differs from the 2920
+labeled data (Pan and Yang, 2010). 2921
+Expectation maximization was introduced by Dempster et al. (1977), and is discussed 2922
+in more detail by Murphy (2012). Like most machine learning treatments, Murphy focus 2923
+on continuous observations and Gaussian likelihoods, rather than the discrete observa- 2924
+tions typically encountered in natural language processing. Murphy (2012) also includes 2925
+an excellent chapter on MCMC; for a textbook-length treatment, see Robert and Casella 2926
+(2013). For still more on Bayesian latent variable models, see Barber (2012), and for ap- 2927
+plications of Bayesian models to natural language processing, see Cohen (2016). Surveys 2928
+are available for semi-supervised learning (Zhu and Goldberg, 2009) and domain adapta- 2929
+tion (Søgaard, 2013), although both pre-date the current wave of interest in deep learning. 2930
+Exercises 2931
+1. Derive the expectation maximization update for the parameter µin the EM cluster- 2932
+ing model. 2933
+2. The expectation maximization lower bound Jis deﬁned in Equation 5.10. Prove 2934
+that the inverse−J is convex inq. You can use the following facts about convexity: 2935
+•f(x)is convex in xiffαf(x1) + (1−α)f(x2)≥f(αx1+ (1−α)x2)for all 2936
+α∈[0,1]. 2937
+•Iff(x)andg(x)are both convex in x, thenf(x) +g(x)is also convex in x. 2938
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.5. *OTHER APPROACHES TO LEARNING WITH LATENT VARIABLES 131
+•log(x+y)≤logx+ logy. 2939
+3. Derive the E-step and M-step updates for the following generative model. You may 2940
+assume that the labels y(i)are observed, but z(i)
+mis not. 2941
+•For each instance i, 2942
+–Draw label y(i)∼Categorical (µ) 2943
+–For each token m∈{1,2,...,M(i)} 2944
+∗Drawz(i)
+m∼Categorical (π) 2945
+∗Ifz(i)
+m= 0, draw the current token from a label-speciﬁc distribution, 2946
+w(i)
+m∼φy(i) 2947
+∗Ifz(i)
+m= 1, draw the current token from a document-speciﬁc distribu- 2948
+tion,w(i)
+m∼ν(i)2949
+4. Use expectation-maximization clustering to train a word-sense induction system, 2950
+applied to the word say. 2951
+•Importnltk , runnltk.download() and select semcor . Importsemcor 2952
+fromnltk.corpus . 2953
+•The command semcor.tagged sentences(tag=’sense’) returns an iter- 2954
+ator over sense-tagged sentences in the corpus. Each sentence can be viewed as 2955
+an iterator over tree objects. For tree objects that are sense-annotated words, 2956
+you can access the annotation as tree.label() , and the word itself with 2957
+tree.leaves() . Sosemcor.tagged sentences(tag=’sense’)[0][2].label() 2958
+would return the sense annotation of the third word in the ﬁrst sentence. 2959
+•Extract all sentences containing the senses say.v.01 andsay.v.02 . 2960
+•Build bag-of-words vectors x(i), containing the counts of other words in those 2961
+sentences, including all words that occur in at least two sentences. 2962
+•Implement and run expectation-maximization clustering on the merged data. 2963
+•Compute the frequency with which each cluster includes instances of say.v.01 2964
+andsay.v.02 . 2965
+5. Using the iterative updates in Equations 5.34-5.36, compute the outcome of the label 2966
+propagation algorithm for the following examples. 2967
+? 0 1 ?? 0
+1 ?0 1
+? ?
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+132 CHAPTER 5. LEARNING WITHOUT SUPERVISION
+The value inside the node indicates the label, y(i)∈{0,1}, withy(i)=?for unlabeled 2968
+nodes. The presence of an edge between two nodes indicates wi,j= 1, and the 2969
+absence of an edge indicates wi,j= 0. For the third example, you need only compute 2970
+the ﬁrst three iterations, and then you can guess at the solution in the limit. 2971
+In the remaining exercises, you will try out some approaches for semisupervised learn- 2972
+ing and domain adaptation. You will need datasets in multiple domains. You can obtain 2973
+product reviews in multiple domains here: https://www.cs.jhu.edu/ ˜mdredze/ 2974
+datasets/sentiment/processed_acl.tar.gz . Choose a source and target domain, 2975
+e.g. dvds and books, and divide the data for the target domain into training and test sets 2976
+of equal size. 2977
+6. First, quantify the cost of cross-domain transfer. 2978
+•Train a logistic regression classiﬁer on the source domain training set, and eval- 2979
+uate it on the target domain test set. 2980
+•Train a logistic regression classiﬁer on the target domain training set, and eval- 2981
+uate it on the target domain test set. This it the “direct transfer” baseline. 2982
+Compute the difference in accuracy, which is a measure of the transfer loss across 2983
+domains. 2984
+7. Next, apply the label propagation algorithm from§5.3.2. 2985
+As a baseline, using only 5% of the target domain training set, train a classiﬁer, and 2986
+compute its accuracy on the target domain test set. 2987
+Next, apply label propagation: 2988
+•Compute the label matrix QLfor the labeled data (5% of the target domain 2989
+training set), with each row equal to an indicator vector for the label (positive 2990
+or negative). 2991
+•Iterate through the target domain instances, including both test and training 2992
+data. At each instance i, compute all wij, using Equation 5.32, with α= 0.01. 2993
+Use these values to ﬁll in column iof the transition matrix T, setting all but the 2994
+ten largest values to zero for each column i. Be sure to normalize the column 2995
+so that the remaining values sum to one. You may need to use a sparse matrix 2996
+for this to ﬁt into memory. 2997
+•Apply the iterative updates from Equations 5.34-5.36 to compute the outcome 2998
+of the label propagation algorithm for the unlabeled examples. 2999
+Select the test set instances from QU, and compute the accuracy of this method. 3000
+Compare with the supervised classiﬁer trained only on the 5% sample of the target 3001
+domain training set. 3002
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+5.5. *OTHER APPROACHES TO LEARNING WITH LATENT VARIABLES 133
+8. Using only 5% of the target domain training data (and all of the source domain train- 3003
+ing data), implement one of the supervised domain adaptation baselines in §5.4.1. 3004
+See if this improves on the “direct transfer” baseline from the previous problem 3005
+9. Implement EasyAdapt (§5.4.1), again using 5% of the target domain training data 3006
+and all of the source domain data. 3007
+10. Now try unsupervised domain adaptation, using the “linear projection” method 3008
+described in§5.4.2. Speciﬁcally: 3009
+•Identify 500 pivot features as the words with the highest frequency in the (com- 3010
+plete) training data for the source and target domains. Speciﬁcally, let xd
+ibe the 3011
+count of the word iin domaind: choose the 500 words with the largest values 3012
+ofmin(xsource
+i,xtarget
+i). 3013
+•Train a classiﬁer to predict each pivot feature from the remaining words in the 3014
+document. 3015
+•Arrange the features of these classiﬁers into a matrix Φ, and perform truncated 3016
+singular value decomposition, with k= 20 3017
+•Train a classiﬁer from the source domain data, using the combined features 3018
+x(i)⊕U⊤x(i)— these include the original bag-of-words features, plus the pro- 3019
+jected features. 3020
+•Apply this classiﬁer to the target domain test set, and compute the accuracy. 3021
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+

@@ -1,0 +1,1015 @@
+10
+Part-of-Speech Tagging
+Tunga Güngör
+Bo˘gaziçiUniversity10.1 Introduction ..........................................................205
+PartsofSpeech •Part-of-SpeechProblem
+10.2 TheGeneralFramework.............................................20810.3 Part-of-SpeechTaggingApproaches...............................209
+Rule-BasedApproaches •MarkovModelApproaches •Maximum
+EntropyApproaches
+10.4 OtherStatisticalandMachineLearningApproaches ............222
+MethodsandRelevantWork •CombiningTaggers
+10.5 POSTagginginLanguagesOtherThanEnglish..................225
+Chinese •Korean •OtherLanguages
+10.6 Conclusion............................................................228References....................................................................229
+10.1 Introduction
+Computerprocessingofnaturallanguagenormallyfollowsasequenceofsteps,beginningwithaphoneme-and morpheme-based analysis and stepping toward semantics and discourse analyses. Although someof the steps can be interwoven depending on the requirements of an application (e.g., doing wordsegmentation and part-of-speech tagging together in languages like Chinese), dividing the analysis intodistinct stages adds to the modularity of the process and helps in identifying the problems peculiar toeachstagemoreclearly.Eachstepaimsatsolvingtheproblemsatthatlevelofprocessingandfeedingthenextlevelwithanaccuratestreamofdata.
+Oneoftheearlieststepswithinthissequenceis part-of-speech (POS)tagging.Itisnormallyasentence-
+based approach and given a sentence formed of a sequence of words, POS tagging tries to label (tag)each word with its correct part of speech (also named word category, word class ,o rlexical category ).
+This process can be regarded as a simpliﬁed form (or a subprocess) of morphological analysis. Whereasmorphological analysis involves ﬁnding the internal structure of a word (root form, aﬃxes, etc.), POStagging only deals with assigning a POS tag to the given surface form word. This is more true for Indo-European languages, which are the mostly studied languages in the literature. Other languages such asthose from Uralic or Turkic families may necessitate a more sophisticated analysis for POS tagging duetotheircomplexmorphologicalstructures.
+10.1.1 Parts of Speech
+A natural question that may arise is: what are these parts of speech, or how do we specify a set ofsuitablepartsofspeech?Itmaybeworthwhileatthispointtosayafewwordsabouttheoriginoflexicalcategorization. From a linguistic point of view, the linguists mostly agree that there are three major(primary)partsofspeech:noun,verb,andadjective(Pustet,2003).Althoughthereissomedebateonthe
+205
+
+206 HandbookofNaturalLanguageProcessing
+topic(e.g., theclaimthattheadjective–verbdistinctionisalmostnonexistentinsomelanguagessuchasthe East-Asian language Mandarin or the claim that all the words in a particular category do not showthesamefunctional/semanticbehavior),thisminimalsetofthreecategoriesisconsidereduniversal.Theusual solution to the arguable nature of this set is admitting the inconsistencies within each group andsaying that in each group there are “typical members” as well as not-so-typical members (Baker, 2003).Forexample, eatisaprototypicalinstanceoftheverbcategorybecauseitdescribesa“process”(awidely
+accepted deﬁnition for verbs), whereas hunger is a less typical instance of a verb. This judgment is
+supportedbythefactthat hunger isalsorelatedtotheadjectivecategorybecauseofthemorecommon
+adjectivehungry,butthereisnosuchcorrespondencefor eat.
+Takingthemajorpartsofspeech(noun,verb,adjective)asthebasisoflexicalcategorization,linguistic
+models propose some additional categories of secondary importance (adposition, determiner, etc.) andsome subcategories of primary and secondary categories (Anderson, 1997; Taylor, 2003). The subcat-egories either involve distinctions that are reﬂected in the morphosyntax (such as tense or number) orservetocapturediﬀerentsyntacticandsemanticbehavioralpatterns(suchasfornouns,count-nounandmass-noun).Inthisway,whilethewordsinonesubcategorymayundergosomemodiﬁcations,theothersmaynot.
+Leavingasidetheselinguisticconsiderationsandtheirtheoreticalimplications,peopleintherealmof
+naturallanguageprocessing(NLP)approachtheissuefromamorepracticalpointofview.Althoughthedecision about the size and the contents of the tagset(the set of POS tags) is still linguistically oriented,
+theideaisprovidingdistinctpartsofspeechforallclassesofwordshavingdistinctgrammaticalbehavior,rather than arriving at a classiﬁcation that is in support of a particular linguistic theory. Usually thesize of the tagset is large and there is a rich repertoire of tags with high discriminative power. The mostfrequently used corpora (for English) in the POS tagging research and the corresponding tagsets are asfollows: Brown corpus (87 basic tags and special indicator tags), Lancaster-Oslo/Bergen (LOB) corpus(135 tags of which 23 are base tags), Penn Treebank and Wall Street Journal (WSJ) corpus (48 tags ofwhich12areforpunctuationandothersymbols),andSusannecorpus(353tags).
+10.1.2 Part-of-Speech Problem
+Exceptafewstudies, nearlyallofthePOStaggingsystemspresupposeaﬁxedtagset. Then, theproblemis,givenasentence,assigningaPOStagfromthetagsettoeachwordofthesentence.TherearebasicallytwodiﬃcultiesinPOStagging:
+1.Ambiguous words . In a sentence, obviously there exist some words for which more than one POS
+tag is possible. In fact, this language property makes POS tagging a real problem, otherwise thesolutionwouldbetrivial.Considerthefollowingsentence:
+We can can the can
+The three occurrences of the word cancorrespond to auxiliary, verb, and noun categories,
+respectively. When we take the whole sentence into account instead of the individual words, it iseasytodeterminethecorrectroleofeachword.Itiseasyatleastforhumans,butmaynotbesoforautomatic taggers. While disambiguating a particular word, humans exploit several mechanismsandinformationsourcessuchastherolesofotherwordsinthesentence,thesyntacticstructureofthesentence,thedomainofthetext,andthecommonsenseknowledge.Theproblemforcomputersisﬁndingouthowtohandleallthisinformation.
+2.Unknownwords.Inthecaseofrule-basedapproachestothePOStaggingproblemthatuseasetofhandcraftedrules,therewillclearlybesomewordsintheinputtextthatcannotbehandledbytherules.Likewise,instatisticalsystems,therewillbewordsthatdonotappearinthetrainingcorpus.We call such words unknown words. It is not desirable from a practical point of view for a tagger
+to adopt a closed-world assumption—considering only the words and sentences from which therules or statistics are derived and ignoring the rest. For instance, a syntactic parser that relies on
+
+Part-of-SpeechTagging 207
+the output of a POS tagger will encounter diﬃculties if the tagger cannot say anything about theunknown words. Thus, having some special mechanisms for dealing with unknown words is animportantissueinthedesignofatagger.
+AnotherissueinPOStagging,whichisnotdirectlyrelatedtolanguagepropertiesbutposesaproblem
+for taggers, is the consistency of the tagset. Using a large tagset enables us to encode more knowledgeabout the morphological and morphosyntactical structures of the words, but at the same time makes itmore diﬃcult to distinguish between similar tags. Tag distinctions in some cases are so subtle that evenhumansmaynotagreeonthetagsofsomewords.Forinstance,anannotationexperimentperformedinMarcus et al. (1993) on the Penn Treebank has shown that the annotators disagree on 7.2% of the casesontheaverage.Buildingaconsistenttagsetisamoredelicatesubjectformorphologicallyrichlanguagessince the distinctions between diﬀerent aﬃx combinations need to be handled carefully. Thus, we canconsidertheinconsistenciesinthetagsetsasaproblemthatdegradestheperformanceoftaggers.
+A number of studies allow some ambiguity in the output of the tagger by labeling some of the words
+withasetoftags(usually2–3tags)insteadofasingletag.Thereasonisthat,sincePOStaggingisseenasapreprocessingstepforotherhigher-levelprocessessuchasnamed-entityrecognitionorsyntacticparsing,it may be wiser to output a few most probable tags for some words for which we are not sure about thecorrecttag(e.g., bothofthetags IN
+∗andRBmayhavesimilarchancesofbeingselectedforaparticular
+word). Thisdecisionmaybe lefttolaterprocessing, whichismore likelyto decideon thecorrecttagbyexploitingmorerelevantinformation(whichisnotavailabletothePOStagger).
+The state-of-the-art in POS tagging accuracy (number of correctly tagged word tokens over all word
+tokens)isabout96%–97%formostIndo-Europeanlanguages(English,French,etc.).SimilaraccuraciesareobtainedforothertypesoflanguagesprovidedthatthecharacteristicsdiﬀerentfromIndo-Europeanlanguages are carefully handled by the taggers. We should note here that it is possible to obtain highaccuraciesusingverysimplemethods.Forexample,ontheWSJcorpus,taggingeachwordinthetestdatawith the most likely tag for that word in the training data gives rise to accuracies around 90% (Halterenetal.,2001;ManningandSchütze,2002).So,thesophisticatedmethodsusedinthePOStaggingdomainandthatwillbedescribedthroughoutthechapterareforgettingthelast10%oftaggingaccuracy.
+On the one hand, 96%–97% accuracy may be regarded as quite a high success rate, when compared
+with other NLP tasks. Based on this ﬁgure, some researchers argue that we can consider POS taggingas an already-solved problem (at least for Indo-European languages). Any performance improvementabovethesesuccessrateswillbeverysmall.However,ontheotherhand,theperformancesobtainedwithcurrent taggers may seem insuﬃcient and even a small improvement has the potential of signiﬁcantlyincreasingthequalityoflaterprocessing.IfwesupposethatasentenceinatypicalEnglishtexthas20–30wordsontheaverage,anaccuracyrateof96%–97%impliesthattherewillbeaboutoneworderroneouslytaggedpersentence.Evenonesuchwordwillmakethejobofasyntaxanalyzermuchmorediﬃcult.Forinstance, arule-based bottom-up parser begins from POS tags asthebasic constituentsand at eachstepcombines a sequence of constituents into a higher-order constituent. A word with an incorrect tag willgive rise to an incorrect higher-order structure and this error will probably aﬀect the other constituentsastheparsermovesupinthehierarchy.Independentofthemethodologyused, anysyntaxanalyzerwillexhibitasimilarbehavior.Therefore,wemayexpectacontinuingresearcheﬀortonPOStagging.
+ThischapterwillintroducethereadertoawidevarietyofmethodsusedinPOStaggingandwiththe
+solutionsoftheproblemsspeciﬁctothetask.Section10.2deﬁnesthePOStaggingproblemanddescribesthe approach common to all methods. Section 10.3 discusses in detail the main formalisms used in the
+∗Inmostoftheexamplesinthischapter,wewillrefertothetagsetofthePennTreebank.Thetagsthatappearinthechapter
+areCD(cardinal number), DT(determiner), IN(preposition or subordinating conjunction), JJ(adjective), MD(modal
+verb),NN(noun,singularormass), NNP(propernoun,singular), NNS(noun,plural), RB(adverb),TO(tO),VB(verb,base
+form),VBD(verb, past tense), VBG(verb, gerund or present participle), VBN(verb, past participle), VBP(verb, present,
+non-3rdpersonsingular), VBZ(verb,present,3rdpersonsingular), WDT(wh-determiner),and WP(wh-pronoun).
+
+208 HandbookofNaturalLanguageProcessing
+domain.Section10.4isdevotedtoanumberofmethodsusedlessfrequentlybythetaggers.Section10.5discusses the POS tagging problem for languages other than English. Section 10.6 concludes thischapter.
+10.2 The General Framework
+LetW=w1w2...wnbe a sentence having nwords. The task of POS tagging is ﬁnding the set of
+tagsT=t1t2...tn,w h e r eticorresponds to the POS tag of wi,1≤i≤n, as accurately as possible.
+In determining the correct tag sequence, we make use of the morphological and syntactic (and maybesemantic)relationshipswithinthesentence(the context).Thequestionishowataggerencodesanduses
+theconstraintsenforcedbytheserelationships.
+The traditional answer to this question is simply limiting the context to a few words around the
+target word (the word we are trying to disambiguate), making use of the information supplied by these
+words and their tags, and ignoring the rest. So, if the target word is w
+i, a typical context comprises
+wi−2,ti−2,wi−1,ti−1,andw i.(Moststudiesscanthesentencefromlefttorightandusetheinformation
+on the already-tagged left context. However, there are also several studies that use both left and rightcontexts.)Thereasonforrestrictingthecontextseverelyisbeingabletocopewiththeexponentialnatureof the problem. As we will see later, adding one more word into the context increases the size of theproblem(e.g.,thenumberofparametersestimatedinastatisticalmodel)signiﬁcantly.
+It is obvious that long-distance dependencies between the words also play a role in determining the
+POStagofaword.Forinstance,inthephrase
+the girls can
+...
+the tag of the underlined word canis ambiguous: it may be an auxiliary (e.g., the girls can do
+it)oraverb(e.g., the girls can the food).However,ifweusealargercontextinsteadofonly
+oneortwopreviouswords,thetagcanbeuniquelydetermined:
+The man who saw the girls can ...
+In spite of several such examples, it is customary to use a limited context in POS tagging and similarproblems.Asalreadymentioned,wecanstillgetquitehighsuccessrates.
+In the case of unknown words, the situation is somewhat diﬀerent. One approach is again resorting
+to the information provided by the context words. Another approach that is more frequently used inthe literature is making use of the morphology of the target word. The morphological data supplied bythe word typically include the preﬁxes and the suﬃxes (more generally, a number of initial and ﬁnalcharacters)oftheword,whetherthewordiscapitalizedornot,andwhetheritincludesahyphenornot.For example, as an initial guess, Brill (1995a) assigns the tag proper noun to an unknown word if it iscapitalized and the tag common noun otherwise. As another example, the suﬃx -ingfor an unknown
+wordisastrongindicationforplacingitintheverbcategory.
+TherearesomestudiesinthePOStaggingliteraturethataresolelydevotedtothetaggingofunknown
+words (Mikheev, 1997; Thede, 1998; Nagata, 1999; Cucerzan and Yarowsky, 2000; Lee et al., 2002;Nakagawa and Matsumoto, 2006). Although each one uses a somewhat diﬀerent technique than theothers, all of them exploit the contextual and morphological information as already stated. We will notdirectly cover these studies explicitly in this chapter; instead, we will mention the issues relevant tounknownwordhandlingwithintheexplanationsoftaggingalgorithms.
+
+Part-of-SpeechTagging 209
+10.3 Part-of-Speech Tagging Approaches
+10.3.1 Rule-Based Approaches
+TheearliestPOStaggingsystemsarerule-basedsystems, inwhichasetofrulesismanuallyconstructedandthenappliedtoagiventext.Probablytheﬁrstrule-basedtaggingsystemisgivenbyKleinandSimpson(1963),whichisbasedonalargesetofhandcraftedrulesandasmalllexicontohandletheexceptions.Theinitial tagging of the Brown corpus was also performed using a rule-based system, TAGGIT (ManningandSchütze, 2002). Thelexiconof thesystemwasusedtoconstrainthepossible tagsof aword tothosethat exist in the lexicon. The rules were then used to tag the words for which the left and right contextwordswereunambiguous.Themaindrawbacksoftheseearlysystemsarethelaboriousworkofmanuallycodingtherulesandtherequirementoflinguisticbackground.10.3.1.1 Transformation-Based LearningApioneeringworkinrule-basedtaggingisbyBrill(1995a).Insteadoftryingtoacquirethelinguisticrulesmanually, Brill (1995a) describes a system that learns a set of correction rules by a methodology calledtransformation-basedlearning (TBL).Theideaisasfollows:First,aninitial-stateannotatorassignsatag
+toeachwordinthecorpus.Thisinitialtaggingmaybeasimpleonesuchaschoosingoneofthepossibletagsforawordrandomly,assigningthetagthatisseenmostoftenwithawordinthetrainingset,orjustassumingeachwordasanoun(whichisthemostcommontag).Itcanalsobeasophisticatedschemesuchas using the output of another tagger. Following the initialization, the learning phase begins. By using asetofpredetermined ruletemplates,thesysteminstantiateseachtemplatewithdatafromthecorpus(thus
+obtainingasetof rules),appliestemporarilyeachruletotheincorrectlytaggedwordsinthecorpus,and
+identiﬁesthebestrulethatreducesmostthenumberoferrorsinthecorpus.Thisruleisaddedtothesetoflearnedrules.Thentheprocessiteratesonthenewcorpus(formedbyapplyingtheselectedrule)untilnoneoftheremainingrulesreducestheerrorratebymorethanaprespeciﬁedthreshold.
+The rule templates refer to a context of words and tags in a window of size seven (the target word,
+three words on the left, and three words on the right). Each template consists of two parts, a triggeringenvironment(if-part)andarewriterule(action):
+Changethetag(ofthetargetword)from AtoBifcondition
+Itbecomesapplicablewhentheconditionissatisﬁed. Anexampletemplatereferringtotheprevioustagandanexampleinstantiationofit(i.e.,arule)forthesentence the can rusted aregivenbelow(can
+isthetargetwordwhosecurrenttagis modal):
+Changethetagfrom AtoBiftheprevioustagis X
+Changethetagfrom modaltonouniftheprevioustagis determiner
+The rule states that the current tag of the target word that follows a determiner ismodalbut the
+correcttagmustbe noun.Whentheruleisappliedtothesentence,itactuallycorrectsoneoftheerrors
+andincreasesitschanceofbeingselectedasthebestrule.
+Table10.1shows therule templatesused inBrill(1995a)andFigure 10.1givestheTBLalgorithm. In
+thealgorithm, C
+kreferstothetrainingcorpusatiteration kandMisthenumberofwordsinthecorpus.
+Forarule r,re,rt1,andrt2correspondtothetriggeringenvironment,thelefttagintheruleaction,andthe
+righttagintheruleaction,respectively(i.e.,“changethetagfrom rt1tort2ifre”).Foraword wi,wi,e,wi,c,
+andwi,tdenotetheenvironment,thecurrenttag,andthecorrecttag,respectively.Thefunction f(e)isa
+binaryfunctionthatreturns1whentheexpression eevaluatestotrueand0otherwise. Ck(r)istheresult
+of applying rule rto the corpus at iteration k.Ris the set of learned rules. The ﬁrst statement inside the
+loopcalculates,foreachrule r,thenumberoftimesitcorrectsanincorrecttagandthenumberoftimesit
+changesacorrecttagtoanincorrectone,wheneveritstriggeringenvironmentmatchestheenvironmentofthetargetword.Subtractingtheﬁrstquantityfromthesecondgivestheamountoferrorreductionby
+
+210 HandbookofNaturalLanguageProcessing
+TABLE10.1 RuleTemplatesUsedinTransformation-BasedLearning
+Changethetagfrom AtoBif
+ti−1=X ti−2=Xandti+1=Y wi=Xandti+1=Y
+ti+1=X wi−1=X wi=X
+ti−2=X wi+1=X wi−1=Xandti−1=Y
+ti+2=X wi−2=X wi−1=Xandti+1=Y
+ti−2=Xorti−1=X wi+2=X ti−1=Xandwi+1=Y
+ti+1=Xorti+2=X wi−2=Xorwi−1=X wi+1=Xandti+1=Y
+ti−3=Xorti−2=Xorti−1=X wi+1=Xorwi+2=X wi−1=Xandti−1=Yandwi=Z
+ti+1=Xorti+2=Xorti+3=X wi−1=Xandwi=Y wi−1=Xandwi=Yandti+1=Z
+ti−1=Xandti+1=Y wi=Xandwi+1=Y ti−1=Xandwi=Yandwi+1=Z
+ti−1=Xandti+2=Y ti−1=Xandwi=Y wi=Xandwi+1=Yandti+1=Z
+0C= training corpus labeled by initial-state annotator  
+k=0
+R=
+repeat 
+rmax argmaxr frewi,e and rt1wi,c and rt2wi,t–
+i=1M
+frewi,e and rt1wi,c and wi,cwi,t and rt2≠wi,t
+i=1M
+rmax Ck Ck+1
+RR rmax
+until (terminating condition) 
+FIGURE10.1 Transformation-basedlearningalgorithm.
+thisruleandweselecttherulewiththelargesterrorreduction.Someexamplerulesthatwerelearnedby
+thesystemarethefollowing:
+Changethetagfrom VBtoNNifoneoftheprevioustwotagsis DT
+Changethetagfrom NNtoVBiftheprevioustagis TO
+Changethetagfrom VBPtoVBifoneoftheprevioustwowordsis n’t
+The unknown words are handled in a similar manner, with the following two diﬀerences: First, since
+no information exists for such words in the training corpus, the initial-state annotator assigns the tag
+proper noun if the word is capitalized and the tag common noun otherwise. Second, the templates use
+morphologicalinformationabouttheword, ratherthancontextualinformation. Twotemplatesusedby
+thesystemaregivenbelowtogetherwithexampleinstantiations:
+Changethetagfrom AtoBifthelastcharacterofthewordis X
+Changethetagfrom AtoBifcharacter Xappearsintheword
+Changethetagfrom NNtoNNSifthelastcharacterofthewordis -s(e.g.,tables)
+Changethetagfrom NNtoCDifcharacter.appearsintheword(e.g., 10.42)
+TheTBLtaggerwastrainedandtestedontheWSJcorpus, whichusesthePennTreebanktagset.The
+systemlearned447contextualrules(forknownwords)and243rulesforunknownwords.Theaccuracy
+
+Part-of-SpeechTagging 211
+was 96.6% (97.2% for known words and 82.2% for unknown words). There are a number of advantagesofTBLoversomeofthestochasticapproaches:
+•UnlikehiddenMarkovmodels,thesystemisquiteﬂexibleinthefeaturesthatcanbeincorporatedintothemodel.Theruletemplatescanmakeuseofanypropertyofthewordsintheenvironment.
+•StochasticmethodssuchashiddenMarkovmodelsanddecisionlistscanoverﬁtthedata.However,TBLseemstobemoreimmunefromsuchoverﬁtting,probablybecauseoflearningonthewholedataset at each iteration and its logic behind ordering the rules (Ramshaw and Marcus, 1994;Carberryetal.,2001).
+•TheoutputofTBLisalistofrules, whichareusuallyeasytointerpret(e.g., adeterminerismostlikelyfollowedbyanounratherthanaverb),insteadofahugenumberofprobabilitiesasinothermodels.
+ItisalsopossibletouseTBLinanunsupervisedmanner,asshowninBrill(1995b).Inthiscase,byusing
+adictionary,theinitial-stateannotatorassignsallpossibletagstoeachwordinthecorpus.So,unlikethepreviousapproach, eachwordwillhaveasetoftagsinsteadofasingletag. Then, therulestrytoreducetheambiguitybyeliminatingsomeofthetagsoftheambiguouswords.Wenolongerhaveruletemplatesthatreplaceatagwithanothertag;instead,thetemplatesservetoreducethesetoftagstoasingleton:
+Changethetagfrom AtoBifcondition
+whereAis a set of tags and B∈A. We determine the most likely tag Bby considering each element
+ofAin turn, looking at each context in which this element is unambiguous, and choosing the most
+frequentlyoccurringelement.Forexample,giventhefollowingsentenceandknowingthattheword can
+(underlined)iseither MD,NN,orVB,
+The/DT can
+/MD,NN,VB is/VBZ open/JJ
+we can infer the tag NNforcanif the unambiguous words in the context DT _ VBZ are mostly NN.
+Note that the system takes advantage of the fact that many words have only one tag and thus uses theunambiguouscontextswhenscoringtherulesateachiteration.
+SomeexampleruleslearnedwhenthesystemwasappliedtotheWSJcorpusaregivenbelow:
+Changethetagfrom{NN,VB,VBP}to VBPiftheprevioustagis NNS
+Changethetagfrom{NN,VB}to VBiftheprevioustagis MD
+Changethetagfrom{JJ,NNP}to JJifthefollowingtagis NNS
+Thesystemwastestedonseveralcorporaanditachievedaccuraciesupto96.0%,whichisquiteahigh
+accuracyforanunsupervisedmethod.10.3.1.2 Modiﬁcations to TBL and Other Rule-Based ApproachesThetransformation-basedlearningparadigmanditssuccessinthePOStaggingproblemhaveinﬂuencedmany researchers. Following the original publication, several extensions and improvements have beenproposed.Oneofthem,named guaranteedpre-tagging ,analyzestheeﬀectofﬁxingtheinitialtagofthose
+words that we already know to be correct (Mohammed and Pedersen, 2003). Unlike the standard TBLtagger,ifwecanidentifythecorrecttagofawordaprioriandgivethisinformationtothetagger,thenthetaggerinitializesthewordwiththis“pre-tag”andguaranteesthatitwillnotbechangedduringlearning.However, this pre-tag can still be used in any contextual rule for changing the tags of other words. Therestoftheprocessisthesameasintheoriginalalgorithm.Considertheword chair(underlined)inthe
+followingsentence,withtheinitialtagsgivenasshown:
+Mona/NNP will/MD sit/VB in/IN the/DT pretty/RB chair
+/NN this/DT time/NN
+ThestandardTBLtaggerwillchangethetagof chairtoVBduetoalearnedrule:“changethetagfrom
+NNtoVBifthefollowingtagis DT.”Notonlytheword chairwillbeincorrectlytagged,alsotheinitial
+
+212 HandbookofNaturalLanguageProcessing
+incorrecttagoftheword pretty willremainunchanged.However,ifwehaveaprioriinformationthat
+chairisbeingusedas NNinthisparticularcontext,thenitcanbepre-taggedandwillnotbeaﬀectedby
+thementionedrule.Moreover,thetagof pretty willbecorrectedduetotherule“changethetagfrom
+RBtoJJifthefollowingtagis NN.”
+Theauthorsdevelopedtheguaranteedpre-taggingapproachduringawordsensedisambiguationtask
+on Senseval-2 data. There were about 4300 words in the dataset that were manually tagged. When thestandard TBL algorithm was executed to tag all the words in the dataset, the tags of about 570 of themanuallytaggedwords(whichwerethecorrecttags)werechanged.Thismotivatedthepre-taggedversionoftheTBLalgorithm.Themanuallytaggedwordsweremarkedaspre-taggedandthealgorithmdidnotallow these tags to be changed. This caused 18 more words in the context of the pre-tagged words to becorrectlytagged.
+The main drawback of the TBL approach is its high time complexity. During each pass through the
+training corpus, it forms and evaluates all possible instantiations of every suitable rule template. (WeassumetheoriginalTBLalgorithmaswehavedescribedhere.Theavailableversioninfactcontainssomeoptimizations.)Thus,whenwehavealargecorpusandalargesetoftemplates,itbecomesintractable.Onesolution to this problem is putting a limit on the number of rules (instantiations of rule templates) thatareconsideredforincorrecttaggings.ThesystemdevelopedbyCarberryetal.(2001),named randomized
+TBL, is based on this idea: at each iteration, it examines each incorrectly tagged word, but only R(a
+predeﬁned constant) of all possible template instantiations that would correct the tag are considered(randomlyselected).Inthisway,thetrainingtimebecomesindependentofthenumberofrules.
+Even with a very low value for R(e.g.,R=1), the randomized TBL obtains, in much less time, an
+accuracyveryclosetothatofthestandardTBL.Thismayseeminteresting,buthasasimpleexplanation.During an iteration, the standard TBL selects the best rule. This means that this rule corrects manyincorrect tags in the corpus. So, although randomized TBL considers only Rrandomly generated rules
+on each instance, the probability of generating this particular rule will be high since it is applicable tomanyincorrectinstances.Therefore,thesetwoalgorithmstendtolearnthesamerulesatearlyphasesofthe training. In later phases, since the rules will be less applicable to the remaining instances (i.e., morespeciﬁcrules),thechanceoflearningthesamerulesdecreases.EvenifrandomizedTBLcannotdeterminethebestruleataniteration,itcanstilllearnacompensatingruleatalateriteration.
+The experiments showed the same success rates for both versions of TBL, but the training time of
+randomized TBL was 5–10 times better. As the corpus size decreases, the accuracy of randomized TBLbecomesslightlyworsethanthestandardTBL,butthetimegainbecomesmoreimpressive.
+Finitestaterepresentationshaveanumberofdesirableproperties,likeeﬃciency(usingadeterministic
+and minimized machine) and the compactness of the representation. In Roche and Schabes (1995), itwas attempted to convert the TBL POS tagging system into a ﬁnite state transducer (FST). The idea isthat, after the TBL algorithm learns the rules in the training phase, the test (tagging) phase can be donemuch more eﬃciently. Given a set of rules, the FST tagger is constructed in four steps: converting eachrule (contextual rule or unknown word rule) into an FST; globalizing each FST so that it can be appliedtothewholeinputinonepass;composingalltransducersintoasingletransducer;anddeterminizingthetransducer.
+The method takes advantage of the well-deﬁned operations on ﬁnite state transducers—composing,
+determinizing,andminimizing.Thelexicon,whichisusedbytheinitial-stateannotator,isalsoconvertedintoaﬁnitestateautomaton.TheexperimentsontheBrowncorpusshowedthattheFSTtaggerrunsmuchfaster than both the TBL tagger (with the same accuracy) and their implementation of a trigram-basedstochastictagger(withasimilaraccuracy).
+Multidimensionaltransformation-basedlearning(mTBL)isaframeworkwhereTBLisappliedtomore
+than one task jointly. Instead of learning the rules for diﬀerent tasks separately, it may be beneﬁcial toacquire them in a single learning phase. The motivation under the mTBL framework is exploiting thedependencies between the tasks and thus increasing the performance on the individual tasks. This ideawas applied to POS tagging and text chunking (identiﬁcation of basic phrasal structures) (Florian and
+
+Part-of-SpeechTagging 213
+Ngai,2001).ThemTBLalgorithmissimilartotheTBLalgorithm,exceptthattheobjectivefunctionusedtoselectthebestruleischangedasfollows:
+f(r)=∑
+s∈corpusn∑
+i=1wi∗(Si(r(s))−Si(s))
+where
+risarule
+nisthenumberoftasks(2,inthisapplication)
+r(s)denotestheapplicationofrule rtosample sinthecorpus
+Si(·)isthescoreoftask i(1:correct,0:incorrect)
+wiisaweightassignedtotask i(usedtoweightthetasksaccordingtotheirimportance).
+TheexperimentsontheWSJcorpusshowedabout0.5%increaseinaccuracy
+BelowweshowtheruleslearnedinthejointlytrainedsystemandinthePOS-tagging-onlysystemfor
+changingVBDtagtoVBN.Theformeronelearnsasinglerule(amoregeneralrule),indicatingthatifthe
+target word is inside a verb phrase then the tag should be VBN. However, the latter system can arrive at
+this decision using three rules. Since the rules are scored separately in the standard TBL tagger duringlearning,amoregeneralruleinmTBLwillhaveabetterchancetocapturethesimilarincorrectinstances.
+Changethetagfrom VBDtoVBNifthetargetchunkis I-VP
+Changethetagfrom VBDtoVBNifoneofthepreviousthreetagsis VBZ
+Changethetagfrom VBDtoVBNiftheprevioustagis VBD
+Changethetagfrom VBDtoVBNifoneofthepreviousthreetagsis VBP
+While developing a rule-based system, an important issue is determining in which order the rules
+should be applied. There may be several rules applicable for a particular situation and the output of thetaggermaydependoninwhichordertherulesareapplied.Asolutiontothisproblemisassigningsomeweights (votes) to the rules according to the training data and disambiguating the text based on thesevotes(TürandOﬂazer,1998).Eachruleisinthefollowingform:
+(c
+1,c2,...,cn;v)
+where
+ci,1≤i≤n, is a constraint that incorporates POS and/or lexical (word form) information of the
+wordsinthecontext
+visthevoteoftherule
+Twoexampleruleinstantiationsare:
+([tag=MD],[tag=RB],[tag=VB];100)([tag=DT,lex =that],[tag=NNS]; −100)
+The ﬁrst one promotes (a high positive vote) a modal followed by a verb with an intervening adverband the second one demotes a singular determiner reading of thatbefore a plural noun. The votes
+areacquiredautomaticallyfromthetrainingcorpusbycountingthefrequenciesofthepatternsdenotedby the constraints. As the votes are obtained, the rules are applied to the possible tag sequences of asentenceandthetagsequencethatresultsinthemaximumvoteisselected.ThemethodofapplyingrulestoaninputsentenceresemblestheViterbialgorithmcommonlyusedinstochastictaggers.Theproposedmethod, therefore, can also be approached from a probabilistic point of view as selecting the best tagsequenceamongallpossibletaggingsofasentence.
+
+214 HandbookofNaturalLanguageProcessing
+Asimplebutinterestingtechniquethatisdiﬀerentfromcontext-basedsystemsislearningtherulesfrom
+word endings (Grzymala-Busse and Old, 1997). This is a word-based approach (not using informationfromcontext)thatconsidersaﬁxednumberofcharacters(e.g.,three)attheendofthewords. Atableisbuilt from the training data that lists all word endings that appear in the corpus, accompanied with thecorrectPOS.Forinstance,thesamplelistoffourentries
+(-ine,noun)(- inc,noun)(- ing,noun)(- ing,verb)
+implies noun category for -ine and -inc, but signals a conﬂict for - ing. The table is fed to a rule
+inductionalgorithmthatlearnsasetofrulesbytakingintoaccounttheconﬂictingcases.Thealgorithmoutputs a particular tag for each word ending. A preliminary experiment was done by using Roget’sdictionary as the training data. The success is low as might be expected from such an information-poorapproach:about26%ofthewordswereclassiﬁedincorrectly.
+10.3.2 Markov Model Approaches
+The rule-based methods used for the POS tagging problem began to be replaced by stochastic modelsin the early 1990s. The major drawback of the oldest rule-based systems was the need to manuallycompiletherules, aprocessthatrequireslinguisticbackground. Moreover, thesesystemsarenotrobustin the sense that they must be partially or completely redesigned when a change in the domain or inthe language occurs. Later on a new paradigm, statistical natural language processing, has emerged andoﬀeredsolutionstotheseproblems.Astheﬁeldbecamemoremature,researchersbegantoabandontheclassicalstrategiesanddevelopednewstatisticalmodels.
+SeveralpeopletodayarguethatstatisticalPOStaggingissuperiortorule-basedPOStagging.Themain
+factor that enables us to use statistical methods is the availability of a rich repertoire of data sources:lexicons (may include frequency data and other statistical data), large corpora (preferably annotated),bilingualparallelcorpora, andsoon. Byusingsuchresources, wecanlearntheusagepatternsofthetagsequencesandmakeuseofthisinformationtotagnewsentences.WedevotetherestofthissectionandthenextsectiontostatisticalPOStaggingmodels.10.3.2.1 The ModelMarkov models (MMs) are probably the most studied formalisms in the POS tagging domain. LetW=w
+1w2...wnbe a sequence of words and T=t1t2...tnbe the corresponding POS tags. The
+problem is ﬁnding the optimal tag sequence corresponding to the given word sequence and can beexpressedasmaximizingthefollowingconditionalprobability:
+P(T|W)
+ApplyingBayes’rule,wecanwrite
+P(T|W)=P(W|T)P(T)
+P(W)
+Theproblemofﬁndingtheoptimaltagsequencecanthenbestatedasfollows:
+argmax TP(T|W)=argmax TP(W|T)P(T)
+P(W)
+=argmax TP(W|T)P(T) (10.1)
+wherethe P(W)termwaseliminatedsinceitisthesameforall T.Itisimpracticabletodirectlyestimatethe
+probabilities in Equation 10.1, therefore we need some simplifying assumptions. The ﬁrst term P(W|T)
+
+Part-of-SpeechTagging 215
+can be simpliﬁed by assuming that the words are independent of each other given the tag sequence(Equation10.2)andawordonlydependsonitsowntag(Equation10.3):
+P(W|T)=P(w
+1...wn|t1...tn)
+=n∏
+i=1P(wi|t1...tn) (10.2)
+=n∏
+i=1P(wi|ti) (10.3)
+Thesecondterm P(T)canbesimpliﬁedbyusingthelimitedhorizonassumption,whichstatesthatatag
+dependsonlyon kprevioustags( kisusually1or2):
+P(T)=P(t1...tn)
+=P(t1)P(t2|t1)P(t3|t1t2)...P(tn|t1...tn−1)
+=n∏
+i=1P(ti|ti−1...ti−k)
+Whenk=1, we have a ﬁrst-order model (bigram model )a n dw h e n k=2, we have a second-order
+model(trigram model ). We can name P(W|T)as thelexical probability term (it is related to the lexical
+forms of the words) and P(T)as thetransition probability term (it is related to the transitions between
+tags). Now we can restate the POS tagging problem: ﬁnding the tag sequence T=t1...tn(among all
+possibletagsequences)thatmaximizesthelexicalandtransitionprobabilities:
+argmaxTn∏
+i=1P(wi|ti)P(ti|ti−1...ti−k) (10.4)
+This is a hidden Markov model (HMM) since the tags (states of the model) are hidden and we can onlyobserve the words. Having a corpus annotated with POS tags (supervised tagging ), the training phase
+(estimationoftheprobabilitiesinEquation10.4)issimpleusingmaximumlikelihoodestimation:
+P(w
+i|ti)=f(wi,ti)
+f(ti)andP(ti|ti−1...ti−k)=f(ti−k...ti)
+f(ti−k...ti−1)
+where
+f(w,t)isthenumberofoccurrencesofword wwithtagt
+f(tl1...tlm)isthenumberofoccurrencesofthetagsequence tl1...tlm
+Thatis,wecomputetherelativefrequenciesoftagsequencesandword-tagpairsfromthetrainingdata.Then, in the test phase (tagging phase), given a sequence of words W, we need to determine the tag
+sequence that maximizes these probabilities as shown in Equation 10.4. The simplest approach may becomputing Equation 10.4 for each possible tag sequence of length nand then taking the maximizing
+sequence. Clearly, this naive approach yields an algorithm that is exponential in the number of words.Thisproblem can be solved more eﬃciently using dynamic programming techniques and a well-knowndynamic programming algorithm used in POS tagging and similar tasks is the Viterbi algorithm (seeChapter9).TheViterbialgorithm,insteadofkeepingtrackofallpathsduringexecution,determinestheoptimal subpaths for each node while it traverses the network and discards the others. It is an eﬃcientalgorithmoperatinginlineartime.
+
+216 HandbookofNaturalLanguageProcessing
+The process described above requires an annotated corpus. Though such corpora are available for
+well-studied languages, it is diﬃcult to ﬁnd such resources for most of the other languages. Even whenan annotated corpus is available, a change of the domain (i.e., training on available annotated corpusand testing on a text from a new domain) causes a signiﬁcant decrease in accuracy (e.g., Boggess et al.,1999). However, it is also possible to learn the parameters of the model without using an annotatedtraining dataset (unsupervised tagging ). A commonly used technique for this purpose is the expectation
+maximizationmethod.
+Given training data, the forward–backward algorithm, also known as the Baum–Welch algorithm,
+adjusts the parameter probabilities of the HMM to make the training sequence as likely as possible(Manning and Schütze, 2002). The forward–backward algorithm is a special case of the expectationmaximizationmethod.Thealgorithmbeginswithsomeinitialprobabilitiesfortheparameters(transitionsand word emissions) we are trying to estimate and calculates the probability of the training data usingthese probabilities. Then the algorithm iterates. At each iteration, the probabilities of the parametersthat are on the paths that are traversed more by the training data are increased and the probabilities ofother parameters are decreased. The probability of the training data is recalculated using this revisedset of parameter probabilities. It can be shown that the probability of the training data increases at eachstep.Theprocessrepeatsuntiltheparameterprobabilitiesconverge.Providedthatthetrainingdatasetisrepresentativeofthelanguage,wecanexpectthelearnedmodeltobehavewellonthetestdata.Aftertheparametersareestimated,thetaggingphaseisexactlythesameasinthecaseofsupervisedtagging.
+In general, it is not possible to observe all the parameters in Equation 10.4 in the training corpus for
+all words w
+iin the language and all tags tiin the tagset, regardless of how large the corpus is. During
+testing, when an unobserved term appears in a sentence, the corresponding probability and thus theprobability of the whole sentence will be zero for a particular tag sequence. This is named sparse data
+problemandisaproblemforallprobabilisticmethods.Toalleviatethisproblem,someformofsmoothing
+is applied. A smoothing method commonly used in POS taggers is linear interpolation, as shown belowforasecond-ordermodel:
+P(t
+i|ti−1ti−2)∼=λ1P(ti)+λ2P(ti|ti−1)+λ3P(ti|ti−1ti−2)
+where the λi’s are constants with 0 ≤λi≤1a n d∑
+iλi=1. That is, unigram and bigram data are also
+consideredinadditiontothetrigrams.Normally, λi’sareestimatedfromadevelopmentcorpus,whichis
+distinctfromthetrainingandthetestcorpora.Someotherpopularsmoothingmethodsarediscountingandback-oﬀ,andtheirvariations(ManningandSchütze,2002).10.3.2.2 HMM-Based TaggersAlthough it is not entirely clear who ﬁrst used MMs for the POS tagging problem, the earliest accountin the literature appears to be Bahl and Mercer (1976). Another early work that popularized the idea ofstatisticaltaggingisduetoChurch(1988),whichusesastandardMMandasimplesmoothingtechnique.Following these works, a large number of studies based on MMs were proposed. Some of these use thestandard model (the model depicted in Section 10.3.2.1) and play with a few properties (model order,smoothing, etc.) to improve the performance. Some others, on the other hand, in order to overcomethe limitations posed by the standard model, try to enrich the model by making use of the context in adiﬀerentmanner,modifyingthetrainingalgorithm,andsoon.
+A comprehensive analysis of the eﬀect of using MMs for POS tagging was given in an early work by
+Merialdo (1994). In this work, a second-order model is used in both a supervised and an unsupervisedmanner. An interesting point of this study is the comparison of two diﬀerent schemes in ﬁnding theoptimal tag sequence of a given (test) sentence. The ﬁrst one is the classical Viterbi approach as wehave explained before, called “sentence level tagging” in Merialdo (1994). An alternative is “word level
+
+Part-of-SpeechTagging 217
+tagging”which, insteadofmaximizingoverthepossibletagsequencesforthesentence, maximizesoverthepossibletagsforeachword:
+argmax
+TP(T|W)vs. argmaxtiP(ti|W)
+This distinction was considered in Dermatas and Kokkinakis (1995) as well and none of these worksobserved a signiﬁcant diﬀerence in accuracy under the two schemes. To the best of our knowledge, thisissuewasnotanalyzedfurtherandlaterworksreliedonViterbitagging(oritsvariants).
+Merialdo(1994)usesaformofinterpolationwheretrigramdistributionsareinterpolatedwithuniform
+distributions. A work that concentrates on smoothing techniques in detail is given in Sündermann andNey(2003).Itemployslinearinterpolationandproposesanewmethodforlearning λ
+i’sthatisbasedon
+theconceptoftrainingdatacoverage(numberofdistinct n-gramsinthetrainingset).Itarguesthatusing
+alargemodelorder(e.g.,ﬁve)accompaniedwithagoodsmoothingtechniquehasapositiveeﬀectontheaccuracy of the tagger. Another example of a sophisticated smoothing technique is given in Wang andSchuurmans (2005). The idea is exploiting the similarity between the words and putting similar wordsinto the same cluster. Similarity is deﬁned in terms of the left and right contexts. Then, the parameterprobabilitiesareestimatedbyaveraging,foraword w,overprobabilitiesof50mostsimilarwordsof w.
+It was shown empirically in Dermatas and Kokkinakis (1995) that the distribution of the unknown
+wordsissimilartothatofthelessprobablewords(wordsoccurringlessthanathreshold t,e.g.,t=10).
+Therefore,theparametersfortheunknownwordscanbeestimatedfromthedistributionsoflessprobablewords. Several models were tested, particularly ﬁrst- and second-order HMMs were compared with asimpler model, named Markovian language model (MLM), in which the lexical probabilities P(W|T)
+are ignored. All the experiments were repeated on seven European languages. The study arrives at theconclusionthatHMMreducestheerroralmosttohalfincomparisontothesameorderMLM.
+Ahighlyaccurateandfrequentlycited(partlyduetoitsavailability)POStaggeristheTnTtagger(Brants,
+2000). Though based on the standard HMM formalism, its power comes from a careful treatment ofsmoothingandunknownwordissues.Thesmoothingisdonebycontext-independentlinearinterpolation.Thedistributionofunknownwordsisestimatedusingthesequencesofcharactersatwordendings,withsequence length varying from 1 to 10. Instead of considering all the words in the training data whiledeterminingthesimilarityofanunknownwordtootherwords,onlytheinfrequentones(occurringlessthan 10 times) are taken into account. This is in line with the justiﬁcation in Dermatas and Kokkinakis(1995) about the similarity between unknown words and less probable words. Another interestingproperty is the incorporation of capitalization feature in the tagset. It was observed that the probabilitydistributionsoftagsaroundcapitalizedwordsarediﬀerentfromthosearoundlowercasedwords.So,eachtag is accompanied with a capitalization feature (e.g., instead of VBD,VBDcandVBDc’), doubling the
+size of the tagset. To increase the eﬃciency of the tagger, beam search is used in conjunction with theViterbi algorithm, which prunes the paths more while scanning the sentence. The TnT tagger achievesabout97%accuracyonthePennTreebank.
+SomestudiesattemptedtochangetheformofEquation10.4inordertoincorporatemorecontextinto
+themodel.ThedeandHarper(1999)changethelexicalprobability P(w
+i|ti)toP(wi|ti−1,ti)andalsousea
+similarformulaforunknownwords, P(wihassuﬃx s|ti−1,ti), wherethesuﬃxlengthvariesfrom1to4.
+In a similar manner, Banko and Moore (2004) prefer the form P(wi|ti−1,ti,ti+1). The authors of these
+twoworksnametheirmodiﬁedmodelsas fullsecond-orderHMM andcontextualizedHMM,respectively.
+InLeeetal.(2000a),morecontextisconsideredbyutilizingthefollowingformulations:
+P(T)∼=n∏
+i=1P(ti|ti−1...ti−K,wi−1...wi−J)
+P(W|T)∼=n∏
+i=1P(wi|ti−1...ti−L,ti,wi−1...wi−I)(10.5)
+
+218 HandbookofNaturalLanguageProcessing
+tag
+key
+book
+taggingthe
+from
+in
+of whichis
+known won
+Valencia
+words
+that that
+believe
+areDT
+VBZ
+NNPIN
+that
+INNN
+VBN
+NNS
+VBPWDT
+that
+WDTVBD
+FIGURE 10.2 A part of an example HMM for the specialized word that. (Reprinted From Pla, F. and Molina, A.,
+Nat.Lang.Eng .,10,167,2004.CambridgeUniversityPress.Withpermission.)
+The proposed model was investigated using several diﬀerent values for the parameters K,J,L,a n dI
+(between0and2).Inaddition,theconditionaldistributionsinEquations10.5wereconvertedintojoint
+distributions.Thisformulationwasobservedtoyieldmorereliableestimationsinsuchextendedcontexts.
+Theexperimentalresultsobtainedinallthesesystemsshowedanimprovementinaccuracycomparedto
+thestandardHMM.
+A more sophisticated way of enriching the context is identifying a priori a set of “specialized words”
+and,foreachsuchword w,splittingeachstate tintheHMMthatemits wintotwostates:onestate (w,t)
+thatonlyemits wandanotherstate,theoriginalstate t,thatemitsallthewordsemittedbeforesplittingit
+exceptw(Pla and Molina, 2004). In this way, the model can distinguish among diﬀerent local contexts.
+An example for a ﬁrst-order model is given in Figure 10.2, where the dashed rectangles show the split
+states.
+The specialized words can be selected using diﬀerent strategies: words with high frequencies in the
+trainingset,wordsthatbelongtoclosed-classcategories,orwordsresultinginalargenumberoftagging
+errors on a development set. The system developed uses the TnT tagger. The evaluation using diﬀerent
+numbers of specialized words showed that the method gives better results than HMM (for all numbers
+ofspecializedwords,rangingfrom1to400),andtheoptimumperformancewasobtainedwithabout30
+and285specializedwordsforsecond-andﬁrst-ordermodels,respectively.
+Inadditiontotheclassicalviewofconsideringeachwordandeachtaginthedatasetseparately,there
+exist some studies that combine individual words/tags in some manner. In Cutting et al. (1992), each
+word is represented by an ambiguity class, which is the set of its possible parts of speech. In Nasr et al.
+(2004),thetagsetisextendedbyaddingnewtags,theso-calledambiguoustags.Whenawordinacertain
+context can be tagged as t1,t2,...,tkwith probabilities that are close enough, an ambiguous tag t1,2,...,k
+is created. In such cases, instead of assigning the tag with the highest score to the word in question, it
+seems desirable to allow some ambiguity in the output, since the tagger is not sure enough about the
+correct tag. For instance, the ﬁrst ﬁve ambiguous tags obtained from the Brown corpus are IN-RB,
+DT-IN-WDT-WP ,JJ-VBN,NN-VB,a n dJJ-NN. Success rates of about 98% were obtained with an
+ambiguityof1.23tags/word.
+VariablememoryMarkovmodels(VMMM)andself-organizingMarkovmodels(SOMM)werepro-
+posed as solutions to the POS tagging problem (Schütze and Singer, 1994; Kim et al., 2003). They aim
+at increasing the ﬂexibility of the HMMs by being able to vary the size of the context as the need arises
+(ManningandSchütze, 2002).Forinstance,theVMMMcangofromastatethatconsiderstheprevious
+
+Part-of-SpeechTagging 219
+two tags to a state that does not use any context, then to a state that uses the previous three tags. Thisdiﬀers from linear interpolation smoothing which always uses a weighted average of a ﬁxed number ofn-grams. In both VMMM and SOMM, the structure of the model is induced from the training corpus.Kim et al. (2003) represent the MM in terms of a statistical decision tree (SDT) and give an algorithmforlearningtheSDT.TheseextendedMMsyieldresultscomparabletothoseofHMMs,withsigniﬁcantreductionsinthenumberofparameterstobeestimated.
+10.3.3 Maximum Entropy Approaches
+TheHMMframeworkhastwoimportantlimitationsforclassiﬁcationtaskssuchasPOStagging:strongindependence assumptions and poor use of contextual information. For HMMPOS tagging, we usuallyassumethatthetagofaworddoesnotdependonpreviousandnextwords,orawordinthecontextdoesnotsupplyanyinformationaboutthetagofthetargetword.Furthermore,thecontextisusuallylimitedto the previous one or two words. Although there exist some attempts to overcome these limitations, aswehaveseeninSecion10.3.2.2,theydonotallowustousethecontextinanywaywelike.
+Maximum entropy (ME) models provide us more ﬂexibility in dealing with the context and are used
+as an alternative to HMMs in the domain of POS tagging. The use of the context is in fact similar tothatintheTBLframework.Asetof featuretemplates (inanalogytoruletemplatesinTBL)ispredeﬁned
+andthesystemlearnsthediscriminatingfeaturesbyinstantiatingthefeaturetemplatesusingthetrainingcorpus.Theﬂexibilitycomesfromtheabilitytoincludeanytemplatethatwethinkuseful—maybesimple(target tag t
+idepends on ti−1) or complex (t idepends on ti−1and/orti−2and/orwi+1). The features
+need not be independent of each other and the model exploits this advantage by using overlapping andinterdependentfeatures.
+ApioneeringworkinMEPOStaggingisRatnaparkhi(1996, 1998). Theprobabilitymodel isdeﬁned
+overH×T,whereHisthesetofpossiblecontexts(histories)and Tisthesetoftags.Then,given h∈H
+andt∈T,wecanexpresstheconditionalprobabilityintermsofalog-linear(exponential)model:
+P(t|h)=1
+Z(h)k∏
+j=1αfj(t,h)
+j
+where
+Z(h)=∑
+tk∏
+j=1αfj(t,h)
+j
+f1,...,fkare the features, αj>0 is the “weight” of feature fj,a n dZ(h)is a normalization function to
+ensure a true probability distribution. Each feature is binary-valued, that is, fj(t,h)=0 or 1. Thus, the
+probability P(t|h)can be interpreted as the normalized product of the weights of the “active” features
+on(t,h).
+Theprobabilitydistribution Pweseekistheonethatmaximizestheentropyofthedistributionunder
+someconstraints:
+argmaxP−∑
+h∈H
+t∈T¯P(h)P(t|h)logP(t|h)
+subjectto
+E(fj)=¯E(fj),1 ≤j≤k
+
+220 HandbookofNaturalLanguageProcessing
+TABLE10.2 FeatureTemplatesUsedintheMaximumEntropyTagger
+Condition Features
+Forallwords wi ti−1=X andti=T
+ti−2=Xandti−1=Y andti=T
+wi−1=X andti=T
+wi−2=X andti=T
+wi+1=X andti=T
+wi+2=X andti=T
+Wordwiisnotarareword wi=X andti=T
+Wordwiisarareword Xisapreﬁxof wi,|X|≤4a n d ti=T
+Xisasuﬃxof wi,|X|≤4a ndti=T
+wicontainsnumber andti=T
+wicontainsuppercasecharacter and ti=T
+wicontainshyphen andti=T
+Source:Ratnaparkhi,A.,Amaximumentropymodelforpart-of-speechtagging,
+inEMNLP, Brill, E. and Church, K. (eds.), ACL, Philadelphia, PA, 1996, 133–142.
+Withpermission.
+where
+E(fj)=n∑
+i=1¯P(hi)P(ti|hi)fj(hi,ti)
+¯E(fj)=n∑
+i=1¯P(hi,ti)fj(hi,ti)
+E(fj)and¯E(fj)denote, respectively, the model’s expectation and the observed expectation of feature fj.
+¯P(hi)and¯P(hi,ti)are the relative frequencies, respectively, of context hiand the context-tag pair (hi,ti)
+in the training data. The intuition behind maximizing the entropy is that it gives us the most uncertaindistribution. In other words, we do not include any information in the distribution that is not justiﬁedbytheempiricalevidenceavailabletous.Theparametersofthedistribution Pcanbeobtainedusingthe
+generalizediterativescalingalgorithm(DarrochandRatcliﬀ,1972).
+ThefeaturetemplatesusedinRatnaparkhi(1996)areshowninTable10.2.Ascanbeseen,thecontext
+(history) is formed of (w
+i−2,wi−1,wi,wi+1,wi+2,ti−2,ti−1), although it is possible to include other data.
+Thefeaturesforrarewords(wordsoccurringlessthanﬁvetimes)makeuseofmorphologicalcluessuchasaﬃxesandcapitalization.Duringtraining,foreachtargetword w,thealgorithminstantiateseachfeature
+template by using the context of w. For example, two features that can be extracted from the training
+corpusareshownbelow:
+f
+j(hi,ti)={
+1i fti−1=JJandti=NN
+0e l s e
+fj(hi,ti)={
+1i f s u ﬃ x (wi−1)=−ingandti=VBG
+0e l s e
+Thefeaturesthatoccurrarelyinthedataareusuallyunreliableandtheydonothavemuchpredictivepower.The algorithm uses a simple smoothing technique and eliminates those features that appear less than athreshold(e.g., lessthan10times). Therearesomeotherstudiesthatusemoresophisticatedsmoothingmethods,suchasusingaGaussianprioronthemodelparameters,whichimprovetheperformancewhencomparedwiththefrequencycutoﬀtechnique(CurranandClark,2003;Zhaoetal.,2007).
+
+Part-of-SpeechTagging 221
+Inthetestphase,beamsearchisusedtoﬁndthemostlikelytagsequenceofasentence.Ifadictionaryis
+available,eachknownwordisrestrictedtoitspossibletagsinordertoincreasetheeﬃciency.Otherwise,alltagsinthetagsetbecomecandidatesfortheword.
+ExperimentsontheWSJcorpusshowed96.43%accuracy.Inordertoobservetheeﬀectoftheﬂexible
+feature selection capability of the model, the author analyzed the problematic words (words frequentlymistagged)andaddedmorespecializedfeaturesintothemodeltobetterdistinguishsuchcases.Afeatureabouttheproblematicword aboutmaybe:
+f
+j(hi,ti)={
+1i fwi=“about”and ti−2ti−1=DTNNSand ti=IN
+0e l s e
+Aninsigniﬁcantincreasewasobservedintheaccuracy(96.49%).This96%–97%accuracybarriermaybepartly due to missing some information that is important for disambiguation or to the inconsistenciesinthetrainingcorpus.Inthework,thisargumentwasalsotestedbyrepeatingtheexperimentsonmoreconsistent portions of the corpus and the accuracy increased to 96.63%. We can thus conclude that, asmentionedbyseveralresearchers,thereissomeamountofnoiseinthecorporaandthisseemstopreventtaggerspassingbeyondanaccuracylimit.
+Itisworthnotingbeforeclosingthissectionthattherearesomeattemptsfordetectingandcorrecting
+theinconsistenciesinthecorpora(KvětonandOliva,2002a,b;DickinsonandMeurers,2003;Rocioetal.,2007).Themainideaintheseattemptsisdetermining(eithermanuallyorautomatically)thetagsequencesthatareimpossibleorveryunlikelytooccurinthelanguage,andthenreplacingthesesequenceswiththecorrect ones after a manual inspection. For example, in English, it is nearly impossible for a determinertobefollowedbyaverb.Astheerrorsintheannotatedcorporaarereducedviasuchtechniques,wecanexpectthePOStaggerstoobtainbetteraccuracies.10.3.3.1 Taggers Based on ME ModelsThe ﬂexibility of the feature set in the ME model has been exploited in several ways by researchers.ToutanovaandManning(2000)concentrateontheproblematiccasesforbothunknown/rarewordsandknownwords.Twonewfeaturetemplatesareaddedtohandletheunknownandrarewords:
+•Afeatureactivatedwhenallthelettersofawordareuppercase
+•Afeatureactivatedwhenawordthatisnotatthebeginningofthesentencecontainsanuppercaseletter
+Infact,thesefeaturesreﬂectthepeculiaritiesintheparticularcorpusused,theWSJcorpus.Inthiscorpus,for instance, the distribution of words in which only the initial letter is capitalized is diﬀerent from thedistribution of words whose all letters are capitalized. Thus, such features need not be useful in othercorpora. Similarly, inthecaseofknownwords, themostcommonerrortypesarehandledbyusingnewfeaturetemplates.Anexampletemplateisgivenbelow:
+VBD/VBN ambiguity—afeatureactivatedwhenthereis haveorbeauxiliaryforminthe
+precedingeightpositions
+Allthesefeaturesarecorpus-andlanguage-dependent,andmaynotgeneralizeeasilytoothersituations.However,thesespecializedfeaturesshowustheﬂexibilityoftheMEmodel.
+SomeotherworksthatarebuiltuponthemodelsofRatnaparkhi(1996)andToutanovaandManning
+(2000)usebidirectionaldependencynetworks(Toutanovaetal.,2003;TsuruokaandTsujii,2005).Unlikeprevious works, the information about the future tags is also taken into account and both left and rightcontextsareusedsimultaneously.Thejustiﬁcationcanbegivenbythefollowingexample:
+will to fight ...
+
+222 HandbookofNaturalLanguageProcessing
+When tagging the word will, the tagger will prefer the (incorrect but most common) modal sense if
+only the left context (which is empty in this example) is examined. However, if the word on the right(to) is also included in the context, the fact that tois often preceded by a noun will force the correct
+tagfortheword will.Adetailedanalysisofseveralcombinationsofleftandrightcontextsrevealsome
+usefulresults:theleftcontextalwayscarriesmoreinformationthantherightcontext,usingbothcontextsincreases the success rates, and symmetric use of the context is better than using (the same amount of)only left or right context (e.g., t
+i−1ti+1is more informative than ti−2ti−1andti+1ti+2). Another strategy
+analyzed in Tsuruoka and Tsujii (2005) is called the easiest-ﬁrst strategy, which, instead of tagging asentence in left-to-right order, begins from the “easiest word” to tag and selects the easiest word amongthe remaining words at each step. The easiest word is deﬁned as the word whose probability estimate isthehighest.Thisstrategymakessensesinceahighlyambiguouswordforcedtobetaggedearlyandtaggedincorrectlywilldegradetheperformanceanditmaybewisertoleavesuchwordstotheﬁnalstepswheremoreinformationisavailable.
+AllmethodologiesusedinPOStaggingmakethestationaryassumptionthatthepositionofthetarget
+word within the sentence is irrelevant to the tagging process. However, this assumption is not alwaysrealistic. For example, when the word walkappears at the front of a sentence it usually indicates a
+physicalexercise(correspondingtonountag)andwhenitappearstowardtheendofasentenceitdenotesanaction(verbtag),asinthesentences:
+A morning walk is a blessing for the whole dayIt only takes me 20 minutes to walk to work
+By relaxing this stationary assumption, a formalism called nonstationary maximum entropy Markov
+model(NS-MEMM), which is a generalization of the MEMM framework (McCallum et al., 2000), was
+proposedinXiaoetal.(2007).Themodelisdecomposedintotwocomponentmodels,the n-grammodel
+andtheMEmodel:
+P(t|h)=P(t|t
+′)PME(t|h) (10.6)
+wheret′denotesanumberofprevioustags(so, P(t|t′)correspondstothetransitionprobability).Inorder
+to incorporate position information into the model, sentences are divided into kbins such that the ith
+wordofasentenceoflength ntakespartin(approximately)the⌈i
+nk⌉
+thbin.Forinstance,fora20-word
+sentence and k=4, the ﬁrst ﬁve words will be in the ﬁrst bin, and so on. This additional parameter
+introduced into the model obviously increases the dimensionality of the model. Equation 10.6 is thusmodiﬁedtoincludethepositionparameter p:
+P(t|h,p)=P(t|t
+′,p)PME(t|h,p)
+TheexperimentsonthreecorporashowedimprovementovertheMEmodelandtheMEMM.Thenumberofbinsrangedfrom1(ordinaryMEMM)to8. Asigniﬁcanterrorreductionwasobtainedfor k=2and
+k=3;beyondthispointthebehaviorwaslesspredictable.
+Curran et al. (2006) employ ME tagging in a multi-tagging environment. As in other studies that
+preservesomeambiguityintheﬁnaltags,awordisassignedallthetagswhoseprobabilitiesarewithinafactor of the probability of the most probable tag. To account for this, the forward–backward algorithmisadaptedtotheMEframework.Duringthetestphase,awordisconsideredtobetaggedcorrectlyifthecorrect tag appears in the set of tags assigned to the word. The results on the CCGbank corpus show anaccuracyof99.7%with1.40tags/word.
+10.4 Other Statistical and Machine Learning Approaches
+There are a wide variety of learning paradigms in the machine learning literature (Alpaydın, 2004).However, the learning approaches other than the HMMs have not been used so widely for the POS
+
+Part-of-SpeechTagging 223
+tagging problem. This is probably due to the suitability of the HMM formalism to this problem and thehighsuccessratesobtainedwithHMMsinearlystudies.Nevertheless,allwell-knownlearningparadigmshave been applied to POS tagging in some degree. In this section, we list these approaches and cite afewtypicalstudiesthatshowhowthetaggingproblemcanbeadaptedtotheunderlyingframework.Theinterestedreadershouldrefertothischapter’ssectioninthecompanionwikiforfurtherdetails.
+10.4.1 Methods and Relevant Work
+•Supportvectormachines.Supportvectormachines(SVM)havetwoadvantagesoverothermodels:theycaneasilyhandlehigh-dimensionalspaces(i.e.,largenumberoffeatures)andtheyareusuallymoreresistanttooverﬁtting(seeNakagawaetal.,2002;Mayﬁeldetal.,2003).
+•Neural networks. Although neural network (NN) taggers do not in general seem to outperformtheHMMtaggers,theyhavesomeattractiveproperties.First,ambiguoustaggingcanbehandledeasily without additional computation. When the output nodes of a network correspond to thetags in the tagset, normally, given an input word and its context during the tagging phase, theoutput node with the highest activation is selected as the tag of the word. However, if there areseveral output nodes with close enough activation values, all of them can be given as candidatetags.Second,neuralnetworktaggersconvergetotopperformanceswithsmallamountsoftrainingdata and they are suitable for languages for which large corpora are not available (see Schmid,1994; Roth and Zelenko, 1998; Marques and Lopes, 2001; Pérez-Ortiz and Forcada, 2001; Rajuetal.,2002).
+•Decisiontrees .Decisiontrees(DT)andstatisticaldecisiontrees(SDT)usedinclassiﬁcationtasks,
+similartorule-basedsystems,cancovermorecontextandenableﬂexiblefeaturerepresentations,and also yield outputs easier to interpret. The most important criterion for the success of thelearning algorithms based on DTs is the construction of a set of questions to be used in thedecisionprocedure(seeBlacketal.,1992;Màrquezetal.,2000).
+•Finite state transducers . Finite state machines are eﬃcient devices that can be used in NLP tasks
+that require a sequential processing of inputs. In the POS tagging domain, the linguistic rules orthe transitions between the tag states can be expressed in terms of ﬁnite state transducers (seeRocheandSchabes,1995;Kempe,1997;Grãnaetal.,2003;Villamiletal.,2004).
+•Geneticalgorithms.AlthoughgeneticalgorithmshaveaccuraciesworsethanthoseofHMMtaggersandrule-basedapproaches,theycanbeseenasaneﬃcientalternativeinPOStagging.Theyreachperformancesneartheirtopperformanceswithsmallpopulationsandafewiterations(seeAraujo,2002;Albaetal.,2006).
+•Fuzzy set theory. The taggers formed using the fuzzy set theory are similar to HMM taggers,except that the lexical and transition probabilities are replaced by fuzzy membership functions.Oneadvantageofthesetaggersistheirhighperformanceswithsmalldatasizes(seeKimandKim,1996;Kogut,2002).
+•Machine translation ideas . An approach used recently in the POS tagging domain and that is on
+a diﬀerent track was inspired by the ideas used in machine translation (MT). Some of the worksconsider the sentences to be tagged as belonging to the source language and the correspondingtag sequences as the target language, and apply statistical machine translation techniques to ﬁndthe correct “translation” of each sentence. Other works aim at discovering a mapping from thetaggings in a source language (or several source languages) to the taggings in a target language.This is a useful approach when there is a shortage of annotated corpora or POS taggers for thetarget language (see Yarowsky et al., 2001; Fossum and Abney, 2005; Finch and Sumita, 2007;MoraandPeiró,2007).
+•Others.Logicalprogramming(seeCussens,1998;LagerandNivre,2001;ReiserandRiddle,2001),dynamic Bayesian networks and cyclic dependency networks (see Peshkin et al., 2003; Reynoldsand Bilmes, 2005; Tsuruoka et al., 2005), memory-based learning (see Daelemans et al., 1996),
+
+224 HandbookofNaturalLanguageProcessing
+relaxation labeling (see Padró, 1996), robust risk minimization (see Ando, 2004), conditionalrandom ﬁelds (see Laﬀerty et al., 2001), Markov random ﬁelds (see Jung et al., 1996), and latentsemanticmapping(seeBellegarda,2008).
+It is worth mentioning here that there has also been some work on POS induction , a task that aims
+at dividing the words in a corpus into diﬀerent categories such that each category corresponds to a partof speech (Schütze, 1993; Schütze, 1995; Clark, 2003; Freitag, 2004; Rapp, 2005; Portnoy and Bock,2007).Thesestudiesmainlyuseclusteringalgorithmsandrelyonthedistributionalcharacteristicsofthewords in the text. The task of POS tagging is based on a predetermined tagset and therefore adopts theassumptions it embodies. However, this may not be appropriate always, especially when we are usingtexts from diﬀerent genres or from diﬀerent languages. So, labeling the words with tags that reﬂect thecharacteristicsofthetextinquestionmaybebetterthantryingtolabelwithaninappropriatesetoftags.In addition, POS induction has a cognitive science motivation in the sense that it aims at showing howtheevidenceinthelinguisticdatacanaccountforlanguageacquisition.
+10.4.2 Combining Taggers
+As we have seen in the previous sections, the POS tagging problem was approached using diﬀerentmachinelearningtechniquesand96%–97%accuracyseemsaperformancebarrierforalmostallofthem.A question that may arise at this point is whether we can obtain better results by combining diﬀerenttaggers and/or models. It was observed that, although diﬀerent taggers have similar performances, theyusually produce diﬀerent errors (Brill and Wu, 1998; Halteren et al., 2001). Based on this encouragingobservation, we can beneﬁt from using more than one tagger in such a way that each individual taggerdealswiththecaseswhereitisthebest.
+Onewayofcombiningtaggersisusingtheoutputofoneofthesystemsasinputtothenextsystem.An
+early application of this idea is given in Tapanainen and Voutilainen (1994), where a rule-based systemﬁrstreducestheambiguitiesintheinitialtagsofthewordsasmuchaspossibleandthenanHMM-basedtaggerarrivesattheﬁnaldecision.Theintuitionbehindthisideaisthatrulescanresolveonlysomeoftheambiguitiesbutwithaveryhighcorrectnessandthestochastictaggerresolvesallambiguitiesbutwithaloweraccuracy.ThemethodproposedinClarketal.(2003)issomewhatdiﬀerentanditinvestigatestheeﬀectofco-training,wheretwotaggersareiterativelyretrainedoneachother’soutput.Thetaggersshouldbe suﬃciently diﬀerent (e.g., based on diﬀerent models) for co-training to be eﬀective. This approach issuitableincaseswhenthereisasmallamountofannotatedcorpora.Beginningfromaseedset(annotatedsentences), bothof thetaggers (T1and T2)aretrained initially. Thenthetaggers areused to taga setofunannotated sentences. The output of T1 is added to the seed set and used to retrain T2; likewise, theoutputofT2isaddedtotheseedsettoretrainT1.Theprocessisrepeatedusinganewsetofunannotatedsentencesateachiteration.
+The second way in combining taggers is letting each tagger to tag the same data and selecting one of
+the outputs according to a voting strategy. Some of the common voting strategies are given in Brill andWu(1998);Halterenetal.(2001);Mihalcea(2003);GlassandBangay(2005);Yonghuietal.(2006):
+•Simple voting . The tag decided by the largest number of the taggers is selected (by using an
+appropriatemethodforbreakingtheties).
+•Weightedvoting 1.Thedecisionsofthetaggersareweightedbasedontheirgeneralperformances,
+thatis,thehighertheaccuracyofatagger,thelargeritsweight.
+•Weighted voting 2. This is similar to the previous one, except that the performance on the target
+word(certaintyofthetaggeronthecurrentsituation)isusedastheweightinsteadofthegeneralperformance.
+•Rankedvoting. Thisissimilartotheweightedvotingschemes, exceptthattheranks(1, 2, etc.) ofthetaggersareusedasweights,wherethebesttaggerisgiventhehighestrank.
+
+Part-of-SpeechTagging 225
+The number of taggers in the combined tagger normally ranges from two to ﬁve and they should havediﬀerentstructuresforaneﬀectivecombination.ExceptGlassandBangay(2005),thementionedstudiesobservedanimprovementinthesuccessrates.GlassandBangay(2005)reportthattheaccuraciesofthecombinedtaggersareinbetweentheaccuraciesofthebestandtheworstindividualtaggers,anditisnotalwaystruethatincreasingthenumberoftaggersyieldsbetterresults(e.g.,atwo-taggercombinationmayoutperformaﬁve-taggercombination).Thediscouragingresultsobtainedinthisstudymaybepartlyduetothepeculiaritiesofthedomainandthetagsetused.Despitethisobservation,wecaningeneralexpectaperformanceincreasebythecombinationofdiﬀerenttaggers.
+10.5 POS Tagging in Languages Other Than English
+AsinotherﬁeldsofNLP,mostoftheresearchonPOStaggingtakesEnglishasthelanguageofchoice.Themotivationinthischoiceisbeingabletocomparetheproposedmodels(newmodelsorvariationsofexist-ingmodels)withpreviouswork.Thesuccessofstochasticmethodslargelydependsontheavailabilityoflanguageresources—lexiconsandcorpora.Beginningfrom1960s,suchresourceshavebeguntobedevel-opedfortheEnglishlanguage(e.g.,Browncorpus).Thisavailabilityenabledtheresearcherstoconcentrateonthemodelingissue,ratherthanthedataissue,indevelopingmoresophisticatedapproaches.
+However,thisisnotthecaseforother(especiallynon-Indo-European)languages.Untilrecentlythere
+wasascarcityofdatasourcesfortheselanguages.Asnewcorporabegintoappear,researchattemptsintheNLP domain begin to increase. In addition, these languages have diﬀerent morphological and syntacticcharacteristics than English. A naive application of a POS tagger developed with English in mind maynot always work. Therefore, the peculiarities of these languages should be taken into account and theunderlyingframeworkshouldbeadaptedtotheselanguageswhiledevelopingPOStaggers.
+In this section, we ﬁrst concentrate on two languages (that do not belong to the Indo-European
+family) that are widely studied in the POS tagging domain. The ﬁrst one, Chinese, is typical in its wordsegmentationissues; theotherone, Korean,istypicalinitsagglutinativenature. Webrieﬂymentionthecharacteristicsoftheselanguagesfromataggingperspective.Thenweexplainthesolutionstotheseissuesproposedintheliterature.
+There are plenty of research eﬀorts related to POS tagging of other languages. These studies range
+fromsophisticatedstudiesforwell-knownlanguages(e.g.,Spanish,German)tothoseinprimitivestagesof development (e.g., for Vietnamese). The works in the ﬁrst group follow a similar track as those forEnglish.TheyexploitthemainformalismsusedinPOStaggingandadaptthesestrategiestotheparticularlanguages.WehavenotincludedtheseworksinpreviouspartsofthischapterandinsteadwehavemostlyconsideredtheworksonEnglish,becauseofbeingabletodoafaircomparisonbetweenmethodologies.The works in the second group are usually in the form of applying the well-known models to thoselanguages.
+10.5.1 Chinese
+A property of the Chinese language that makes POS tagging more diﬃcult than languages such asEnglishisthatthesentencesarewrittenwithoutspacesbetweenthecharacters.Forexample,twopossiblesegmentationsoftheunderlinedpartofthesentence
+
+
+226 HandbookofNaturalLanguageProcessing
+are
+(b)TIME–N ADV TIME–CLASSIFIER V
+TIME–N PREP TIME–N V(a)
+SincePOStaggingdependsonhowthesentenceisdividedintowords,asuccessfulwordsegmentation
+isaprerequisiteforatagger.InsomeworksonChinesePOStagging,acorrectlysegmentedwordsequence
+is assumed as input. However, this may not always be a realistic assumption and a better approach is
+integrating these two tasks in such a way that any one of them may contribute to the success of the
+other. For instance, a particular segmentation that seems as the best one to the word segmentation
+component may be rejected due to its improper tagging. Another property of the Chinese language is
+thediﬀerenceofitsmorphologicalandsyntacticstructures.Chinesegrammarfocusesonthewordorder
+ratherthanthemorphologicalvariations.Thus,transitioninformationcontributesmoretoPOStagging
+thanmorphologicalinformation. Thispropertyalsoindicatesthatunknownwordprocessingshouldbe
+somewhatdiﬀerentfromEnglish-likelanguages.
+TheworksinSunetal.(2006)andZhouandSu(2003)concentrateonintegratingwordsegmentation
+andPOStagging.Givenasentence,possiblesegmentationsandallpossibletaggingsforeachsegmentation
+are taken into account. Then the most likely path, a sequence of (word, tag) pairs, is determined using
+a Viterbi-like algorithm. Accuracies about 93%–95% were obtained, where it was measured in terms of
+both correctly identiﬁed segments and tags. Zhang and Clark (2008) formulate the word segmentation
+and POS tagging tasks as a single problem, take the union of the features of each task as the features of
+thejointsystem,andapplytheperceptronalgorithmofCollins(2002).Sincethesearchspaceformedof
+combined (word, tag) pairs is very large, a novel multiple beam search algorithm is used, which keeps
+track of a list of candidate parses for each character in the sentence and thus avoids limiting the search
+space as in previous studies. A comparison with the two-stage (word segmentation followed by POS
+tagging)systemshowedanimprovementofabout10%–15%inF-measure.
+Maximum entropy framework is used in Zhao et al. (2007) and Lin and Yuan (2002). Since the
+performanceoftheMEmodelsissensitivetothefeaturesused,somefeaturesthattakethecharacteristics
+ofthelanguageintoaccountareincludedinthemodels. AnexampleofanHMM-basedsystemisgiven
+in Cao et al. (2005). Instead of using the probability distributions in the standard HMM formalism, it
+combinesthetransitionandlexicalprobabilitiesas
+argmaxTn∏
+i=1P(ti,wi|ti−1,wi−1)
+andthenconvertsintothefollowingformtoalleviatedatasparseness:
+argmaxTn∏
+i=1P(ti|ti−1,wi−1)P(wi|ti−1,wi−1,ti)
+A tagger that combines rule-based and HMM-based processes in a cascaded manner is proposed in
+Ning et al. (2007). It ﬁrst reduces the ambiguity in the initial assignment of the tags by employing a
+TBL-like process. Then HMM training is performed on this less ambiguous data. The accuracy results
+for Chinese POS tagging are around 92%–94% for open test (test data contains unknown words) and
+96%–98%forclosedtest(nounknownwordsinthetestdata).Finally,weshouldmentionaninteresting
+study that is about Classical Chinese, which has some grammatical diﬀerences from Modern Chinese
+(Huangetal.,2002).
+
+Part-of-SpeechTagging 227
+10.5.2 Korean
+Korean, which belongs to the group of Altaic languages, is an agglutinative language and has a very
+productive morphology. In theory, the number of possible morphological variants of a given word can
+be in tens of thousands. For such languages, a word-based tagging approach does not work due to the
+sparse data problem. Since there exist several surface forms corresponding to a base form, the number
+of out-of-vocabulary words will be very large and the estimates from the corpus will not be reliable.
+Acommonsolutiontothisproblemismorpheme-basedtagging:eachmorpheme(eitherabaseformor
+anaﬃx)istaggedseparately.Thus,theproblemofPOStaggingchangesintotheproblemofmorphological
+tagging (morphological disambiguation) for agglutinative languages: we tag each morpheme separately
+and then combine. As an example, Figure 10.3 shows the morpheme structure of the Korean sentence
+na-neun hag-gyo-e gan-da (I go to school ).Straightlinesindicatethewordboundaries,
+dashedlinesindicatethemorphemeboundaries,andthecorrecttaggingisgivenbythethicklines.
+The studies in Lee et al. (2000b), Lee and Rim (2004), and Kang et al. (2007) apply n-gram and
+HMMmodelstotheKoreanPOStaggingproblem.Forinstance,Leeetal.(2000b)proposethefollowing
+morpheme-basedversionoftheHMMmodel:
+u∏
+i=1P(ci,pi|ci−1...ci−K,pi−1...pi−K,mi−1...mi−J)P(mi|ci...ci−L,pi...pi−L+1,mi−1...mi−I)
+(10.7)
+where
+uisthenumberofmorphemes
+cdenotesa(morpheme)tag
+misamorpheme
+pisabinaryparameter(e.g.,0and1)diﬀerentiatingtransitionsacrossawordboundaryandtransitions
+withinaword
+The indices K, J, LandIrange from 0 to 2. In fact, Equation 10.7 is analogous to a word-based HMM
+equationifweregard masword (w)andcastag(t)(andignore p’s).
+Han and Palmer (2005) and Ahn and Seo (2007) combine statistical methods with rule-based disam-
+biguation.InAhnandSeo(2007),diﬀerentsetsofrulesareusedtoidentifytheidiomaticconstructsand
+toresolvetheambiguitiesinhighlyambiguouswords.Theruleseliminatesomeofthetaggingsandthen
+an HMM executes in order to arrive at the ﬁnal tag sequence. When a word is inﬂected in Korean, the
+baseformofthewordand/orthesuﬃxmaychangetheirforms(bycharacterdeletionorbycontraction),
+formingallomorphs.BeforePOStagging,HanandPalmer(2005)attempttorecovertheoriginalformsof
+thewordsandthesuﬃxesbyusingruletemplatesextractedfromthecorpus.Thenan n-gramapproach
+tags the given sentence in the standard way. The accuracies obtained by these works are between 94%
+and97%.
+na/NNP neun/PX ga/VV
+n-da/EFC
+hag-gyo/NNC e/PA ga/VX EOS
+na/VV n-da/EFF
+gal/VV
+BOS na/VX neun/EFD
+na/VV
+FIGURE 10.3 Morpheme structure of the sentence na-neun hag-gyo-e gan-da . (From Lee, D. and
+Rim, H., Part-of-speech tagging considering surface form for an agglutinative language, in Proceedings of the ACL ,
+ACL,Barcelona,Spain,2004.Withpermission.)
+
+228 HandbookofNaturalLanguageProcessing
+10.5.3 Other Languages
+We can cite the following works related to POS tagging for diﬀerent language families and groups. Bynomeansweclaimthatthegroupspresentedbelowaredeﬁnite(thisisaprofessionoflinguists)northelanguagesincludedareexhaustive.Wesimplymentionsomeworth-notingstudiesinawidecoverageoflanguages.Theinterestedreaderscanrefertothecitedreferences.
+•Indo-European languages . Spanish (Triviño-Rodriguez and Morales-Bueno, 2001; Jiménez and
+Morales, 2002; Carrasco and Gelbukh, 2003), Portuguese (Lopes and Jorge, 2000; Kepler andFinger, 2006), Dutch (Prins, 2004; Poel et al., 2007), Swedish (Eineborg and Lindberg, 2000),Greek(Maragoudakisetal.,2004).
+•Agglutinative and inﬂectional languages . Japanese (Asahara and Matsumoto, 2000; Ma, 2002),
+Turkish (Altunyurt et al., 2007; Sak et al., 2007; Dinçer et al., 2008), Czech (Hajič and Hladká,1997;Hajič,2000;Olivaetal.,2000),Slovene(Cussensetal.,1999).
+•Semitic languages . Arabic (Habash and Rambow, 2005; Zribi et al., 2006), Hebrew (Bar-Haim
+etal.,2008).
+•Tailanguages.Thai(Maetal.,2000;Murataetal.,2002;Luetal.,2003).
+•Other less-studied languages. Kannada (Vikram and Urs, 2007), Afrikaans (Trushkina, 2007),Telugu(KumarandKumar,2007),Urdu(Anwaretal.,2007),Uyghur(Altenbek,2006),Kiswahili(Pauwetal.,2006),Vietnamese(DienandKiem,2003),Persian(Mohsenietal.,2008),Bulgarian(DoychinovaandMihov,2004).
+10.6 Conclusion
+One of the earliest steps in the processing of natural language text is POS tagging. Usually this is asentence-basedprocessandgivenasentenceformedofasequenceofwords,wetrytoassignthecorrectPOStagtoeachword.TherearebasicallytwodiﬃcultiesinPOStagging.Theﬁrstoneistheambiguityinthewords,meaningthatmostofthewordsinalanguagehavemorethanonepartofspeech.Theseconddiﬃculty arises from the unknown words, the words for which the tagger has no knowledge about. Theclassical solution to the POS tagging problem is taking the context around the target word into accountand selecting the most probable tag for the word by making use of the information provided by thecontextwords.
+Inthischapter,wesurveyedawidevarietyoftechniquesforthePOStaggingproblem.Wecandivide
+these techniques into two broad categories: rule-based methods and statistical methods. The formerone was used by the early taggers that attempt to label the words by using a number of linguistic rules.Normally these rules are manually compiled, which is the major drawback of such methods. Later therule-based systems began to be replaced by statistical systems as suﬃcient language resources becameavailable.TheHMMframeworkisthemostwidelyusedstatisticalapproachforthePOStaggingproblem.ThisisprobablyduetothefactthatHMMisasuitableformalismforthisproblemanditresultedinhighsuccess rates in early studies. However, nearly all of the other statistical and machine learning methodsarealsousedtosomeextent.
+POS tagging should not be seen as a theoretical subject. Since tagging is one of the earliest steps
+in NLP, the results of taggers are being used in a wide range of NLP tasks related to later processing.Probably the most prevalent one is parsing (syntactic analysis) or partial parsing (a kind of analysislimited to particular types of phrases), where the tags of the words in a sentence need to be known inordertodeterminethecorrectwordcombinations(e.g.,Plaetal.,2000).Anotherimportantapplicationisinformationextraction, whichaimsatextractingstructuredinformationfromunstructureddocuments.Named-entityrecognition,asubtaskofinformationextraction,makesuseoftaggingandpartialparsinginidentifyingtheentitiesweareinterestedinandtherelationshipsbetweentheseentities(Cardie,1997).Information retrieval and question answering systems also make use of the outputs of taggers. The
+
+Part-of-SpeechTagging 229
+performance of such systems can be improved if they work on a phrase basis rather than treating eachword individually (e.g., Cowie et al., 2000). Finally, we can cite lexical acquisition, machine translation,word-sensedisambiguation,andphrasenormalizationasotherresearchareasthatrelyontheinformationprovidedbytaggers.
+The state-of-the-art accuracies in POS tagging are around 96%–97% for English-like languages. For
+languages in other families, similar accuracies are obtained provided that the characteristics of theselanguages diﬀerent from English are carefully handled. This seems a quite high accuracy and someresearchers argue that POS tagging is an already-solved problem. However, since POS tagging servesas a preprocessing step for higher-level NLP operations, a small improvement has the potential ofsigniﬁcantly increasing the quality of later processing. Therefore, we may expect a continuing researcheﬀortonthistask.
+References
+Ahn,Y.andY.Seo.2007.Koreanpart-of-speechtaggingusingdisambiguationrulesforambiguousword
+andstatisticalinformation.In ICCIT,pp.1598–1601,Gyeongju,RepublicofKorea.IEEE.
+Alba, E., G. Luque, and L. Araujo. 2006. Natural language tagging with genetic algorithms. Information
+ProcessingLetters 100(5):173–182.
+Alpaydın,E.2004. IntroductiontoMachineLearning.MITPress,Cambridge,MA.
+Altenbek,G.2006.AutomaticmorphologicaltaggingofcontemporaryUighurcorpus.In IRI,pp.557–560,
+WaikoloaVillage,HI.IEEE.
+Altunyurt, L., Z. Orhan, and T. Güngör. 2007. Towards combining rule-based and statistical part of
+speechtagginginagglutinativelanguages. ComputerEngineering 1(1):66–69.
+Anderson, J.M. 1997. A Notional Theory of Syntactic Categories . Cambridge University Press,
+Cambridge,U.K.
+Ando, R.K. 2004. Exploiting unannotated corpora for tagging and chunking. In ACL,B a r c e l o n a ,
+Spain.ACL.
+Anwar,W.,X.Wang,L.Li,andX.Wang.2007.AstatisticalbasedpartofspeechtaggerforUrdulanguage.
+InICMLC,pp.3418–3424,HongKong.IEEE.
+Araujo, L. 2002. Part-of-speech tagging with evolutionary algorithms. In CICLing, ed. A. Gelbukh,
+pp.230–239,Mexico.Springer.
+Asahara, M. and Y. Matsumoto. 2000. Extended models and tools for high-performance part-of-speech
+tagger.In COLING,pp.21–27,Saarbrücken,Germany.MorganKaufmann.
+Bahl, L.R. and R.L. Mercer. 1976. Part-of-speech assignment by a statistical decision algorithm. In ISIT,
+pp.88–89,Sweden.IEEE.
+Baker, M.C. 2003. Lexical Categories: Verbs, Nouns, and Adjectives . Cambridge University Press,
+Cambridge,U.K.
+Banko, M. and R.C. Moore. 2004. Part of speech tagging in context. In COLING, pp. 556–561, Geneva,
+Switzerland.ACL.
+Bar-Haim,R.,K.Sima’an,andY.Winter. 2008.Part-of-speechtaggingofmodernHebrewtext. Natural
+LanguageEngineering 14(2):223–251.
+Bellegarda, J.R. 2008. A novel approach to part-of-speech tagging based on latent analogy. In ICASSP,
+pp.4685–4688,LasVegas,NV.IEEE.
+Black, E., F. Jelinek, J. Laﬀerty, R. Mercer, and S. Roukos. 1992. Decision tree models applied to the
+labelingoftextwithparts-of-speech.In HLT,pp.117–121,NewYork.ACL.
+Boggess, L., J.S. Hamaker, R. Duncan, L. Klimek, Y. Wu, and Y. Zeng. 1999. A comparison of part
+of speech taggers in the task of changing to a new domain. In ICIIS, pp. 574–578, Washington,
+DC.IEEE.
+Brants,T.2000.TnT—Astatisticalpart-of-speechtagger.In ANLP,pp.224–231,Seattle,WA.
+
+230 HandbookofNaturalLanguageProcessing
+Brill,E.1995a.Transformation-basederror-drivenlearningandnaturallanguageprocessing:Acasestudy
+inpart-of-speechtagging. ComputationalLinguistics 21(4):543–565.
+Brill, E. 1995b. Unsupervised learning of disambiguation rules for part of speech tagging. In Workshop
+onVeryLargeCorpora ,eds.D.YarowskyandK.Church,pp.1–13,Somerset,NJ.ACL.
+Brill,E.andJ.Wu.1998.Classiﬁercombinationforimprovedlexicaldisambiguation.In COLING-ACL,
+pp.191–195,Montreal,QC.ACL/MorganKaufmann.
+Cao,H.,T.Zhao,S.Li,J.Sun,andC.Zhang.2005.Chinesepostaggingbasedonbilexicalco-occurrences.
+InICMLC,pp.3766–3769,Guangzhou,China.IEEE.
+Carberry, S., K. Vijay-Shanker, A. Wilson, and K. Samuel. 2001. Randomized rule selection in
+transformation-basedlearning:Acomparativestudy. NaturalLanguageEngineering 7(2):99–116.
+Cardie,C.1997.Empiricalmethodsininformationextraction. AIMagazine 18(4):65–79.
+Carrasco, R.M. and A. Gelbukh. 2003. Evaluation of TnT tagger for Spanish. In ENC, pp. 18–25,
+Mexico.IEEE.
+Church, K.W. 1988. A stochastic parts program and noun phrase parser for unrestricted text. In ANLP,
+pp.136–143,Austin,TX.
+Clark, A. 2003. Combining distributional and morphological information for part of speech induction.
+InEACL,pp.59–66,Budapest,Hungary.
+Clark,S.,J.R.Curran,andM.Osborne.2003.Bootstrappingpostaggersusingunlabelleddata.In CoNLL,
+pp.49–55,Edmonton,AB.
+Collins, M.2002. DiscriminativetrainingmethodsforhiddenMarkovmodels: Theoryandexperiments
+withperceptronalgorithms.In EMNLP,pp.1–8,Philadelphia,PA.ACL.
+Cowie,J.,E.Ludovik,H.Molina-Salgado,S.Nirenburg,andS.Scheremetyeva.2000.Automaticquestion
+answering.In RIAO,Paris,France.ACL.
+Cucerzan, S. and D. Yarowsky. 2000. Language independent, minimally supervised induction of lexical
+probabilities.In ACL,HongKong.ACL.
+Curran,J.R.andS.Clark.2003.InvestigatingGISandsmoothingformaximumentropytaggers.In EACL,
+pp.91–98,Budapest,Hungary.
+Curran, J.R., S. Clark, and D. Vadas. 2006. Multi-tagging for lexicalized-grammar parsing. In
+COLING/ACL ,pp.697–704,Sydney,NSW.ACL.
+Cussens, J. 1998. Using prior probabilities and density estimation for relational classiﬁcation. In ILP,
+pp.106–115,Madison,WI.Springer.
+Cussens, J., S. Džeroski, and T. Erjavec. 1999. Morphosyntactic tagging of Slovene using Progol. In ILP,
+eds.S.DžeroskiandP.Flach,pp.68–79,Bled,Slovenia.Springer.
+Cutting, D., J. Kupiec, J. Pedersen, and P. Sibun. 1992. A practical part-of-speech tagger. In ANLP,
+pp.133–140,Trento,Italy.
+Daelemans, W., J. Zavrel, P. Berck, and S. Gillis. 1996. MBT: A memory-based part of speech tagger-
+generator.In WorkshoponVeryLargeCorpora ,eds.E.EjerhedandI.Dagan,pp.14–27,Copenhagen,
+Denmark.ACL.
+Darroch, J.N. and D. Ratcliﬀ. 1972. Generalized iterative scaling for log-linear models. The Annals of
+MathematicalStatistics 43(5):1470–1480.
+Dermatas, E. and G. Kokkinakis. 1995. Automatic stochastic tagging of natural language texts.
+ComputationalLinguistics 21(2):137–163.
+Dickinson,M.andW.D.Meurers.2003.Detectingerrorsinpart-of-speechannotation.In EACL,pp.107–
+114,Budapest,Hungary.
+Dien, D. and H. Kiem. 2003. Pos-tagger for English-Vietnamese bilingual corpus. In HLT-NAACL ,
+pp.88–95,Edmonton,AB.ACL.
+Dinçer, T., B. Karaoğlan, and T. Kışla. 2008. A suﬃx based part-of-speech tagger for Turkish. In ITNG,
+pp.680–685,LasVegas,NV.IEEE.
+Doychinova, V. and S. Mihov. 2004. High performance part-of-speech tagging of Bulgarian. In AIMSA,
+eds.C.BusslerandD.Fensel,pp.246–255,Varna,Bulgaria.Springer.
+
+Part-of-SpeechTagging 231
+Eineborg,M.andN.Lindberg.2000.ILPinpart-of-speechtagging—Anoverview.In LLL,eds.J.Cussens
+andS.Džeroski,pp.157–169,Lisbon,Portugal.Springer.
+Finch, A. and E. Sumita. 2007. Phrase-based part-of-speech tagging. In NLP-KE, pp. 215–220, Beijing,
+China.IEEE.
+Florian, R. and G. Ngai. 2001. Multidimensional transformation-based learning. In CONLL, pp. 1–8,
+Toulouse,France.ACL.
+Fossum, V. and S. Abney. 2005. Automatically inducing a part-of-speech tagger by projecting from
+multiple source languages across aligned corpora. In IJCNLP, eds. R. Dale et al., pp. 862–873, Jeju
+Island,RepublicofKorea.Springer.
+Freitag, D. 2004. Toward unsupervised whole-corpus tagging. In COLING, pp. 357–363, Geneva,
+Switzerland.ACL.
+Glass, K. and S. Bangay. 2005. Evaluating parts-of-speech taggers for use in a text-to-scene conversion
+system.In SAICSIT,pp.20–28,WhiteRiver,SouthAfrica.
+Grãna, J., G. Andrade, and J. Vilares. 2003. Compilation of constraint-based contextual rules for part-
+of-speech tagging into ﬁnite state transducers. In CIAA, eds. J.M. Champarnaud and D. Maurel,
+pp.128–137,SantaBarbara,CA.Springer.
+Grzymala-Busse, J.W. and L.J. Old. 1997. A machine learning experiment to determine part of speech
+fromword-endings.In ISMIS,pp.497–506,Charlotte,NC.Springer.
+Habash, N. and O. Rambow. 2005. Arabic tokenization, part-of-speech tagging and morphological
+disambiguationinonefellswoop.In ACL,pp.573–580,AnnArbor,MI.ACL.
+Hajič, J.2000. Morphological tagging: Datavs. dictionaries. In ANLP,pp.94–101, Seattle, WA.Morgan
+Kaufmann.
+Hajič,J.andB.Hladká.1997.Probabilisticandrule-basedtaggerofaninﬂectivelanguage—Acomparison.
+InANLP,pp.111–118,Washington,DC.MorganKaufmann.
+Halteren,H.v.,J.Zavrel,andW.Daelemans.2001.Improvingaccuracyinwordclasstaggingthroughthe
+combinationofmachinelearningsystems. ComputationalLinguistics 27(2):199–229.
+Han, C. and M. Palmer. 2005. A morphological tagger for Korean: Statistical tagging combined with
+corpus-basedmorphologicalruleapplication. MachineTranslation 18:275–297.
+Huang,L.,Y.Peng,H.Wang,andZ.Wu.2002.Statisticalpart-of-speechtaggingforclassicalChinese.In
+TSD,eds.P.Sojka,I.Kopeček,andK.Pala,pp.115–122,Brno,CzechRepublic.Springer.
+Jiménez,H.andG.Morales.2002.Sepe:ApostaggerforSpanish.In CICLing,ed.A.Gelbukh,pp.250–259,
+Mexico.Springer.
+Jung,S.,Y.C.Park,K.Choi,andY.Kim.1996.MarkovrandomﬁeldbasedEnglishpart-of-speechtagging
+system.In COLING,pp.236–242,Copenhagen,Denmark.
+Kang, M., S.Jung, K.Park, andH.Kwon. 2007. Part-of-speechtaggingusingwordprobabilitybasedon
+categorypatterns.In CICLing,ed.A.Gelbukh,pp.119–130,Mexico.Springer.
+Kempe, A. 1997. Finite state transducers approximating hidden Markov models. In EACL,e d s .P . R .
+CohenandW.Wahlster,pp.460–467,Madrid,Spain.ACL.
+Kepler, F.N. and M. Finger. 2006. Comparing two Markov methods for part-of-speech tagging of
+Portuguese. In IBERAMIA-SBIA , eds. J.S. Sichman et al., pp. 482–491, Ribeirão Preto, Brazil.
+Springer.
+Kim, J.andG.C.Kim. 1996. Fuzzynetworkmodelforpart-of-speechtaggingundersmalltrainingdata.
+NaturalLanguageEngineering 2(2):95–110.
+Kim,J.,H.Rim,andJ.Tsujii.2003.Self-organizingMarkovmodelsandtheirapplicationtopart-of-speech
+tagging.In ACL,pp.296–302,Sapporo,Japan.ACL.
+Klein, S. and R. Simpson. 1963. A computational approach to grammatical coding of English words.
+JournalofACM 10(3):334–347.
+Kogut,D.J.2002.Fuzzysettagging.In CICLing,ed.A.Gelbukh,pp.260–263,Mexico.Springer.
+Kumar, S.S.andS.A.Kumar. 2007. PartsofspeechdisambiguationinTelugu. In ICCIMA,pp.125–128,
+Sivakasi,Tamilnadu,India.IEEE.
+
+232 HandbookofNaturalLanguageProcessing
+Květon, P. and K. Oliva. 2002a. Achieving an almost correct pos-tagged corpus. In TSD,e d s .P .S o j k a ,
+I.Kopeček,andK.Pala,pp.19–26,Brno,CzechRepublic.Springer.
+Květon,P.andK.Oliva.2002b.(Semi-)Automaticdetectionoferrorsinpos-taggedcorpora.In COLING,
+pp.1–7,Taipei,Taiwan.ACL.
+Laﬀerty, J., A. McCallum, and F. Pereira. 2001. Conditional random ﬁelds: Probabilistic models for
+segmentingandlabelingsequencedata.In ICML,eds.C.E.BrodleyandA.P.Danyluk,pp.282–289,
+Williamstown,MA.MorganKaufmann.
+Lager, T. and J. Nivre. 2001. Part of speech tagging from a logical point of view. In LACL,e d s .P .d e
+Groote,G.Morrill,andC.Retoré,pp.212–227,LeCroisic,France.Springer.
+Lee,D.andH.Rim.2004.Part-of-speechtaggingconsideringsurfaceformforanagglutinativelanguage.
+InACL,Barcelona,Spain.ACL.
+Lee, G.G., J. Cha, and J. Lee. 2002. Syllable-pattern-based unknown-morpheme segmentation and
+estimationforhybridpart-of-speechtaggingofKorean. ComputationalLinguistics 28(1):53–70.
+Lee, S., J. Tsujii, and H. Rim. 2000a. Part-of-speech tagging based on hidden Markov model assuming
+jointindependence.In ACL,pp.263–269,HongKong.ACL.
+Lee, S., J. Tsujii, and H. Rim. 2000b. Hidden Markov model-based Korean part-of-speech tagging
+considering high agglutinativity, word-spacing, and lexical correlativity. In ACL, pp. 384–391,
+HongKong.ACL.
+Lin, H. and C. Yuan. 2002. Chinese part of speech tagging based on maximum entropy method. In
+ICMLC,pp.1447–1450,Beijing,China.IEEE.
+Lopes, A.d.A. and A. Jorge. 2000. Combining rule-based and case-based learning for iterative part-of-
+speechtagging.In EWCBR,eds.E.BlanzieriandL.Portinale,pp.26–36,Trento,Italy.Springer.
+Lu, B., Q. Ma, M. Ichikawa, and H. Isahara. 2003. Eﬃcient part-of-speech tagging with a min-max
+modularneural-networkmodel. AppliedIntelligence 19:65–81.
+Ma, Q. 2002. Natural language processing with neural networks. In LEC, pp. 45–56, Hyderabad,
+India.IEEE.
+Ma, Q., M. Murata, K. Uchimoto, and H. Isahara. 2000. Hybrid neuro and rule-based part of speech
+taggers.In COLING,pp.509–515,Saarbrücken,Germany.MorganKaufmann.
+Manning, C.D. and H. Schütze. 2002. Foundations of Statistical Natural Language Processing . 5th ed.,
+MITPress,Cambridge,MA.
+Maragoudakis,M.,T.Ganchev,andN.Fakotakis.2004.Bayesianreinforcementforaprobabilisticneural
+netpart-of-speechtagger.In TSD,eds.P.Sojka,I.Kopeček,andK.Pala,pp.137–145,Brno,Czech
+Republic.Springer.
+Marcus,M.P.,B.Santorini,andM.A.Marcinkiewicz.1993.BuildingalargeannotatedcorpusofEnglish:
+ThePenntreebank. ComputationalLinguistics 19(2):313–330.
+Marques, N.C. and G.P. Lopes. 2001. Tagging with small training corpora. In IDA, eds. F. Hoﬀmann,
+D.J.Hand,N.M.Adams,D.H.Fisher,andG.Guimaraes,pp.63–72,Cascais,Lisbon.Springer.
+Màrquez, L., L. Padró, and H. Rodríguez. 2000. A machine learning approach to pos tagging. Machine
+Learning 39:59–91.
+Mayﬁeld, J., P. McNamee, C. Piatko, and C. Pearce. 2003. Lattice-based tagging using support vector
+machines.In CIKM,pp.303–308,NewOrleans,LA.ACM.
+McCallum, A., D. Freitag, and F. Pereira. 2000. Maximum entropy Markov models for information
+extractionandsegmentation.In ICML,pp.591–598,Stanford,CA.MorganKaufmann.
+Merialdo, B. 1994. Tagging English text with a probabilistic model. Computational Linguistics 20(2):
+155–171.
+Mihalcea, R. 2003. Performance analysis of a part of speech tagging task. In CICLing, ed. A. Gelbukh,
+pp.158–167,Mexico.Springer.
+Mikheev, A. 1997. Automatic rule induction for unknown-word guessing. Computational Linguistics
+23(3):405–423.
+
+Part-of-SpeechTagging 233
+Mohammed, S. and T. Pedersen. 2003. Guaranteed pre-tagging for the Brill tagger. In CICLing,e d .
+A.Gelbukh,pp.148–157,Mexico.Springer.
+Mohseni,M.,H.Motalebi,B.Minaei-bidgoli,andM.Shokrollahi-far.2008.AFarsipart-of-speechtagger
+basedonMarkovmodel.In SAC,pp.1588–1589,Ceará,Brazil.ACM.
+Mora, G.G. and J.A.S. Peiró. 2007. Part-of-speech tagging based on machine translation techniques. In
+IbPRIA,eds.J.Martíetal.,pp.257–264,Girona,Spain.Springer.
+Murata, M., Q. Ma, and H. Isahara. 2002. Comparison of three machine-learning methods for Thai
+part-of-speechtagging. ACMTransactionsonAsianLanguageInformationProcessing 1(2):145–158.
+Nagata, M. 1999. A part of speech estimation method for Japanese unknown words using a statistical
+modelofmorphologyandcontext.In ACL,pp.277–284,CollegePark,MD.
+Nakagawa,T.,T.Kudo,andY.Matsumoto.2002.Revisionlearninganditsapplicationtopart-of-speech
+tagging.In ACL,pp.497–504,Philadelphia,PA.ACL.
+Nakagawa, T. and Y. Matsumoto. 2006. Guessing parts-of-speech of unknown words using global
+information.In CL-ACL,pp.705–712,Sydney,NSW.ACL.
+Nasr,A.,F.Béchet,andA.Volanschi.2004.TaggingwithhiddenMarkovmodelsusingambiguoustags.
+InCOLING,pp.569–575,Geneva.ACL.
+Ning, H., H. Yang, and Z. Li. 2007. A method integrating rule and HMM for Chinese part-of-speech
+tagging.In ICIEA,pp.723–725,Harbin,China.IEEE.
+Oliva, K., M. Hnátková, V. Petkevič, and P. Květon. 2000. The linguistic basis of a rule-based tagger for
+Czech.In TSD,eds.P.Sojka,I.Kopeček,andK.Pala,pp.3–8,Brno,CzechRepublic.Springer.
+Padró,L.1996.Postaggingusingrelaxationlabelling.In COLING,pp.877–882,Copenhagen,Denmark.
+Pauw, G., G.Schyver, andW. Wagacha. 2006. Data-driven part-of-speechtagging of Kiswahili. In TSD,
+eds.P.Sojka,I.Kopeček,andK.Pala,pp.197–204,Brno,CzechRepublic.Springer.
+Pérez-Ortiz, J.A. and M.L. Forcada. 2001. Part-of-speech tagging with recurrent neural networks. In
+IJCNN,pp.1588–1592,Washington,DC.IEEE.
+Peshkin, L., A.Pfeﬀer, and V.Savova. 2003. Bayesiannetsinsyntacticcategorizationof novelwords. In
+HLT-NAACL ,pp.79–81,Edmonton,AB.ACL.
+Pla,F.andA.Molina.2004.Improvingpart-of-speechtaggingusinglexicalizedHMMs. NaturalLanguage
+Engineering 10(2):167–189.
+Pla, F., A. Molina, and N. Prieto. 2000. Tagging and chunking with bigrams. In COLING, pp. 614–620,
+Saarbrücken,Germany.ACL.
+Poel,M.,L.Stegeman,andR.opdenAkker.2007.AsupportvectormachineapproachtoDutchpart-of-
+speechtagging.In IDA,eds.M.R.Berthold,J.Shawe-Taylor,andN.Lavrač,pp.274–283,Ljubljana,
+Slovenia.Springer.
+Portnoy,D.andP.Bock.2007.Automaticextractionofthemultiplesemanticandsyntacticcategoriesof
+words.In AIAP,pp.514–519,Innsbruck,Austria.
+Prins,R.2004.Beyondninn-gramtagging.In ACL,Barcelona,Spain.ACL.
+Pustet, R. 2003. Copulas: Universals in the Categorization of the Lexicon . Oxford University Press,
+Oxford,U.K.
+Raju, S.B., P.V.S.Chandrasekhar, andM.K.Prasad. 2002. Applicationofmultilayerperceptronnetwork
+fortaggingparts-of-speech.In LEC,pp.57–63,Hyderabad,India.IEEE.
+Ramshaw, L.A. and M.P. Marcus. 1994. Exploring the statistical derivation of transformation rule
+sequencesforpart-of-speechtagging.In ACL,pp.86–95,LasCruces,NM.ACL/MorganKaufmann.
+Rapp, R. 2005. A practical solution to the problem of automatic part-of-speech induction from text. In
+ACL,pp.77–80,AnnArbor,MI.ACL.
+Ratnaparkhi, A. 1996. A maximum entropy model for part-of-speech tagging. In EMNLP,e d s .E .B r i l l
+andK.Church,pp.133–142,Philadelphia,PA.ACL.
+Ratnaparkhi, A. 1998. Maximum entropy models for natural language ambiguity resolution. PhD
+dissertation,UniversityofPennsylvania,Philadelphia,PA.
+
+234 HandbookofNaturalLanguageProcessing
+Reiser, P.G.K. and P.J. Riddle. 2001. Scaling up inductive logic programming: An evolutionary wrapper
+approach. AppliedIntelligence 15:181–197.
+Reynolds,S.M.andJ.A.Bilmes.2005.Part-of-speechtaggingusingvirtualevidenceandnegativetraining.
+InHLT-EMNLP ,pp.459–466,Vancouver,BC.ACL.
+Roche, E. and Y. Schabes. 1995. Deterministic part-of-speech tagging with ﬁnite-state transducers.
+ComputationalLinguistics 21(2):227–253.
+Rocio,V.,J.Silva,andG.Lopes.2007.Detectionofstrangeandwrongautomaticpart-of-speechtagging.
+InEPIA,eds.J.Neves,M.Santos,andJ.Machado,pp.683–690,Guimarães,Portugal.Springer.
+Roth,D.andD.Zelenko.1998.Partofspeechtaggingusinganetworkoflinearseparators.In COLING-
+ACL,pp.1136–1142,Montreal,QC.ACL/MorganKaufmann.
+Sak,H.,T.Güngör,andM.Saraçlar.2007.MorphologicaldisambiguationofTurkishtextwithperceptron
+algorithm.In CICLing,ed.A.Gelbukh,pp.107–118,Mexico.Springer.
+Schmid, H. 1994. Part-of-speech tagging with neural networks. In COLING, pp. 172–176, Kyoto,
+Japan.ACL.
+Schütze,H.1993.Part-of-speechinductionfromscratch.In ACL,pp.251–258,Columbus,OH.ACL.
+Schütze,H.1995.Distributionalpart-of-speechtagging.In EACL,pp.141–148,Belﬁeld,Dublin.Morgan
+Kaufmann.
+Schütze,H.andY.Singer.1994.Part-of-speechtaggingusingavariablememoryMarkovmodel.In ACL,
+pp.181–187,LasCruces,NM.ACL/MorganKaufmann.
+Sun,M.,D.Xu,B.K.Tsou,andH.Lu.2006.AnintegratedapproachtoChinesewordsegmentationand
+part-of-speechtagging.In ICCPOL,eds.Y.Matsumotoetal.,pp.299–309,Singapore.Springer.
+Sündermann,D.andH.Ney.2003.Synther—Anewm-grampostagger.In NLP-KE,pp.622–627,Beijing,
+China.IEEE.
+Tapanainen, P. and A. Voutilainen. 1994. Tagging accurately—Don’t guess if you know. In ANLP,
+pp.47–52,Stuttgart,Germany.
+Taylor,J.R.2003. LinguisticCategorization .3rded.,OxfordUniversityPress,Oxford,U.K.
+Thede,S.M.1998.Predictingpart-of-speechinformationaboutunknownwordsusingstatisticalmethods.
+InCOLING-ACL,pp.1505–1507,Montreal,QC.ACM/MorganKaufmann.
+Thede, S.M. and M.P. Harper. 1999. A second-order hidden Markov model for part-of-speech tagging.
+InACL,pp.175–182,CollegePark,MD.ACL.
+Toutanova, K., D.Klein, C.D.Manning, andY.Singer. 2003. Feature-richpart-of-speechtaggingwitha
+cyclicdependencynetwork.In HLT-NAACL ,pp.252–259,Edmonton,AB.ACL.
+Toutanova, K. and C.D. Manning. 2000. Enriching the knowledge sources used in a maximum entropy
+part-of-speechtagger.In EMNLP/VLC ,pp.63–70,HongKong.
+Triviño-Rodriguez, J.L. and R. Morales-Bueno. 2001. Using multiattribute prediction suﬃx graphs for
+Spanish part-of-speech tagging. In IDA, eds. F. Hoﬀmann et al., pp. 228–237, Lisbon, Portugal.
+Springer.
+Trushkina, J. 2007. Development of a multilingual parallel corpus and a part-of-speech tagger for
+Afrikaans.In IIPIII,eds.Z.Shi,K.Shimohara,andD.Feng,pp.453–462,NewYork,Springer.
+Tsuruoka, Y., Y. Tateishi, J. Kim et al. 2005. Developing a robust part-of-speech tagger for biomedical
+text.InPCI,eds.P.BozanisandE.N.Houstis,pp.382–392,Volos,Greece.Springer.
+Tsuruoka,Y.andJ.Tsujii.2005.Bidirectionalinferencewiththeeasiest-ﬁrststrategyfortaggingsequence
+data.InHLT/EMNLP ,pp.467–474,Vancouver,BC.ACL.
+Tür, G. and K. Oﬂazer. 1998. Tagging English by path voting constraints. In COLING, pp. 1277–1281,
+Montreal,QC.ACL.
+Vikram,T.N.andS.R.Urs.2007.DevelopmentofprototypemorphologicalanalyzerforthesouthIndian
+languageofKannada.In ICADL,eds.D.H.-L.Gohetal.,pp.109–116,Hanoi,Vietnam.Springer.
+Villamil, E.S., M.L. Forcada, and R.C. Carrasco. 2004. Unsupervised training of a ﬁnite-state sliding-
+window part-of-speech tagger. In ESTAL, eds. J.L. Vicedo et al., pp. 454–463, Alicante, Spain.
+Springer.
+
+Part-of-SpeechTagging 235
+Wang,Q.I.andD.Schuurmans.2005.Improvedestimationforunsupervisedpart-of-speechtagging.In
+NLP-KE,pp.219–224,Beijing,China.IEEE.
+Xiao,J.,X.Wang,andB.Liu.2007.ThestudyofanonstationarymaximumentropyMarkovmodelandits
+applicationonthepos-taggingtask. ACMTransactionsonAsianLanguageInformationProcessing
+6(2):7:1–7:29.
+Yarowsky, D., G. Ngai, and R. Wicentowski. 2001. Inducing multilingual text analysis tools via robust
+projectionacrossalignedcorpora.In NAACL,pp.109–116,Pittsburgh,PA.
+Yonghui,G.,W.Baomin,L.Changyuan,andW.Bingxi.2006.Correlationvotingfusionstrategyforpart
+ofspeechtagging.In ICSP,Guilin,China.IEEE.
+Zhang, Y. and S. Clark. 2008. Joint word segmentation and POS tagging using a single perceptron. In
+ACL,pp.888–896,Columbus,OH.ACL.
+Zhao, W., F. Zhao, andW.Li. 2007. Anew methodof theautomaticallymarkedChinesepartof speech
+based on Gaussian prior smoothing maximum entropy model. In FSKD, pp. 447–453, Hainan,
+China.IEEE.
+Zhou, G. and J. Su. 2003. A Chinese eﬃcient analyser integrating word segmentation, part-of-speech
+tagging,partialparsingandfullparsing.In SIGHAN,pp.78–83,Sapporo,Japan.ACL.
+Zribi,C.B.O.,A.Torjmen,andM.B.Ahmed.2006.Aneﬃcientmulti-agentsystemcombiningpos-taggers
+forArabictexts.In CICLing,ed.A.Gelbukh,pp.121–131,Mexico.Springer.
+
+
+

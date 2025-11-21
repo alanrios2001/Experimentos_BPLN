@@ -1,0 +1,1073 @@
+Chapter 17 8703
+Information extraction 8704
+Computers offer powerful capabilities for searching and reasoning about structured records 8705
+and relational data. Some even argue that the most important limitation of artiﬁcial intel- 8706
+ligence is not inference or learning, but simply having too little knowledge (Lenat et al., 8707
+1990). Natural language processing provides an appealing solution: automatically con- 8708
+struct a structured knowledge base by reading natural language text. 8709
+For example, many Wikipedia pages have an “infobox” that provides structured in- 8710
+formation about an entity or event. An example is shown in Figure 17.1a: each row rep- 8711
+resents one or more properties of the entity I N THE AEROPLANE OVER THE SEA, a record 8712
+album. The set of properties is determined by a predeﬁned schema , which applies to all 8713
+record albums in Wikipedia. As shown in Figure 17.1b, the values for many of these ﬁelds 8714
+are indicated directly in the ﬁrst few sentences of text on the same Wikipedia page. 8715
+The task of automatically constructing (or “populating”) an infobox from text is an 8716
+example of information extraction . Much of information extraction can be described in 8717
+terms of entities ,relations , and events . 8718
+•Entities are uniquely speciﬁed objects in the world, such as people (J EFFMANGUM ), 8719
+places (A THENS , GEORGIA ), organizations (M ERGE RECORDS ), and times (F EBRUARY 8720
+10, 1998). Chapter 8 described the task of named entity recognition , which labels 8721
+tokens as parts of entity spans. Now we will see how to go further, linking each 8722
+entity mention to an element in a knowledge base . 8723
+•Relations include a predicate and two arguments : for example, CAPITAL (GEORGIA,ATLANTA ). 8724
+•Events involve multiple typed arguments. For example, the production and release
+407
+
+408 CHAPTER 17. INFORMATION EXTRACTION
+(a) A Wikipedia infobox(17.1) Inthe Aeroplane Over the Sea is the
+second and ﬁnal studio album by the
+American indie rock band Neutral Milk
+Hotel.
+(17.2) It was released in the United States on
+February 10,1998 on Merge Records
+and::::May:::::1998 on::::Blue:::::Rose::::::::Records in
+the United Kingdom.
+(17.3):::Jeff::::::::::Mangum moved from:::::::Athens,
+:::::::Georgia to Denver, Colorado to prepare
+the bulk of the album’s material with
+producer Robert Schneider, this time at
+Schneider’s newly created PetSounds
+Studio at the home of:::Jim:::::::::McIntyre.
+(b) The ﬁrst few sentences of text. Strings that
+match ﬁelds or ﬁeld names in the infobox are
+underlined; strings that mention other entities
+are:::::wavy::::::::::underlined.
+Figure 17.1: From the Wikipedia page for the album “In the Aeroplane Over the Sea”,
+retrieved October 26, 2017.
+of the album described in Figure 17.1 is described by the event,
+⟨TITLE :IN THE AEROPLANE OVER THE SEA,
+ARTIST :NEUTRAL MILKHOTEL,
+RELEASE -DATE :1998-F EB-10,...⟩
+The set of arguments for an event type is deﬁned by a schema . Events often refer to 8725
+time-delimited occurrences: weddings, protests, purchases, terrorist attacks. 8726
+Information extraction is similar to semantic role labeling (chapter 13): we may think 8727
+of predicates as corresponding to events, and the arguments as deﬁning slots in the event 8728
+representation. However, the goals of information extraction are different. Rather than 8729
+accurately parsing every sentence, information extraction systems often focus on recog- 8730
+nizing a few key relation or event types, or on the task of identifying all properties of a 8731
+given entity. Information extraction is often evaluated by the correctness of the resulting 8732
+knowledge base, and not by how many sentences were accurately parsed. The goal is 8733
+sometimes described as macro-reading , as opposed to micro-reading , in which each sen- 8734
+tence must be analyzed correctly. Macro-reading systems are not penalized for ignoring 8735
+difﬁcult sentences, as long as they can recover the same information from other, easier- 8736
+to-read sources. However, macro-reading systems must resolve apparent inconsistencies 8737
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.1. ENTITIES 409
+(was the album released on M ERGE RECORDS or B LUE ROSE RECORDS ?), requiring rea- 8738
+soning across the entire dataset. 8739
+In addition to the basic tasks of recognizing entities, relations, and events, information 8740
+extraction systems must handle negation, and must be able to distinguish statements of 8741
+fact from hopes, fears, hunches, and hypotheticals. Finally, information extraction is of- 8742
+ten paired with the problem of question answering , which requires accurately parsing a 8743
+query, and then selecting or generating a textual answer. Question answering systems can 8744
+be built on knowledge bases that are extracted from large text corpora, or may attempt to 8745
+identify answers directly from the source texts. 8746
+17.1 Entities 8747
+The starting point for information extraction is to identify mentions of entities in text. 8748
+Consider the following example: 8749
+(17.4) The United States Army captured a hill overlooking Atlanta on May 14, 1864 . 8750
+For this sentence, there are two goals: 8751
+1.Identify the spans United States Army ,Atlanta , and May 14, 1864 as entity mentions. 8752
+(The hill is not uniquely identiﬁed, so it is not a named entity.) We may also want to 8753
+recognize the named entity types : organization, location, and date. This is named 8754
+entity recognition , and is described in chapter 8. 8755
+2.Link these spans to entities in a knowledge base: U.S. A RMY, ATLANTA , and 1864- 8756
+MAY-14. This task is known as entity linking . 8757
+The strings to be linked to entities are mentions — similar to the use of this term in 8758
+coreference resolution. In some formulations of the entity linking task, only named enti- 8759
+ties are candidates for linking. This is sometimes called named entity linking (Ling et al., 8760
+2015). In other formulations, such as Wikiﬁcation (Milne and Witten, 2008), any string 8761
+can be a mention. The set of target entities often corresponds to Wikipedia pages, and 8762
+Wikipedia is the basis for more comprehensive knowledge bases such as YAGO (Suchanek 8763
+et al., 2007), DBPedia (Auer et al., 2007), and Freebase (Bollacker et al., 2008). Entity link- 8764
+ing may also be performed in more “closed” settings, where a much smaller list of targets 8765
+is provided in advance. The system must also determine if a mention does not refer to 8766
+any entity in the knowledge base, sometimes called a NIL entity (McNamee and Dang, 8767
+2009). 8768
+Returning to (17.4), the three entity mentions may seem unambiguous. But the Wikipedia 8769
+disambiguation page for the string Atlanta says otherwise:1there are more than twenty 8770
+1https://en.wikipedia.org/wiki/Atlanta_(disambiguation) , retrieved November 1, 2017.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+410 CHAPTER 17. INFORMATION EXTRACTION
+different towns and cities, ﬁve United States Navy vessels, a magazine, a television show, 8771
+a band, and a singer — each prominent enough to have its own Wikipedia page. We now 8772
+consider how to choose among these dozens of possibilities. In this chapter we will focus 8773
+on supervised approaches. Unsupervised entity linking is closely related to the problem 8774
+ofcross-document coreference resolution , where the task is to identify pairs of mentions 8775
+that corefer, across document boundaries (Bagga and Baldwin, 1998b; Singh et al., 2011). 8776
+17.1.1 Entity linking by learning to rank 8777
+Entity linking is often formulated as a ranking problem, 8778
+ˆy= argmax
+y∈Y(x)Ψ(y,x,c), [17.1]
+whereyis a target entity, xis a description of the mention, Y(x)is a set of candidate 8779
+entities, and cis a description of the context — such as the other text in the document, 8780
+or its metadata. The function Ψis a scoring function, which could be a linear model, 8781
+Ψ(y,x,c) =θ·f(y,x,c), or a more complex function such as a neural network. In either 8782
+case, the scoring function can be learned by minimizing a margin-based ranking loss , 8783
+ℓ(ˆy,y(i),x(i),c(i)) =(
+Ψ(ˆy,x(i),c(i))−Ψ(y(i),x(i),c(i)) + 1)
++, [17.2]
+wherey(i)is the ground truth and ˆy̸=y(i)is the predicted target for mention x(i)in 8784
+contextc(i)(Joachims, 2002; Dredze et al., 2010). 8785
+Candidate identiﬁcation For computational tractability, it is helpful to restrict the set of 8786
+candidates,Y(x). One approach is to use a name dictionary , which maps from strings 8787
+to the entities that they might mention. This mapping is many-to-many: a string such as 8788
+Atlanta can refer to multiple entities, and conversely, an entity such as A TLANTA can be 8789
+referenced by multiple strings. A name dictionary can be extracted from Wikipedia, with 8790
+links between each Wikipedia entity page and the anchor text of all hyperlinks that point 8791
+to the page (Bunescu and Pasca, 2006; Ratinov et al., 2011). To improve recall, the name 8792
+dictionary can be augmented by partial and approximate matching (Dredze et al., 2010), 8793
+but as the set of candidates grows, the risk of false positives increases. For example, the 8794
+string Atlanta is a partial match to the Atlanta Fed (a name for the F EDERAL RESERVE BANK 8795
+OFATLANTA ), and a noisy match (edit distance of one) from Atalanta (a heroine in Greek 8796
+mythology and an Italian soccer team). 8797
+Features Feature-based approaches to entity ranking rely on three main types of local 8798
+information (Dredze et al., 2010): 8799
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.1. ENTITIES 411
+•The similarity of the mention string to the canonical entity name, as quantiﬁed by 8800
+string similarity. This feature would elevate the city A TLANTA over the basketball 8801
+team A TLANTA HAWKS for the string Atlanta . 8802
+•The popularity of the entity, which can be measured by Wikipedia page views or 8803
+PageRank in the Wikipedia link graph. This feature would elevate A TLANTA , GEOR- 8804
+GIA over the unincorporated community of A TLANTA , OHIO. 8805
+•The entity type, as output by the named entity recognition system. This feature 8806
+would elevate the city of A TLANTA over the magazine A TLANTA in contexts where 8807
+the mention is tagged as a location. 8808
+In addition to these local features, the document context can also help. If Jamaica is men- 8809
+tioned in a document about the Caribbean, it is likely to refer to the island nation; in 8810
+the context of New York, it is likely to refer to the neighborhood in Queens; in the con- 8811
+text of a menu, it might refer to a hibiscus tea beverage. Such hints can be formalized 8812
+by computing the similarity between the Wikipedia page describing each candidate en- 8813
+tity and the mention context c(i), which may include the bag-of-words representing the 8814
+document (Dredze et al., 2010; Hoffart et al., 2011) or a smaller window of text around 8815
+the mention (Ratinov et al., 2011). For example, we can compute the cosine similarity 8816
+between bag-of-words vectors for the context and entity description, typically weighted 8817
+using inverse document frequency to emphasize rare words.28818
+Neural entity linking An alternative approach is to compute the score for each entity 8819
+candidate using distributed vector representations of the entities, mentions, and context. 8820
+For example, for the task of entity linking in Twitter, Yang et al. (2016) employ the bilinear 8821
+scoring function, 8822
+Ψ(y,x,c) =v⊤
+yΘ(y,x)x+v⊤
+yΘ(y,c)c, [17.3]
+withvy∈RKyas the vector embedding of entity y,x∈RKxas the embedding of the 8823
+mention,c∈RKcas the embedding of the context, and the matrices Θ(y,x)andΘ(y,c)8824
+as parameters that score the compatibility of each entity with respect to the mention and 8825
+context. Each of the vector embeddings can be learned from an end-to-end objective, or 8826
+pre-trained on unlabeled data. 8827
+•Pretrained entity embeddings can be obtained from an existing knowledge base (Bor- 8828
+des et al., 2011, 2013), or by running a word embedding algorithm such as WORD 2VEC 8829
+2The document frequency of wordjis DF (j) =1
+N∑N
+i=1δ(
+x(i)
+j>0)
+, equal to the number of docu-
+ments in which the word appears. The contribution of each word to the cosine similarity of two bag-of-
+words vectors can be weighted by the inverse document frequency1
+DF(j)orlog1
+DF(j), to emphasize rare
+words (Sp ¨arck Jones, 1972).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+412 CHAPTER 17. INFORMATION EXTRACTION
+on the text of Wikipedia, with hyperlinks substituted for the anchor text.38830
+•The embedding of the mention xcan be computed by averaging the embeddings 8831
+of the words in the mention (Yang et al., 2016), or by the compositional techniques 8832
+described in§14.8. 8833
+•The embedding of the context ccan also be computed from the embeddings of the
+words in the context. A denoising autoencoder learns a function from raw text to
+denseK-dimensional vector encodings by minimizing a reconstruction loss (Vin-
+cent et al., 2010),
+min
+θg,θhN∑
+i=1||x(i)−g(h(˜x(i);θh);θg)||2, [17.4]
+where ˜x(i)is a noisy version of the bag-of-words counts x(i), which is produced by 8834
+randomly setting some counts to zero; h:RV↦→RKis an encoder with parameters 8835
+θh; andg:RK↦→RV, with parameters θg. The encoder and decoder functions 8836
+are typically implemented as feedforward neural networks. To apply this model to 8837
+entity linking, each entity and context are initially represented by the encoding of 8838
+their bag-of-words vectors, h(e)andg(c), and these encodings are then ﬁne-tuned 8839
+from labeled data (He et al., 2013). The context vector ccan also be obtained by 8840
+convolution on the embeddings of words in the document (Sun et al., 2015), or by 8841
+examining metadata such as the author’s social network (Yang et al., 2016). 8842
+The remaining parameters Θ(y,x)andΘ(y,c)can be trained by backpropagation from the 8843
+margin loss in Equation 17.2. 8844
+17.1.2 Collective entity linking 8845
+Entity linking can be more accurate when it is performed jointly across a document. To 8846
+see why, consider the following lists: 8847
+(17.5) California, Oregon, Washington 8848
+(17.6) Baltimore, Washington, Philadelphia 8849
+(17.7) Washington, Adams, Jefferson 8850
+In each case, the term Washington refers to a different entity, and this reference is strongly 8851
+suggested by the other entries on the list. In the last list, all three names are highly am- 8852
+biguous — there are dozens of other Adams and Jefferson entities in Wikipedia. But a 8853
+3Pre-trained entity embeddings can be downloaded from https://code.google.com/archive/p/
+word2vec/.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.1. ENTITIES 413
+preference for coherence motivates collectively linking these references to the ﬁrst three 8854
+U.S. presidents. 8855
+A general approach to collective entity linking is to introduce a compatibility score 8856
+ψc(y). Collective entity linking is then performed by optimizing the global objective, 8857
+ˆy= argmax
+y∈Y(x)Ψc(y) +N∑
+i=1Ψℓ(y(i),x(i),c(i)), [17.5]
+where Y(x)is the set of all possible collective entity assignments for the mentions in x, 8858
+andψℓis the local scoring function for each entity i. The compatibility function is typically 8859
+decomposed into a sum of pairwise scores, Ψc(y) =∑N
+i=1∑N
+j̸=iΨc(y(i),y(j)). These scores 8860
+can be computed in a number of different ways: 8861
+•Wikipedia deﬁnes high-level categories for entities (e.g., living people ,Presidents of 8862
+the United States ,States of the United States ), and Ψccan reward entity pairs for the 8863
+number of categories that they have in common (Cucerzan, 2007). 8864
+•Compatibility can be measured by the number of incoming hyperlinks shared by 8865
+the Wikipedia pages for the two entities (Milne and Witten, 2008). 8866
+•In a neural architecture, the compatibility of two entities can be set equal to the inner 8867
+product of their embeddings, Ψc(y(i),y(j)) =vy(i)·vy(j). 8868
+•A non-pairwise compatibility score can be deﬁned using a type of latent variable 8869
+model known as a probabilistic topic model (Blei et al., 2003; Blei, 2012). In this 8870
+framework, each latent topic is a probability distribution over entities, and each 8871
+document has a probability distribution over topics. Each entity helps to determine 8872
+the document’s distribution over topics, and in turn these topics help to resolve am- 8873
+biguous entity mentions (Newman et al., 2006). Inference can be performed using 8874
+the sampling techniques described in chapter 5. 8875
+Unfortunately, collective entity linking is NP-hard even for pairwise compatibility func- 8876
+tions, so exact optimization is almost certainly intractable. Various approximate inference 8877
+techniques have been proposed, including integer linear programming (Cheng and Roth, 8878
+2013), Gibbs sampling (Han and Sun, 2012), and graph-based algorithms (Hoffart et al., 8879
+2011; Han et al., 2011). 8880
+17.1.3 *Pairwise ranking loss functions 8881
+The loss function deﬁned in Equation 17.2 considers only the highest-scoring prediction 8882
+ˆy, but in fact, the true entity y(i)should outscore allother entities. A loss function based on 8883
+this idea would give a gradient against the features or representations of several entities, 8884
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+414 CHAPTER 17. INFORMATION EXTRACTION
+Algorithm 19 WARP approximate ranking loss
+1:procedure WARP(y(i),x(i))
+2:N←0
+3: repeat
+4: Randomly sample y∼Y(x(i))
+5:N←N+ 1
+6: ifψ(y,x(i)) + 1>ψ(y(i),x(i))then ⊿check for margin violation
+7: r←⌊
+|Y(x(i))|/N⌋
+⊿compute approximate rank
+8: returnLrank(r)×(ψ(y,x(i)) + 1−ψ(y(i),x(i)))
+9: untilN≥|Y (x(i))|−1 ⊿no violation found
+10: return 0 ⊿return zero loss
+not just the top-scoring prediction. Usunier et al. (2009) deﬁne a general ranking error 8885
+function, 8886
+Lrank(k) =k∑
+j=1αj,withα1≥α2≥···≥ 0, [17.6]
+wherekis equal to the number of labels ranked higher than the correct label y(i). This 8887
+function deﬁnes a class of ranking errors: if αj= 1 for allj, then the ranking error is 8888
+equal to the rank of the correct entity; if α1= 1 andαj>1= 0, then the ranking error is 8889
+one whenever the correct entity is not ranked ﬁrst; if αjdecreases smoothly with j, as in 8890
+αj=1
+j, then the error is between these two extremes. 8891
+This ranking error can be integrated into a margin objective. Remember that large
+margin classiﬁcation requires not only the correct label, but also that the correct label
+outscores other labels by a substantial margin. A similar principle applies to ranking: we
+want a high rank for the correct entity, and we want it to be separated from other entities
+by a substantial margin. We therefore deﬁne the margin-augmented rank,
+r(y(i),x(i))≜∑
+y∈Y(x(i))\y(i)δ(
+1 +ψ(y,x(i))≥ψ(y(i),x(i)))
+, [17.7]
+whereδ(·)is a delta function, and Y(x(i))\y(i)is the set of all entity candidates minus 8892
+the true entity y(i). The margin-augmented rank is the rank of the true entity, after aug- 8893
+menting every other candidate with a margin of one, under the current scoring function 8894
+ψ. (The context cis omitted for clarity, and can be considered part of x.) 8895
+For each instance, a hinge loss is computed from the ranking error associated with this
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.2. RELATIONS 415
+margin-augmented rank, and the violation of the margin constraint,
+ℓ(y(i),x(i)) =Lrank(r(y(i),x(i)))
+r(y(i),x(i))∑
+y∈Y(x)\y(i)(
+ψ(y,x(i))−ψ(y(i),x(i)) + 1)
++, [17.8]
+The sum in Equation 17.8 includes non-zero values for every label that is ranked at least as 8896
+high as the true entity, after applying the margin augmentation. Dividing by the margin- 8897
+augmented rank of the true entity thus gives the average violation. 8898
+The objective in Equation 17.8 is expensive to optimize when the label space is large, 8899
+as is usually the case for entity linking against large knowledge bases. This motivates a 8900
+randomized approximation called WARP (Weston et al., 2011), shown in Algorithm 19. In 8901
+this procedure, we sample random entities until one violates the pairwise margin con- 8902
+straint,ψ(y,x(i)) + 1≥ψ(y(i),x(i)).The number of samples Nrequired to ﬁnd such 8903
+a violation yields an approximation of the margin-augmented rank of the true entity, 8904
+r(y(i),x(i))≈⌊
+|Y(x)|
+N⌋
+. If a violation is found immediately, N= 1, the correct entity 8905
+probably ranks below many others, r≈|Y (x)|. If many samples are required before a 8906
+violation is found, N→|Y (x)|, then the correct entity is probably highly ranked, r→1. 8907
+A computational advantage of WARP is that it is not necessary to ﬁnd the highest-scoring 8908
+label, which can impose a non-trivial computational cost when Y(x(i))is large. The objec- 8909
+tive is conceptually similar to the negative sampling objective in WORD 2VEC (chapter 14), 8910
+which compares the observed word against randomly sampled alternatives. 8911
+17.2 Relations 8912
+After identifying the entities that are mentioned in a text, the next step is to determine 8913
+how they are related. Consider the following example: 8914
+(17.8) George Bush traveled to France on Thursday for a summit. 8915
+This sentence introduces a relation between the entities referenced by George Bush and 8916
+France . In the Automatic Content Extraction (ACE) ontology (Linguistic Data Consortium, 8917
+2005), the type of this relation is PHYSICAL , and the subtype is LOCATED . This relation 8918
+would be written, 8919
+PHYSICAL .LOCATED (GEORGE BUSH,FRANCE ). [17.9]
+Relations take exactly two arguments, and the order of the arguments matters. 8920
+In the ACE datasets, relations are annotated between entity mentions, as in the exam- 8921
+ple above. Relations can also hold between nominals, as in the following example from 8922
+the SemEval-2010 shared task (Hendrickx et al., 2009): 8923
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+416 CHAPTER 17. INFORMATION EXTRACTION
+CAUSE -EFFECT those cancers were caused by radiation exposures
+INSTRUMENT -AGENCY phone operator
+PRODUCT -PRODUCER a factory manufactures suits
+CONTENT -CONTAINER a bottle of honey was weighed
+ENTITY -ORIGIN letters from foreign countries
+ENTITY -DESTINATION the boy went to bed
+COMPONENT -WHOLE my apartment has a large kitchen
+MEMBER -COLLECTION there are many trees in the forest
+COMMUNICATION -TOPIC the lecture was about semantics
+Table 17.1: Relations and example sentences from the SemEval-2010 dataset (Hendrickx
+et al., 2009)
+(17.9) The cup contained tea from dried ginseng. 8924
+This sentence describes a relation of type ENTITY -ORIGIN between teaand ginseng . Nomi- 8925
+nal relation extraction is closely related to semantic role labeling (chapter 13). The main 8926
+difference is that relation extraction is restricted to a relatively small number of relation 8927
+types; for example, Table 17.1 shows the ten relation types from SemEval-2010. 8928
+17.2.1 Pattern-based relation extraction 8929
+Early work on relation extraction focused on hand-crafted patterns (Hearst, 1992). For 8930
+example, the appositive Starbuck, a native of Nantucket signals the relation ENTITY -ORIGIN 8931
+between Starbuck and Nantucket . This pattern can be written as, 8932
+PERSON , a native of LOCATION⇒ENTITY -ORIGIN (PERSON,LOCATION ). [17.10]
+This pattern will be “triggered” whenever the literal string , a native of occurs between an 8933
+entity of type P ERSON and an entity of type L OCATION . Such patterns can be generalized 8934
+beyond literal matches using techniques such as lemmatization, which would enable the 8935
+words ( buy,buys ,buying ) to trigger the same patterns (see §4.3.1.2). A more aggressive 8936
+strategy would be to group all words in a WordNet synset ( §4.2), so that, e.g., buyand 8937
+purchase trigger the same patterns. 8938
+Relation extraction patterns can be implemented in ﬁnite-state automata ( §9.1). If the 8939
+named entity recognizer is also a ﬁnite-state machine, then the systems can be combined 8940
+by ﬁnite-state transduction (Hobbs et al., 1997). This makes it possible to propagate uncer- 8941
+tainty through the ﬁnite-state cascade, and disambiguate from higher-level context. For 8942
+example, suppose the entity recognizer cannot decide whether Starbuck refers to either a 8943
+PERSON or a L OCATION ; in the composed transducer, the relation extractor would be free 8944
+to select the P ERSON annotation when it appears in the context of an appropriate pattern. 8945
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.2. RELATIONS 417
+17.2.2 Relation extraction as a classiﬁcation task 8946
+Relation extraction can be formulated as a classiﬁcation problem, 8947
+ˆr(i,j),(m,n)= argmax
+r∈RΨ(r,(i,j),(m,n),w), [17.11]
+wherer∈R is a relation type (possibly NIL),wi+1:jis the span of the ﬁrst argument, and 8948
+wm+1:nis the span of the second argument. The argument wm+1:nmay appear before 8949
+or afterwi+1:jin the text, or they may overlap; we stipulate only that wi+1:jis the ﬁrst 8950
+argument of the relation. We now consider three alternatives for computing the scoring 8951
+function. 8952
+17.2.2.1 Feature-based classiﬁcation 8953
+In a feature-based classiﬁer, the scoring function is deﬁned as, 8954
+Ψ(r,(i,j),(m,n),w) =θ·f(r,(i,j),(m,n),w), [17.12]
+withθrepresenting a vector of weights, and f(·)a vector of features. The pattern-based 8955
+methods described in §17.2.1 suggest several features: 8956
+•Local features of wi+1:jandwm+1:n, including: the strings themselves; whether they 8957
+are recognized as entities, and if so, which type; whether the strings are present in a 8958
+gazetteer of entity names; each string’s syntactic head (§9.2.2). 8959
+•Features of the span between the two arguments, wj+1:morwn+1:i(depending on 8960
+which argument appears ﬁrst): the length of the span; the speciﬁc words that appear 8961
+in the span, either as a literal sequence or a bag-of-words; the wordnet synsets ( §4.2) 8962
+that appear in the span between the arguments. 8963
+•Features of the syntactic relationship between the two arguments, typically the de- 8964
+pendency path between the arguments ( §13.2.1). Example dependency paths are 8965
+shown in Table 17.2. 8966
+17.2.2.2 Kernels 8967
+Suppose that the ﬁrst line of Table 17.2 is a labeled example, and the remaining lines are 8968
+instances to be classiﬁed. A feature-based approach would have to decompose the depen- 8969
+dency paths into features that capture individual edges, with or without their labels, and 8970
+then learn weights for each of these features: for example, the second line contains identi- 8971
+cal dependencies, but different arguments; the third line contains a different inﬂection of 8972
+the word travel ; the fourth and ﬁfth lines each contain an additional edge on the depen- 8973
+dency path; and the sixth example uses an entirely different path. Rather than attempting 8974
+to create local features that capture all of the ways in which these dependencies paths 8975
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+418 CHAPTER 17. INFORMATION EXTRACTION
+1.George Bush traveled to France George Bush←
+NSUBJtraveled→
+OBLFrance
+2.Ahab traveled to Nantucket Ahab←
+NSUBJtraveled→
+OBLNantucket
+3.George Bush will travel to France George Bush←
+NSUBJtravel→
+OBLFrance
+4.George Bush wants to travel to France George Bush←
+NSUBJwants→
+XCOMPtravel→
+OBLFrance
+5.Ahab traveled to a city in France Ahab←
+NSUBJtraveled→
+OBLcity→
+NMODFrance
+6.We await Ahab ’s visit to France Ahab ←
+NMOD :POSSvisit→
+NMODFrance
+Table 17.2: Candidates instances for the P HYSICAL .LOCATED relation, and their depen-
+dency paths
+are similar and different, we can instead deﬁne a similarity function κ, which computes a 8976
+score for any pair of instances, κ:X×X↦→ R+. The score for any pair of instances (i,j) 8977
+isκ(x(i),x(j))≥0, withκ(i,j)being large when instances x(i)andx(j)are similar. If the 8978
+functionκobeys a few key properties it is a valid kernel function .48979
+Given a valid kernel function, we can build a non-linear classiﬁer without explicitly
+deﬁning a feature vector or neural network architecture. For a binary classiﬁcation prob-
+lemy∈{− 1,1}, we have the decision function,
+ˆy=Sign(b+N∑
+i=1y(i)α(i)κ(x(i),x)) [17.13]
+whereband{α(i)}N
+i=1are parameters that must be learned from the training set, under 8980
+the constraint∀i,α(i)≥0. Intuitively, each αispeciﬁes the importance of the instance x(i)8981
+towards the classiﬁcation rule. Kernel-based classiﬁcation can be viewed as a weighted 8982
+form of the nearest-neighbor classiﬁer (Hastie et al., 2009), in which test instances are 8983
+assigned the most common label among their near neighbors in the training set. This 8984
+results in a non-linear classiﬁcation boundary. The parameters are typically learned from 8985
+a margin-based objective (see §2.3), leading to the kernel support vector machine . To 8986
+generalize to multi-class classiﬁcation, we can train separate binary classiﬁers for each 8987
+label (sometimes called one-versus-all ), or train binary classiﬁers for each pair of possible 8988
+labels ( one-versus-one ). 8989
+Dependency kernels are particularly effective for relation extraction, due to their abil- 8990
+ity to capture syntactic properties of the path between the two candidate arguments. One 8991
+class of dependency tree kernels is deﬁned recursively, with the score for a pair of trees 8992
+4The Gram matrix Karises from computing the kernel function between all pairs in a set of instances. For
+a valid kernel, the Gram matrix must be symmetric ( K=K⊤) and positive semi-deﬁnite ( ∀a,a⊤Ka≥0).
+For more on kernel-based classiﬁcation, see chapter 14 of Murphy (2012).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.2. RELATIONS 419
+equal to the similarity of the root nodes and the sum of similarities of matched pairs of 8993
+child subtrees (Zelenko et al., 2003; Culotta and Sorensen, 2004). Alternatively, Bunescu 8994
+and Mooney (2005) deﬁne a kernel function over sequences of unlabeled dependency 8995
+edges, in which the score is computed as a product of scores for each pair of words in the 8996
+sequence: identical words receive a high score, words that share a synset or part-of-speech 8997
+receive a small non-zero score (e.g., travel / visit ), and unrelated words receive a score of 8998
+zero. 8999
+17.2.2.3 Neural relation extraction 9000
+Convolutional neural networks were an early neural architecture for relation extrac- 9001
+tion (Zeng et al., 2014; dos Santos et al., 2015). For the sentence (w1,w2,...,wM), obtain 9002
+a matrix of word embeddings X, wherexm∈RKis the embedding of wm. Now, sup- 9003
+pose the candidate arguments appear at positions a1anda2; then for each word in the 9004
+sentence, its position with respect to each argument is m−a1andm−a2. (Following 9005
+Zeng et al. (2014), this is a restricted version of the relation extraction task in which the 9006
+arguments are single tokens.) To capture any information conveyed by these positions, 9007
+the word embeddings are concatenated with embeddings of the positional offsets, x(p)
+m−a19008
+andx(p)
+m−a2. The complete base representation of the sentence is, 9009
+X(a1,a2) =
+x1x2···xM
+x(p)
+1−a1x(p)
+2−a1···x(p)
+M−a1
+x(p)
+1−a2x(p)
+2−a2···x(p)
+M−a2
+, [17.14]
+where each column is a vertical concatenation of a word embedding, represented by the 9010
+column vector xm, and two positional embeddings, specifying the position with respect 9011
+toa1anda2. The matrix X(a1,a2)is then taken as input to a convolutional layer (see 9012
+§3.4), and max-pooling is applied to obtain a vector. The ﬁnal scoring function is then, 9013
+Ψ(r,i,j, X) =θr·MaxPool (ConvNet (X(i,j);φ)), [17.15]
+whereφdeﬁnes the parameters of the convolutional operator, and the θrdeﬁnes a set of
+weights for relation r. The model can be trained using a margin objective,
+ˆr= argmax
+rΨ(r,i,j, X) [17.16]
+ℓ=(1 +ψ(ˆr,i,j, X)−ψ(r,i,j, X))+. [17.17]
+Recurrent neural networks have also been applied to relation extraction, using a net- 9014
+work such as an bidirectional LSTM to encode the words or dependency path between 9015
+the two arguments. Xu et al. (2015) segment each dependency path into left and right 9016
+subpaths: the path George Bush←
+NSUBJwants→
+XCOMPtravel→
+OBLFrance is segmented into the sub- 9017
+paths, 9018
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+420 CHAPTER 17. INFORMATION EXTRACTION
+(17.10) George Bush←
+NSUBJwants 9019
+(17.11) wants→
+XCOMPtravel→
+OBLFrance . 9020
+Xu et al. (2015) then run recurrent networks from the arguments to the root word (in this
+case, wants ), obtaining the ﬁnal representation by max pooling across all the recurrent
+states along each path. This process can be applied across separate “channels”, in which
+the inputs consist of embeddings for the words, parts-of-speech, dependency relations,
+and WordNet hypernyms. To deﬁne the model formally, let s(m)deﬁne the successor of
+wordmin either the left or right subpath (in a dependency path, each word can have a
+successor in at most one subpath). Let x(c)
+mindicate the embedding of word (or relation)
+min channel c, and let← −h(c)
+mand− →h(c)
+mindicate the associated recurrent states in the left
+and right subtrees respectively. Then the complete model is speciﬁed as follows,
+h(c)
+s(m)=RNN (x(c)
+s(m),h(c)
+m) [17.18]
+z(c)=MaxPool(← −h(c)
+i,← −h(c)
+s(i),...,← −h(c)
+root,− →h(c)
+j,− →h(c)
+s(j),...,− →h(c)
+root)
+[17.19]
+Ψ(r,i,j ) =θ·[
+z(word );z(POS);z(dependency );z(hypernym )]
+. [17.20]
+Note thatzis computed by applying max-pooling to the matrix of horizontally concate- 9021
+nated vectors h, while Ψis computed from the vector of vertically concatenated vectors 9022
+z. Xu et al. (2015) pass the score Ψthrough a softmax layer to obtain a probability 9023
+p(r|i,j,w), and train the model by regularized cross-entropy . Miwa and Bansal (2016) 9024
+show that a related model can solve the more challenging “end-to-end” relation extrac- 9025
+tion task, in which the model must simultaneously detect entities and then extract their 9026
+relations. 9027
+17.2.3 Knowledge base population 9028
+In many applications, what matters is not what fraction of sentences are analyzed cor- 9029
+rectly, but how much accurate knowledge can be extracted. Knowledge base population 9030
+(KBP) refers to the task of ﬁlling in Wikipedia-style infoboxes, as shown in Figure 17.1a. 9031
+Knowledge base population can be decomposed into two subtasks: entity linking (de- 9032
+scribed in§17.1), and slot ﬁlling (Ji and Grishman, 2011). Slot ﬁlling has two key dif- 9033
+ferences from the formulation of relation extraction presented above: the relations hold 9034
+between entities rather than spans of text, and the performance is evaluated at the type 9035
+level (on entity pairs), rather than on the token level (on individual sentences). 9036
+From a practical standpoint, there are three other important differences between slot 9037
+ﬁlling and per-sentence relation extraction. 9038
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.2. RELATIONS 421
+•KBP tasks are often formulated from the perspective of identifying attributes of a 9039
+few “query” entities. As a result, these systems often start with an information 9040
+retrieval phase, in which relevant passages of text are obtained by search. 9041
+•For many entity pairs, there will be multiple passages of text that provide evidence. 9042
+Slot ﬁlling systems must aggregate this evidence to predict a single relation type (or 9043
+set of relations). 9044
+•Labeled data is usually available in the form of pairs of related entities, rather than 9045
+annotated passages of text. Training from such type-level annotations is a challenge: 9046
+two entities may be linked by several relations, or they may appear together in a 9047
+passage of text that nonetheless does not describe their relation to each other. 9048
+Information retrieval is beyond the scope of this text (see Manning et al., 2008). The re- 9049
+mainder of this section describes approaches to information fusion and learning from 9050
+type-level annotations. 9051
+17.2.3.1 Information fusion 9052
+In knowledge base population, there will often be multiple pieces of evidence for (and 9053
+sometimes against) a single relation. For example, a search for the entity M AYNARD JACK - 9054
+SON, JR. may return several passages that reference the entity A TLANTA :59055
+(17.12) Elected mayor of Atlanta in 1973, Maynard Jackson was the ﬁrst African Amer- 9056
+ican to serve as mayor of a major southern city. 9057
+(17.13) Atlanta ’s airport will be renamed to honor Maynard Jackson , the city’s ﬁrst 9058
+Black mayor . 9059
+(17.14) Born in Dallas, Texas in 1938, Maynard Holbrook Jackson, Jr. moved to Atlanta 9060
+when he was 8. 9061
+(17.15) Maynard Jackson has gone from one of the worst high schools in Atlanta to one 9062
+of the best. 9063
+The ﬁrst and second examples provide evidence for the relation MAYOR holding between 9064
+the entities A TLANTA and M AYNARD JACKSON , JR.. The third example provides evidence 9065
+for a different relation between these same entities, LIVED -IN. The fourth example poses 9066
+an entity linking problem, referring to M AYNARD JACKSON HIGH SCHOOL . Knowledge 9067
+base population requires aggregating this sort of textual evidence, and predicting the re- 9068
+lations that are most likely to hold. 9069
+5First three examples from: http://www.georgiaencyclopedia.org/articles/
+government-politics/maynard-jackson-1938-2003 ; JET magazine, November 10, 2003;
+www.todayingeorgiahistory.org/content/maynard-jackson-elected
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+422 CHAPTER 17. INFORMATION EXTRACTION
+One approach is to run a single-document relation extraction system (using the tech- 9070
+niques described in §17.2.2), and then aggregate the results (Li et al., 2011). Relations 9071
+that are detected with high conﬁdence in multiple documents are more likely to be valid, 9072
+motivating the heuristic, 9073
+ψ(r,e1,e2) =N∑
+i=1(p(r(e1,e2)|w(i)))α, [17.21]
+where p (r(e1,e2)|w(i))is the probability of relation rbetween entities e1ande2condi- 9074
+tioned on the text w(i), andα≫1is a tunable hyperparameter. Using this heuristic, it is 9075
+possible to rank all candidate relations, and trace out a precision-recall curve as more re- 9076
+lations are extracted.6Alternatively, features can be aggregated across multiple passages 9077
+of text, feeding a single type-level relation extraction system (Wolfe et al., 2017). 9078
+Precision can be improved by introducing constraints across multiple relations. For 9079
+example, if we are certain of the relation PARENT (e1,e2), then it cannot also be the case 9080
+that PARENT (e2,e1). Integer linear programming makes it possible to incorporate such 9081
+constraints into a global optimization (Li et al., 2011). Other pairs of relations have posi- 9082
+tive correlations, such MAYOR (e1,e2)and LIVED -IN(e1,e2). Compatibility across relation 9083
+types can be incorporated into probabilistic graphical models (e.g., Riedel et al., 2010). 9084
+17.2.3.2 Distant supervision 9085
+Relation extraction is “annotation hungry,” because each relation requires its own la- 9086
+beled data. Rather than relying on annotations of individual documents, it would be 9087
+preferable to use existing knowledge resources — such as the many facts that are al- 9088
+ready captured in knowledge bases like DBPedia. However such annotations raise the 9089
+inverse of the information fusion problem considered above: the existence of the relation 9090
+MAYOR (MAYNARD JACKSON JR.,ATLANTA )provides only distant supervision for the 9091
+example texts in which this entity pair is mentioned. 9092
+One approach is to treat the entity pair as the instance, rather than the text itself (Mintz 9093
+et al., 2009). Features are then aggregated across all sentences in which both entities are 9094
+mentioned, and labels correspond to the relation (if any) between the entities in a knowl- 9095
+edge base, such as FreeBase. Negative instances are constructed from entity pairs that are 9096
+not related in the knowledge base. In some cases, two entities are related, but the knowl- 9097
+edge base is missing the relation; however, because the number of possible entity pairs is 9098
+huge, these missing relations are presumed to be relatively rare. This approach is shown 9099
+in Figure 17.2. 9100
+6The precision-recall curve is similar to the ROC curve shown in Figure 4.4, but it includes the precision
+TP
+TP+FPrather than the false positive rateFP
+FP+TN.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.2. RELATIONS 423
+•Label :MAYOR (ATLANTA , M AYNARD JACKSON )
+–Elected mayor of Atlanta in 1973, Maynard Jackson . . .
+– Atlanta ’s airport will be renamed to honor Maynard Jackson , the city’s ﬁrst Black
+mayor
+–Born in Dallas, Texas in 1938, Maynard Holbrook Jackson, Jr. moved to Atlanta
+when he was 8.
+•Label :MAYOR (NEWYORK, FIORELLO LAGUARDIA )
+– Fiorello La Guardia was Mayor of New York for three terms . . .
+– Fiorello La Guardia , then serving on the New York City Board of Aldermen. . .
+•Label :BORN -IN(DALLAS , M AYNARD JACKSON )
+–Born in Dallas , Texas in 1938, Maynard Holbrook Jackson, Jr. moved to Atlanta
+when he was 8.
+– Maynard Jackson was raised in Dallas . . .
+•Label :NIL(NEWYORK, M AYNARD JACKSON )
+– Jackson married Valerie Richardson, whom he had met in New York . . .
+– Jackson was a member of the Georgia and New York bars . . .
+Figure 17.2: Four training instances for relation classiﬁcation using distant supervi-
+sion Mintz et al. (2009). The ﬁrst two instances are positive for the MAYOR relation, and
+the third instance is positive for the BORN -INrelation. The fourth instance is a negative ex-
+ample, constructed from a pair of entities (N EWYORK, M AYNARD JACKSON ) that do not
+appear in any Freebase relation. Each instance’s features are computed by aggregating
+across all sentences in which the two entities are mentioned.
+Inmultiple instance learning , labels are assigned to setsof instances, of which only 9101
+an unknown subset are actually relevant (Dietterich et al., 1997; Maron and Lozano-P ´erez, 9102
+1998). This formalizes the framework of distant supervision: the relation REL(A,B)acts 9103
+as a label for the entire set of sentences mentioning entities Aand B, even when only a 9104
+subset of these sentences actually describes the relation. One approach to multi-instance 9105
+learning is to introduce a binary latent variable for each sentence, indicating whether the 9106
+sentence expresses the labeled relation (Riedel et al., 2010). A variety of inference tech- 9107
+niques have been employed for this probabilistic model of relation extraction: Surdeanu 9108
+et al. (2012) use expectation maximization, Riedel et al. (2010) use sampling, and Hoff- 9109
+mann et al. (2011) use a custom graph-based algorithm. Expectation maximization and 9110
+sampling are surveyed in chapter 5, and are covered in more detail by Murphy (2012); 9111
+graph-based methods are surveyed by Mihalcea and Radev (2011). 9112
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+424 CHAPTER 17. INFORMATION EXTRACTION
+Task Relation ontology Supervision
+PropBank semantic role labeling VerbNet sentence
+FrameNet semantic role labeling FrameNet sentence
+Relation extraction ACE, TAC, SemEval, etc sentence
+Slot ﬁlling ACE, TAC, SemEval, etc relation
+Open Information Extraction open seed relations or patterns
+Table 17.3: Various relation extraction tasks and their properties. VerbNet and FrameNet
+are described in chapter 13. ACE (Linguistic Data Consortium, 2005), TAC (McNamee
+and Dang, 2009), and SemEval (Hendrickx et al., 2009) refer to shared tasks, each of which
+involves an ontology of relation types.
+17.2.4 Open information extraction 9113
+In classical relation extraction, the set of relations is deﬁned in advance, using a schema . 9114
+The relation for any pair of entities can then be predicted using multi-class classiﬁcation. 9115
+Inopen information extraction (OpenIE), a relation can be any triple of text. The example 9116
+sentence (17.12) instantiates several “relations” of this sort: 9117
+•(mayor of,Maynard Jackson ,Atlanta ), 9118
+•(elected,Maynard Jackson ,mayor of Atlanta ), 9119
+•(elected in,Maynard Jackson ,1973), 9120
+and so on. Extracting such tuples can be viewed as a lightweight version of semantic role 9121
+labeling (chapter 13), with only two argument types: ﬁrst slot and second slot. The task is 9122
+generally evaluated on the relation level, rather than on the level of sentences: precision is 9123
+measured by the number of extracted relations that are accurate, and recall is measured by 9124
+the number of true relations that were successfully extracted. OpenIE systems are trained 9125
+from distant supervision or bootstrapping, rather than from labeled sentences. 9126
+An early example is the TextRunner system (Banko et al., 2007), which identiﬁes re- 9127
+lations with a set of handcrafted syntactic rules. The examples that are acquired from the 9128
+handcrafted rules are then used to train a classiﬁcation model that uses part-of-speech pat- 9129
+terns as features. Finally, the relations that are extracted by the classiﬁer are aggregated, 9130
+removing redundant relations and computing the number of times that each relation is 9131
+mentioned in the corpus. TextRunner was the ﬁrst in a series of systems that performed 9132
+increasingly accurate open relation extraction by incorporating more precise linguistic fea- 9133
+tures (Etzioni et al., 2011), distant supervision from Wikipedia infoboxes (Wu and Weld, 9134
+2010), and better learning algorithms (Zhu et al., 2009). 9135
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.3. EVENTS 425
+17.3 Events 9136
+Relations link pairs of entities, but many real-world situations involve more than two en- 9137
+tities. Consider again the example sentence (17.12), which describes the event of an elec- 9138
+tion, with four properties: the ofﬁce ( MAYOR ), the district (A TLANTA ), the date (1973), and 9139
+the person elected (M AYNARD JACKSON , JR.). In event detection , a schema is provided 9140
+for each event type (e.g., an election, a terrorist attack, or a chemical reaction), indicating 9141
+all the possible properties of the event. The system is then required to ﬁll in as many of 9142
+these properties as possible (Doddington et al., 2004). 9143
+Event detection systems generally involve a retrieval component (ﬁnding relevant 9144
+documents and passages of text) and an extraction component (determining the proper- 9145
+ties of the event based on the retrieved texts). Early approaches focused on ﬁnite-state pat- 9146
+terns for identify event properties (Hobbs et al., 1997); such patterns can be automatically 9147
+induced by searching for patterns that are especially likely to appear in documents that 9148
+match the event query (Riloff, 1996). Contemporary approaches employ techniques that 9149
+are similar to FrameNet semantic role labeling ( §13.2), such as structured prediction over 9150
+local and global features (Li et al., 2013) and bidirectional recurrent neural networks (Feng 9151
+et al., 2016). These methods detect whether an event is described in a sentence, and if so, 9152
+what are its properties. 9153
+Event coreference Because multiple sentences may describe unique properties of a sin- 9154
+gle event, event coreference is required to link event mentions across a single passage 9155
+of text, or between passages (Humphreys et al., 1997). Bejan and Harabagiu (2014) de- 9156
+ﬁne event coreference as the task of identifying event mentions that share the same event 9157
+participants (i.e., the slot-ﬁlling entities) and the same event properties (e.g., the time and 9158
+location), within or across documents. Event coreference resolution can be performed us- 9159
+ing supervised learning techniques in a similar way to entity coreference, as described 9160
+in chapter 15: move left-to-right through the document, and use a classiﬁer to decide 9161
+whether to link each event reference to an existing cluster of coreferent events, or to cre- 9162
+ate a new cluster (Ahn, 2006). Each clustering decision is based on the compatibility of 9163
+features describing the participants and properties of the event. Due to the difﬁculty of 9164
+annotating large amounts of data for entity coreference, unsupervised approaches are es- 9165
+pecially desirable (Chen and Ji, 2009; Bejan and Harabagiu, 2014). 9166
+Relations between events Just as entities are related to other entities, events may be 9167
+related to other events: for example, the event of winning an election both precedes and 9168
+causes the event of serving as mayor; moving to Atlanta precedes and enables the event of 9169
+becoming mayor of Atlanta; moving from Dallas to Atlanta prevents the event of later be- 9170
+coming mayor of Dallas. As these examples show, events may be related both temporally 9171
+and causally. The TimeML annotation scheme speciﬁes a set of six temporal relations 9172
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+426 CHAPTER 17. INFORMATION EXTRACTION
+Positive (+) Negative (-) Underspeciﬁed (u)
+Certain ( CT) Fact: CT+ Counterfact: CT- Certain, but unknown: CTU
+Probable ( PR) Probable: PR+ Not probable: PR- (NA)
+Possible ( PS) Possible: PS+ Not possible: PS- (NA)
+Underspeciﬁed ( U) (NA) (NA) Unknown or uncommitted: UU
+Table 17.4: Table of factuality values from the FactBank corpus (Saur ´ı and Pustejovsky,
+2009). The entry (NA) indicates that this combination is not annotated.
+between events (Pustejovsky et al., 2005), derived in part from interval algebra (Allen, 9173
+1984). The TimeBank corpus provides TimeML annotations for 186 documents (Puste- 9174
+jovsky et al., 2003). Methods for detecting these temporal relations combine supervised 9175
+machine learning with temporal constraints, such as transitivity (e.g. Mani et al., 2006; 9176
+Chambers and Jurafsky, 2008). 9177
+More recent annotation schemes and datasets combine temporal and causal relations (Mirza 9178
+et al., 2014; Dunietz et al., 2017): for example, the CaTeRS dataset includes annotations of 9179
+320 ﬁve-sentence short stories (Mostafazadeh et al., 2016). Abstracting still further, pro- 9180
+cesses are networks of causal relations between multiple events. A small dataset of bi- 9181
+ological processes is annotated in the ProcessBank dataset (Berant et al., 2014), with the 9182
+goal of supporting automatic question answering on scientiﬁc textbooks. 9183
+17.4 Hedges, denials, and hypotheticals 9184
+The methods described thus far apply to propositions about the way things are in the 9185
+real world. But natural language can also describe events and relations that are likely or 9186
+unlikely, possible or impossible, desired or feared. The following examples hint at the 9187
+scope of the problem (Prabhakaran et al., 2010): 9188
+(17.16) GM will lay off workers. 9189
+(17.17) A spokesman for GM said GM will lay off workers. 9190
+(17.18) GM may lay off workers. 9191
+(17.19) The politician claimed that GM will lay off workers. 9192
+(17.20) Some wish GM would lay off workers. 9193
+(17.21) Will GM lay off workers? 9194
+(17.22) Many wonder whether GM will lay off workers. 9195
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.4. HEDGES, DENIALS, AND HYPOTHETICALS 427
+Accurate information extraction requires handling these extra-propositional aspects 9196
+of meaning, which are sometimes summarized under the terms modality and negation .79197
+Modality refers to expressions of the speaker’s attitude towards her own statements, in- 9198
+cluding “degree of certainty, reliability, subjectivity, sources of information, and perspec- 9199
+tive” (Morante and Sporleder, 2012). Various systematizations of modality have been 9200
+proposed (e.g., Palmer, 2001), including categories such as future, interrogative, imper- 9201
+ative, conditional, and subjective. Information extraction is particularly concerned with 9202
+negation and certainty. For example, Saur ´ı and Pustejovsky (2009) link negation with 9203
+a modal calculus of certainty, likelihood, and possibility, creating the two-dimensional 9204
+schema shown in Table 17.4. This is the basis for the FactBank corpus, with annotations 9205
+of the factuality of all sentences in 208 documents of news text. 9206
+A related concept is hedging , in which speakers limit their commitment to a proposi- 9207
+tion (Lakoff, 1973): 9208
+(17.23) These results suggest that expression of c-jun, jun B and jun D genes might be in- 9209
+volved in terminal granulocyte differentiation. . . (Morante and Daelemans, 2009) 9210
+(17.24) A whale is technically a mammal (Lakoff, 1973) 9211
+In the ﬁrst example, the hedges suggest and might communicate uncertainty; in the second 9212
+example, there is no uncertainty, but the hedge technically indicates that the evidence for 9213
+the proposition will not fully meet the reader’s expectations. Hedging has been studied 9214
+extensively in scientiﬁc texts (Medlock and Briscoe, 2007; Morante and Daelemans, 2009), 9215
+where the goal of large-scale extraction of scientiﬁc facts is obstructed by hedges and spec- 9216
+ulation. Still another related aspect of modality is evidentiality , in which speakers mark 9217
+the source of their information. In many languages, it is obligatory to mark evidentiality 9218
+through afﬁxes or particles (Aikhenvald, 2004); while evidentiality is not grammaticalized 9219
+in English, authors are expected to express this information in contexts such as journal- 9220
+ism (Kovach and Rosenstiel, 2014) and Wikipedia.89221
+Methods for handling negation and modality generally include two phases: 9222
+1. detecting negated or uncertain events; 9223
+2. identifying the scope and focus of the negation or modal operator. 9224
+7The classiﬁcation of negation as extra-propositional is controversial: Packard et al. (2014) argue that
+negation is a “core part of compositionally constructed logical-form representations.” Negation is an element
+of the semantic parsing tasks discussed in chapter 12 and chapter 13 — for example, negation markers are
+treated as adjuncts in PropBank semantic role labeling. However, many of the relation extraction methods
+mentioned in this chapter do not handle negation directly. A further consideration is that negation inter-
+acts closely with aspects of modality that are generally not considered in propositional semantics, such as
+certainty and subjectivity.
+8https://en.wikipedia.org/wiki/Wikipedia:Veriﬁability
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+428 CHAPTER 17. INFORMATION EXTRACTION
+A considerable body of work on negation has employed rule-based techniques such as 9225
+regular expressions (Chapman et al., 2001) to detect negated events. Such techniques 9226
+match lexical cues (e.g., Norwood was notelected Mayor ), while avoiding “double nega- 9227
+tives” (e.g., surely all this is not without meaning ). More recent approaches employ classi- 9228
+ﬁers over lexical and syntactic features (Uzuner et al., 2009) and sequence labeling (Prab- 9229
+hakaran et al., 2010). 9230
+The tasks of scope and focus resolution are more ﬁne grained, as shown in the example 9231
+from Morante and Sporleder (2012): 9232
+(17.25) [After his habit he said]nothing , and after mine I asked no questions. 9233
+After his habit he said nothing, and [after mine I asked ]no[questions ]. 9234
+In this sentence, there are two negation cues ( nothing and no). Each negates an event, 9235
+indicated by the underlined verbs said and asked (this is the focus of negation), and each 9236
+occurs within a scope: after his habit he said and after mine I asked questions . These tasks 9237
+are typically formalized as sequence labeling problems, with each word token labeled 9238
+as beginning, inside, or outside of a cue, focus, or scope span (see §8.3). Conventional 9239
+sequence labeling approaches can then be applied, using surface features as well as syn- 9240
+tax (Velldal et al., 2012) and semantic analysis (Packard et al., 2014). Labeled datasets 9241
+include the BioScope corpus of biomedical texts (Vincze et al., 2008) and a shared task 9242
+dataset of detective stories by Arthur Conan Doyle (Morante and Blanco, 2012). 9243
+17.5 Question answering and machine reading 9244
+The victory of the Watson question-answering system against three top human players on 9245
+the game show Jeopardy! was a landmark moment for natural language processing (Fer- 9246
+rucci et al., 2010). Game show questions are usually answered by factoids : entity names 9247
+and short phrases.9The task of factoid question answering is therefore closely related to 9248
+information extraction, with the additional problem of accurately parsing the question. 9249
+17.5.1 Formal semantics 9250
+Semantic parsing is an effective method for question-answering in restricted domains 9251
+such as questions about geography and airline reservations (Zettlemoyer and Collins, 9252
+2005), and has also been applied in “open-domain” settings such as question answering 9253
+on Freebase (Berant et al., 2013) and biomedical research abstracts (Poon and Domingos, 9254
+2009). One approach is to convert the question into a lambda calculus expression that 9255
+9The broader landscape of question answering includes “why” questions ( Why did Ahab continue to pursue
+the white whale? ), “how questions” ( How did Queequeg die? ), and requests for summaries ( What was Ishmael’s
+attitude towards organized religion? ). For more, see Hirschman and Gaizauskas (2001).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.5. QUESTION ANSWERING AND MACHINE READING 429
+returns a boolean value: for example, the question who is the mayor of the capital of Georgia? 9256
+would be converted to, 9257
+λx.∃yCAPITAL (GEORGIA,y)∧MAYOR (y,x). [17.22]
+This lambda expression can then be used to query an existing knowledge base, returning 9258
+“true” for all entities that satisfy it. 9259
+17.5.2 Machine reading 9260
+Recent work has focused on answering questions about speciﬁc textual passages, similar 9261
+to the reading comprehension examinations for young students (Hirschman et al., 1999). 9262
+This task has come to be known as machine reading . 9263
+17.5.2.1 Datasets 9264
+The machine reading problem can be formulated in a number of different ways. The most 9265
+important distinction is what form the answer should take. 9266
+•Multiple-choice question answering , as in the MCTest dataset of stories (Richard- 9267
+son et al., 2013) and the New York Regents Science Exams (Clark, 2015). In MCTest, 9268
+the answer is deducible from the text alone, while in the science exams, the system 9269
+must make inferences using an existing model of the underlying scientiﬁc phenom- 9270
+ena. Here is an example from MCTest: 9271
+(17.26) James the turtle was always getting into trouble. Sometimes he’d reach into 9272
+the freezer and empty out all the food . . . 9273
+Q: What is the name of the trouble making turtle? 9274
+(a) Fries 9275
+(b) Pudding 9276
+(c) James 9277
+(d) Jane 9278
+•Cloze -style “ﬁll in the blank” questions, as in the CNN/Daily Mail comprehension 9279
+task (Hermann et al., 2015), the Children’s Book Test (Hill et al., 2016), and the Who- 9280
+did-What dataset (Onishi et al., 2016). In these tasks, the system must guess which 9281
+word or entity completes a sentence, based on reading a passage of text. Here is an 9282
+example from Who-did-What: 9283
+(17.27) Q: Tottenham manager Juande Ramos has hinted he will allow to leave 9284
+if the Bulgaria striker makes it clear he is unhappy. (Onishi et al., 2016) 9285
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+430 CHAPTER 17. INFORMATION EXTRACTION
+The query sentence may be selected either from the story itself, or from an external 9286
+summary. In either case, datasets can be created automatically by processing large 9287
+quantities existing documents. An additional constraint is that that missing element 9288
+from the cloze must appear in the main passage of text: for example, in Who-did- 9289
+What, the candidates include all entities mentioned in the main passage. In the 9290
+CNN/Daily Mail dataset, each entity name is replaced by a unique identiﬁer, e.g., 9291
+ENTITY 37. This ensures that correct answers can only be obtained by accurately 9292
+reading the text, and not from external knowledge about the entities. 9293
+•Extractive question answering, in which the answer is drawn from the original text. 9294
+In WikiQA, answers are sentences (Yang et al., 2015). In the Stanford Question An- 9295
+swering Dataset (SQuAD), answers are words or short phrases (Rajpurkar et al., 9296
+2016): 9297
+(17.28) In metereology, precipitation is any product of the condensation of atmo- 9298
+spheric water vapor that falls under gravity. 9299
+Q: What causes precipitation to fall? A: gravity 9300
+In both WikiQA and SQuAD, the original texts are Wikipedia articles, and the ques- 9301
+tions are generated by crowdworkers. 9302
+17.5.2.2 Methods 9303
+A baseline method is to search the text for sentences or short passages that overlap with 9304
+both the query and the candidate answer (Richardson et al., 2013). In example (17.26), this 9305
+baseline would select the correct answer, since James appears in a sentence that includes 9306
+the query terms trouble and turtle . 9307
+This baseline can be implemented as a neural architecture, using an attention mech-
+anism (see§18.3.1), which scores the similarity of the query to each part of the source
+text (Chen et al., 2016). The ﬁrst step is to encode the passage w(p)and the query w(q),
+using two bidirectional LSTMs ( §7.6).
+h(q)=BiLSTM (w(q); Θ(q)) [17.23]
+h(p)=BiLSTM (w(p); Θ(p)). [17.24]
+The query is represented by vertically concatenating the ﬁnal states of the left-to-right
+and right-to-left passes:
+u=[−−→
+h(q)Mq;←−−
+h(q)0]. [17.25]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.5. QUESTION ANSWERING AND MACHINE READING 431
+The attention vector is computed as a softmax over a vector of bilinear products, and
+the expected representation is computed by summing over attention values,
+˜αm=(u(q))⊤Wah(p)
+m [17.26]
+α=SoftMax (˜α) [17.27]
+o=M∑
+m=1αmh(p)
+m. [17.28]
+Each candidate answer cis represented by a vector xc. Assuming the candidate answers
+are spans from the original text, these vectors can be set equal to the corresponding ele-
+ment inh(p). The score for each candidate answer ais computed by the inner product,
+ˆc= argmax
+co·xc. [17.29]
+This architecture can be trained end-to-end from a loss based on the log-likelihood of the 9308
+correct answer. A number of related architectures have been proposed (e.g., Hermann 9309
+et al., 2015; Kadlec et al., 2016; Dhingra et al., 2017; Cui et al., 2017), and the relationships 9310
+between these methods are surveyed by Wang et al. (2017). 9311
+Additional resources 9312
+The ﬁeld of information extraction is surveyed in course notes by Grishman (2012), and 9313
+more recently in a short survey paper (Grishman, 2015). Shen et al. (2015) survey the task 9314
+of entity linking, and Ji and Grishman (2011) survey work on knowledge base popula- 9315
+tion. This chapter’s discussion of non-propositional meaning was strongly inﬂuenced by 9316
+Morante and Sporleder (2012), who introduced a special issue of the journal Computational 9317
+Linguistics dedicated to recent work on modality and negation. 9318
+Exercises 9319
+1. Consider the following heuristic for entity linking: 9320
+•Among all entities that have the same type as the mention (e.g., LOC, PER), 9321
+choose the one whose name has the lowest edit distance from the mention. 9322
+•If more than one entity has the right type and the lowest edit distance from the 9323
+mention, choose the most popular one. 9324
+•If no candidate entity has the right type, choose NIL. 9325
+Now suppose you have the following feature function:
+f(y,x) = [ edit-dist (name (y),x),same-type (y,x),popularity (y),δ(y=NIL)]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+432 CHAPTER 17. INFORMATION EXTRACTION
+Design a set of ranking weights θthat match the heuristic. You may assume that 9326
+edit distance and popularity are always in the range [0,100], and that the NILentity 9327
+has values of zero for all features except δ(y=NIL). 9328
+2. Now consider another heuristic: 9329
+•Among all candidate entities that have edit distance zero from the mention and 9330
+the right type, choose the most popular one. 9331
+•If no entity has edit distance zero from the mention, choose the one with the 9332
+right type that is most popular, regardless of edit distance. 9333
+•If no entity has the right type, choose NIL. 9334
+Using the same features and assumptions from the previous problem, prove that 9335
+there is no set of weights that could implement this heuristic. Then show that the 9336
+heuristic can be implemented by adding a single feature. Your new feature should 9337
+consider only the edit distance. 9338
+3. * Consider the following formulation for collective entity linking, which rewards 9339
+sets of entities that are all of the same type, where “types” can be elements of any 9340
+set: 9341
+ψc(y) =
+
+α all entities in yhave the same type
+β more than half of the entities in yhave the same type
+0otherwise.[17.30]
+Show how to implement this model of collective entity linking in an integer linear 9342
+program . You may want to review §13.2.2. 9343
+To get started, here is an integer linear program for entity linking, without including
+the collective term ψc:
+max
+zi,y∈{0,1}N∑
+i=1∑
+y∈Y(x(i))si,yzi,y
+s.t.∑
+y∈Y(x(i))zi,y≤1∀i∈{1,2,...N}
+wherezi,y= 1 if entityyis linked to mention i, andsi,yis a parameter that scores 9344
+the quality of this individual ranking decision, e.g., si,y=θ·f(y,x(i),c(i)). 9345
+To incorporate the collective linking score, you may assume parameters r, 9346
+ry,τ={
+1,entityyhas typeτ
+0,otherwise.[17.31]
+Hint : You will need to deﬁne several auxiliary variables to optimize over. 9347
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+17.5. QUESTION ANSWERING AND MACHINE READING 433
+4. Runnltk.corpus.download(’reuters’) to download the Reuters corpus in 9348
+NLTK, and run from nltk.corpus import reuters to import it. The com- 9349
+mandreuters.words() returns an iterator over the tokens in the corpus. 9350
+a) Apply the pattern , such as to this corpus, obtaining candidates for the 9351
+IS-Arelation, e.g. IS-A(ROMANIA,COUNTRY ). What are three pairs that this 9352
+method identiﬁes correctly? What are three different pairs that it gets wrong? 9353
+b) Design a pattern for the PRESIDENT relation, e.g. PRESIDENT (PHILIPPINES ,CORAZON AQUINO ). 9354
+In this case, you may want to augment your pattern matcher with the ability 9355
+to match multiple token wildcards, perhaps using case information to detect 9356
+proper names. Again, list three correct 9357
+c) Preprocess the Reuters data by running a named entity recognizer, replacing 9358
+tokens with named entity spans when applicable. Apply your PRESIDENT 9359
+matcher to this new data. Does the accuracy improve? Compare 20 randomly- 9360
+selected pairs from this pattern and the one you designed in the previous part. 9361
+5. Represent the dependency path x(i)as a sequence of words and dependency arcs 9362
+of lengthMi, ignoring the endpoints of the path. In example 1 of Table 17.2, the 9363
+dependency path is, 9364
+x(1)= (←
+NSUBJ,traveled ,→
+OBL) [17.32]
+Ifx(i)
+mis a word, then let pos (x(i)
+m)be its part-of-speech, using the tagset deﬁned in 9365
+chapter 8. 9366
+We can deﬁne the following kernel function over pairs of dependency paths (Bunescu
+and Mooney, 2005):
+κ(x(i),x(j)) ={
+0, M i̸=Mj∏Mi
+m=1c(x(i)
+m,x(j)
+m), Mi=Mj
+c(x(i)
+m,x(j)
+m) =
+
+2, x(i)
+m=x(j)
+m
+1, x(i)
+mandx(j)
+mare words and pos (x(i)
+m) =pos(x(j)
+m)
+0,otherwise.
+Using this kernel function, compute the kernel similarities of example 1 from Ta- 9367
+ble 17.2 with the other ﬁve examples. 9368
+6. Continuing from the previous problem, suppose that the instances have the follow-
+ing labels:
+y2= 1,y3=−1,y4=−1,y5= 1,y6= 1 [17.33]
+Identify the conditions for αandbunder which ˆy1= 1. Remember the constraint 9369
+thatαi≥0for alli. 9370
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+
+

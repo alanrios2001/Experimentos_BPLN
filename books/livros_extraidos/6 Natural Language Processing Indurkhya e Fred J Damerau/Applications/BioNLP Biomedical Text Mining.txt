@@ -1,0 +1,556 @@
+25
+BioNLP: Biomedical
+Text Mining
+K. Bretonnel Cohen
+UniversityofColoradoDenver25.1 Introduction ..........................................................60525.2 TheTwoBasicDomainsofBioNLP:MedicalandBiological ...606
+Medical/ClinicalNLP •Biological/GenomicNLP •ModelOrganism
+Databases,andtheDatabaseCuratorasaCanonicalUser •BioNLPinthe
+ContextofNaturalLanguageProcessingandComputationalLinguistics
+25.3 JustEnoughBiology .................................................60925.4 BiomedicalTextMining.............................................610
+NamedEntityRecognition •NamedEntityNormalization •Abbreviation
+Disambiguation
+25.5 GettingUptoSpeed:TenPapersandResourcesThatWill
+LetYouReadMostOtherWorkinBioNLP ......................615
+NamedEntityRecognition1:KeX •NamedEntityRecognition2:Collier,
+Nobata,andGENIA •InformationExtraction1:Blaschkeetal.(1999) •
+InformationExtraction2:CravenandKumlein(1999) •Information
+Extraction3:MedLEE,BioMedLEE,andGENIES •Corpora1:
+PubMed/MEDLINE •Corpora2:GENIA •LexicalResources1:TheGene
+Ontology •LexicalResources2:EntrezGene •LexicalResources3:
+UniﬁedMedicalLanguageSystem
+25.6 Tools...................................................................618
+Tokenization •NamedEntityRecognition(Genes/Proteins) •Named
+EntityRecognition(MedicalConcepts) •FullParsers
+25.7 SpecialConsiderationsinBioNLP .................................620
+CodeCoverage,Testing,andCorpora •UserInterfaceDesign •
+Portability •PropositionBanksandSemanticRoleLabelinginBioNLP •
+TheDiﬀerencebetweenanApplicationThatWillRelievePainandSuﬀeringandanApplicationThatWillGetYouPublishedatACL
+Acknowledgments ..........................................................622References....................................................................622
+25.1 Introduction
+BioNLP, also known as biomedical language processing or biomedical text mining, is the application ofnaturallanguageprocessingtechniquestobiomedicaldata.Thebiomedicaldomainpresentsanumberofuniquedatatypesandtasks,butsimultaneouslyhasmanyaspectsthatareofinteresttothe“mainstream”naturallanguageprocessingcommunity.Additionally,thereareethicalissuesinBioNLPthatnecessitateanattentiontosoftwarequalityassurancebeyondthenormalattention(orlackthereof)thatispaidtoitinthemainstreamacademicNLPcommunity.
+605
+
+606 HandbookofNaturalLanguageProcessing
+AnembarrassingfactaboutBioNLPresearchtodateisthis:despitethefactthattherehasbeenavery
+largeamountofworkinthearea,mostdeployedsystemshavebeenbuiltnotbypeoplewhoself-identifyasnaturallanguageprocessingspecialistsbutbypeoplewhoself-identifyasbiologists.Attheendofthischapter,wewillreturntoreasonswhythismightbeso.
+25.2 The Two Basic Domains of BioNLP: Medical and Biological
+There are two basic user communities for BioNLP, and many diﬀerent user types within those twocommunities. The two main communities are the clinical or medical community on the one hand, andthe biological community on the other. (Additionally, there is much interest in the use of BioNLP for“translational research”—using basic biological research to inform clinical practice—but the two-waydistinctionmostlyholds.)
+25.2.1 Medical/Clinical NLP
+Within the medical community, there are widely diverse user types. Clinicians are providers of medicalcare. They have many questions to ask over the course of a typical workday (Ely et al. 2000), theyhave very little time to answer them, and they are not necessarily sophisticated searchers (Hersh et al.1999).Consumers,orpatients,presentadiﬀerentsetofchallenges.Theymaybesophisticatedsearchers,but are typically not equipped to comprehend the vast body of publicly available biomedical literature.“Informationists” are professional information retrieval specialists. They typically have a library sciencebackground, and may work in a library or directly with a clinical team. Finally, hospital administratorshavetocopewithtasksthatcanbeaidedbyNLP,rangingfrombillingtointernalprocessqualityassurance.
+25.2.2 Biological/Genomic NLP
+Within the biological community, there is an equivalently wide range of user types. They include high-throughputexperimentalists,benchscientists,andmodelorganismdatabasecurators.Wewillreturntotheselaterinthischapter.
+Although there is a long history of research in clinical NLP, most BioNLP work in recent years has
+focussed on the biological domain. This is probably due to a fundamental diﬀerence in the two ﬁelds:biologically oriented texts are massively and freely available, while clinical data has been prohibitivelydiﬃcult to obtain, and only recently has a free, publicly available collection of patient records becomeavailable(Pestianetal.2007).Althoughwewilldiscussmedicallanguageprocessingwhenapplicable,themajorityofthischapterwillfocusonbiological,primarilygenomic,NLP.25.2.2.1 High-Throughput Data InterpretationOneusertypewithinthebiologicalcommunityisthehigh-throughputexperimentalist.Thepastdecadehasseenaradicalshiftinthewaythatmolecularbiologistsdoscience.Where15yearsagoascientistmighthave been familiar with half a dozen proteins and would have been familiar with experimental methodsthatlethimorhergetdataononeproteinatatime,todaythereareassaysavailablethatmakeitpossibleto get data on as many as 30,000 genes in 12 subjects at a time at an economical and rapidly falling cost(under$500forthebasicmaterialsatthetimeofwriting).Thisﬂoodofdatahasrequiredthedevelopmentofwholenewwaysofdoingbiologicalscience.Forexample,familiarstatisticsarenotapplicablewhenthismanycross-comparisonsarepossible,necessitatingthedevelopmentofwaysofapplyingnonparametricsigniﬁcance tests to biological data. In addition, these high-throughput methodologies have led to atremendous increase in our knowledge about genes, causing an exponential growth in the number ofbiomedical publications in recent years (Hunter and Cohen 2006). For example, it used to be thoughtthat about 50 genes were involved in sporulation in yeast, one of the classic model organisms—through
+
+BioNLP:BiomedicalTextMining 607
+high-throughput assays, we now know from a single experiment of 500 genes that are involved in thisfundamentalprocess(Shatkayetal.2000,citingChuetal.1998).
+Anexperimentthatcangeneratedataon30,000genesmayeasilyreturnalistof200ormoregenesthat
+behaveinawaythatisstatisticallysigniﬁcantlydiﬀerentfromtheothergenesinasample.Abiologistthatisfacedwithalistof200genesimmediatelyhasabasicquestion:whatdothesehundredsofgenesdo?Thisisanareawherenaturallanguageprocessinghasbeenproposedasausefultool.Givenenoughpersonnelresources, a scientist might send a postdoctoral researcher oﬀ to do a literature search on all 200 genesand sort the resulting papers in a way that makes sense given the interests of the individual researcher.Automatic approaches to both parts of this task have been proposed—doing the large-scale literaturesearch,andthencategorizingthepapers,eitherinaknowledge-freewaybasedonsimpleclustering,orinaknowledge-basedwaythattakesintoaccounttheconcernsandcategoriesofresearchersinaparticularﬁeld. One example of the latter type of system is MedMiner (Tanabe et al. 1999). This system does a setof literature searches for a list of genes combined with diﬀerent keywords related to particular themesthat are known to be salient in a molecular biologist’s mental model of the domain and, for each gene,returnstheresultsgroupedaccordingtothecategoryofkeywordsthatretrievedit. Asimilarsystemhasbeenbuiltforresearchersonthegeneticsofalcoholism,basedonadiﬀerentmentalmodel.
+Anotherapproachistolookforprominentthemesinthepublicationsaboutthegenesinthelist.This
+approach contrasts with the more common approach of clustering genes and assuming that clusteredgenes share similar functions. Shatkay et al. (2000) describe one such approach. It centers on theintuition that documents that are about genes with similar functions will be associated with similar setsofdocuments.Thus,itisdocument-centric,ratherthangene-centric.Themethodreliesonthereexistingonerepresentativedocumentforeverygenethatistobeanalyzed.Foreachrepresentativedocument,theprobabilisticalgorithmretrievesasetofsimilardocuments.Geneswhosedocumentsleadtotheretrievalofsimilarsetsofdocumentsarethenassumedtosharesimilarfunctions.Intheinterpretivestep,aBernoulliprocessisusedtogeneratealistoftermsthatrepresentsthethemesofeachsharedsetofdocuments.
+A very diﬀerent approach to applying text mining to the high throughput data problem is to use
+publicationsaboutthegenesinalistasprimarydataininterpretingthelist. Forexample, oneapproachtodealingwithalonglistofgenesistocategorizethegenesthemselves.Inthissituation,itcanbeusefultoretrievethepublicationsaboutthegenesinthelistandclustergenesbasedonamodeloftheliteraturethat describes them. Another application is to use text mining to build ad hoc networks of associationsbetweengenesbasedonpublishedinformationintheliterature.AnexcellentexampleofsuchasystemisChilibot(ChenandSharp2004).25.2.2.2 Database ConstructionAnothercommonproposeduseofBioNLPisintheconstructionofdatabasesaboutparticularphenomena.Forexample,aresearchermightwanttobuildadatabasethatlistsallknownproteinsand,foreachprotein,lists all proteins that it is known to interact with. Much of this data was initially reported in scientiﬁcpublications.Thisisaclassicproblemforinformationextractionasthattermisclassicallydeﬁned—thatis,usingNLPtoextractassertionsaboutasemanticallyrestrictedkindofrelationfromtext.Manysystemshave been built for the speciﬁc problem of protein–protein interactions; an early one that actually sawuseintheﬁeldwasthePreBINDsystem(Donaldson etal. 2003). Systemshavealsobeenconstructedinordertoassistintheconstructionofdatabasesaboutmutationsinspeciﬁctypesofproteins(Hornetal.2004)andpost-translationalmodiﬁcations(changestoproteinsaftertheyaremade)(Shahetal.2005).
+25.2.3 Model Organism Databases, and the Database Curator
+as a Canonical User
+Although high throughput experimentation and phenomenon-based database construction are bothpossibleusecasesforBioNLP,themostextensivelyexploredusecasehasbeenmodelorganismdatabaseconstruction.
+
+608 HandbookofNaturalLanguageProcessing
+“Model organisms” are species that are used as experimental surrogates for humans. They are of
+importance to biomedical research because we share most of our genes with most living species, andbecause we cannot experiment on humans. A variety of common model organisms exist, with variousexperimental advantages to each. For example, the roundworm Caenorhabditis elegans is useful for
+studying cellular diﬀerentiation because the typical mature adult only has 959 cells, and the lineage ofeachoneisknown.
+One of the fundamental enabling tools of modern genomic science has been the construction of
+databases containing information about all or most of the genes in various model organisms (andhumans). To see a typical database entry for a gene, go to the Mouse Genome Informatics databaseat www.informatics.jax.org and search for brca1. The entry for this gene includes a unique identiﬁer
+(MGI:104537) that is used as a primary key in the database, but rarely appears in free text. It alsoincludesanoﬃcialname
+∗forthegene—breast cancer 1—andanoﬃcialsymbol: Brca1. (Aswillbeseen
+in Section 25.4.2, the term “oﬃcial” is something of a misnomer.) The wide range of types of data thatareincludedinthedatabaseentryfor Brca1includephenotypes(physicalandbehavioralcharacteristics)
+associatedwithitandwithmutationsinit,whichinthiscaserangefromembryonicdeathtokinkytails,maleinfertility,andincreasedincidenceoftumors;informationontissuesinwhichthegeneisexpressed(is actively converted to a protein); biological processes that it takes part in; molecular functions that ithas;andcellularcomponentsinwhichitisfound.Whatisnotableaboutthismassofinformationisthatnone of it is entered in the database based solely on an expert’s knowledge of the gene: every piece ofinformation on this gene in this database is indexed with a speciﬁc journal article from which it can beasserted.Inthecaseof Brca1,144articleswereconsulted.Multiplythatbytheapproximately30,000genes
+foundinamouse(orahuman),andyoubegintounderstandwhythemodelorganismdatabasecuratorcommunity has been an enthusiastic supporter of and participant in text mining research. Modelingstudiesonthegrowthofinformationinthemodelorganismdatabasessuggestastarkfact:atthecurrentratesofmanualextractionofthiskindofinformationfromtext,itwillbeyears,andinsomecasesdecades,beforethemodelorganismdatabasesarepopulated(Baumgartneretal.2007).
+25.2.4 BioNLP in the Context of Natural Language Processing and
+Computational Linguistics
+FromtheperspectiveofthemainstreamNLPpractitioner,thereareanumberofreasonstobeinterestedinBioNLP.SomeofthesearethesameasthecharacteristicsthatmakeanyprobleminNLPinteresting:itisdiﬃcult,butitmightactuallybetractable;aspectsofthelanguageofthedomainmightactuallymakeitharderthannewswiretext,despitethefactthatitissemanticallymorerestricted;yet,resources,lexicalandotherwise,existthatmightmakeitmoretractablethannewswiretext.Theseresourcesinclude
+1. A variety of lexical resources. Some of these are smaller, on the order of 20,000 concepts, but
+have been extensively crafted and reworked by entire communities of researchers, so that theyare essentially free of individual idiosyncracies of representation and have been carefully vettedfor errors of all sorts. The Gene Ontology is an example of such a resource (The Gene OntologyConsortium 2000). Other resources are less carefully constructed but are exceptionally large andhavebothbroadcoverageandsomeassociatedtools.AnexampleofsucharesourceistheUniﬁedMedical Language System (UMLS) (Lindberg et al. 1993), which currently comprises 900,000conceptswith2,000,000namesand12millionrelationsbetweenthoseconcepts.
+2. Astunningamountoffreetext.Atthetimeofwriting,thisincludes18millionabstractsofscientiﬁc
+journalarticlesinthePubMed/MEDLINEdatabaseandassociatedretrievaltools; as(HunterandCohen 2006) have shown, the size of this data collection is growing exponentially. There are anadditional1.4millionfull-textjournalarticlesavailableinthePubMedCentraldatabase,withmore
+∗Everygenehasanameandasymbol.Thetwotermsaregenerallyusedinterchangeably.
+
+BioNLP:BiomedicalTextMining 609
+comingallthetimeduetogovernmentpressuretomaketheproductsoffederallyfundedresearch
+publiclyavailable.
+3. A wide variety of annotated corpora and classiﬁed document collections. Corpora and document
+collectionsareavailablewithbothlinguisticannotations—sentenceboundaries,tokenization,part
+of speech, word senses, coreference, etc.—and semantic annotations, such as named entities and
+relations. The majority of these are publicly available at no cost. Some of the more famous ones,
+includingGENIAandtheBioCreativegenemention(GM)corpus,arediscussedbelow.
+4. A wide variety of domain-specialized tools, including sentence segmenters, tokenizers (a notori-
+ously diﬃcult task for biomedical text), named entity recognition systems, and semantic concept
+normalizers.
+As will be seen, the biomedical domain diﬀers from newswire text on practically every level, ranging
+fromtokenizationtonamedentityrecognitiontocorpusconstructiontosemanticrepresentation.Solving
+these problems for biomedical text has the potential to feed advances back to the newswire domain that
+canpushworkinthatareaforward,aswell.
+Beyond these reasons, BioNLP oﬀers the researcher an opportunity to make a clear contribution to
+relievingthepreventablepainandsuﬀeringofhisorherfellowhumans.Thisisnotsomethingfoundin
+mostareasofNLP.
+25.3 Just Enough Biology
+Figure25.1,fromWattarujeekritetal.(2004),encapsulatesinasingleschematicdiagramhowbiologists
+view the world. An immmediately salient point of the diagram is that the biologist’s worldview is
+Trigger
+Decrease
+Inhibit
+BlockBind
+Signal
+IRS-1IRS-1Raf-1P P
+PP
+P
+P
+PP
+PAAAAA
+AAAAA
+DNA TranscribeExon Intron
+BeginPPPP PIR IR
+ActivateBind
+RasMEK
+MEKHYPGrb2 Sos
+MAPK
+MAPKPhosphorylateInteract
+Encode
+translate HYP
+Express
+mRNA
+Generate
+Pre-mRNA Splice AlterResponse
+Regulate
+Mediate
+MAPK Elk1
+SRF
+SRF Elk1Membrane
+Cytoplasm
+Nucleus
+FIGURE25.1 Abiologist’sviewoftheworld,withlinguisticcorrelates.(FromWattarujeekrit,T.etal., BMCInfo .,
+5,155,2004.)
+
+610 HandbookofNaturalLanguageProcessing
+fundamentallyonacellularlevel,andinparticularprimarilyconcernsitselfwithprocessesthattakeplaceinside the cell. The top part of the diagram illustrates the fact that these processes primarily take placeinvolving state-changing interactions between proteins within networks of proteins. The diagram alsoillustratestwowaysinwhichbiologyrelatestolanguage:ontheonehand,viathenamesoftheseproteins,andontheother,viapredicatesthatdescribetherelationsbetweenthoseproteins(aswellasotherthingswithwhichtheyinteract—smallmolecules,cellularcomponents,andotherentities).
+ThebottompartofthediagramillustrateswhatisknownastheCentralDogmaofbiology:thatproteins
+arecreatedviainstructionsthatareencodedingenes.Attheriskofagreatdealofsimpliﬁcation,wecansaythatforeveryproteinthereisacorrespondinggene.Thiscorrespondenceleadstoanenormousamountofmetonymyinwhichgenesarereferredtobythenamesofthecorrespondingproteinsandproteinsarereferredtobythenamesofthecorrespondinggenes. Theinterfacebetweenthetopandbottompartsofthediagramillustratesthefundamentalfactthatwhatproteinsaparticularcellproducesiscontrolledbycommunicationbetweenthemainbodyofthecellanditsnucleus,andsometimesultimatelybymessagesthataretransmittedfromoutsideofthecelltotheinteriorofthecellandeventuallytothenucleus.
+Understanding this worldview helps the NLP practitioner to make sense of two general trends in
+BioNLP.Oneoftheseisthefundamentalimportanceofnamedentityrecognitionforafarlargerclassofentitiesthaniscommoninworkingwithnewswiretext.Theotheristhatinformationextractionfocussedon relations between these named entities, both in terms of pairwise interactions and in terms of thereconstructionofentirenetworks,isanimportantclassofproblemsintheﬁeld.
+Biology is a frustratingly holistic science (Hunter 1993), and entities at many levels other than that
+of the cell are entirely relevant to BioNLP tasks. These range from the smallest molecules, to tissues, toorgans,andtoorganisms.Fororganisms,wemayrefertorelativelyspeciﬁchigh-levelconstructssuchasgenotypes(completeconﬁgurationsofgenesinanorganism)andtomuch-harder-to-deﬁneconstellationsofattributesknownasphenotypes(physicalandbehavioralmanifestationsofgeneticmake-up).Semanticclassesofnamedentitiescanbedeﬁnedthatcorrespondtoallofthese.
+25.4 Biomedical Text Mining
+25.4.1 Named Entity Recognition
+FormuchoftheperiodduringwhichgenomicNLPhasﬂowered,amajorconcernhasbeennamedentityrecognition. Despite the availability of a number of training corpora and two shared tasks focusing onthisproblem,performanceforbiomedicalNERhaslaggedbehindthatforthetraditionalMUCcategoriesofPERSON,LOCATION,andORGANIZATION—thehighest-performingsystemintheBioCreativeIInamedentityrecognitiontaskachievedanF-measureofonly0.87,andevenacombinedsystemassembledbytheorganizersachievedanF-measureofonly0.9066.Thereissomeevidencethatthisisduetolengthdiﬀerences between gene names and the traditional MUC categories (Yeh et al. 2005). There may alsohavebeeninconsistenciesinlabelingearlytrainingdatasets.
+The most common named entity that is targetted by biomedical NER systems is the gene or protein
+name. (Genesandproteinsareverydistinctbiologicalentities, butinpracticethereisoftennopracticalproblem with lumping them together for NER applications. Genes and proteins are related biologicallyinthatthepurposeofgenesistoholdthegeneticcodeforproteins,andinthegenomicliteraturethereisfrequentmetonymy,withgenenamesbeingusedtorefertothecorrespondingproteinandproteinnamesbeingusedtorefertothecorrespondinggene. Typically, thoughnotalways, ageneandtheproteinthatitencodeshavethesamename.InthecontextofNER,Iwillusetheterm“gene”torefertoageneanditscorrespondingproducts.)
+Names of genes have the unusual characteristic that any gene typically has two things that count as
+names for NER purposes. One of these is the gene name per se. The other is a shorter form, known asits gene symbol. The mouse gene breast cancer 1 and its symbol Brca1mentioned earlier are a typical
+
+BioNLP:BiomedicalTextMining 611
+example. From an NER perspective these are equivalent. It is often the case that both will appear in thesamedocument.Oftenthe“full”nameisusedontheﬁrstoccurrence,alongwithanappositionedsymbolin parentheses, and then subsequently the symbol is used. (This pattern is often exploited by good NERsystemstodisambiguategenesymbols.)
+The form of gene names can vary widely depending on the community that studies the particular
+organism in which a gene was ﬁrst discovered or is currently being studied. Mouse and human genesare often named by their function. For example, a typical human gene name would be melanocortin 1
+receptor(GeneID 4157). This gene has the same name in the mouse (GeneID 17199). The community
+ofDrosophila melanogaster (fruit ﬂy) researchers has a very diﬀerent tradition in naming genes. They
+originally named genes by the physical appearance of ﬂies when the gene in question is mutated. Forexample, the ﬁrst gene discovered in D. melanogaster was named white(symbolw)b e c a u s eﬂ i e sh a v e
+whiteeyeswhenthisgeneismutated,ratherthantheirnormalredeyes.Anothergeneinfruitﬂiesiscalledwrinkled; it is so named because ﬂies with a mutation in this gene have wrinkled wings. The symbol for
+wrinkledis W;thisillustratesanimportantpoint,whichisthatthereareavarietyofconditionsinwhich
+thecaseof agene nameor symbol canbe “phonemic”in thebiomedical literature. TheimplicationsforBioNLPsystemsinthisdomainareobvious,sincemanytextminingsystemsapplycasenormalizationasanearlyprocessingstep.
+One of the ﬁrst papers in the modern genomic BioNLP era (Fukuda et al. 1998) was on a gene name
+NERsystem.Itisdiscussedbelow.Inrecentyears,researchongeneNERhastakenplaceprimarilywithinasharedtaskcalledBioCreativeorsubsequenttoitusingtheBioCreativedata.InBioCreative,geneNERwas called the GM task, and we will refer to it in that way from here on. As noted above, one possiblesource of the lag in performance on GM as opposed to NER for the MUC categories has been lack ofconsistency in labeling gene names in training data sets. This lack of consistency has been seen in twoareas:decidingwhatcountsasamentionofageneoraprotein(e.g.,shouldrelatedgeneproducts,suchasRNAs, be included in thecategory?), and deciding whatcounts asthe borders of aGM. For example,given a string like human leptin receptor gene (PMID 9537324), should humanbe included in the text
+span of the gene name? Should the word genebe included? Diﬀerent annotation projects have come up
+with diﬀerent answers to these questions, and some projects have applied their rules inconsistently inthis area. The BioCreative organizers have attempted to give the annotation process a principled way ofdealing with these varying interpretations by developing gold standards that allow for variant forms, sothathumanleptinreceptorgene, humanleptinreceptor,and leptinreceptorgene mightallcountascorrect
+systemoutputs.
+One interesting result of the BioCreative GM evaluations has been the ﬁnding that enhancing a rule-
+basedorlearning-basedsystemwithalexicalresourcesuchasacanonicallistofgenenamestypicallydoesnotenhancetheperformanceofthesystem.(EvenpriortoBioCreative,itwasknownthatgazetteer-basedapproaches to GM are not typically successful, although it has since been shown that very sophisticatedgazeteer-based approaches can be successful, at the cost of about as much eﬀort as building a goodrule-basedorlearning-basedsystem(Hanischetal.2005).)Figure25.2showstheresultsfortheGMtaskfortheﬁrstBioCreativeevent.AscanbeseenfromFigure25.2,systemsdidnotbeneﬁtappreciablyfromusing a lexical resource unless their performance without it was abysmal (the rightmost system in theﬁgure).
+Ingeneral,systemsdobeneﬁtfromanyapproachthathelpsinlocatingtheleftandrightedgesofagene
+name, and in particular from approaches that help to extend them to the right and left. Approaches todoingthishaveincludedusingshallowparsingandusingtheSchwartzandHearstalgorithmtomapgenesymbolstothefullcorrespondingname(seebelow).Typicallearning-basedsystemsusebothorthographicfeatures—amuchrichersetthanisapplicabletoMUCnamedentitycategories—andcontextualfeatures.The top-performing BioCreative II system used a semisupervised learning-based system in which theprovidedtrainingdatawassupplementedbyunannotatedPubMed/MEDLINEabstracts.Itincludedthecombination of two separate noun group chunkers, one operating left-to-right and the other right-to-left (Ando 2008). However, rule-based systems, as well as systems that combine machine learning and
+
+612 HandbookofNaturalLanguageProcessing
+High
+0.830.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+0
+SubmissionBalanced F-score
+A A A B B B C C D D  E  E E F F  G  G H H H I I I J K L L L M N N N O OOpenUnofficialClosed
+FIGURE25.2 ResultsfromtheﬁrstBioCreativesharedtaskonGMrecognition.Closedsystemsdidnotuseexternal
+lexical resources; open systems were allowed to use external lexical resources. (From Yeh, A. et al., BMC Info .,
+6,S2,2005.)
+rules, can perform well on this task as well, and the top-performing system in the previous BioCreative
+combinedboth.
+25.4.2 Named Entity Normalization
+OneoftheuniquebutimportantproblemsingenomicBioNLPoverthepastfewyearshasbeenwhatis
+knownasthegenenormalizationproblem. Genenormalization(GN)isthetaskofrelatingmentionsof
+a gene name in text to some speciﬁc gene in a database of genes. Work on the GM task has long tended
+todeﬁnetheproblemassimplyﬁndingtheboundariesandclassesofgenenamesintext.However,such
+text spans are of little use in some (but not all) practical applications, where the more pressing need
+is to determine exactly which gene in the set of genes in some organism that text string refers to. One
+of the problems is massive ambiguity, both of names and symbols, although perhaps more so in the
+case of symbols. A perhaps larger issue is that authors exercise no notion of a standard gene name or
+symbol; diﬀerent communities may have diﬀerent names for the same gene, and authors may make up
+ad hoc symbols. The Brca1gene, for instance, has been referred to in print by at least seven diﬀerent
+symbols— IRIS,PSCP,BRCAI,BRCC1,RNF53,BROVA1,andBrca1.Onlytheyeastcommunityhasbeen
+anexceptiontothis.
+GN can be thought of as occupying a midpoint on the continuum between targetted word sense
+disambiguation,whichitisnot,andall-wordswordsensedisambiguation;thetaskistodisambiguateall
+genenames,butonlyallgenenames.
+As an example, consider TRP1. Just within humans alone, this can refer to ﬁve diﬀerent genes. The
+names of four of them are transient receptor potential channel 1 (GeneID 7220), transfer RNA proline 1
+(GeneID7217), transformation-relatedprotein2 [sic](GeneID5903),and trypsinogen1 (GeneID5644).
+This symbol also illustrates the hazards of ignoring minor typographical diﬀerences: if you search the
+Entrez Gene database (see below under Resources) for TRP-1(with a hyphen), you get just a single
+
+BioNLP:BiomedicalTextMining 613
+hit—tyrosinase-related protein 1 (GeneID 7306), the ﬁfth human gene that shares this symbol and one
+that is not retrieved if the search is done without the hyphen. It bears emphasizing that in naturally
+occurringtexts,anyoftheseﬁvegenesmaybereferredtobythesymbolwith(TRP-1)orwithout(TRP1)
+thehyphen,aswellaswithaspacebeforethenumeral(TRP1),andwithanycombinationoflettercases,
+e.g.,TRP1,Trp1,trp1,TRP-1,Trp-1,etc.Furthermore,thesamekindsofvariabilitycanexistforthefull
+name, so that for the gene with ID 5903 one may see transformation-related protein 1 ,transformation
+relatedprotein1 ,transformation-relatedprotein-1 ,TransformationRelatedProtein1 ,etc.
+TheBioCreativesharedtasks—anMUC-likeevaluationofBioNLP—hasthusfaralwaysincludedaGN
+task, and the BioCreative deﬁnition of the task has had great inﬂuence. As deﬁned by BioCreative, the
+input is an abstract of a journal article, and the output is a list of unique identiﬁers of genes mentioned
+inthetext. Thismeans thatsystemsmust be ableto bothrecognize when two gene mentions in thetext
+refertothesamegeneandtorecognizewhentwomentionsinthetextrefertoseparategenes.
+Figure 25.3 shows the performance of systems in the ﬁrst and second BioCreative events. In both
+shared tasks, participants were provided with a set of abstracts and a database to relate them to. For
+BioCreativeI,threesetsofabstractsweredistributed,oneforeachofthreespecies:yeast,mouse,andﬂy.
+ForBioCreativeII,asinglesetofabstractswasdistributed,comprisingonlyhumangenes.
+TheGNproblemwasﬁrstraisedbyCohenetal.(2002)inthecontextofusingoﬃcialdatabaseidentiﬁers
+to determine what diﬀerences between gene names could safely be ignored and what diﬀerences were
+likelytoindicatethatseparategeneswerebeingreferredto.Usingamodelfromdescriptivelinguisticsin
+which minimally diﬀering pairs of gene names or symbols indicated “phonemic” diﬀerences, this paper
+looked at hyphenation, letter case, parenthesized material, and edge eﬀects, ﬁnding that (despite the
+diﬃcult examples shown in this chapter) hyphenation, case, and parenthesized material could generally
+be safely normalized. Subsequent work on the problem of GN in text has tended to assume the ﬁndings
+ofthispaper,explicitlyorimplicitly.
+Successfulsystemsoftenapproachthisasawordsensedisambiguationtaskandapplysomecombination
+ofLesk-likeapproaches(see(Lesk1986)andChapter14inthisvolume).Theymaydiﬀerbywhattheyuse
+asasurrogateforthedeﬁnition—thefullgenename,descriptionsofgenefunctionfromadatabase,orthe
+contentsofliteraturereferences—andinwheretheylookforwordsfromthesurrogatedeﬁnition:within
+Precision1.000
+0.800
+0.600
+0.400
+0.200
+0.000
+0.000 0.200 0.400 0.600 0.800 1.000
+RecallHuman
+Mouse
+Fly
+Yeast
+F= 0.9 isobar
+F= 0.8 isobar
+F= 0.7 isobar
+F= 0.6 isobar
+F= 0.5 isobar
+FIGURE 25.3 Results from the ﬁrst BioCreative (yeast, mouse, and ﬂy) and second BioCreative (human) shared
+tasksonGN.(FromMorganetal., GenomeBiol .,9(Suppl.2),S3,2008.)
+
+614 HandbookofNaturalLanguageProcessing
+abbreviation deﬁnitions (see below), in an N-word window around a name or symbol, within the localsentence, orwithintheentireabstract. See Baumgartneretal. (2008)for arepresentativeapproach. Thetop-scoringteamintheBioCreativeIItask(Hakenbergetal.2008)enhancedthisapproachbytrimmingthetargetsetofnamesinthedatabase,bothbyusing tf*idftorecognizehighlynonspeciﬁctermsandby
+usingarule-basedapproachthatreferredtotissues,functions,andsomeotherdomain-speciﬁcsemanticclasses. In a sophisticated additional step, it applied a tool for recognizing Gene Ontology terms (seebelow) in the abstract and matched those against Gene Ontology terms that were known to have beenassociatedwiththegene.(Thesewereincludedinthedatabase.)
+Under the inﬂuence of the BioCreative GN task, GN systems have tended to assume that the species
+inwhichthegeneisfoundisagiven.However,thisisatremendousoversimpliﬁcation,andforpracticalsystems, it is important to be able to determine the species, as well. This is a nontrivial task in and ofitself.SystemswererequiredtodothisfortheBioCreativeIIprotein–proteininteractiontask(Krallingeretal.2008),althoughitisdiﬃculttoassessGNperformanceinthatcontextbecausescoresalsoinvolvedcarryingoutaninformationextractiontask.WehaveonlyrecentlybeguntoseeresearchonthespeciﬁcproblemofcombiningspeciesidentiﬁcationwiththeGNtask(WangandMatthews2008).
+25.4.3 Abbreviation Disambiguation
+Oneareainwhichconsiderableprogresshasbeenachievedishandlingabbreviationsinbiomedicaltext.This is important in part because abbreviations are extremely common in biomedical text, with onestudy ﬁnding that 22% of biomedical abbreviations are ambiguous and that there are an average of 4.61deﬁnitions per abbreviation (Chang et al. 2002). The “one domain, one sense” assumption deﬁnitelydoesnothold.Anexampleistheabbreviation PDAincardiologytexts.Justwithincardiology,ithastwo
+commondeﬁnitions: posteriordescendingartery andpatentductusarteriosus ,theformerbeingthename
+ofabloodvesselandthelatterbeingacongenitaldefect.
+Inadditiontoabbreviationsasthattermiscommonlyunderstood,thereisasimilarphenomenonthat
+isquitecommoninscientiﬁcabstracts:pairingagenesymbol(seenamedentityrecognition)withthefullnameofthegene.
+Abbreviation handling has been found useful in multiple applications. One is GN; the ability to map
+a gene symbol, which is analogous to an abbreviation, to its full form is invaluable in GN, with thesymbol deﬁnition being used to decide which of two potential database entries a particular mention intextcorrespondsto(seeGN,above).
+Two families of approaches to abbreviation-handling in biomedical text exist: statistical approaches,
+andrule-basedones.Badstatisticalapproachestrainaclassiﬁerforeveryabbreviationthattheycanﬁndand then run it for any abbreviations that they have seen before. These approaches suﬀer both froma strong reliance on the availability of training data and from their limitation to being usable only forpreviously seen abbreviations; this is a problem because novel abbreviations are constantly publishedon an ad hoc basis. Good statistical approaches, such as Chang et al. (2002), learn how to recognizeabbreviationdeﬁnitionsintext.Rule-basedapproachesgenerallyidentifycandidatedeﬁnitionsintext.Agoodsystemwillthenpickthebestcandidate,basedonrulesthatenforcecertainmatches,ordering,andlimitedanchoring.
+Twomainalgorithmsforabbreviation-handlingareinwideuse.Oneispurelyrule-based.Theotheris
+learning-based,althoughthefeaturesthatarelearnedessentiallymirrortherulesinarule-basedsystem.Schwartz and Hearst (2003)describe a widely used rule-based algorithm. It is implementable in about apageofJavacode,andtheactualcodeispresentedinthepaper.Nonetheless,itiscapableofcarryingoutdiﬃcultmatches,includingonesinwhichwordsinthedeﬁnitionmustbeskippedorword-internallettersmustbematched.SchwartzandHearst’salgorithmisbasedontheobservationthattheﬁrstcharacterofanabbreviationtypicallymatchestheleftedgeofawordinitsdeﬁnition.Ittargetsabbreviation/deﬁnitionpairsinwhichthedeﬁnitionappearsﬁrst, followedbytheabbreviationinparentheses. Itsﬁrststepistoextracttheabbreviationandasetofwordstoitsleftfromtheinputtext.Thealgorithmthenbeginsfrom
+
+BioNLP:BiomedicalTextMining 615
+therightedgeoftheabbreviationandofthedeﬁnition.Ititeratesfromrighttoleftthroughbothstrings,lookingforacharacterinthepotentialdeﬁnitionwordsthatmatcheseachcharacterintheabbreviation;asmatchestotheabbreviationcharactersarefound,theiterationproceedstothenextleftwardcharacter.In a ﬁnal step, the algorithm looks for the beginning of the ﬁrst word of the potential deﬁnition. Thisalgorithm achieves a precision of 95%–96% and a recall of 82% on two separate test collections and hastheadvantageofnotrequiringtrainingdata.Ithasbeensuccessfullyincorporatedintosystemsthatcarryoutavarietyoftasks,rangingfromGMidentiﬁcationtosummarization.
+TheothercommonlyusedalgorithmisthatofChangetal.(op. cit.). Itisbasedonmachinelearning.
+Itsprimaryadvantageisthatitismadeavailableviaaservertowhichinputscanbesubmitted.
+25.5 Getting Up to Speed: Ten Papers and Resources That Will
+Let You Read Most Other Work in BioNLP
+There are about 10 papers and resources that, if you are familiar with them, will allow you to catchthe references in many publications in the BioNLP ﬁeld. They are reviewed brieﬂy here. These papers,supplementedbythelatestBioCreativepublications,willserveasanadequateintroductiontotheﬁeldofBioNLP,particularlyfromthegenomicsperspective.
+25.5.1 Named Entity Recognition 1: KeX
+Fukuda et al. (1998) is the ﬁrst named entity recognition paper of the modern era in BioNLP. It was aruled-basedsystem.Itsapproachwassimple:
+1. Findastringoftextthatlookslikeasymbolforayeastgene(e.g., ABC1)
+2. Extendthenametotheleft(e.g., yeastABC1)
+3. Extendthenametotheright(e.g., ABC1protein)
+Thepaperreportedan F-measureinthe90s.Thisresulthasneverbeenreplicated.Partofthereported
+success may be due to the fact that the system was evaluated on documents about yeast; yeast genes areespecially easy to recognize in text. The yeast community is the only one in which editors have insistedthat authors adhere to a speciﬁc nomenclature for referring to genes, and they always make use of asymbol,whichishighlyrestrictedwithrespecttoitspossibleshape.
+25.5.2 Named Entity Recognition 2: Collier, Nobata, and GENIA
+Nobataetal. (1999)andCollieretal. (2000)weretheﬁrstpaperstodescribelearning-basedapproachestoGMNER.TheycomparedNaiveBayes,decisiontrees,andHMM-basedsolutions.Nobataetal.(1999)made innovative use of a gazetteer, using it to derive a list of words that, when they appear as headnounsinaputativeentityname,arestrongindicatorsthatthecandidateis,infact,anamedentity.Thesenouns included words like protein, antigen, promoter, motif,a n d mRNA. The work was also notable for
+the complexity of the ontology of named entity types that it assumed; in this case, the system targettedfour classes that have been found to be very diﬃcult even for humans to diﬀerentiate (Hatzivassiloglouet al. 2001): source, protein, DNA, and RNA. Collier et al. (2000) experimented with using an HMMto identify biologically relevant classes of named entities. The work was notable for the large number ofsemantic classes that it attempted to identify—10, which was much more than the MUC classes; for thelargenumberoffeaturesthatitfoundtoberelevantforthebiologicaldomain,manyofwhichhavebeenadopted by subsequent researchers in this area; and for the high performance that it achieved with onlya small amount of training data. These papers set the stage for a considerable amount of later work onmachine-learning-basedapproachestobiological/genomicnamedentityrecognition.
+
+616 HandbookofNaturalLanguageProcessing
+25.5.3 Information Extraction 1: Blaschke et al. (1999)
+Blaschke et al. (1999) is the canonical paper on rule-based information extraction systems in BioNLP,particularly for extracting information about protein–protein interactions. The system described in thepaper was unusual in that it had no linguistic processing per se—not even part of speech tagging. Thesystem assumed manual GM NER and centered around a number of keywords that indicate protein–protein interactions. It then used distance between protein names (since the task is PPI and the targetwas network reconstruction) as an absolute ﬁlter, with pairs whose names were more than a maximumthresholdofwordsapartbeingdiscarded.Thesystemwasevaluatedonasetoftextfragmentsthatbetweenthem allowed the reconstruction of a particular signaling pathway if all interacting pairs were correctlyextracted.(Thisdatasethassincebeenconvertedintoacorpuswithstandoﬀannotation—(Johnsonetal.2007a).)Besidesbeingtheﬁrstpaperonarule-basedsystemforthisdomain,thispaperwasimportantinthatitshowedwhatcouldbeaccomplishedinthelimitingcaseofaninformationextractionsystemthatworkedpurelyonthebasisofsurfacelexicalfeatures,withnolinguisticinformationperseusedatall.
+25.5.4 Information Extraction 2: Craven and Kumlein (1999)
+Publishedthesameyear,CravenandKumlein(1999)describedtheﬁrstmachine-learning-basedsystemforgenomicinformationextraction.Thesystemtackledthreetypesofpairwiserelations—protein/protein,protein/disease, and protein/subcellular location—although only one of these (subcellular localization)wasinvestigatedindetailinthepaper.Theﬁrststepofthesystemwastoidentifypairsofentitiesbysimplestring-matching. The second step of the system was to use a naive Bayes classiﬁer to classify sentencesthat contained two entities as to whether or not they actually posited a relation between them. Thefeatureswereabagofwords. Besidesbeingtheﬁrstpaperonlearning-basedapproachestoinformationextraction in this domain, the paper was also important in that it described a methodology for using“weakly labeled” training data; rather than constructing a manually judged gold standard data set, theauthors reverse-engineered what is still the largest set of biomedical training data of its kind from threedatabases.
+25.5.5 Information Extraction 3: MedLEE, BioMedLEE, and GENIES
+Finally, the set of information extraction tools based on the MedLEE system (Friedman 2000) roundsoutthewell-knownBioNLPIEtools.AnearlyclinicalinformationextractionsystemcalledMedLEEwasextended to produce theBioMedLEE and GENIES systems(Friedman et al. 2001). Theselatterversionswere meant to operate in the genomics domain. They used an unusual approach to GM named entityrecognition (since abandoned) in which they mapped the input text and a set of all known gene namesto faux amino acid sequences and then applied the BLAST algorithm to locate stretches of text in theinput that had a high likelihood of being gene names. In many ways the MedLEE family of systemswasmuchmoresophisticatedthananyof itscompetitorsfor manyyears, incorporatingarichsemanticrepresentationandmakingheavyuseofsyntacticinformation.Itwasalsotheﬁrstinformationextractionsysteminthisdomaintobeevaluatedonthefulltextofjournalarticles,ratherthanabstracts.
+25.5.6 Corpora 1: PubMed/MEDLINE
+PubMed/MEDLINE is the primary source for input documents in genomic BioNLP. It is not a corpus,norevenreallyatextcollection,sinceitisnotstatic,butrathergrows.(Infact,itisgrowingexponentially,as demonstrated by Hunter and Cohen (2006).) It is maintained by the National Library of Medicine.MEDLINEitselfisadatabaseofabstracts,whichcontainsover18millionabstractsatthetimeofwriting.Eachabstracthasamoderateamountofmetadataassociatedwithit, includingaPubMedID(PMID),aunique identiﬁer. PubMed is the search engine interface to MEDLINE. It returns documents in reverse
+
+BioNLP:BiomedicalTextMining 617
+order ofpublication date; thishasoften beenquestioned bynatural languageprocessing specialists, andthere have been attempts to popularize versions of PubMed with relevance ranking. Other alternativeinterfaces to MEDLINE include GoPubMed, a search application that returns a set of Gene Ontologyannotations for each abstract (Doms and Schroeder 2005), and the FABLE system (Fang et al. 2006),whichisoptimizedforsearchesonhumangenes.(Theunusualnamingcharacteristicsofgenes,describedabove, can make searches for them diﬃcult, and there is no easy way to limit literature searches to aspeciﬁcspecies.)
+AllPubMed/MEDLINEcontentsareinASCIIandareavailableforfree.ForseriousBioNLPresearch,
+it is useful to maintain a local copy to avoid the considerable latency associated with frequent down-loads (as well as National Library of Medicine limitations on how often their servers can be hit). Acode base for maintaining a local copy in a relational database is available from the BioText project athttp://biotext.berkeley.edu/software.html.
+25.5.7 Corpora 2: GENIA
+ThemostinﬂuentialtruecorpusinthelinguisticsenseofthatwordisknownasGENIA(Ohtaetal.2002;Kimetal.2003;Erjavecetal.2003).Itisafullyannotatedcorpus,containingbothlinguisticandsemanticmark-ups. It contains 2,000 abstracts and 432,560 words of text. It is currently annotated with sentenceboundaries, token boundaries, part of speech, and named entities, and part of the corpus has beentreebanked. Future versions will include event annotation and coreference. GENIA has demonstrablybeen the most heavily used corpus in BioNLP (Cohen et al. 2005). It is freely distributed at the GENIAproject Web site. In recent years, another linguistically and semantically annotated corpus, known asPennBioIE, has become publicly available. It has already seen some use in linguistic and text processingworks (Cohen et al. 2008b), although unlike GENIA, it is not freely available and it remains to be seenwhatitsimpactwillbe.
+25.5.8 Lexical Resources 1: The Gene Ontology
+TheGeneOntologyisathree-partontologythatwasoriginallybuilt(andisstillmaintained)bybiologistsfor classifying the function of genes. The three parts of the ontology are concerned with molecularfunctions(e.g., chaperoneregulatoractivity ),biologicalprocesses(e.g., establishmentoflocalization ),and
+cellularcomponents.Thebasicbuildingblocksoftheontologyaretermsandtheirassociateddeﬁnitions;these are linked to each other by the two relations is-a and part-of. The current version of the ontologycontains about 23,000 concepts (versus the 147,000 in WordNet). Although the Gene Ontology is aninterestinglinguisticartifactandassuchhasbeenthesubjectofdescriptiveworkthathashadanimpacton the maintenance of the ontology itself (Ogren et al. 2004, 2005; Mungall 2004), the Gene Ontologyhas been used less as a lexical resource than as a target for language processing applications. The GOhas been used extensively by biologists to annotate genes in biological databases (see above on modelorganism databases), and a considerable amount of text mining work has had the goal of automaticallyassigningGeneOntologyclassestogenes(knowninthebiologicalcurationworldas“annotation”)basedon textual inputs. The task is quite diﬃcult, being complicated by a variety of factors that includes thenecessityofbeingabletocarryoutgoodGN,thenormaldiﬃcultiespresentinanyinformationextractiontask (where in this case relations must be found between genes and Gene Ontology concepts), and thevery large diﬃculty in recognizing Gene Ontology terms in text themselves—typical leaf nodes includeacyl binding, ﬂagellin-based ﬂagellum basal body ,structural constituent of cytoskeleton, cell growth,a n d
+circadianregulationofgeneexpression .Itwillbeobviousthattherearemanypossiblelinguisticrealizations
+foralloftheseconceptsinunrestrictedscientiﬁctext.
+
+618 HandbookofNaturalLanguageProcessing
+25.5.9 Lexical Resources 2: Entrez Gene
+EntrezGene(formerlyLocusLink)isthepremierdatabaseofgenesintheworld,currentlycontainingover5millionentriescoveringalmost6,000species.ItismaintainedbytheNationalLibraryofMedicineandispubliclyavailable.Alongsideitswealthofpurelybiologicalinformation(suchaslinkstosequencedata),EntrezGenealsocontainsaconsiderableamountofinformationthatcanbeusedaslexicalresources.Thisincludes gene names, symbols, known synonyms, protein products (which function as another sourceof synonym due to the rampant gene/protein metonymy that we have mentioned before), summariesof gene function, and Gene References Into Function (GeneRIFs). Many aspects of Entrez Gene entrieshave been used or targetted in BioNLP. For the GN task, Entrez Gene entries are the targetted databaseidentiﬁer.ItssummariesofgenefunctionwereusedtogreatsuccessbySehgalandSrinivasan(2006)inagenesymboldisambiguationtaskinaninformationretrievalcontext.GeneReferencesIntoFunctionareshort,<255 character statements about the functions of a gene, broadly construed. They were initially
+used, with limited success, as relevance judgments in an ad hoc information retrieval task (Hersh andBhupatiraju 2003). Sehgal and Srinivasan (2006) showed that this was due to the small number of themavailableatthattime,andthattheycannowbeusedwithsuccessasrelevancejudgments.Sincethen,therehasbeenasmallbodyofworkontheautomaticextractionofGeneRIFs,modelingthemasextractive,lowcompressionratio,focussedsummaries(Luetal.2006,2007).
+25.5.10 Lexical Resources 3: Uniﬁed Medical Language System
+The Uniﬁed Medical Language System is a large set of lexical resources that is primarily associated withtheclinicaldomain.ItsmaincomponentsaretheUMLSMetathesaurusandtheSemanticNetwork.TheUMLSMetathesaurusisanaggregationofanexceptionallylargenumberofindependentvocabularies;itnowcontainsmorethan8millionconcepts.TheSemanticNetworkisahierarchyofsemanticrelations,rangingfromverygeneralonessuchas is-associated-with tomuchmorespeciﬁconessuchas treats.Itis
+primarilyappliedintheresearchoftheListerHillCenterforBiomedicalCommunications.OnecommoninterfacetotheUMLSisviatheMetaMapsystem,describedbelow.
+25.6 Tools
+ThereiscurrentlyarelativelybroadsetofpreprocessingtoolspubliclyavailableforBioNLP,particularlyin the genomics domain. Whatever your needs, there is likely to be something available; however, thereis generally room for improvement in these tools, particularly if your application is very task-speciﬁc.Tool-buildinghasbeenafruitfulareaofcontributionforNLPspecialistsinBioNLP.
+25.6.1 Tokenization
+Tokenizationofbiomedicaltextisnotoriouslydiﬃcult.Thefollowingabstractisreasonablyrepresentativeforthechemicaldomain:
+A series of mono and di-N -2,3-epoxypropyl N-phenylhydrazones have been prepared on a large
+scale by reaction of the corresponding N-phenylhydrazones of 9-ethyl-3-carbazolecarbaldehyde,
+9-ethyl-3,6-carbazoledicarbaldehyde, 4-dimethyl-amino-, 4-diethylamino-, 4-benzylethylamino-,4-(diphenylamino)-, 4-(4,4-4
+′-dimethyl-diphenylamino)-, 4-(4-formyldiphenylamino)- and 4-(4-
+formyl-4′-methyldiphenyl-amino)benzaldehydewithepichlorohydrininthepresenceofKOHand
+anhydrousNa(2)SO(4).
+PMID17962747
+
+BioNLP:BiomedicalTextMining 619
+Note that commas sometimes indicate word-boundaries and sometimes do not, and that the crucial
+conjunct is a word subsegment that is not separated either by whitespace or by a hyphen from the lastconjunctprecedingit,i.e., benzaldehyde in4-(4-formyl-4
+′-methyldiphenyl-amino)benzaldehyde .
+A number of NER systems perform their own tokenization step, and those may be adequate for
+later processing needs. A system that works well for chemical names such as the diﬃcult cases shownhere is the OSCAR3 system (Corbett et al. 2007), available via an API. The KeX system’s tokenizergenerally works well, and is useful for Perl-based processing. For building one’s own pipeline, theLingPipeAPIisincreasinglypopular.(LingPipealsoprovidesasentencesegmenterthatisoptimizedforPubMed/MEDLINE text.) Jiang and Zhai (2007) provide a tokenizer that is optimized for the needs ofinformationretrieval.
+25.6.2 Named Entity Recognition (Genes/Proteins)
+Named entity recognition systems for genes and proteins are developed so frequently that any listing ofthemwouldlikelybeoutofdatebeforepublication. However, oneapplicationdeservesspecialmentionbecauseitillustratesaninterestingprincipleinthesociologyofNLP.
+ABNER(ABiomedicalNamedEntityRecognizer)(Settles2005)isaConditional-Random-Field-based
+applicationthat takesplain text as input and returns thetext with SGML tags inserted or in IOB formatforgene/proteinnames,celllines,andcelltypes.(Theexactsetofnamedentitiesvariesdependingonthemodel on which it is trained.) It is packaged with models for two well-known data sets and can also beretrainedwithothercorpora.
+ABNERillustratesanimportantprincipleinthesociologyofNLP,whichisthatachievingthehighest-
+reportedperformanceonsomedatasetisnottheonlyroutetohighcitationratesandimpact.ABNER’sperformance is not particularly high on the BioCreative set, which has rapidly become the standardfor assessing GM systems, achieving an F-measure of 69.9. Nonetheless, ABNER is widely used inBioNLPsystemsthattargetthegenomicsdomain.Thisisalmostcertainlyduetothefactthatitisnicelyengineered—it is distributed as a Java .jar ﬁle, it has a very clean interface, and it is robust in the face ofvariousoperatingsystemsandotherarchitecturalvagaries. ABNERprovidesanobjectlessonofthefactthatgoodengineeringcanbearoadtoacademicsuccess.
+25.6.3 Named Entity Recognition (Medical Concepts)
+MetaMap/MMTx(Aronson2001)istheonlywidelyusedmedicalNERsystem.UnlikeNERsystemsthattargetonlyarestrictedrangeofsemantictypes, MetaMap/MMTxlabelsanyUMLSconceptthatitﬁndsintext;thisisanextraordinarilydiverseandlargesetofconcepts.Itﬁrstcarriesoutashallowparse,andthenattemptstomapanynounphrasetosomeUMLSconcept.Itcanberunfromthecommandline,butisperhapsmoreoftenaccessedviaitsﬂexibleAPI.Althoughitwasdevelopedwithmedicalapplicationsin mind, it has also been shown to work well for genomics-domain texts (Aronson et al. 2004, 2005,Demner-Fushmanetal.2006,2007).
+25.6.4 Full Parsers
+Full parsers that are optimized for biomedical text have only recently become available. Many of theproblems that are pervasive when dealing with biomedical text raise their heads in the area of parsing.Tokenization is an obvious one—even shallow parsers often fail on the tokenization issues that comeup in this domain. Another is the paradox that parsing is helpful for named entity recognition, but it isuseful to do named entity recognition before parsing to avoid needless parsing of full gene names, suchasbreastcancerassociated1 . Variouspapershavelookedattheeﬀectivenessofoﬀ-the-shelfparsersand
+their default models for biomedical text (Clegg and Shepherd 2005, 2007). Optimized parsers are now
+
+620 HandbookofNaturalLanguageProcessing
+available, including the Enju structural parser with a GENIA-trained model (Miyao and Tsujii 2008).Pyysaloetal.havemadeagenomicsdependencyparseravailable(Pyysaloetal.2006).
+25.7 Special Considerations in BioNLP
+Compared to many other application areas, and to academic NLP in general, BioNLP carries with it anunusual opportunity and an unusual burden. Much of the impetus for research in this area comes fromtheusersthemselves,andwell-madeBioNLPapplicationsdoactuallygetused.But,apoorlybuiltBioNLPapplicationcannotbereliedontodonomoreharmthanamissedwebpagefromanInternetsearchorabad classiﬁcation: a poor application may have harmful consequences for real people with real diseases.Therefore,goodsoftwareengineeringpracticesareanessentialpartofthepracticeofBioNLP.
+25.7.1 Code Coverage, Testing, and Corpora
+The BioNLP community diﬀers from the mainstream NLP community in that many of its softwareproductsaredevelopedwiththestatedgoalofprovidingsolutionstoresearchersandclinicalpersonnel,rather than necessarily advancing the state of theoretical knowledge in NLP or linguistics. This brings aspecialburdentoexercisegoodsoftwareengineeringpractices,andinparticulartodoindustrial-qualitysoftware testing. Unfortunately, this has not necessarily been a widespread practice in the community:onesurveyofbiomedicaltext-miningtoolsfoundthat7/20WebsitesdisseminatingBioNLPfunctionalitycould not pass a simple software test commonly executed by professional software testers (Cohen andHunter, unpublisheddata). TherehavebeenvariousattemptstopromulgatesoftwaretestingwithintheBioNLP community. Cohen et al. (2004) presented a test suite generator for GM systems, and Johnsonet al. (2007b) presented a fault model for testing ontology mapping, alignment, and linking systems.However, the impact of this work has been low so far. Cohen et al. (2008a) compared the eﬃcacy ofstandard software testing approaches against running a huge corpus through a system, and found thathigher code coverage was achievable in very short times by using manually constructed test suites thanby using even very large corpora. They also noted that monitoring coverage was an eﬀective methodfor steering a testing project, and that attempts to increase it quickly led to the discovery of previouslyunknownshowstopperbugs.Cookbook-styleintroductionstosoftwaretestingarewidelyavailabletoday,includingagrowingliteratureonusingJUnittodowhiteboxtestingofJavacodeandanumberofgoodbooksonblack-boxfunctionaltesting,suchasKaneretal.(1999).
+25.7.2 User Interface Design
+User interface design has received little attention in the BioNLP ﬁeld. In fact, one study comparingacademic and commercial BioNLP tools found that although the commercial tools demonstrated noadvances in language processing abilities over academic systems, and in fact often lagged behind theacademicsystemsintheareaofnamedentityrecognition,thecommercialsystemsprovideduserinterfacesthatwerefarsuperiortoanythingavailablethroughtheacademiccommunity.
+Thebest-executedworkonuserinterfaceevaluationtodatewascarriedoutinthecontextofBerkeley’s
+BioText project, and the best of it can function as a tutorial on user interface evaluation. The projectfocussed on information retrieval. One such study evaluated the eﬃcacy of searching ﬁgure captions infull-text journal articles (Hearst et al. 2007). The group implemented a search tool for ﬁgure captions,motivatedbytheobservationthatbiomedicalresearcherstendtoapproachanarticlebyﬁrstscanningitstitle,abstract,ﬁgures,andﬁgurecaptions.Othertools,mostnotablyPubMed/MEDLINE,alreadyenablesearchingviawordsinthetitleandabstract,andGoogleScholarenablessearchingwordsinthefulltextbody;thiswastheﬁrsttooltospeciﬁcallyallowsearchingﬁgurecaptions.Theythenperformedausabilitystudy, evaluating whether or not users found the caption search and the display of associated ﬁgures to
+
+BioNLP:BiomedicalTextMining 621
+be useful, and if they did, which of two layout formats worked best. The format of the study was thatusersweretoldthattheywereparticipatinginanevaluationofasearchinterface,althoughtheywerenottoldthattheresearchershadinfactbuiltthatinterface.Theywereshowntwoformatsforresultdisplay,in varying orders of presentation. Users then executed queries of their own design for 10minutes, andthen completed a survey answering several questions about their reaction to the system. Seven out ofeight users returned scores indicating that they liked the system and would be likely to use it, and usersshowedapreferenceforonedisplaystrategyovertheother.Crucially,thestudyresultedinanumberofdesign improvements, including additions to the types of links in the display, changes in the workﬂow,anddiﬀerentsortingstrategies.
+Averysmallbodyofrelatedworkhaslookedatusabilityandtheimpactoftext-miningtoolsoncuration
+workﬂows. Karamanis et al. (2007) looked at the eﬀect of iterative usability testing of a text-mining toolinterface and found that good usability tests were able to bring about a decrease in the time that it tookmodelorganismdatabasecuratorstocarryoutacurationtask.Alexetal.(2008)lookedatseveralaspectsoftheirtext-miningtoolusingbothmeasurementsofcurationtimeandsurveysandfoundtheircuratorshadapreferenceforhighrecalloverhighprecision.Theyalsonotedinterestinginconsistenciesbetweencurationtimesanduserpreferencesasreﬂectedinthesurveys;curatorssometimespreferredfeaturesthatactuallyledtoslowercurationtimes.
+25.7.3 Portability
+Oneofthepersistent(andmostlyunaddressedbytheacademiccommunity)problemsinBioNLPhasbeenthecreationofsystemsthatcanbeportedtonewdomainsbythesystemusers.Manymachine-learning-based systems can be retrained on new data, but this requires the possession of sometimes signiﬁcantcomputationalskills.Systemsthatcanbeadaptedbyaresearcheroracliniciantotheirproblemhavenotbeen seen outside of the industrial community. The user portability problem is a fruitful area for futureresearch.
+25.7.4 Proposition Banks and Semantic Role Labeling in BioNLP
+As yet, there has not been a large proposition bank created in the BioNLP domain. However, there hasbeen a small pilot project (Wattarujeekrit et al. 2004) that has stimulated fruitful research in the areaof argument structure in the biomedical domain. It seems to be the case that semantic representationsin this domain have fewer adjunctive arguments and make greater use of core arguments than is thecase in General English (Cohen and Hunter 2006). This has repercussions for corpus construction, forsemanticrolelabeling,andfortheacceptancebybiologistsofclaimsaboutbiomedicalpredicatesemantics:biologistsarelikelytoinsistthatinformationthatwouldbeinadjunctsinaPropBank-likerepresentationareessentialtointerpretingthepredicateandmustbeconsideredcorearguments.
+25.7.5 The Difference between an Application That Will Relieve Pain and
+Suffering and an Application That Will Get You Published at ACL
+AtthebeginningofthischapterwepointedoutafactthatshouldholdsomeembarrassmentfortheNLPcommunity: most ﬁelded BioNLP systems have been built not by NLP people but by biologists. Whymightthisbethecase?OnelikelycauseisthatthecommunityinwhichNLPpractitionerspublishrewardssystem construction less than it does increased performance on some metric for some task. In contrast,biologicalpublicationswillpublishpapersonimplementedsystemsasbasicscience.TheNLPcommunitywill reward (with publication) work on increasing performance on processing tasks, e.g., part of speechtaggingorparsing,andNLPpeoplehavecertainlymadeacontributiontotheprogressionofBioNLPbybuildingbettertools.However,ithasmainlybeenbiologiststhathavetakenthesetoolsandincorporated
+
+622 HandbookofNaturalLanguageProcessing
+themintoactual,functioningsystems.Ourpublishingpracticesareperhapscontributingtoourmissinganopportunitytomakenovelcontributionstotheworkofcliniciansandbiologicalresearchers.
+Acknowledgments
+The author gratefully acknowledges input from Karin Verspoor to an NAACL tutorial on which thischapter was based. Sophia Ananiadou and Robert Futrelle kindly provided comments on a draft of thechapter.
+References
+Alex,B.,C.Grover,B.Haddow,M.Kabadjov,E.Klein,M.Matthews,S.Roebuck,R.Tobin,andX.Wang
+(2008). Assisted curation: Does text mining really help? In Paciﬁc Symposium on Biocomputing,
+KohalaCoast,HI,pp.556–567.
+Ando,R.(2008).BioCreativeIIgenementiontaggingsystematIBMWatson.In ProceedingsoftheSecond
+BioCreativeChallengeEvaluationWorkshop ,Spain,pp.101–103.
+Aronson, A. (2001). Eﬀective mapping of biomedical text to the UMLS Metathesaurus: The MetaMap
+program.In ProceedingsoftheAMIA2001 ,Bethesda,MD,pp.17–21.
+Aronson,A.R.,D.Demner-Fushman,S.Humphrey,N.C.Ide,W.Kim,R.Loane,J.G.Mork,L.H.Smith,
+L. K. Tanabe, W. J. Wilbur, and N. Xie (2004). Knowledge-intensive and statistical approaches totheretrievalandannotationofgenomicsmedlinecitations. In The13thTextRetrievalConference,
+TREC2004,Gaithersburg,MD.NationalInstituteofStandardsandTechnology.
+Aronson, A., D. Demner-Fushman, S. Humphrey, J. Lin, H. Liu, P. Ruch, M. Ruiz, L. Smith, L. Tanabe,
+and W. Wilbur (2005). Fusion of knowledge-intensive and statistical approaches for retrievingandannotatingtextualgenomicsdocuments.In ProceedingsoftheTREC2005,Gaithersburg,MD,
+pp.36–45.
+Baumgartner Jr., W. A., K. B. Cohen, L. Fox, G. K. Acquaah-Mensah, and L. Hunter (2007). Manual
+curationisnotsuﬃcientforannotationofgenomicdatabases. Bioinformatics23,i41–i48.
+Baumgartner Jr., W. A., Z. Lu, H. L. Johnson, J. G. Caporaso, J. Paquette, A. Lindemann, E. K. White,
+O. Medvedeva, K. B. Cohen, and L. Hunter (2008). Concept recognition for extracting proteininteractionrelationsfrombiomedicaltext. GenomeBiology,9(Suppl.2),S9.
+Blaschke, C., M. A. Andrade, C. Ouzounis, and A. Valencia (1999). Automatic extraction of biological
+information from scientiﬁc text: Protein-protein interactions. In Intelligent Systems for Molecular
+Biology,7,60–67.
+Chang, J. T., H. Schütze, and R. B. Altman (2002). Creating an online dictionary of abbreviations from
+MEDLINE. JournalofAmericanMedicalInformaticsAssociation9(6),612–620.
+Chen, H. and B. M. Sharp (2004). Content-rich biological network constructed by mining PubMed
+abstracts. BMCBioinformatics5 ,1471–2105.
+Clegg, A. B. and A. J. Shepherd (2005). Evaluating and integrating treebank parsers on a biomedical
+corpus.In ProceedingsoftheACLWorkshoponSoftware,AnnArbor,MI.
+Clegg,A.B.andA.J.Shepherd(2007).Benchmarkingnatural-languageparsersforbiologicalapplications
+usingdependencygraphs. BMCBioinformatics8 (24).
+Cohen, K. B. and L. Hunter (2006). A critical review of PASBio’s argument structures for biomedical
+verbs.BMCBioinformatics7 (Suppl.3),S25.
+Cohen, K. B., A. Dolbey, G. Acquaah-Mensah, and L. Hunter (2002). Contrast and variability in gene
+names. In Natural Language Processing in the Biomedical Domain , Philadelphia, PA, pp. 14–20.
+AssociationforComputationalLinguistics.
+
+BioNLP:BiomedicalTextMining 623
+Cohen,K.B.,L.Tanabe,S.Kinoshita,andL.Hunter(2004).Aresourceforconstructingcustomizedtest
+suitesformolecularbiologyentityidentiﬁcationsystems.In HLT-NAACL2004Workshop:BioLINK
+2004,LinkingBiologicalLiterature,OntologiesandDatabases ,Boston,MA,pp.1–8.Associationfor
+ComputationalLinguistics.
+Cohen,K.B.,L.Fox,P.V.Ogren,andL.Hunter(2005).Corpusdesignforbiomedicalnaturallanguage
+processing.In ProceedingsoftheACL-ISMBWorkshoponLinkingBiologicalLiterature,Ontologies
+andDatabases ,Detroit,MI,pp.38–45.AssociationforComputationalLinguistics.
+Cohen,K.B.,W.A.BaumgartnerJr.,andL.Hunter(2008a).Softwaretestingandthenaturallyoccurring
+dataassumptioninnaturallanguageprocessing.In SoftwareEngineering,Testing,andQualityAssur-
+ance for Natural Language Processing , Columbus, OH, pp. 23–30. Association for Computational
+Linguistics.
+Cohen,K.B.,M.Palmer,andL.Hunter(2008b).Nominalizationandalternationsinbiomedicallanguage.
+PLoSONE3 (9),e3158.
+Collier,N.,C.Nobata,andJ.Tsujii(2000).Extractingthenamesofgenesandgeneproductswithahidden
+Markovmodel.In ProceedingsofCOLING2000 ,Saarbrucken,Germany,pp.201–207.
+Corbett,P.,C.Batchelor,andS.Teufel(2007,June).Annotationofchemicalnamedentities.In Biological,
+Translational, and Clinical Language Processing, Prague, Czech Republic, pp. 57–64. AssociationforComputationalLinguistics.
+Craven, M. and J. Kumlein (1999). Constructing biological knowledge bases by extracting infor-
+mation from text sources. In Intelligent Systems for Molecular Biology , Heidelberg, Germany,
+pp.77–86.
+Demner-Fushman,D.,S.Humphrey,N.Ide,R.Loane,P.Ruch,M.Ruiz,L.Smith,L.Tanabe,W.Wilbur,
+and A. Aronson (2006). Finding relevant passages in scientiﬁc articles: Fusion of automaticapproaches vs. an interactive team eﬀort. In Proceedings of TREC 2006, Gaithersburg, MD,
+pp. 569–576.
+Demner-Fushman,D.,S.Humphrey,N.Ide,R.Loane,J.Mork,P.Ruch,M.Ruiz,L.Smith,W.Wilbur,and
+A. Aronson (2007). Combining resources to ﬁnd answers to biomedical questions. In Proceedings
+ofTREC2007,pp.205–214.
+Doms, A. and M. Schroeder (2005). GoPubMed: exploring PubMed with the Gene Ontology. Nucleic
+AcidsResearch33,783–786.
+Donaldson, I., J. Martin, B. de Bruijn, C. Wolting, V. Lay, B. Tuekam, S. Zhang, B. Baskin,
+G. Bader, K. Michalickova, T. Pawson, and C. Hogue (2003). PreBIND and Textomy–miningthe biomedical literature for protein-protein interactions using a support vector machine. BMC
+Bioinformatics4(1),11.
+E l y ,J .W . ,J .A .O s h e r o ﬀ ,M .H .E b e l l ,G .R .B e r g u s ,B .T .L e v y ,M .L .C h a m b l i s s ,a n dE .R .E v a n s
+(2000).Analysisofquestionsaskedbyfamilyphysiciansregardingpatientcare. WesternJournalof
+Medicine172 (5),315–319.
+Erjavec, T., Y. Tateisi, J. Kim, T. Ohta, and J. Tsujii (2003). Encoding biomedical resources in TEI:
+The case of the GENIA corpus. In Proceedings of the ACL 2003 Workshop on Natural Language
+Processing in Biomedicine , Vol. 13, Sapporo, Japan, pp. 97–104. Association for Computational
+Linguistics.
+Fang, H., K. Murphy, Y. Jin, J. Kim, and P. White (2006). Human gene name normalization using
+text matching with automatically extracted synonym dictionaries. In Linking Natural Language
+Processing and Biology: Towards Deeper Biological Literature Analysis , New York, pp. 41–48.
+AssociationforComputationalLinguistics.
+Friedman,C.(2000).Abroad-coveragenaturallanguageprocessingsystem.In ProceedingsoftheAMIA
+Symposium,LosAngeles,CA,pp.270–274.
+Friedman, C., P. Kra, H. Yu, M. Krauthammer, and A. Rzhetsky (2001). GENIES: A natural-
+language processing system for the extraction of molecular pathways from journal articles.Bioinformatics17 (Suppl.1),S74–S82.
+
+624 HandbookofNaturalLanguageProcessing
+Fukuda, K., A. Tamura, T. Tsunoda, and T. Takagi (1998). Toward information extraction: Identi-
+fying protein names from biological papers. In Paciﬁc Symposium on Biocomputing, Maui, HI,
+pp.707–718.
+Hakenberg, J., C. Plake, L. Royer, H. Strobelt, U. Leser, and M. Schroeder (2008). Gene mention
+normalizationandinteractionextractionwithcontextmodelsandsentencemotifs. GenomeBiology
+9(Suppl.2),S14.
+Hanisch, D., K. Fundel, H.-T. Mevissen, R. Zimmer, and J. Fluck (2005). ProMiner: Rule-based protein
+andgeneentityrecognition. BMCBioinformatics6 (Suppl.1),S14.
+Hatzivassiloglou, V., P. A. Duboué, and A. Rzhetsky (2001). Disambiguating proteins, genes, and RNA
+intext:Amachinelearningapproach. Bioinformatics17,S97–S106.
+Hearst, M., A. Divoli, Y. Jerry, and M. Wooldridge (2007, June). Exploring the eﬃcacy of caption
+search for bioscience journal search interfaces. In Biological, Translational, and Clinical Language
+Processing ,Prague,CzechRepublic,pp.73–80.AssociationforComputationalLinguistics.
+Hersh, W. and R. T. Bhupatiraju (2003). TREC genomics track overview. In The 12th Text Retrieval
+Conference—2003,Gaithersburg,MD,pp.14–23.
+Hersh, W., S. Price, D. Kraemer, B. Chan, L. Sacherek, and D. Olson (1999). System and user
+attributesassociatedwithsuccessfulsearching.In AdvancesinDigitalLibraries’99,Baltimore,MD,
+pp.60–70.
+Horn, F., A. L. Lau, and F. E. Cohen (2004). Automated extraction of mutation data from the lit-
+erature: Application of MuteXt to G protein-coupled receptors and nuclear hormone receptors.Bioinformatics20(4),557–568.
+Hunter,L.(1993). MolecularBiologyforComputerScientists,Chapter1,pp.1–46.AAAI,Cambridge,MA.
+Hunter,L.andK.B.Cohen(2006).Biomedicallanguageprocessing:What’sbeyondPubMed? Molecular
+Cell21(5),589–594.
+Jiang, J. and C. Zhai (2007). An empirical study of tokenization strategies for biomedical information
+retrieval. InformationRetrieval10,341–363.
+Johnson, H. L., W. A. Baumgartner Jr., M. Krallinger, K. B. Cohen, and L. Hunter (2007a). Corpus
+refactoring:Afeasibilitystudy. JournalofBiomedicalDiscoveryandCollaboration .
+Johnson,H.L.,K.B.Cohen,andL.Hunter(2007b).Afaultmodelforontologymapping,alignment,and
+linking systems. In Paciﬁc Symposium on Biocomputing, Maui, HI, pp. 233–244. World Scientiﬁc
+PublishingCompany.
+Kaner,C.,H.Q.Nguyen,andJ.Falk(1999). TestingComputerSoftware ,2ndedition.JohnWiley&Sons,
+NewYork.
+Karamanis, N., I. Lewin, R. Seal, R. Drysdale, and E. J. Briscoe (2007). Integrating natural language
+processingwithFlyBasecuration.In PaciﬁcSymposiumonBiocomputing,Maui,HI,pp.245–256.
+Kim, J.-D., T. Ohta, Y. Tateisi, and J. Tsujii (2003). Genia corpus—a semantically annotated corpus for
+bio-textmining. Bioinformatics19 (Suppl.1),180–182.
+Krallinger,M.,F.Leitner,C.Rodriguez-Penagos,andA.Valencia(2008).Overviewoftheprotein-protein
+interactionannotationextractiontaskofBioCreativeII. GenomeBiology9 (Suppl.2),S4.
+Lesk, M. (1986). Automatic sense disambiguation using machine readable dictionaries: how to tell a
+pine cone from an ice cream cone. In SIGDOC ’86: Proceedings of the Fifth Annual International
+ConferenceonSystemsDocumentation,NewYork,pp.24–26.ACMPress.
+Lindberg, D., B. Humphreys, and A. McCray (1993). The uniﬁed medical language system. Methods of
+InformationinMedicine32 (4),281–291.
+Lu, Z., K.B.Cohen, andL.Hunter(2006).FindingGeneRIFsviaGeneOntologyannotations. In Paciﬁc
+SymposiumonBiocomputing2006 ,Maui,HI,pp.52–63.
+Lu, Z., K. B. Cohen, and L. Hunter (2007). GeneRIF quality assurance as summary revision. In Paciﬁc
+SymposiumonBiocomputing,Maui,HI,pp.269–280.
+Miyao, Y. and J. Tsujii (2008). Feature forest models for probabilistic HPSG parsing. Computational
+Linguistics34(1),35–80.
+
+BioNLP:BiomedicalTextMining 625
+Morgan, A. A. et al. (2008). Overview of BioCreative II gene normalization. Genome Biology
+9(Suppl.2),S3.
+Mungall, C. J. (2004, August). Obol: Integrating language and meaning in bio-ontologies. Comparative
+andFunctionalGenomics5 (6–7),509–520.
+Nobata, C., N. Collier, and J. Tsujii (1999). Automatic term identiﬁcation and classiﬁcation in biology
+texts. InProceedings of the Fifth Natural Language Processing Paciﬁc Rim Symposium (NLPRS) ,
+Beijing,China,pp.369–374.
+Ogren,P.V.,K.B.Cohen,G.K.Acquaah-Mensah,J.Eberlein,andL.Hunter(2004).Thecompositional
+structureofGeneOntologyterms. PaciﬁcSymposiumonBiocomputing ,Boulder,CO,pp.214–225.
+Ogren, P., K. Cohen, and L. Hunter (2005). Implications of compositionality in the Gene Ontology for
+itscurationandusage.In PaciﬁcSymposiumonBiocomputing,BigIsland,HI,pp.174–185.
+Ohta,T.,Y.Tateisi,J.-D.Kim,H.Mima,andJ.Tsujii(2002).TheGENIAcorpus:Anannotatedcorpusin
+molecularbiology.In ProceedingsoftheHumanLanguageTechnologyConference,SanDiego,CA.
+Pestian,J.P.,C.Brew,P.Matykiewicz,D.Hovermale,N.Johnson,K.B.Cohen,andW.Duch(2007).A
+shared task involving multi-label classiﬁcation of clinical free text. In Proceedings of BioNLP 2007 ,
+Prague,CzechRepublic.AssociationforComputationalLinguistics.
+Pyysalo, S., T. Salakoski, S. Aubin, and A. Nazarenko (2006). Lexical adaptation of link grammar to
+the biomedical sublanguage: A comparative evaluation of three approaches. BMC Bioinformatics
+7(Suppl.3),S2.
+Schwartz, A. and M. Hearst (2003). A simple algorithm for identifying abbreviation deﬁnitions in
+biomedicaltext.In PaciﬁcSymposiumonBiocomputing,Vol.8,Lihue,HI,pp.451–462.
+Sehgal,A.andP.Srinivasan(2006).Retrievalwithgenequeries. BMCBioinformatics7 ,220.
+Settles, B.(2005). Abner: Anopensourcetoolforautomaticallytagginggenes, proteinsandotherentity
+namesintext. Bioinformatics21(14),3191–3192.
+Shah, P. K., L. J. Jensen, S. Boué, and P. Bork (2005). Extraction of transcript diversity from scientiﬁc
+literature. PLoSComputationalBiology1 (1),67–73.
+Shatkay, H., S. Edwards, W. Wilbur, and M. Boguski (2000). Genes, themes and microarrays: Using
+information retrieval for large-scale gene analysis. In Intelligent Systems for Molecular Biology ,L a
+Jolla/SanDiego,CA,pp.317–328.
+Tanabe, L., U. Scherf, L. Smith, J. Lee, L. Hunter, and J. Weinstein (1999). MedMiner: An Internet
+text-mining tool for biomedical information, with application to gene expression proﬁling.Biotechniques27 (6),1216–1217.
+The Gene Ontology Consortium (2000). Gene Ontology: Tool for the uniﬁcation of biology. Nature
+Genetics25(1),25–29.
+Wang,X.andM.Matthews(2008).Speciesdisambiguationforbiomedicaltermidentiﬁcation.In Current
+TrendsinBiomedicalNaturalLanguageProcessing:BioNLP2008 ,Columbus,OH,pp.71–79.
+Wattarujeekrit, T., P. K. Shah, and N. Collier (2004). PASBio: Predicate-argument structures for event
+extractioninmolecularbiology. BMCBioinformatics5 ,155.
+Yeh,A.,A.Morgan,M.Colosimo,andL.Hirschman(2005).BioCreativetask1A:Genementionﬁnding
+evaluation. BMCBioinformatics6 (Suppl.1),S2.
+
+
+

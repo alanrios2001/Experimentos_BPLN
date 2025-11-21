@@ -1,0 +1,1326 @@
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 429 — #1
+16 Computational Models
+of Dialogue
+JONATHAN GINZBURGAND RAQUEL FERNÁNDEZ
+1 Introduction
+Computational study of dialogue, the topic of this article, provides underpin-nings for the design of dialogue systems and for models of human performance inconversational settings. Hence, among the central issues are ones pertaining tothe information states of the agents participating in a conversation. Some of thisinformation is public – available in principle to be grasped and manipulated by the
+conversational participants, while some of this information is, at the very least,not explicitly made public. The structure and makeup of participant informationstates – and the extent to which information in them is shared – are issues on whichmuch of the account of dialogue we will present here rides. Linguistic phenomenawill provide guidance towards the resolution of these issues: at this point in thestate of the art, the challenge is to process ‘real language’ with all its fragments,disﬂuencies, and the like. Such utterances are highly context-dependent – to a farhigher degree than is the situation with text processing. The participant informa-tion states will serve as context; being able to perform this role will, consequently,impose signiﬁcant constraints on the information states.
+One basic task for any theory of dialogue is to account for the coherence of
+a conversation – a given dialogue move can be coherently followed up by awide variety of responses, but not by just any response. Coming up with such atheory of coherence presupposes a classiﬁcation of the space of available moves.This raises a variety of interesting issues, a central one of which is: can this bedone domain-independently? It is by now clear that domain dependence cannotbe evaded – conversational coherence varies widely across domains. Nonetheless,as we will see, it also seems reasonably clear that there are aspects of coherencewhich can be explicated in a more or less domain-independent way. How to ﬁndthe proper balance is an important theme we will address at a number of points.After discussing a number of inﬂuential taxonomies of dialogue moves, we willconcentrate on characterizing in a theory-neutral way the fundamental properties
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 430 — #2
+430 Jonathan Ginzburg and Raquel Fernández
+of two of the commonest move types – queries and assertions. From this willemerge a series of benchmarks that theories of dialogue need to satisfy.
+Meta-communicative interaction – interaction concerning the ongoing com-
+municative process (e.g., acknowledgments of understanding and clariﬁcationrequests) – is a fundamental area for dialogue. It was long neglected in formaland computational linguistics, but has now become a much studied area, notleast because utterances whose main function is meta-communicative are veryfrequent and play a crucial role in applications. As with queries and assertions,we will proceed initially in a theory-neutral way, gathering benchmarks alongthe way. Ultimately, one is after a theory which will explicate the coherence ofmeta-communicative utterances and allow them to be interpreted. This ties inwith the ﬁnal phenomena we will characterize – the non-sentential fragmentstypical of conversation, many of which occur in meta-communicative utterances.We will address two types: the ﬁrst are sentential fragments – utterances like ‘Bo.,’‘Bo?,’ ‘Why?,’ ‘Yes,’ whose external syntax is non-sentential, but which expressa complete message in context. The second are disﬂuencies – self-corrections,hesitations, and the like.
+As we mentioned above, the computational study of dialogue provides formal
+underpinnings for the design of dialogue systems. The second part of this chap-ter is devoted to a survey of the most inﬂuential paradigms in this area, whichwe informally evaluate in terms of the benchmarks that will have emerged in theﬁrst part of the chapter. Dialogue systems are important because they constitute ahighly promising technology. We will emphasize also the fact that they serve as avery useful testing ground for dialogue theories.
+The third part of the chapter is devoted to sketching a theory of dialogue,
+known as KoS, in which meaning and interaction can be modeled. We will showhow the lion’s share of the benchmarks from the ﬁrst part of the article can beexplicated in a uniform fashion within KoS. We formulate KoS in the frameworkof type theory with records (Cooper 2006). This is a framework that simultane-ously allows sophisticated semantic modeling using λ-calculus style techniques,
+while also enabling rich structure to be encoded in a way that resembles typedfeature structures. In contrast to typed feature structures, however, type theorywith records provides as ﬁrst-class entities both types and tokens. This featureof the framework is of considerable importance for semantics, in particular withrespect to modeling meta-communicative interaction.
+The ﬁnal part of the article is devoted to offering pointers to other recent sig-
+niﬁcant directions in research on dialogue, including work on machine learning,multiparty conversation, and multi-modal interaction.
+2 The Challenges of Dialogue
+A computational theory of dialogue needs to aspire to explicate how conversationsstart, proceed, and conclude. It should be able to underpin the participation of
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 431 — #3
+Computational Models of Dialogue 431
+either a human or an artiﬁcial agent in conversations like the following:
+(1) John: (1) Okay which one do you think it is?
+(2) Try F1 F1 again and we’ll get
+Sarah: (3) Shift and F1?Sue: (4) It’s, (5) no.John: (6) No, (7) just F1 F1.Sue: (8) It isn’t that.John: (9) F1. (10) Right, (11) and that tells usSue: (12) It’s shift F7.
+(1) is, in fact, a rather humdrum conversation from the British National Corpus
+(BNC) (Burnard 2000a) involving three people attempting to print a ﬁle some timearound 1990. Nonetheless, it exhibits features that radically distinguish it from atext and even in several respects from the sort of artiﬁcial travel agent or airlinebooking system/user dialogue routinely described in AI/NLP papers on dialoguein the 1980s and 1990s (e.g., Allen & Perrault 1980; Aust et al., 1995):(1) Self-answering: utterance (2) is a case of self-answering , unexpected on anal-
+ysis of queries as requests for information (following, e.g., Allen & Perrault1980).
+(2) Multilogue: the conversation involves more than two participants, the casehandled by the vast majority of all analyses.
+(3) Disagreement: even in this essentially cooperative setting disagreement isrife.
+(4) Partial comprehension : Sarah’s (3) is a clariﬁcation request, indicating
+distinct states of semantic processing among participants.
+(5) Incomplete utterances: three of the utterances ((2), (4), (11)) are incomplete.
+(6) Sentential fragments: ﬁve of the utterances ((3), (5), (6), (7), (9)) are notsyntactically sentential, yet convey complete illocutionary messages.
+As with all tasks in NLP , one can perform dialogue processing at a variety
+of levels, ranging from the very deep, designing agents that can participate inreal conversations, through medium, which could involve trying to performintentional analysis on a conversational participant’s contribution, to shallow,which could amount to producing a reasonable paraphrase of (1), for ‘secretarialpurposes,’ as in ofﬁce assistants like CALO (Tur et al., 2010). Notice though that,given the fact that form radically underspeciﬁes content in dialogue, even pro-ducing such a periphrasis of (1), e.g., something along the lines of (2), involvessophisticated resources – including techniques to resolve (a) the move type (orillo-
+cutionary force) of an utterance, which is rarely signaled explicitly, (b) the content ofsentential fragments (on which more below), and (c) the referents of anaphors:
+(2) John asked Sue which button did she think one needed to press. He sug-
+gested to try F1 F1 once again. Sarah wondered if he meant she should type
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 432 — #4
+432 Jonathan Ginzburg and Raquel Fernández
+Shift and F1. Sue was a bit unsure but demurred and John indicated thathe meant for her to type F1 F1. Sue disagreed with John that that was whatneeded doing. John suggested to try F1, which he thought might indicatesomething, and then Sue suggested it was shift F7.Move type resolution: Which one do you think it is? ↦→John asked Sarah
+and/or Sue which button did she think one needed to press.Sentential fragment resolution +Move type resolution: Shift and F1? ↦→
+Sarah wondered if he meant she should type Shift and F1.Anaphora resolution +Move type resolution:I t i s n ’ t t h a t .↦→ Sue
+disagreed with John that that was what needed doing.
+2.1 Classifying and characterizing dialogue moves
+2.1.1 Move classiﬁcation One important task for a theory of dialogue is to
+explicate the moves or acts that participants can make in a conversation. In sodoing there is an inevitable tension between the domain-speciﬁc and the domain-independent conversational possibilities. Some, following Wittgenstein (1953),would come close to denying the existence of domain-independent conversationalpossibilities (e.g., Allwood 1995; Rudnicky 2004), a position which is under-standable for designers of dialogue systems. It is undeniable that knowing howto interact in an unfamiliar setting (shop, court, religious institution, academiclecture, informal meeting with people of different class/ethnic background) oftenrequires considerable guidance. Nonetheless, an emotionally stable adult in anunfamiliar setting might initially miss a trick or even seven, but in many cases atleast she is not completely ﬂoored and can navigate her way around, albeit witha certain number of stumbles. Moreover, she can acquire the necessary domainknowledge relatively easily, in contrast, for instance, to learning a new language.It thus seems a defensible strategy to try and isolate some domain-independentconversational possibilities (e.g., with respect to how questions are asked andresponded to or how positive/negative feedback is provided), while acknowledg-ing the possibility that any given domain might involve moves that are specializedin some way. Of course in addition to certain idiosyncrasies about moves, whichby analogy with lexical idiosyncrasy need to be stipulated (e.g., the need to endeach turn addressed to a judge in a British court with the word ‘m’lud’), one alsoaspires to ﬁnd parameters by means of which one can characterize domain-speciﬁcconversational possibilities (see Section 4.6).
+Speech act theory (Searle 1969; Searle & Vanderveken 1985) emphasizes that
+there are hundreds of things one could do with words, not fewer than thenumber of illocutionary verbs that can be used performatively (e.g., ‘I declare,’‘I name this ship,’ etc.). Without dismissing the signiﬁcance of performatives, thestrategy in most recent taxonomies of the range of moves is far more empiricist,based on the classiﬁcation of moves observed in corpora. One important empiri-cal basis for such an explication are corpus studies of the range of moves found
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 433 — #5
+Computational Models of Dialogue 433
+in conversation. The number of possible moves, based on grammatical cues suchas sentence type or discourse particles, is reduced to between a dozen (as in theMap Task taxonomy (Carletta et al., 1996)
+1and about 20 in the DAMSL taxonomy
+(Core & Allen 1997). The main classes in these taxonomies are given, respectively,in (3a, 3b):
+2,3
+(3) a. Initiating moves : instruct, explain, check, align, query-yn, query-w
+Response moves : acknowledge, reply-y, reply-n, reply-w, clarify (from
+Carletta et al., 1996)
+b.Forward looking moves : statement, inﬂuencing-addressee-future-
+actions info-request, committing-speaker-future-action, conventionalopening closing, explicit-performative, exclamationBackward looking moves: agreement (including accept, reject) under-standing (including signal understanding, signal non-understanding),answer
+In line with our earlier remarks, such taxonomies can have no pretenses to the
+completeness aspired to by, e.g., POS taxonomies. Moreover, these taxonomies(and others proposed) have their own biases and different levels of grain, reﬂect-ing to some extent researcher biases. Nonetheless, these taxonomies enable codingof corpora at more or less reliable levels of inter-annotator agreement (Carletta1996; Core & Allen 1997). We can draw certain conclusions from this:•Initiating vs. response: one signiﬁcant dimension distinguishing moves iswhether they are initiating or responsive. Initiating moves require moredomain-sensitive/agent-particular information for their characterization.
+•Meta-communicative interaction: one of the features that distinguishes dia-logue from text is the pervasive presence in dialogue of moves that directlyconcern communication management, primarily acknowledgments of under-standing, clariﬁcation requests (CRs), and self-corrections. In recent yearsmuch more detailed taxonomies of such moves have been provided, includingNovick and Sutton (1994) and Muller and Prévot (2003) for acknowledgments,and Purver et al. (2001) and Rodriguez and Schlangen (2004) for CRs.
+2.1.2 Move characterization: queries and assertions In general terms, a dia-
+logue theory should be able to offer answers to the questions in (4) about initiatingmoves, responsive moves, as well as taking a generation perspective:
+(4) a. Initiating move/Response space conditions : what contextual condi-
+tions characterize initiating (responsive) moves? For a given suchcontext, what are the possible moves?
+b.Generation perspective : given an agent Awith a goal gin a context C,
+what can Asay in Cto fulﬁll g?
+We now elaborate on these general tasks. The two main move types (or more
+precisely supertypes) are queries and assertions – they are also the commonest
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 434 — #6
+434 Jonathan Ginzburg and Raquel Fernández
+means for interactions with dialogue systems. Hence, the move-related bench-marks we specify primarily concern their characterization. Many of these aremodeled on benchmarks formulated in Bohlin et al. (1999). The benchmarks areloosely and atheoretically formulated, typically of the form ‘Accommodate ..., ’
+this allows ‘accommodate’ to be understood in various ways, including from botha generation and an interpretive perspective.
+The minimal requirement for processing queries is the ability to recognize simple
+answers:
+(5) a. pis a simple answer to qiffpis an instantiation of qor a negation of
+such an instantiation.
+b. For a polar question: {r|SimpleAns (r,p?}={ p,¬p}
+c. For a unary wh-question: {r|SimpleAns (r,λb.p(b))}=
+{p(a
+1),...,p(an),¬p(a 1),...,¬p(a n)}
+(Q1) Query benchmark1: accommodate simple answers.
+Simple answerhood covers a fair amount of ground. But it clearly underde-
+termines the range of answers coherently concerning a given question that anyspeaker of a given language can recognize, independently of domain knowl-edge and of the goals underlying an interaction, a notion dubbed ‘aboutness’ byGinzburg (1995). On the polar front, it leaves out the whole gamut of answers topolar questions that are weaker than por¬psuch as conditional answers ‘If r, then
+p’ (e.g., 6a) or weakly modalized answers ‘probably/possibly/maybe/possiblynot p’ (e.g., 6b). As far as wh-questions go, it leaves out quantiﬁcational answers(6c–g), as well as disjunctive answers. These missing classes of propositions arepervasive in actual linguistic use. In some cases they constitute goal fulﬁlling
+responses (e.g., (6a), (6c), (6d), (6e), (6g) below); the answer provided could very
+well trigger a follow-up query (e.g., (7) below):
+(6) a. Christopher: Can I have some ice-cream then?
+Dorothy: You can do if there is any. (BNC, KBW)
+b. Anon: Are you voting for Tory?
+Denise: I might. (BNC, KB?, slightly modiﬁed)
+c. Dorothy: What did grandma have to catch?
+Christopher: A bus. (BNC, KBW, slightly modiﬁed)
+d. Rhiannon: How much tape have you used up?
+Chris: About half of one side. (BNC, KB?)
+e. Dorothy: What do you want on this?
+Andrew: I would like some yogurt please. (BNC, KBW, slightly modi-ﬁed)
+f. Elinor: Where are you going to hide it?
+Tim: Somewhere you can’t have it. (BNC, KBW)
+g. Christopher: Where is the box?
+Dorothy: Near the window. (BNC, KBW)
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 435 — #7
+Computational Models of Dialogue 435
+(7) a. Anon: Are you voting for Tory? Denise: I might.
+Anon: Well are you or aren’t you?
+b. Dorothy: What did grandma have to catch? Christopher: A bus.
+Dorothy: Which bus?
+c. Elinor: Where are you going to hide it? Tim: Somewhere you can’t
+have it.Elinor: But where?
+This data leads to:
+(Q2a) Query benchmark2a: accommodate non-resolving answers.(Q2b) Query benchmark2b: accommodate follow-up queries to non-resolving
+answers.
+Responses to queries can also contain more information than literally asked for,
+as exempliﬁed in (8):
+(8) A: When is the train leaving? B2: 5:04, platform 12. (Based on an example
+due to Allen & Perrault 1980).
+This ‘excess information’ should be utilized, leading to:
+(Q3) Query benchmark3: accommodate ‘overinformative’ answers.
+Answering a query with a query represents another signiﬁcant class of possi-
+bilities. The commonest such cases are clariﬁcation responses but, since these aretriggered by essentially anymove type, we discuss these below as part of a more
+general discussion of meta-communicative interaction (MCI). One class of queryresponses are queries that, intuitively, introduce an issue whose resolution is priorto the question asked:
+(9) a. A: Who murdered Smith? B: Who was in town?
+b. A: Who is going to win the race? B: Who is going to participate?
+c. Carol: Right, what do you want for your dinner?
+Chris: What do you (pause) suggest? (BNC, KbJ)
+d. Chris: Where’s mummy?
+Emma: What do you want her for? (BNC, KbJ)
+(Q4) Query benchmark4: accommodate subquestions.
+One ﬁnal class of responses, which are of some importance in applications, are
+‘irrelevant responses,’ whose effect is to indicate lack of interest in the originalquery:
+(10) a. A: Who is the homeowner? B: Who is the supervisor here?
+b. Rumpole: Do you think Prof Clayton killed your husband? Mercy
+Charles: Do you think you’ll get him off? (Mortimer 1990: 100)
+c. A: Horrible talk by Rozzo. B: It’s very hot here.
+(Q5) Query benchmark5: accommodate topic changing, ‘irrelevant’ responses.
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 436 — #8
+436 Jonathan Ginzburg and Raquel Fernández
+Moving on to assertions, the most obvious initial task concerns the potential
+effect their potential acceptance has on context.(A1) Assertion benchmark1: if accepted, integrate propositional content with
+existing knowledge base.
+One important feature of dialogue, a medium which involves distinct agents, is
+the possibility for disagreement:
+(11) a. A: I’m right, you’re wrong. B: No, I’m right, you’re wrong.
+b. John: No, just F1 F1. Sue: It isn’t that.
+(A2) Assertion benchmark2: accommodate disagreement.
+The ﬁnal two benchmarks are, in a sense, methodological. First, the same
+basic mechanism seems to regulate queries/assertions, across varying sizes ofparticipant sets:
+(12) a. Monologue: self-answering (A: Who should we invite? Perhaps Noam. )
+b. Dialogue: querier/responder (A: Who should we invite? B: Perhaps
+Noam.)
+c. Multilogue: multiple discussants (A: Who should we invite? B: Perhaps
+Noam. C: Martinu. D: Bedrich . . . )
+(SC) Scalability benchmark: ensure approach scales down to monologue and up
+to multilogue.
+Second, as we mentioned at the outset, in moving from domain to domain, there
+are some aspects that are speciﬁc to interacting in that domain and this cannotbe avoided. However, we have claimed that human agents adapt well and withrelatively little effort can reuse the interactional skills they bring with them frompast experience. Hence:(DA) Domain Adaptability benchmark: reuse interactional procedures from other
+domains, insofar as possible.
+2.1.3 Move characterization: meta-communication As we saw earlier, a
+class of moves whose presence makes itself evident in taxonomies are meta-communicative moves. Such phenomena have been studied extensively bypsycholinguists and conversational analysts in terms of notions such as grounding,
+feedback (in the sense of Clark 1996 and Allwood 1995 respectively) and repair
+(in the sense of Schegloff 1987). The main claim that originates with Clark andSchaefer (1989) is that any dialogue move m
+1made by A must be grounded (namely
+acknowledged as understood) by the other conversational participant B beforeit enters the common ground; failing this, clariﬁcation interaction (henceforthCRiﬁcation) must ensue. While this assumption about grounding is somewhat toostrong, as Allwood argues, it provides a starting point, indicating the need to
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 437 — #9
+Computational Models of Dialogue 437
+interleave the potential for grounding/CRiﬁcation incrementally, the size of theincrements being an important empirical issue. From a semantic theory, we mightexpect the ability to generate concrete predictions about forms/meanings of MCIutterances in context. More concretely, the adequacy of such a theory requires:(GCR) Grounding/CRiﬁcation conditions benchmark: the ability to characterize
+for any utterance type the update that emerges in the aftermath ofsuccessful grounding and the full range of possible CRs otherwise.
+Let us make this benchmark more concrete, initially with respect to the content/
+context of grounding/CRiﬁcation moves, later with respect to the realization ofsuch moves. There are two main types of MC interactions – acknowledgments of
+understanding and clariﬁcation requests (CRs).
+4A rough idea of the frequency
+of acknowledgments can be gleaned from the word counts for ‘yeah’ and ‘mmh’in the demographic part of the BNC: ‘yeah’ occurs 58,810 times (rank: 10; 10–15percent of turns), whereas ‘mmh’ occurs 21,907 times (rank: 30; 5 percent of turns).Clariﬁcation requests (CRs) constitute approximately 4–5 percent of all utterances(see, e.g., Purver et al., 2001; Rodriguez & Schlangen 2004). Both acknowledg-ments and CRs, then, constitute central phenomena of interaction, even judgedmerely in terms of frequency.
+An addressee can acknowledge a speaker’s utterance, either once the utterance
+is completed, as in (13a, 13b), or concurrently with the utterance as in (13c). Forconversations where the participants are visible to each other, gesture (head nod-ding, eye contact, etc.) also provides an option by means of which afﬁrmativemoves can be made (see Nakano et al., 2003).
+(13) a. Tommy: So Dalmally I should safely say was my ﬁrst schooling. Even
+though I was about eight and a half. Anon 1: Mmh. Now your fatherwas the the stocker at Tormore is that right? (BNC, K7D)
+b. Wizard: Then you want to go north on Speer Boulevard for one and
+one half miles to Alcott Street.User: Okay. I want to go right on Speer? (VNS Corpus, Novick &Sutton 1994)
+c. A: Move the train . . .
+B: AhaA : ...f r o mA v o n...B: RightA : ...t oD a n v ille (adapted from the Trains corpus)
+From this we derive three benchmarks:
+(Ack1) Completed Acknowledgments benchmark: accommodate completed
+acknowledgments.
+(Ack2) Incremental Acknowledgments benchmark: accommodate continuation
+acknowledgments.
+(Ack3) Multi-modal Acknowledgments benchmark: accommodate gestural
+acknowledgments.
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 438 — #10
+438 Jonathan Ginzburg and Raquel Fernández
+Although, in principle, one can request clariﬁcation concerning just about any-
+thing in a previous utterance, corpus studies of CRs in a general corpus (Purveret al., 2001), as well as task-oriented ones (Rodriguez & Schlangen 2004; Rieser &Moore 2005) indicate that there are four main categories of CRs:•Repetition: CRs that request the previous utterance to be repeated:(14) a. Tim (1): Could I have one of those (unclear)?
+Dorothy (2): Can you have what? (BNC, KW1)
+b. s bust: Great memorial I think really isn’t it?
+e bust: Beg pardon?s bust: Be a good appropriate memorial if we can afford it. (BNC,KM8)
+•Conﬁrmation: CRs that seek to conﬁrm understanding of a prior utterance:(15) a. Marsha: yeah that’s it, this, she’s got three rottweilers now and
+Sarah: three? (=Are you saying she’s got THREE rottweilers now?)Marsha: yeah, one died so only got three now (BNC)
+b. A: Is Georges here?
+B: You’re asking if Georges Sand is here.
+•Intended content: CRs that query the intended content of a prior utterance:(16) a. Tim (5): Those pink things that af after we had our lunch.
+D o r o t h y( 6 ) :P i n kt h i n g s ?Tim (7): Yeah. Er those things in that bottle.Dorothy (8): Oh I know what you mean. For your throat? (BNC)
+b. A: Have a laugh and joke with Dick.
+B: Dick?A: Have a laugh and joke with Dick.B: Who’s Dick?
+•Intention recognition: CRs that query the goal underlying a prior utterance:(17) a. X: You know what, the conference might be downtown Seattle. So I
+may have to call you back on that.PT: OK. Did you want me to wait for the hotel then? (Communicatorcorpus)
+b. Norrine: When is the barbecue, the twentieth? (pause) Something of
+June.Chris: Thirtieth.Norrine: A Sunday.Chris: Sunday.Norrine: Mmh.Chris: Why? (= Why do you ask when the barbecue is )
+Norrine: Becau Because I forgot (pause) That was the day I wasthinking of having a proper lunch party but I won’t do it if you’regoing out. (BNC)
+The ability to generate and understand such CRs requires correspondingly
+increasing complexity: from repetition (which can be done by very simple
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 439 — #11
+Computational Models of Dialogue 439
+systems) to intention recognition, which requires a signiﬁcantly complex processing
+architecture. Accordingly, we distinguish:(CR1) Repetition CR benchmark: accommodate repetition CRs.
+(CR2) Conﬁrmation CR benchmark: accommodate conﬁrmation CRs.
+(CR3) Intended content CR benchmark: accommodate intended content CRs.
+(CR4) Intention recognition CR benchmark: accommodate intention recognition
+CRs.
+To conclude our discussion of MCI, let us note some higher-level benchmarks.
+The ﬁrst is a semantic non-determinism, given the fact that an utterance can give
+rise to distinct updates across participants (grounding in one, CRiﬁcation in theother):(SND) Semantic non-determinism benchmark: interpretation can lead to distinct
+updates across conversational participants.
+MCI dictates the need for ﬁne-grained utterance representations, given: the
+emergence of utterance-related presuppositions in the aftermath of grounding(18a, 18b); the hyperintensional nature of CRiﬁcation conditions (18c, 18d) –‘lawyer’ and ‘attorney’ are synonymous terms but give rise to distinct CRiﬁcationconditions; and the existence of syntactic and phonological parallelism conditionson certain CR interpretations (18e, 18f):
+(18) a. A: Banach was born in Łodz. B: It’s interesting that the last word you
+uttered has a letter not on my keyboard.
+b. And even rain won’t save you this time, Bruce, because you need to
+win one of the remaining matches. Sorry guys I mentioned ‘win’ there,you Poms might need to look that word up. (The Guardian, test matchover by over coverage, August 25, 2005).
+c. Ariadne: Jo is a lawyer. Bora: A lawyer?/What do you mean a
+lawyer?/#What do you mean an advocate?/#What do you mean anattorney?
+d. Ariadne: Jo is an advocate. Bora: #What do you mean a lawyer?/An
+advocate?/What do you mean an advocate?/#What do you mean anattorney?
+e. A: Did Bo leave? B: Max? (cannot mean: intended content reading:
+Who are you referring to? orWho do you mean? )
+f. A: Did he adore the book? B: adore? / #adored?
+Hence,
+(FG) Fine-grained utterance representation benchmark: provide ﬁne-grained
+utterance representation to accommodate syntactic and phonologicalparallelism conditions.
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 440 — #12
+440 Jonathan Ginzburg and Raquel Fernández
+2.2 Fragment understanding
+We distinguish between two classes of non-sentential utterances: sentential frag-ments and disﬂuencies.2.2.1 Sentential fragments Sentential fragments (SFs) are intuitively complete
+utterances that lack a verbal (more generally predicative) constituent. SFsinclude ‘short answers,’ and reprise utterances used to acknowledge or requestclariﬁcation of prior utterances. Examples of these are provided in boldfacein (19):
+(19) A: Wasn’t he refused the chair in Oxford?
+B:Who?
+A:Skeat . Wasn’t he refused
+B: That’s Meak.A:Oh Meak, yes. (London-Lund S.1.9, p. 245)
+Estimates of the frequency of SFs are somewhat variable, depending on the
+classiﬁcational criteria applied. De Weijer (2001) provides ﬁgures of 40 percent,31 percent, and 30 percent, respectively, for the percentage of one-word utterances
+in the speech exchanged between adults and infant, adult and toddler, and amongadults in a single Dutch speaking family consisting of two adults, one toddler andone baby across two months. Fernández (2006) cites a ﬁgure of 9 percent for thepercentage of utterances lacking a verbal predicate, based on random samplingfrom (by and large) adult speech in the BNC, a ﬁgure that is replicated in othercorpus studies she surveys.
+There exist a number of recent corpus studies whose taxonomies achieve high
+coverage. These include Fernández and Ginzburg (2002) and Schlangen (2003).The taxonomy of Fernández and Ginzburg (2002) and the distribution it uncoversfor the BNC is illustrated in Table 1.
+The task of identifying the right SF class can be successfully learned using
+supervised machine learning techniques (Schlangen 2005; Fernández et al., 2007).Resolving SF content in context is a more challenging task. Of course the mostgeneral benchmark is to achieve comprehensive coverage, relative to a taxonomysuch as the above. We can offer some partial benchmarks (as in (SF2) and (SF3)),motivated primarily by frequency: basic answers are crucial in interaction, asreﬂected in their majoritarian status, similarly with acknowledgments. The reprisefragment benchmark is more challenging: such fragments constitute a very highproportion of CRs, but are frequently ambiguous between uses that have a con-
+ﬁrmation content and ones that have an intended content (see, e.g., (15a) and (16b)
+above):(SF1) Sentential fragment benchmark1: achieve SF wide coverage.(SF2) Basic answer resolution benchmark: accommodate short answers, afﬁrma-
+tive answers, and rejection.
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 441 — #13
+Computational Models of Dialogue 441
+Table 16.1 NSUs in a subcorpus of the BNC
+Sentential fragment classes Example Total
+Plain acknowledgment A :...B :m m h 599
+Short answer A: Who left? B: Bo 188
+Afﬁrmative answer A :D i dB ol e a v e ?B :Y e s 105
+Repeated acknowledgment A: Did Bo leave? B: Bo, hmm. 86
+Reprise fragment A :D i dB ol e a v e ?B :B o ? 79
+Rejection A :D i dB ol e a v e ?B :N o . 49
+Factive modiﬁer A: Bo left. B: Great! 27
+Repeated afﬁrmative answer A :D i dB ol e a v e ?B :B o ,y e s . 26
+Helpful rejection A: Did Bo leave? B: No, Max. 24
+Sluice A: Someone left. B: Who? 24
+Check question A: Bo isn’t here. Okay? 22
+Filler A :D i dB o...B :l e a v e ? 18
+Bare modiﬁer phrase A: Max left. B: Yesterday. 15
+Propositional modiﬁer A :D i dB ol e a v e ?B :M a y b e . 11
+Conjunction +fragment A: Bo left. B: And Max. 10
+Total data set 1,283
+(SF3) Reprise fragment resolution benchmark: accommodate reprise fragments,
+and recognize the potential for ambiguity they exhibit.
+SFs are often adjacent to their source. But not always, as illustrated starkly by
+our initial motivating example (1), repeated here as (10), in which short answers(7) and (9) refer back to the query (1). Data from the BNC (Ginzburg & Fernández2005) suggests that this is primarily a feature of short answers in multilogue,though not uncommon in two-person dialogue:
+(20) John: (1) Okay which one do you think it is?
+(2) Try F1 F1 again and we’ll get
+Sarah: (3) Shift and F1?S u e : ( 4 )I t ’ s ,( 5 )n o .John: (6) No, (7) just F1 F1.Sue: (8) It isn’t that.John: (9) F1. (10) Right, (11) and that tells usSue: (12) It’s shift F7.
+(SF4) Distance benchmark: accommodate long-distance short answers.
+The ﬁnal benchmark for SFs concerns their appearance as initiating moves (i.e.,
+without a prior linguistic antecedent or segment initially). These seem to require arather stereotypical interactional setting (buying tickets at a train station, queryingfor directions in a taxi, etc.). Although such uses do not seem to have been
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 442 — #14
+442 Jonathan Ginzburg and Raquel Fernández
+recorded in recent corpus studies, they are clearly not marginal and should beaccommodated:
+(21) Buying a train ticket:
+a. Client: A return to Newcastle please. ( =I want a return . . . , please give
+m ear e t u r n ..., ...)
+b. Driver to passenger in a taxi: Where to?
+(SF5) Initiating genre-sensitive SF benchmark: accommodate genre-sensitive
+initiating SFs.
+2.2.2 Disﬂuencies Disﬂuencies are common in conversation: in the Trains
+corpus, for instance, 23 percent of speaker turns contain at least one repair, and54 percent of turns with at least 10 words contain a repair (Heeman and Allen1999). In this area there has been important early work by psycholinguists, mostnotably Levelt (see e.g., Levelt 1983), much recent work by speech researchers(e.g., Shriberg 1994) and corpus-based taxonomies (e.g., Besser & Alexandersson2007).
+In terms of bare functionality, it is clear that a fundamental benchmark is the
+ability to be unfazed by disﬂuencies. In other words, to be able to recognize a dis-ﬂuency and to effect the appropriate ‘repair,’ resulting in a ‘cleaned up’ utterance,as exempliﬁed in (22):
+(22) I was one of the , I was responsible for all the planning and engineering. ↦→
+I was responsible for all the planning and engineering
+(D1) Disﬂuency benchmark1: Recognize and repair disﬂuencies.
+Such an approach using machine learning techniques is demonstrated by
+Heeman and Allen (1999: 534), who suggest: “We propose that these tasks [includ-ing detecting and correcting speech repairs] can be done using local context andearly in the processing stream.”
+Recently, evidence from psycholinguistics has begun emerging that self-
+corrected material has a long-term processing effect (Brennan & Schober 2001;Lau & Ferreira 2005), hence is not being ‘edited away.’ It can also bring aboutlinguistic effects in whose interpretation it plays a signiﬁcant role, for instanceanaphora, as in (23a) from Heeman and Allen (1999). In fact, disﬂuencies yieldinformation: (23a) entails (23b) and defeasibly (23c), which in certain settings (e.g.,legal), given sufﬁcient data, can be useful. Moreover, incorporating them in sys-tems’ output can improve naturalness (e.g., when speech processing is slow) andimprove the user’s empathy with the system. Given this, we formulate our seconddisﬂuency benchmark:
+(23) a. Andy: Peter was, well he was ﬁred.
+b. Andy was unsure about what he should say, after uttering ‘was.’
+c. Andy was unsure about how to describe what happened to Peter.
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 443 — #15
+Computational Models of Dialogue 443
+(D2) Disﬂuency benchmark2: explicate disﬂuency meaning without eliminating
+disﬂuencies from context.
+3 Approaches to Dialogue System Design
+Before presenting a formal framework that is able to account for the variousdialogue phenomena described earlier, in this section we brieﬂy describe severalimportant approaches to the design of dialogue systems and evaluate them infor-mally with respect to the benchmarks we have introduced in the previous section.We end with a short description of the information state approach to dialoguemanagement, closest in spirit to the theory of interaction that we will present inSection 4.
+3.1 Basic architecture of dialogue systems
+Besides their commercial potential, dialogue systems are also an asset for thedialogue theorist since designing a conversational agent that can communicatenaturally with a human can help in the evaluation of theories of dialogue. Ofcourse, for practical reasons researchers do not usually create systems that cantalk just about anything. Instead they design systems that are competent onlyin particular domains and can handle particular tasks – they are task-oriented,domain-dependent conversational systems. This is especially true of commercialsystems, which tend to be simpler and less advanced than research prototypes.Applications that involve information retrieval tasks are very common, especiallythose related to travel planning and management. Other common applications areeducational tutoring systems, device management (of in-car or in-home devices),and collaborative problem solving.
+To a large extent, the complexity of a system will depend on its application.
+Most spoken dialogue systems, however, contain the following components: anautomatic speech recognizer (ASR) that captures the user’s input and converts itto a sequence of words; a natural language understanding (NLU) component thatproduces a meaningful representation of the input utterance; a dialogue manager(DM) that controls the dialogue ﬂow by integrating the user contributions anddeciding what to say next; a source of domain and task knowledge (KB); a natu-ral language generation (NLG) component that chooses the words to express theresponse together with their prosody; and a text-to-speech (TTS) synthesis enginethat outputs a spoken form of the response. Figure 16.1 shows the basic archi-tecture of a spoken dialogue system. Similar diagrams and much more detailedexplanations of the different components can be found in, e.g., McTear (2004);Delgado and Araki (2005); Jurafsky and Martin (2009).
+The DM component is often considered the core of a dialogue system. It receives
+a representation of the input utterance from the NLU module, keeps track of somesort of dialogue state, interfaces with the external knowledge sources, and decides
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 444 — #16
+444 Jonathan Ginzburg and Raquel Fernández
+Figure 16.1 Basic components of a spoken dialogue system.
+what should be passed to the NLG module. In the remainder of this section,we discuss three main types of dialogue management architectures: ﬁnite stateDMs, frame-based DMs, and inference-based DMs. We ﬁnish with a sketch of theinformation state update approach to dialogue management.
+3.2 Paradigmatic approaches to dialogue management
+3.2.1 Finite state dialogue management The simplest dialogue managers rep-
+resent the structure of the dialogue as a ﬁnite state transition network. Figure 16.2shows a basic ﬁnite state DM for a ticket booking application. We can see that thestates in the network are atomic and correspond to system contributions, whilethe transitions between states correspond to system actions dependent on the userresponses. The set of possible paths along the graph represents the set of legaldialogues.
+Finite state DM architectures give rise to conversational agents that fully
+control the dialogue. The system has the initiative at all times: it utters a series ofprompts in a predetermined order, interpreting anything the user says as a directresponse to the latest prompt. Any (part of a) user utterance that cannot be inter-preted as directly addressing the latest prompt is either ignored or misrecognized.Restricting what the user can say to the latest prompt is often seen as an advan-
+tage of ﬁnite state architectures by the dialogue system’s engineer, as this allows
+one to simplify the ASR and NLU components of the system. Indeed, ﬁnite statesystems tend to use extremely simple understanding components, often limited tolanguage models associated with particular dialogue states and tuned to recognizetypical responses to a given prompt (such as city names or dates).
+There are a few toolkits that allow fast development of ﬁnite state systems, such
+as the Nuance Dialog Builder or the CSLU toolkit (McTear 1998). For a generaloverview of FSM-based systems see McTear (2004).
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 445 — #17
+Computational Models of Dialogue 445
+1where are you traveling from?
+where do you want to go?
+which date?
+do you need a return ticket?
+which date?2
+3
+4
+5<TO>
+<DATE>
+yes
+book train ticket<R_DATE>no
+7
+6yes
+yesno
+noso do you want to travel from<FROM> to <TO> on <DATE>returning on <R_DATE>?<FROM>
+so do you want to travel from<FROM> to <TO> on <DATE>?
+Figure 16.2 Finite state machine for a simple ticket booking application.
+slot value prompt
+ORIGIN unknown From which city are you leaving?DESTINATION unknown Where are you traveling to?DATE unknown When do you want to travel?
+Figure 16.3 As i m p l ef r a m e .
+3.2.2 Frame-based dialogue management Frame-based DM offers some adv-
+antages over ﬁnite state systems. Although the system’s prompts and therange of user contributions that can be handled still need to be determinedat design time, frame-based DM allows for more ﬂexibility at the level of thedialogue ﬂow. In frame-based DM, the dialogue states that the system keeps trackof – so-called frames – have a richer internal structure than the atomic nodes of
+ﬁnite state transition networks. A frame typically consists of a series of slots,values and prompts, as exempliﬁed in Figure 16.3, where each slot correspondsto some bit of information the system needs to get from the user. Again, frame-based systems are especially well-suited for information tasks, where the systemneeds to ﬁnd out some information from the user in order to execute some task(such as booking a ticket or retrieving some information from a database).
+In ﬁnite state DM the system’s contributions are determined by the transition
+function of the FS network. In contrast, a frame-based dialogue manager includesa control algorithm that determines what to say next given the contents of theframe. The control algorithm keeps track of the slots ﬁlled so far and makes surethat ﬁlled slots are not revisited. The slots in the frame can be ﬁlled in any order
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 446 — #18
+446 Jonathan Ginzburg and Raquel Fernández
+BOOK (S,U,T)
+Constraints: System (S)∧User(U)∧Ticket(T)
+Goal: Booked (S,U,T)
+Preconditions: Knows (S,Origin (T))∧Knows (S,Dest(T))∧...
+Effects: Booked (S,U,T)
+INFO_REQUEST(A, B,P)
+Constraints: Speaker (A)∧Addressee (B)∧Prop(P)
+Goal: Know(A, P)
+Preconditions: ¬Know(A, P)∧Desire (A,Know(A, P)∧Believe (A,Know(B, P))∧...
+Effects: Believe (B,Desires (A,Know(A, P)))
+Figure 16.4 Goal-oriented action schema.
+and a single user’s response can ﬁll in more than one slot. The control algorithmspeciﬁes which frame conﬁgurations need to be true for a particular prompt to berelevant. This speciﬁcation can be as general as selecting the ﬁrst prompt in theframe which has an unknown value, or more speciﬁc in the form of conditions
+such as ‘ If ORIGIN is filled and DESTINATION is unknown, utter
+DESTINATION prompt, else utter ORIGIN prompt .’
+Thus, although the range of possible contributions is ﬁxed in advance, in
+contrast to FS systems, the dialogue ﬂow is not completely predetermined atdesign time but driven by interaction. This increased ﬂexibility in turn requiresmore complex language models that can deal with multi-slot ﬁlling responses.
+For a description of some systems that use a frame-based architecture see Aust
+et al. (1995), Constantinides et al. (1998), or Seneff and Polifroni (2000).3.2.3 Inference-based dialogue management Inference-based DM differs
+substantially from DM based on frames or ﬁnite state networks. In this approach,which combines planning techniques used in AI with ideas from speech act the-ory (Austin 1962; Searle 1969), dialogue management is considered a planningtask driven forward by a rational agent (the dialogue system), whose behavior is
+determined by inference mechanisms. The approach, developed at the Univer-sity of Toronto by Perrault and his collaborators (Cohen & Perrault 1979; Allen &Perrault 1980), models rational agents in terms of beliefs, desires, and intentions(BDI). The latter are formalized as predicates or modal operators in some ver-sion of ﬁrst-order (modal) logic. Agents are also equipped with a set of generalrationality axioms and a set of plans and goals, plus a component for automaticplan-based reasoning such as a theorem prover.
+Dialogue moves are seen as instances of goal-oriented rational actions, all of
+which are formalized as plans for goal achievement. A common way of formal-izing plans is by means of action schemata. These can take different forms, butminimally distinguish between the preconditions required for an action to takeplace and its effects. Figure 16.4 shows a couple of examples of possible plans tobook a ﬂight and to request some information.
+Dialogue managers based on the BDI model of rational agents typically keep
+track of a repository of shared beliefs or common ground, the goal motivating the
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 447 — #19
+Computational Models of Dialogue 447
+current dialogue contribution, and information on the status of problem solving(e.g., on whether the preconditions of the current plan are met and its goal hasbeen achieved). Deciding what the system should say next consists in advancinga step in the current plan. For instance, a system that is following a plan to booka ﬂight for the user may decide to utter an
+INFO _REQUEST move with the goal of
+satisfying some preconditions of the booking plan, such as knowing the origin andthe destination of the trip.
+As mentioned earlier, plans are complemented by a set of general rationality
+axioms. These typically include cooperative axioms stating that agents adopt theintentions of their interlocutors (as long as they do not contradict their own). Alsonote that, as exempliﬁed by the Effects of the
+INFO _REQUEST action scheme
+in Figure 16.4, interpreting an utterance amounts to infering the plan-basedintentions of the speaker.
+Inference-based systems are intended for advanced tasks such as collaborative
+problem solving. This requires NLU components that are fairly sophisticated sincethe range of possible user utterances is much less constrained than in purely infor-mational tasks. The TRAINS/TRIPS integrated dialogue system (Allen et al., 1995;Ferguson & Allen 1998) is one of the most inﬂuential systems implementing thisapproach, but see also Sadek and de Mori (1998). The last chapter of Allen (1995)provides a good overview of inference-based DM.
+3.3 Comparison of dialogue management approaches
+In this section we look at how well standard versions of ﬁnite state-based, frame-based, and inference-based approaches to dialogue management can deal with thebenchmarks introduced in Section 2. A summary is shown in Table 16.2.3.3.1 Query and assertion benchmarks As we mentioned earlier, queries and
+assertions are the commonest move types in interaction with dialogue systems.All DM approaches we have seen can accommodate direct simple answers toqueries and hence meet benchmark Q1. However, accounting for the other querybenchmarks is more problematic. The ability to satisfy benchmarks Q2a and Q2b(accommodation of non-resolving answers and follow-up queries to them) in partdepends on the sophistication of the NLU and KB components: to interpret acontribution as a non-resolving answer, the system needs to be able to reason oversome sort of ontology with subtyping (in order to ﬁgure out, e.g., that ‘Germany’may count as an answer to a destination prompt but is probably not speciﬁcenough). This capability is standard in inference-based systems, while it is veryunlikely to be present in a pure ﬁnite-state system, since the main advantage of thisapproach is the simpliﬁcation of components by restricting possible user input.Assuming the capability to recognizing non-resolving answers was available, ina ﬁnite-state DM sub-queries to such answers could in principle be integrated asadditional states. In a frame-based DM, non-resolving answers could be integratedby including a non-resolving value type that would trigger follow-up queries
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 448 — #20
+448 Jonathan Ginzburg and Raquel Fernández
+relative to each kind of slot. Within the plan-based approach of inference-basedDM, an answer is considered ‘resolving’ if it fullﬁlls the relevant goals in the planthat motivated the question. Goals that are not fully satisﬁed motivate follow-upqueries ( U: I need to travel some time in August. S: And what day in August did you
+want to travel? ).
+Accommodating overinformative answers (benchmark Q3) poses practical
+problems for ﬁnite state systems. They could in principle be integrated as addi-tional states (e.g., an extra state for answers that include information about boththe destination and the origin, another one for those that include destination anddate, and so forth), but only as long as they can be predicted at design time. Note,however, that even if they could be predicted, including them into the ﬁnite statenetwork would easily lead to an explosion of the number of states, which wouldproduce a rather cumbersome structure. Frame-based DMs are better equippedto deal with overinformative answers since multiple slots can be ﬁlled in by asingle user response. Thus, if the overinformative answer contains informationthat directly addresses existing slots, this can be utilized to drive the task for-ward. In inference-based systems, overinformative answers are seen as a productof domain plan recognition: they are treated as cooperative responses that helpachieve the recognized plan of the interlocutor by providing information that isrequired to achieve the current goal (e.g., the exchange U: When is the train leaving?
+S: At 5:04, platform 12 can be explained by the ability of the system to recognize the
+user’s plan to take the train).
+Benchmarks Q4 and Q5 (accommodation of subqueries and accommodation of
+topic-changing responses) are highly problematic for ﬁnite state and frame-basedDMs. Subqueries can be handled only to the extent that they can be predictedin advance and, as with Q3, this could lead to tractability problems. There areno means for these structured approaches to interpret an irrelevant response asa change of topic. An inference-based system would do slightly better. Regardingsubqueries, it would only be able to accommodate those that are goal related (suchasU: How much is a ticket to Hamburg? S: When do you want to travel? ). A response
+that does not match any step in the current plan could potentially be interpretedas topic changing. However, the system would not be able to distinguish this kindof ‘irrelevance’ from situations where the mismatch requires clariﬁcation.
+We move now to the assertion benchmarks A1 and A2 (integration of proposi-
+tional content and accommodation of disagreement respectively). None of them issatisﬁed by ﬁnite state systems. Benchmark A1 is not satisﬁed because in a ﬁnitestate architecture states do not have any internal structure and therefore there isno propositional or contextual update beyond the information that emanates fromthe current position in the graph. This also rules out the possibility of account-ing for disagreement since there is no propositional content which the agent candisagree about. Frame-based DMs make use of some limited form of contextualupdate since the control algorithm keeps track of the slots ﬁlled so far, but theirsimple architecture cannot accommodate disagreements. Certainly, inference-based systems satisfy A1 (one of the effects of asserting a propostion Pis
+that Pbecomes common knowledge or common belief). As for A2, they can
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 449 — #21
+Computational Models of Dialogue 449
+accommodate conﬂicting beliefs and hence some form of diagreement. However,accounting for disagreement in the sense of non-cooperativity is more problem-atic since the BDI model is basically designed for cooperative tasks withoutconﬂicting goals.
+The ﬁnal two benchmarks within this section deal with scalability to monologue
+and multilogue (SC) and domain adaptability (DA). None of the approaches wehave discussed satisﬁes SC – they are all designed for two-agent dialogue. Finitestate and frame-based DMs are strongly domain-dependent (except perhaps intheir meta-communicative behavior, which we discuss below). In contrast, theBDI model underlying inference-based DMs aims to be a domain-independenttheory of rational action. Although it is unclear to what extent proceduresemployed in actual inference-based systems can effectively be reused, in principlegeneral rationality axioms should be valid across domains.3.3.2 Meta-communication benchmarks Given the high number of recognition
+problems that dialogue systems face due to the poor performance of ASRs, meta-communicative interaction plays an important role in such implemented systems.Finite state and frame-based architectures usually take a generative perspective,where meta-communicative behavior comes from the system. This is not surpris-ing since these approaches are highly system-initiating in design. Inference-basedsystems, on the other hand, have also addressed the problem of interpretingmeta-communicative utterances.
+The meta-communicative potential of ﬁnite state and frame-based systems in
+rather similar. What in ﬁnite state systems can be achieved by multiplying thenumber of states and transitions, in frame-based systems can be implemented byadding extra types of slot values and increasing the complexity of the control algo-rithm. Finite state systems usually include states to handle situations when there isno input or no recognition, as well as when there is a need to conﬁrm informationprovided by the user (as in states 7 and 8 of the transition network in Figure 16.2).Acknowledgments of completed contributions (benchmark A1) can similarly beintegrated as additional states. In a frame-based architecture, slot values (such asno-match) and/or conﬁdence scores associated with ﬁlled values can be used todecide whether a contribution can be acknowledged or whether there is need toask for repetition or conﬁrmation. Thus, at least from a generation perspective,ﬁnite state and frame-based DMs meet benchmarks A1, CR1 (repetition CRs), andCR2 (conﬁrmation CRs). However, more complex types of CRs such as those thatquery the intended content or the intention of a prior utterance (benchmarks CR3and CR4) cannot be accommodated by these systems.
+Satisfying benchmark A2 (accommodation of continuation acknowledgments)
+would require an incremental architecture not present in any of the systems wehave discussed, where transitions to a different state are triggered by full utter-ances or moves. Gestural acknowledgments (benchmark A3) could in principle beintegrated provided that the system is able to process multi-modal input and thatthe gestural acknowledgments acknowledge complete contributions.
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 450 — #22
+450 Jonathan Ginzburg and Raquel Fernández
+Traditionally, inference-based DM has not been too concerned with meta-
+communication, focusing instead on plan recognition and cooperativity at the taskdomain. Simple grounding and clariﬁcation behavior such as acknowledgmentsand repetition/conﬁrmation CRs can in principle be accommodated in a way akinto the strategies we have already discussed (e.g., by using conﬁdence scores orevaluating the output of the NLU component, which is more sophisticated in thesesystems). To account for other kinds of clariﬁcation subdialogues, a hierarchicalplan structure that incorporates discourse plans – or metaplans in the terminology
+of Litman and Allen (1984) – has been proposed. The idea is that metaplans areperformed to obtain knowledge necessary to perform task plans and are inferredwhen an utterance cannot be interpreted as a step in the current domain plan. Forinstance, in the dialogue S: At 5:04, platform 12. U: Where is it?, the system would
+interpret the user’s question as a metaplan to ﬁnd additional information to per-form the task plan (presumably taking a train). Thus, in this approach CRs that gobeyond asking for repetition or conﬁrmation are only possible inasmuch as theyare ultimately related to task plans.
+The last two benchmarks related to meta-communication are SND (possibility
+of different updates across participants, or semantic non-determinism ) and FG (ﬁne-
+grained representations). The latter is not satisﬁed by any of the DM approacheswe have considered: dialogue managers across the board get as input some sort ofsemantic representation. Operating on syntactic and phonological representationswould be extremely complicated, if at all possible, in ﬁnite state or frame-basedarchitectures. Inference-based systems could in principle include rich utterancerepresentations (by using a parser that generates the desired output), but it isunclear how a plan-based approach would deal with them. SND is not satisﬁedeither, at least explicitly. To some extent, any state that leads to a repetition CRimplicitly assumes that there is an asymmetry between the user-intended utter-ance and the system’s interpretation of it (or lack thereof). But this is not explicitlymodeled.3.3.3 Fragment understanding benchmarks We now turn to the last set of
+benchmarks, which are related to fragment understanding. Since these bench-marks are directly concerned with how meaning is assigned to fragmentaryutterances, they are more tightly linked to the NL modules than the move-relatedbenchmarks (although, as we shall see in Section 4, their resolution requires a fairamount of interaction between the linguistic modules and the dialogue manager,which is the module that represents context).
+While dialogue systems do not achieve comprehensive coverage of the corpus-
+based taxonomies of sentential fragments we mentioned in Section 2.2 (as requiredby benchmark SF1), they are typically able to accommodate basic fragmentaryanswers (benchmark SF2). For instance, a state-dependent language model canprocess short answers, afﬁrmative answers and rejections, which, as long as theyare direct simple answers, could be correctly interpreted by a ﬁnite state DM.We have seen examples of this in Figure 16.2. Similar techniques can be used in
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 451 — #23
+Computational Models of Dialogue 451
+frame-based systems where, as mentioned earlier, language models tend to bemore complex given the possibility of multi-slot ﬁlling.
+Genre-sensitive initiating SFs (benchmark SF5) cannot be accommodated by a
+ﬁnite-state DM since the system has the initiative at all times. They can, how-ever, be processed by frame-based systems, where the frame can be seen asencoding the relevant genre. For instance, if a user starts a dialogue with the utter-ance To Hamburg, on Tuesday, a frame-based DM for the travel domain with an
+appropriate language model could ﬁll in the destination and date slots. However,long-distance short answers (benchmark SF4) cannot easily be accommodated byﬁnite state or frame-based DMs.
+In inference-based systems the interpretation of basic types of fragments (both
+responsive and initiating) is achieved by inferring the domain-dependent goalsof the speaker (see e.g., Carberry 1990). However, it is not at all clear how long-distance short answers could be accommodated in this approach.
+Given our discussion of the meta-communication benchmarks above, reprise
+fragments (benchmark SF3) cannot be successfully accommodated by any of theconsidered DM approaches.
+Finally, we come to the disﬂuency benchmarks. The ability to recognize and
+repair disﬂuencies (benchmark D1) depends on the ASR/NLU components of asystem. For instance, statistical language models tend to be rather robust for dis-ﬂuencies. A robust parser can then be applied to their output to extract the relevantinformation (relative to the latest system prompt, to any slot in a frame, or to thecurrent domain plan). This sort of setting is more common in frame- and inference-based systems than in ﬁnite state ones, but in theory these processing componentscould be combined with any kind of dialogue manager. In contrast, D2 (accommo-dation of disﬂuency meaning without elimination of disﬂuencies from context) isa much more challenging benchmark that is not met by current systems.
+Table 16.2 summarizes the comparison of the three approaches to dialogue
+management we have reviewed with respect to the benchmarks introduced inSection 2. For each dialogue management approach (ﬁnite state, frames, andinference-based), the symbol ✓indicates that the approach saﬁsﬁes the bench-
+mark in the corresponding row; ∼that the benchmark could be met with some
+caveats, as explained in the text above; and — that the benchmark is not met by astandard version of the approach.
+3.4 The information state update framework
+To conclude this section, we shall brieﬂy introduce the main ideas of the infor-mation state update (ISU) framework. The approach was developed during theEuropean TRINDI project (TRINDI Consortium 2000) as a general framework toimplement different kinds of dialogue management models. According to Traumand Larsson (2003), the components of an ISU model are the following:•a formal representation of the information state (IS) and its components;
+•a set of dialogue moves that trigger IS updates;
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 452 — #24
+452 Jonathan Ginzburg and Raquel Fernández
+Table 16.2 Comparison of dialogue management approaches
+Benchmarks FSMs Frames Inference
+Query and assertionQ1 simple answers ✓✓ ✓
+Q2a non-resolving answers ∼ ✓✓
+Q2b follow-up queries ∼ ✓✓
+Q3 overinformative answers ∼ ✓✓
+Q4 subquestions — — ∼
+Q5 topic changing — — —
+A1 propositional content update — ∼ ✓
+A2 disagreement — — ∼
+SC scalability — — —
+DA domain adaptability — — ∼
+Meta-communicationAck1 completed acknowledgments ✓✓ ✓
+Ack2 continuation acknowledgments — — —Ack3 gestural acknowledgments ∼∼ ∼
+CR1 repetition CRs ✓✓ ✓
+CR2 conﬁrmation CRs ✓✓ ✓
+CR3 intended content CRs — — —
+CR4 intention recognition CRs — — ∼
+SND distinct updates — — —
+FG ﬁne-grained representations — — —FragmentsSF1 wide coverage of SFs — — —
+SF2 basic answer resolution ✓✓ ✓
+SF3 reprise fragment resolution — — —SF4 long-distance short answers — — —SF5 genre-sensitive initiating SFs — ✓✓
+D1 recognize and repair disﬂuencies ✓✓ ✓
+D2 keep disﬂuencies in context — — —
+•a set of update and selection rules that govern how moves change the IS andhow changes license future moves;
+•an update strategy for deciding which rules to apply when.
+Regardless of the particular model implemented within the framework, what
+makes the ISU approach attractive is the declarative way in which dialogue statesand transitions between states are formulated. In fact, the approach can be seen asan extension of the frame-based architecture, where states can have a much more
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 453 — #25
+Computational Models of Dialogue 453
+complex structure than slot-value frames and the procedural rules of the controlalgorithm are formulated as more general and declarative update and selectionrules.
+There are some toolkits to implement ISU-based dialogue managers and system
+architectures, most notably the TrindiKit (Larsson & Traum 2000) and DIPPER(Bos et al., 2003).
+5GODIS (Larsson et al., 2000) and EDIS (Matheson et al., 2000)
+are some of the systems implemented using this framework. In the next sectionwe present a theory of dialogue interaction which is ISU-based in spirit.
+4 Interaction and Meaning
+In this section we sketch a comprehensive theory of interaction and meaning, indi-cating how it can be used to fulﬁll the various benchmarks we speciﬁed in earliersections. This theory is based on the framework KoS (Ginzburg 1994; 1996; Larsson2002; Ginzburg & Cooper 2004; Fernández 2006; Purver 2006; Ginzburg 2010). Thelatter reference contains a detailed exposition of the theory sketched below. Othercomprehensive accounts of a theory of dialogue include work in the PTT frame-work
+6(e.g., Poesio & Traum 1997; 1998; Matheson et al., 2000; Poesio & Rieser
+2009) and work within segmented discourse representation theory (SDRT) (e.g.,Asher & Lascarides 2003; 2008).
+In abstract terms, the model we present here revolves around the information
+states dialogue participants possess and how these get modiﬁed as a consequenceof utterances and related interactions. Our exposition proceeds in a number ofstages. First, we explicate the proposed structure of information states. We thenillustrate how illocutionary interaction can be analyzed – the updates on theinformation states will be triggered entirely by dialogue moves . We then consider
+domain speciﬁcity and how it can be incorporated into this picture – this willinvolve a minor reﬁnement of the information states. Our ﬁnal reﬁnement willinvolve the integration of illocutionary and meta-communicative interaction: thiswill have two main consequences. Updates will be triggered by utterances – datastructures involving parallel representation of phonological, syntactic, semantic,and contextual information – and the information states will be reﬁned slightly totake into account the potential for partial understanding.
+Before we enter into all this, however, we introduce brieﬂy the logical formalism
+in which KoS is formulated, type theory with records.
+4.1 Type theory with records: the basics
+As the underlying logical framework, we use type theory with records (TTR)(Cooper 2006), a model-theoretic descendant of Martin–Löf type theory (Ranta1994). This provides a formalism with which to build a semantic ontology, andto write conversational and grammar rules. After introducing TTR, we willexplain why we use TTR rather than typed feature structure-based formalisms(see Chapter 15,
+COMPUTATIONAL SEMANTICS , and, e.g., Carpenter 1992; Penn
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 454 — #26
+454 Jonathan Ginzburg and Raquel Fernández
+2000), whose notation is quite similar and which have been used in much work incomputational linguistics.
+The most fundamental notion of TTR is the typing judgment a :Tclassifying an
+object aas being of type T. A record is a partially ordered set of ﬁelds of the form
+(24) – each assignment to a ﬁeld constituting a component of the tuple. Crucially,each successive ﬁeld can depend on the values of the preceding ﬁelds:
+(24) a.⎡⎢⎣l
+i=ki
+li+1=ki+1...
+li+j=ki+j⎤⎥⎦
+b.⎡⎢⎣x=a
+y=b
+prf=p⎤⎥⎦
+A record type is simply a partially ordered set of the form (25), where again each
+successive type can depend on its predecessor types within the record:
+(25)⎡⎢⎣l
+i:Ti
+li+1:Ti+1...
+li+j:Ti+j⎤⎥⎦
+Cooper (2006) proposes that situations and events be modeled as records. Situ-
+ation and event types are then directly accommodated as record types. The typeof a situation with a woman riding a bicycle would then be the one in (26a). Arecord of this type (a witness for this type) would be as in (26b), where the required
+corresponding typing judgments are given in (26c):
+(26) a.⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣x: INDc1: woman(x)y: INDc2: bicycle(y)time : TIMEloc:LOCc3: ride(x,y,time,loc)⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦b.⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣...x=a
+c1=p1
+y=b
+c2=p2
+time=t0
+loc=l0
+c3=p3
+...⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+c. a : IND; p1 : woman(a); b : IND; p2 : bicycle(b); t0 : TIME; l0 : LOC;
+p3 : ride(a,b,t0,l0)
+TTR offers a straightforward way for us to model propositions and questions
+using records, record types, and functions. A proposition is a record of the form in
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 455 — #27
+Computational Models of Dialogue 455
+(27a). The type of propositions is the record type (27b) and truth can be deﬁned asin (27c):
+(27) a.[
+sit=r
+0
+sit-type =T0]
+b.[
+sit : Recordsit-type : RecType]
+c. A proposition[
+sit=r
+0
+sit-type =T0]
+is true iff r0:T0
+A question can be identiﬁed as a propositional abstract, which in TTR amounts
+to being a function from records into propositions:
+(28) a. who ran
+b. TTR representation – (r :[
+x : Indrest : person(x)]
+)⎡⎣sit=r
+1
+sit-type =[
+c : run(r.x)]⎤⎦
+That is, a function that maps records r : T
+who=[
+x : Indrest : person(x)]
+into
+propositions of the form⎡⎣sit=r
+1
+sit-type =[
+c : run(r.x)]⎤⎦
+To explain the motivation for adopting TTR over a typed feature structure-based
+approach, we illustrate the difference in the respective treatment of utterance rep-resentation. In TTR, utterance events, like other events, are a kind of record,whereas lexical entries and phrasal rules are explicated as record types. One could,for instance, posit the sound/syntax/meaning constraint in (29a) as a rule ofEnglish. For a speech event se0, (29b), to be classiﬁed as being of this type, the
+requirements in (29c) will need to be met:
+7
+(29) a.⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣PHON :w h od i dj ol e a v e
+CAT=V[+ﬁn] : syncat
+C-PARAMS :⎡⎢⎢⎢⎣s0: SITt0: TIMEj: INDc3: Named(j,jo)⎤⎥⎥⎥⎦
+cont=(r :[
+x : Indrest : person(x)]
+)[
+sit = s0sit-type =Leave(j,r.x,t0)]
+:Q u e s t n⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 456 — #28
+456 Jonathan Ginzburg and Raquel Fernández
+b.⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣PHON =hu di jow live
+CAT=V[+ﬁn]
+C-PARAMS =⎡⎢⎢⎢⎣s0=sit0
+t0=time0
+j=j0
+c3=c30⎤⎥⎥⎥⎦
+cont=(r :[
+x : Indrest : person(x)]
+)[
+sit=s0
+sit-type =Leave(j,r.x,t0)]⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+c. hu di jow liv : who did jo leave;
+sit0 : SIT, time0 : TIME, j0 : IND, c30 : Named(j0,jo)cont0 =(r :[
+x : Indrest : person(x)]
+)[
+sit=sit0
+sit-type =Leave(j0,time0)]
+:Q u e s t n
+Speciﬁcally: a witness for the type (29a) includes a phonetic token, contextual
+parameters – a situation, a time, an individual named Jo – and the question entity(r :[
+x : Indrest : person(x)]
+)[
+sit=sit0
+sit-type =Leave(j0,r.x,time0)]
+, a function from records into
+propositions. Thus, the fact that
+C-PARAMS represents the type of entities needed
+to instantiate a meaning is a direct consequence of what it means to be a witness ofthis type. In addition, the values of the
+CONT ﬁeld arealready the semantic entities.
+Hence, to take one example, the function in (30a) is of the type in (30b), which isa supertype of the type in (30c). This latter is the type of a question such as (30d).These type assignments enable us to explain the fact that (30c) is intuitively a sub-question of (30a) and to deﬁne various notions of answerhood (see, e.g., Ginzburg2005):
+(30) a. r : T
+who↦→[sit =r1
+sit-type =c: leave(r.x,t)]
+b. (T who(=[x : Indrest : person(x)]
+)→Prop)
+c. r : T
+0=[]
+↦→[sit =r1
+sit-type =c: leave(j,t)]
+d.(T0→Prop)
+This explanatory state of affairs contrasts with an account of such examples in a
+typed feature structure-based approach (e.g., Ginzburg & Sag 2000), given in (31).This AVM looks very much like the type (29a), but the appearance in this case is
+deceiving.
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 457 — #29
+Computational Models of Dialogue 457
+(31)⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣PHON who did jo leave
+CAT S
+C-PARAMS⎧⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎨⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎩⎡⎣
+INDEX j
+RESTR{
+named (Jo)(j)}⎤⎦,
+⎡⎣
+INDEX t
+RESTR{
+precedes(t,k)}⎤⎦,
+[
+INDEX s
+RESTR {}]⎫⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎬⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎭
+CONT⎡⎢⎢⎢⎢⎢⎢⎢⎢⎣question
+PARAMS⎧⎨⎩[
+IND k
+RESTR {person (k)}]⎫⎬⎭
+PROP[
+SIT s
+SOA leave(j,k,t)]⎤⎥⎥⎥⎥⎥⎥⎥⎥⎦⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+In (31)
+CONT isintended as representation of the abstract in (32):
+(32) λxperson(x) leave(j, x,t)
+But, as Penn (2000: 63) puts it (in discussing a related set of issues):
+At this point, feature structures are not being used as a formal device to represent
+knowledge, but as a formal device to represent data structures that encode formaldevices to represent knowledge.
+Similarly, C-PARAMS isintended as a representation of the contextual parameters
+that need to be instantiated, but there is no explicit way of modeling this.
+This latter point can be ampliﬁed. As we discussed in Section 2.1, the interaction
+over grounding of a speaker A’s utterance uaddressed to B typically leads to two
+outcomes: either B acknowledges u (directly, gesturally, or implicitly) and thenresponds to the content of u, or, alternatively, B utters a clariﬁcation question about
+some unclear aspect of u. As we will see in Section 4.7, this interaction can be expli-
+cated as an attempt to ﬁnd a type T
+uthat uniquely classiﬁes u. This involves inter
+aliarecognizing the words used and instantiating the contextual parameters speci-
+ﬁed in Tu. CRiﬁcation involves utilizing a partially instantiated content and posing
+a question constructed from uand Tu. TTR enables a theory of such interaction to
+be developed:•Simultaneous availability of utterance types and tokens : in TTR both utter-
+ance tokens (records) and signs (record types) become available simultane-ously in a natural way.
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 458 — #30
+458 Jonathan Ginzburg and Raquel Fernández
+•Partially instantiated contents : a partial witness for C-PARAMS ﬁeld Tu.c-
+params is a record r0that is extendible to r1such that r1:Tu.c-params. This
+is exempliﬁed in (33b), where r0lacks ﬁelds for j,c3 from (33a):
+(33) a. Tu.c-params =⎡⎢⎢⎢⎣s0: SITt0: TIMEj: INDc3: Named(j,jo)⎤⎥⎥⎥⎦
+b.r
+0=⎡⎢⎢⎢⎢⎣PHON =di jo liv
+CAT=V[+ﬁn]
+C-PARAMS =[
+s0=sit0
+t0=time0]⎤⎥⎥⎥⎥⎦
+c.r
+0=⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣PHON =di jo liv
+CAT=V[+ﬁn]
+C-PARAMS =⎡⎢⎢⎢⎣s0=sit0
+t0=time0
+j=j0
+c3=c30⎤⎥⎥⎥⎦⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+•Constructing clariﬁcation questions on the ﬂy: a crucial ingredient in thismodeling is the ability to build functions from utterance tokens and utterancetypes into types of contexts, characterized in terms of various semantic objectssuch as propositions and questions. This is straightforward in TTR given thefact that it enables direct use of λ-calculus tools.
+In contrast to these tools, all of which are intrinsic to TTR, typed feature
+structure-based formalisms can only simulate functions, abstraction, and assign-ments. Nor do they have types and tokens simultaneously as ﬁrst-class citizens.
+4.2 Information states
+We analyze conversations as collections of dynamically changing, coupled infor-mation states, one per conversational participant. The type of such informationstates is given in (34a). We leave the structure of the private part unanalyzedhere (for details on this, see Larsson 2002). The dialogue gameboard (DGB) repre-sents information that arises from publicized interactions. Its structure (or rathera preliminary version suitable for analyzing illocutionary interaction) is givenin (34b):
+(34) a. TotalInformationState TIS =[
+dialoguegameboard : DGBprivate : Private]
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 459 — #31
+Computational Models of Dialogue 459
+b. DGB (initial deﬁnition)⎡⎢⎢⎢⎢⎢⎢⎢⎢⎣spkr : Indaddr : Indc-utt : addressing(spkr,addr)Facts : Set(Prop)Moves : list(IllocProp)QUD : poset(Question)⎤⎥⎥⎥⎥⎥⎥⎥⎥⎦
+•The spkr/hearer roles serve to keep track of turn ownership.
+•FACTS represents the shared knowledge conversational participants utilizeduring a conversation. More operationally, this amounts to informationthat a conversational participant can use embedded under presuppositionaloperators.
+•Moves: from within FACTS it is useful to single out LatestMove, a distin-guished fact that characterizes the content of the most recent move made. Themain motivation is to segregate from the entire repository of presuppositionsinformation on the basis of which coherent reactions could be computed. As wesee below (e.g., when discussing greeting interaction), keeping track of morethan just the latest move can be useful.
+•QUD: questions that constitute a ‘live issue.’ That is, questions that havebeen introduced for discussion at a given point in the conversation and whose
+discussion has not yet been concluded . There are additional, indirect ways
+for questions to get added into QUD, the most prominent of which is dur-ing meta-communicative interaction (see Section 4.7). Being maximal in QUD(MaxQUD) corresponds to being the current ‘discourse topic,’ and this is a keycomponent of our account.
+4.3 Illocutionary interaction
+To get started, we abstract away from the communicative process, assuming per-fect communication. The basic units of change are mappings between dialoguegameboards that specify how one gameboard conﬁguration can be modiﬁed intoanother on the basis of dialogue moves. We call a mapping between DGB types aconversational rule. The types specifying its domain and its range we dub, respec-tively, the preconditions and the effects, both of which are supertypes of DGB.
+Notationally a conversational rule will be speciﬁed as in (35):
+(35)[
+pre(conds) : RTypeeffects : RType]
+4.4 Move coherence
+To illustrate how illocutionary interaction can be speciﬁed, we consider the exam-ple of greetings and partings. An initiating greeting typically occurs dialogueinitially. The primary contextual effect of such a greeting is simply to provide the
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 460 — #32
+460 Jonathan Ginzburg and Raquel Fernández
+addressee with the possibility of reciprocating with a counter-greeting, though ofcourse it has other expressive effects (indication of non-hostility, etc.). The conver-
+sational rule associated with greeting is given in (36a). The preconditions state thatboth Moves and QUD need to be empty, though obviously this does not apply toFACTS. The sole DGB effect a greeting has – remember we are abstracting awayfrom utterance processing for the moment – is to update MOVES with its content.In the sequel we adopt a more economical notation: the preconditions can be writ-ten as DGB∧PreCondSpec, where PreCondSpec is a type that includes information
+speciﬁc to the preconditions of this interaction type. The effects can be written asDGB∧PreCondSpec
+′∧ChangePreconSpec , where ChangePreconSpec represents those
+aspects of the preconditions that have changed. We notate conversational rulessimply as (36b), and the rule for greeting as (36c):
+(36) a.⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣pre :⎡⎢⎢⎢⎢⎢⎣spkr: Indaddr: Indmoves =elist : list(IllocProp)
+qud=eset : poset(Question)
+facts=commonground1 : Prop⎤⎥⎥⎥⎥⎥⎦
+effects :⎡⎢⎢⎢⎢⎢⎣spkr=pre.spkr : Ind
+addr=pre.addr : Ind
+LatestMove =Greet(spkr,addr) : IllocProp
+qud=pre.qud : list(Question)
+facts=pre.facts : Prop⎤⎥⎥⎥⎥⎥⎦⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+b.[
+pre : PreCondSpeceffects : ChangePreconSpec]
+c.⎡⎢⎢⎢⎣pre :[
+moves =elist : list(IllocProp)
+qud=elist : list(Question)]
+effects :[
+LatestMove =Greet(spkr,addr) : IllocProp]⎤⎥⎥⎥⎦
+A counter-greeting involves turn change and grounds the original greeting; we
+capture this potential by the rule in (37):
+(37)⎡⎢⎢⎢⎢⎢⎢⎢⎣pre :[
+LatestMove =Greet(spkr,addr) : IllocProp
+qud=elist : list(Question)]
+effects :⎡⎢⎣spkr=pre.addr : Ind
+addr=pre.spkr : Ind
+LatestMove =CtrGreet(spkr,addr) : IllocProp⎤⎥⎦⎤⎥⎥⎥⎥⎥⎥⎥⎦
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 461 — #33
+Computational Models of Dialogue 461
+Parting can be speciﬁed in almost analogous terms, with the difference that only
+QUD needs to be empty – all raised issues have been resolved for current pur-poses – and that there exists a presupposition that a certain amount of interactionhas taken place (see Ginzburg 2010 for details).
+4.5 Querying and assertion
+The basic protocol for two-person querying and assertion that we assume isin (38):
+(38)querying assertion
+LatestMove =Ask(A,q) LatestMove =Assert(A,p)
+A: push q onto QUD; A: push p? onto QUD;
+release turn release turn
+B: push q onto QUD; B: push p? onto QUD;
+take turn take turn
+make q-speciﬁc Option 1: Discuss p?
+utterance;
+take turn Option 2: Accept p
+LatestMove =Accept(B,p)
+B: increment FACTS with p;
+pop p? from QUD
+A: increment FACTS with p;
+pop p? from QUD
+q-speciﬁc utterance: an utterance whose content is either a proposition pabout
+MaxQUD (partial answer ) or a question q1on which MaxQUD depends (subques-
+tion).8
+Two aspects of this protocol are not query-speciﬁc:
+(1) The protocol is like the one we have seen for greeting – a two-person turn
+exchange protocol (2-PTEP).
+(2) The speciﬁcation make q-specific utterance is an instance of a general
+constraint that characterizes the contextual background of reactive queriesand assertions.
+This latter speciﬁcation can be formulated as in (39): the rule states that if q is
+QUD-maximal, then either participant may make a q-speciﬁc move. Whereas thepreconditions simply state that qis QUD-maximal, the preconditions underspecify
+who has the turn and require that the latest move – the ﬁrst element on the MOVESlist – stand in the Qspeciﬁc relation to q:
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 462 — #34
+462 Jonathan Ginzburg and Raquel Fernández
+(39) QSpec:⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣preconds :[
+qud=⣨
+q, Q⟩
+: poset(Question)]
+effects :⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣spkr : Indc1 : spkr =preconds.spkr ∨preconds.addr
+addr : Indc2: member(addr,{
+preconds.spkr,preconds.addr}
+)
+∧addr̸=spkr
+r : AbSemObjR : IllocRelMoves =⣨
+R(spkr,addr,r)⟩⨁m: list(IllocProp)
+c1 : Qspeciﬁc(r,preconds.qud.q)⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+The only query-speciﬁc aspect of the query protocol in (38) is the need to
+increment QUD with qas a consequence of qbeing posed:
+(40) Ask QUD-incrementation:⎡⎢⎢⎢⎣pre :[
+q:Q u e s t i o nLatestMove =Ask(spkr,addr,q) : IllocProp]
+effects :[
+qud=[q,pre.qud] : list(Question)]⎤⎥⎥⎥⎦
+What are the components of the assertion protocol? Not speciﬁc to assertion is
+the fact that it is a 2-PTEP; similarly, the discussion option is simply an instanceof QSpec. This leaves two novel components: QUD incrementation with p?, which
+can be speciﬁed like (40) mutatis mutandis , and acceptance. Acceptance is a some-
+what more involved matter because a lot of the action is not directly perceptible.The labor can be divided here in two: ﬁrst, we have the action brought about byan acceptance utterance (e.g., ‘mmh,’ ‘I see’). The background for an acceptanceby B is an assertion by A and the effect is to modify LatestMove:
+(41) Accept move:⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣pre=⎡⎢⎣p:P r o pLatestMove =Assert(spkr,addr,p) : IllocProp
+qud=[ p ? ,...]:l i s t ( Q u e s t i o n )⎤⎥⎦
+effects =⎡⎢⎣spkr=pre.addr : Ind
+addr=pre.spkr : Ind
+LatestMove =Accept(pre.addr,spkr,p) : IllocProp⎤⎥⎦⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+The second component of acceptance is the incrementation of FACTS by p.T h i s
+is not quite as straightforward as it might seem: when FACTS gets incremented,
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 463 — #35
+Computational Models of Dialogue 463
+we also need to ensure that p? gets downdated from QUD – only non-resolved
+questions can be in QUD (resolved questions have a use as ‘rhetorical questions,’see Ginzburg 2010). In order to ensure that this is the case, we need to check, foreach element of QUD, that it is not resolved by the new value of FACTS. Hence,accepting pinvolves both an update of FACTS and a downdate of QUD enforced
+via the function NonResolve – minimally just removing p?, but possibly removing
+other questions as well:
+(42) Fact update/QUD downdate:⎡⎢⎢⎢⎢⎢⎢⎢⎢⎣preconds :⎡⎢⎣p:P r o pLatestMove =Accept(spkr,addr,p)
+qud=[p?,preconds.qud] : poset(Question)⎤⎥⎦
+effects :⎡⎣facts=preconds.facts ∪{
+p}
+: Set(Prop)
+qud=NonResolve(preconds.qud,facts) : poset(Question)⎤⎦⎤⎥⎥⎥⎥⎥⎥⎥⎥⎦
+With this in hand, we can exemplify the framework sketched so far with the
+example in (43):
+9
+(43) A(1): Hi
+B(2): HiA(3): Who’s coming tomorrow?B(4): Several colleagues of mine (are coming).A(5): I see.B(6): Mike (is coming) too.
+Utt. DGB update Rule
+(conditions)
+initial MOVES =⟨ ⟩
+QUD =⟨ ⟩
+FACTS =cg1
+1 LatestMove : =Greet(A,B) greeting
+2 LatestMove : =CounterGreet(B,A) counter-greeting
+3 LatestMove : =Ask(A,B,q0) Free speech
+QUD : =⟨q0⟩ Ask QUD-incrementation
+4 LatestMove : =Assert(B,A,p1) QSpec
+(About(p1,q0))
+QUD : =⟨p1?,q0⟩ Assert QUD-incrementation
+5 LatestMove : =Accept(A,B,p1) Accept
+QUD : =⟨q0⟩ Fact update/QUD downdate
+FACTS : =cg1∧p1
+6 LatestMove : =Assert(B,A,p2) QSpec
+(About(p2,q0))
+QUD : =⟨p2?,q0⟩ Assert QUD-incrementation
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 464 — #36
+464 Jonathan Ginzburg and Raquel Fernández
+We are also now in a position to explain how many of the earlier bench-
+marks can be met: accommodating non-resolving answers ,follow-up queries to
+non-resolving answers ,sub-questions,a n d disagreement are all fairly immediate
+consequences of QSpec: the ﬁrst three follow given that the QUD-maximality
+ofqallows a q-speciﬁc utterance to be made, disagreement is accommo-
+dated since asserting pmakes p? QUD-maximal, and p?-speciﬁc utterances
+include disagreements. Two other benchmarks can be met due to the mech-anism of fact update above: Assertion benchmark1: if accepted,
+integrate propositional content with existing knowledge baseis a direct consequence. Accommodating ‘overinformative’ answers also follows,to a ﬁrst approximation, given that semantic information does not get ‘wasted.’Full attention to ‘overinformativity’ is a long story involving implicature andprivate parts of information states (on which more below).
+We can also say something about the Scaling Up benchmark. Self-answering is
+directly accommodated by QSpec given that it licenses MaxQUD-speciﬁc utter-ances regardless of who the speaker of LatestMove is. Another consequence ofQSpec is the possibility of posing two successive questions by a single speaker,where the second question inﬂuences the ﬁrst; the second query becomes QUDmaximal.
+(44) a. Ann: What are your shifts next week? Can you remember offhand?
+James: Yes. I’m early Monday and Tuesday (pause) and Wednesday(pause) a day off Thursday (pause) Friday (pause) late (BNC, KC24968-4971)
+b. Ann: Anyway, talking of over the road, where is she? Is she home?
+Betty: No. She’s in the Cottage. (BNC, KC2 5121-5124)
+QSpec also allows for successive assertions p
+1,p2, where p2is about p1?. When
+the later assertion p2is accepted, the issue associated with the earlier assertion
+p1will be downdated iff FACTS (including p 2) resolves p1?; this is an implicit
+mechanism for accepting p1.
+Not all successive queries and successive assertions can be dealt with in this
+way, and some require postulation of additional conversational rules in orderto accommodate further rhetorical relations (for more discussion on this see inparticular Asher & Lascarides 2003; Prévot 2003).
+4.6 Domain speciﬁcity
+(DA) Reuse interactional procedures across domains, insofar as possible.
+So far we have discussed queries and assertions that arise reactively.C o n -
+ventions regulating the initiating of such moves, conversation initially and peri-
+odically during extended interactions, are less domain-independent, far moredependent on the activity conversationalists are enagaged in, and on politeness,prior acquaintance between conversationalists, etc. The basic intuition one can
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 465 — #37
+Computational Models of Dialogue 465
+pursue is that a move can be made if it relates to the current activity.10In some cases
+the activity is very clearly deﬁned and tightly constrains what can be said. In othercases the activity is far less restrictive on what can be said:
+(45) a. Buying a train ticket : c wants a train ticket: c needs to indicate where
+to, when leaving, if return, when returning, which class; s needs toindicate how much needs to be paid
+b.Buying in a boulangerie : c needs to indicate what baked goods are
+desired; b needs to indicate how much needs to be paid
+c.Buying goods in a minimarket stationed in a petrol station : c needs
+to show what she bought; s needs to check if c bought petrol and totell c how much needs to be paid.
+d.Chatting among friends: ﬁrst: how are conversational participantsand their near ones?
+e.Buying in a boulangerie from a long-standing acquaintance : combi-
+nation of (b) and (d).
+Trying to operationalize activity relevance presupposes that we can classify
+conversations into various genres, a term we use following Bakhtin (1986) to
+denote a particular type of interactional domain. There are at present remark-ably few such taxonomies (though see Allwood 1999 for an informal one) andwe will not attempt to offer one here. However, we can indicate how to clas-sify a conversation into a genre. One way is by providing a description of aninformation state of a conversational participant who has successfully completed
+such a conversation. Final states of a conversation will then be records of type Tfor T a subtype of DGB
+ﬁn; here questions no (longer) under discussion (QNUD)
+denotes a list of issues characteristic of the genre which will have been resolved ininteraction:
+(46) DGB
+ﬁn=⎡⎢⎣Facts : PropQNUD =list : list(question)
+Moves : list(IllocProp)⎤⎥⎦
+In (47) we exemplify two genres, informally speciﬁed in (54):(47) a. CasualChat:⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣A : IndB : Indt: TimeIntervalc1 : Speak(A,t) ∨Speak(B,t)
+facts : Set(Prop)qnud : list(question)c2:{
+λP.P(A), λP.P(B)}
+⊂qnud
+moves : list(IllocProp)⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 466 — #38
+466 Jonathan Ginzburg and Raquel Fernández
+b. BakeryChat:⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣A : IndB : Indt: TimeIntervalc1 : Speak(A,t) ∨Speak(B,t)
+facts : Set(Prop)qnud : list(question)c2 :{
+λP.P(A), λP.P(B), λx.InShopBuy(A,x),
+λx.Pay(A,x)}
+⊂qnud
+moves : list(IllocProp)⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+We can then offer the following deﬁnition of activity relevance: one can make
+an initiating move m0 if one believes that the current conversation updated withm0 is of a certain genre G0. Making move m0 given what has happened so far
+(represented in dgb0) can be anticipated to conclude as ﬁnal state dgb1 which is a
+conversation of type G0:
+(48) m0 is relevant to G0 in dgb0 for A iff there exists dgb1 such that dgb0⊏
+dgb1, and such that dgb1 : G0
+4.7 Meta-communicative interaction
+A theory of MCI needs to meet the high-level benchmarks we formu-lated earlier, speciﬁcally those concerning Semantic non-determinism and
+Fine-grained utterance representation . KoS is already equipped to
+address the ﬁrst challenge due to the fact that each conversational participant isassociated with a distinct DGB – concrete exempliﬁcation of this is offered towardsthe end of this section. Therefore there is no single context in conversation but
+rather coupled and potentially mismatched dialogue gameboards. Only one modiﬁ-
+cation is required to the structure of the DGB, the postulation of a ﬁeld Pending,
+whose members are ungrounded utterances. For reasons we discuss shortly thetype of Pending (and concomitantly that of Moves) is a list of locutionary propo-
+sitions , propositions consisting of an utterance record and a (grammatical) type
+which classiﬁes it. This leads to a new deﬁnition of DGB type:
+(49) DGB =⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣spkr : Indaddr : Indc-utt : addressing(spkr,addr)Facts : Set(Prop)Pending : list(LocProp)Moves : list(LocProp)QUD : poset(Question)⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 467 — #39
+Computational Models of Dialogue 467
+In the immediate aftermath of a speech event u,Pending gets updated with
+a record of the form[
+sit=u
+sit-type =Tu]
+(of type locutionary proposition (LocProp)).
+Here Tuis a grammatical type for classifying uthat emerges during the process
+of parsing u. In the most general case it should be thought of as a chart (Cooper,
+forthcoming), but in the cases we consider here it can be identiﬁed with a sign
+in the sense of head driven phrase structure grammar (HPSG). The relationshipbetween uand T
+u– describable in terms of the proposition pu=[
+sit=u
+sit-type =Tu]
+–
+can be utilized in providing an analysis of grounding/CRiﬁcation conditions:11
+(50) a. Grounding: puis true: the utterance type fully classiﬁes the utterance
+token.
+b. CRiﬁcation: Tuis weak (e.g., incomplete word recognition); uis
+incompletely speciﬁed (e.g., incomplete contextual resolution).
+Postulating that Pending be of type LocProp allows us to meet the
+Fine-grained utterance representation benchmark: Tuprovides the
+ﬁne grain and the information needed to capture syntactic/phonological paral-lelism; uis necessary to instantiate the contextual parameters of T
+u, as well as to
+provide the sub-utterance tokens that ﬁgure in CRs (on the latter see the discus-sion concerning example (68)).
+12We can also formulate the following utterance
+processing protocol, which interleaves illocutionary and meta-communicativeinteraction:
+(51) Utterance processing protocolFor an agent A with IS I: if a locutionary proposition p
+u=[
+sit=u
+sit-type =Tu]
+is maximal in Pending:(a) if p
+uis true, try to integrate puin A.DGB using a Moves update rule;
+(b) otherwise: try to accommodate puas a CR to LatestMove;
+(c) if (a) and (b) fail, seek a witness for Tuby asking a CR: introduce a
+clariﬁcation issue derivable from puas the maximal element of QUD; use
+this context to formulate a clariﬁcation request.
+A full theory of MCI involves a compositional analysis of (a somewhat more
+sophisticated version of) this protocol using update rules entirely akin to thoseused for illocutionary interaction in Section 4.3. We concentrate here on elucidatinghow a CR gets asked and which are the available CRs. Given that any subutter-ance of a given utterance is potentially clariﬁable, one prerequisite at the levelof utterance representation is the accessibility of all subutterances. We achievethis by positing that the ﬁeld
+C-PARAMS of a given utterance type is a record
+type specifying two kinds of witnesses: (a) subutterance tokens, characterized interms of their morpho-syntactic properties, and (b) referents, speciﬁed in terms
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 468 — #40
+468 Jonathan Ginzburg and Raquel Fernández
+of their semantic contribution. Repetition and meaning-oriented CRs are speci-ﬁed by means of a particular class of conversational rules – clariﬁcation contextupdate rules (CCURs). Each CCUR speciﬁes an accommodated MaxQUD built upfrom a subutterance u1 of the target utterance MaxPending. Common to all CCURs
+is a license to follow up MaxPending with an utterance which is co-propositional
+with MaxQUD.
+13In the current context co-propositionality amounts to: either a
+CR which differs from MaxQUD at most in terms of its domain, or a correction –a proposition that instantiates MaxQUD.
+To make this concrete, we consider one speciﬁc CCUR Parameter
+identification , used to specify intended content CRs. (52) indicates that given
+u0, a subutterance token of MaxPending, one may accommodate as MaxQUDthe issue ‘What did spkr mean by u0.’ Concomitantly, the next move must beco-propositional with this issue:
+(52) Parameter identiﬁcation:⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣preconds :⎡⎢⎣Spkr : IndMaxPending : LocPropu0∈MaxPending.sit.constits⎤⎥⎦
+effects :⎡⎢⎣MaxQUD =What did spkr mean by u0? : Question
+LatestMove : LocPropc1: CoProp(LatestMove.cont,MaxQUD)⎤⎥⎦⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+(52) underpins CRs such as (53b, 53c) as follow-ups to (53a):
+(53) a. A: Is Bo here?
+b. B: Who do you mean ‘Bo’?
+c. B: Bo? (= Who is ‘Bo’?)
+We can also deal with corrections, as in (54). B’s corrective utterance is
+co-propositional with λxMean(A,u0,x), and hence allowed by the speciﬁcation:
+(54) B: You mean Jo.In Figure 16.5 we provide an illustration of our account of the semantic
+non-determinism benchmark: the same input leads to distinct outputs on the
+‘public level’ of information states. In this case this arises due to differential abilityto anchor the contextual parameters. The utterance u0 has three subutterances, u1,u2, u3, given in Figure 16.5 with their approximate pronunciations. A can groundher own utterance since she knows the values of the contextual parameters, whichwe assume here for simplicity include the speaker and the referent of the subut-terance ‘Bo.’ This means that the locutionary proposition associated with u0 – theproposition whose situational value is a record that arises by unioning u0 with thewitnesses for the contextual parameters and whose type is given in Figure 16.5 – is
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 469 — #41
+Computational Models of Dialogue 469
+ABA
+Figure 16.5 A single utterance gives rise to distinct updates of the DGB for distinct
+participants.
+true. This enables the ‘canonical’ illocutionary update to be performed: the issue‘whether b left’ becomes the maximal element of QUD. In contrast, let us assumethat B lacks a witness for the referent of ‘Bo.’ As a result, the locutionary propo-sition associated with u0 which B can construct is not true. Given this, B usesthe CCUR parameter identification to build a context appropriate for a
+clariﬁcation request: B increments QUD with the issue λxMean(A,u2,x), and the
+locutionary proposition associated with u0 which B has constructed remains inPending.
+To conclude our discussion of the basics of MCI, we consider brieﬂy relevance
+CRs and topic changing, ‘irrelevant responses’ (the latter our benchmark Q5). The
+basic trigger for both is the condition in (55), where the content of an utterancestands in the ‘Irrelevant’ relation to a DGB:
+(55) Irrelevant(u.cont,dgb)Irrelevant(p,dgb0) here relates an illocutionary proposition p, the content of the
+‘irrelevant’ move, to a DGB dgb0 just in case there is no update rule U such thatU(dgb0).LatestMove.cont =p. For instance, given what we have said here, an irrel-
+evant follow-up to an utterance uwhich expresses a query qis an utterance which
+is neither q-speciﬁc nor a clariﬁcation request triggered by u:
+(56) a. LatestMove =u; u.content =Ask(A,q),
+b.pis not q-speciﬁc
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 470 — #42
+470 Jonathan Ginzburg and Raquel Fernández
+c.pis not co-propositional with any question q0 that satisﬁes q0 =
+CCUR1.qud(u) for some CCUR CCUR1
+The potential for CRs concerning the relevance of an utterance is already,
+with one potentially signiﬁcant caveat, accommodated by the rule parameter
+identification we saw above. The one signiﬁcant difference of relevance CRs
+is that the trigger is typically the irrelevance of a fully instantiated utterance .T h e
+answer to such a CR will not in general be represented in the DGB, in contrast toother CRs, where it could be found in
+C-PARAMS orPHON of the responder.
+This means that we need to offer an alternative deﬁnition for the Mean predicate
+to the one appropriate for semantically oriented CRs. What we would need wouldbe a deﬁnition along the following lines – identifying the speaker meaning withthe maximal element of the agenda of the utterance’s speaker:
+(57) Given u.sit.cont : IllocProp, Mean(A,u,c) iff u.c-param.spkr =Aa n d
+A.private.maxagenda =c
+As for irrelevance implicatures, we can offer a ‘short-circuited’ version of the
+Gricean account – irrelevance is a means of non-grounding the previous utter-ance, itself an instance of a more general process of ignoring commonly perceivedevents. The short-circuited version takes the form of the update rule in (58) – giventhat MaxPending is irrelevant to the DGB, one can make MaxPending into Latest-
+Move while updating Facts with the fact that the speaker of MaxPending does notwish to discuss MaxQUD:
+(58)⎡⎢⎢⎢⎢⎢⎢⎢⎢⎣preconds :[
+dgb : DGBc: IrRelevant(maxpending
+content,dgb)]
+effects :⎡⎢⎢⎣LatestMove =pre.pending : LocProp
+Facts=pre.Facts ∪{
+¬WishDiscuss(pre.spkr,pre.maxqud)}⎤⎥⎥⎦⎤⎥⎥⎥⎥⎥⎥⎥⎥⎦
+Note that this does not make the unwillingness to discuss be the content
+of the offending utterance; it is merely an inference. Still this inference willallow M
+AXQUD to be downdated, via a slightly reﬁned version of fact
+update/question downdate – if information is accepted indicating negative
+resolution of ?WishDiscuss(q), then qmay be downdated from QUD.
+4.8 Disﬂuencies
+The setup for meta-communicative interaction described in the previous section
+extends straightforwardly to yield an account of self-correction, and other disﬂu-
+encies. The sole, but signiﬁcantly consequential, modiﬁcation such an accountpresupposes is to the structure of Pending. This now needs to incorporate also
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 471 — #43
+Computational Models of Dialogue 471
+utterances that are in progress and, hence, incompletely speciﬁed semantically and
+phonologically. This, in turn, requires the use of types that characterize utterancesword by word (or minimally constituent by constituent), as, e.g., in combina-tory categorial grammar (Steedman 2000), type logical grammar (Morrill 2000),dynamic syntax (Kempson et al., 2000), PTT (Poesio & Traum 1997), or by abstrac-tion from a ‘standard’ grammar (as one could implement in HPSG
+TTR, that version
+of HPSG whose logical underpinning is TTR). A variety of issues arise, in conse-quence, issues that are still very much open, including monotonicity in processing,and the nature of incremental denotations. Fortunately the account of disﬂuenciescan be formulated without making commitments on these issues.
+Incrementalizing Pending has the independent consequence of enabling us
+to account for the Incremental Acknowledgments benchmark (inspired by
+examples such as 13c) (Ack2). We can formulate a lexical entry for ‘ mmh,’
+which enables a speaker to acknowledge the current addressee’s most recentlyungrounded utterance, regardless of whether it is complete (in which case itscontent would be an IllocProp) or not:
+(59)⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣
+PHON :⟨mmh ⟩
+CAT=interjection : syncat
+c-params :⎡⎢⎢⎢⎣spkr : INDaddr : INDMaxPending : LocPropc2 : address(addr,spkr,MaxPending)⎤⎥⎥⎥⎦
+CONT =Understand(spkr,addr,MaxPending) : IllocProp⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+The basic intuition behind this account of disﬂuencies is an analogy to CRiﬁ-
+cation: in the latter a CR provides the potential for an answer, which allows theoriginal poser of the CR to ﬁx his utterance. For self-corrections, editing phrases
+(EditPs) (long silences, discourse particles like ‘No ...,’ ‘um,’ etc.) correspond to
+CRs, whereas the alternation, that subutterance with the correcting material, corre-
+sponds to an answer to a CR. There are two remaining steps: ﬁrst provide for thecoherence of the EditP . This is simple to do: all we need to say is that an EditP canbe interpolated at any point where Pending is non-empty. Finally, take as input astate where the LatestMove is an EditP and specify as output a new state in whichthe MaxQUD is What did spkr mean to utter at u0? and where the new utterance has
+to be an instantiation of MaxQUD (propositional or polar question):
+14
+(60) Utterance identiﬁcation:
+Input:⎡⎢⎢⎢⎣Spkr : IndMaxPending : LocPropLatestMove =EditP(Spkr,MaxPending) : IllocProp
+u0∈MaxPending.sit.constits⎤⎥⎥⎥⎦
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 472 — #44
+472 Jonathan Ginzburg and Raquel Fernández
+Output:⎡⎢⎣MaxQUD =What did spkr mean to say at u0? : Question
+LatestMove : LocPropc2 : InstPropQ(LatestMove.cont,MaxQUD)⎤⎥⎦
+The same mechanism that updates the DGB after a CR and effects an update
+of information concerning a given utterance applies here. It ensures that the alter-ation of the original sub-utterance replaces or reinforces the repaired subutterancein
+PENDING . At the same time, the presupposition concerning the latter’s taking
+place will remain in FACTS. We thereby meet(61) D2: Explicate disﬂuency meaning without eliminating disﬂuencies from
+context.
+4.9 Sentential fragments
+The approach we pursue here to sentential fragments is constructional, i.e., froma grammatical point of view we treat such constructions as sui generis, not as
+underlyingly canonical sentences, as is common in generative linguistics. Thefundamental argument for this strategy is the existence of a wide array of mis-matches between the syntactic and semantic properties of sentential fragmentsand putative sentential correlates (for extensive argumentation, see Ginzburg &Sag 2000; Schlangen 2003; Fernández 2006; Ginzburg 2010). (62) exempliﬁes thisclaim – (62a) shows the distinct distribution of a direct sluice and of its putativecanonical correlate; (62b) shows a similar datum for a short answer and its puta-tive canonical correlate; ﬁnally (62c) illustrates that elliptical exclamatives cannotbe embedded, in contrast to sentential exclamatives:
+(62) a. A: Somebody stood outside the room. B: Who? / #Who the hell? /
+Who the hell stood outside the room?
+b. Who stood outside the room? Not Bo. / #Not Bo stood outside the
+room.
+c. A: What a shot! / *It’s amazing what a shot. / It’s amazing what a shot
+she made.
+The existence of parallelism between source and NSU on various dimensions
+necessitates positing one additional contextual parameter, namely an antecedentsubutterance (of the utterance which is MaxQUD). Intuitively, this parameter pro-vides a partial speciﬁcation of the focal (sub)utterance, and hence it is dubbedthefocus establishing constituent (FEC). Varying roles are played by the FEC: in
+some cases it is crucial for semantic composition, while in others it plays adisambiguating role via morpho-syntactic or phonological parallelism.
+Given that their lifetimes are as a rule identical, we can pair QUDs and FECs
+as part of contextual speciﬁcation. Concretely this amounts to changing the type
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 473 — #45
+Computational Models of Dialogue 473
+of QUD from list(Questn) tolist(Info-struc), where Info-Struc is the following
+type:
+(63) Info-struc =[
+q:Q u e s t nfec : set(LocProp)]
+It also means that FECs get introduced by (minor modiﬁcations of) rules we
+have seen above for incrementing and downdating QUD, namely Ask-QUDincrementation and the CCURs.
+With this in hand, we turn to illustrating KoS’s approach to sentential fragment
+grammar and meaning.
+15Sentential fragments are essentially akin to indexicals
+(‘I’: speaker, ‘you’: addr, ‘here’: speech loc., ...) but, whereas the latter resolve to
+concrete elements of the utterance context, sentential fragment resolution is basedon reference to DGB elements:
+16
+4.9.1 Yes Its informal meaning is simply – MaxQUD’s proposition. (64)
+includes a rudimentary lexical entry for this word which formalizes thisintuition:
+(64)⎡⎢⎢⎢⎣phon : yescat=adv : syncat
+max-qud : PolarQuestncont=max-qud( []): Prop⎤⎥⎥⎥⎦
+4.9.2 Short answers This construction can be described in the following terms:
+the content arises by function application of MaxQUD to the fragment’s content;syntactically the fragment must bear an identical syntactic category to the FEC.(65) represents this construction in HPSG
+TTR:
+(65) decl-frag-cl =⎡⎢⎢⎢⎢⎢⎢⎢⎣cat=V[+ﬁn] : syncat
+hd-dtr :[
+cat=max-qud.fec.cat : Syncat]
+∧sign
+max-qud : WhQuestncont=max-qud(hd-dtr.cont) : Prop⎤⎥⎥⎥⎥⎥⎥⎥⎦
+Given that the meaning of short answers is directly tied to MaxQUD,
+we can fulﬁll the distance benchmark: accommodate long-distance
+short answers: such answers are predicted to be possible insofar as the cor-responding issue is still in QUD. Since QUD consists of elements of type info-struc,
+we can also capture the long-distance syntactic parallelism short answers exhibit.
+We turn ﬁnally to two sentential fragments used in MCI, the conﬁrmation and
+intended content readings of reprise fragments (RF).
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 474 — #46
+474 Jonathan Ginzburg and Raquel Fernández
+4.9.3 Reprise fragments: conﬁrmation reading Assume the utterance to be
+clariﬁed is (66a). B uses the CCUR parameter identification to build a
+context as in (66b):
+(66) a. A: Did Bo leave?
+b. MaxQUD =λxMean(A,u2,x); FEC =A’s utterance ‘Bo’
+Given this, the analysis of the construction is illustrated in (67): the construc-
+tion decl-frag-cl builds the proposition Mean(A,u2,b); the construction polarization
+builds a polar question from this:
+(67) S
+polarization
+cont = ?hd-dtr.cont = ?Mean(A,u2,b) : Questn
+S
+maxqud =fec = p2 : LocProp: InfoStruc
+hd-dtr :
+cat = fec.cat : syncat
+cont = maxqud.q(hd-dtr.cont.x)
+NP
+BOcont : x : Inddecl-frag-cl
+q = lx Mean(A,u2,x) : Questn
+4.9.4 Reprise fragments: intended content reading Intended content readings
+of RFs involve a complex mix of a prima facie non-transparent semantics and
+phonological parallelism. Independently of intended content readings, we needto capture the utterance anaphoricity of ‘quotative’ utterances such as (68):
+(68) a. A: Bo is coming. B: Who do you mean ‘Bo’?
+b. D: I have a Geordie accident. J: ‘accident’ that’s funny.
+We assume the existence of a grammatical constraint allowing reference to a
+subutterance under phonological parallelism. (69) exempliﬁes one way of formu-lating such a constraint: the
+PHON value is type identical with the PHON value of
+an utterance identiﬁed with the focus establishing constituent, whereas the con-tent is stipulated to be the utterance event associated with the focus establishingconstituent:
+17
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 475 — #47
+Computational Models of Dialogue 475
+(69) utt-anaph-ph⎡⎢⎢⎢⎢⎢⎣tune=max-qud.fec.sit-type.phon : Type
+phon : tune
+cat : syncatmax-qud : info-struccont=max-qud.fec.sit : Rec⎤⎥⎥⎥⎥⎥⎦
+With this in hand, we turn back to consider the issue of how intended content RFs
+arise grammatically. It is worth emphasizing that there is no way to bring aboutthe desired content using decl-frag-cl, the short-answer/reprise sluice phrasal type
+we have been appealing to above, regardless of whether we analyze the NP frag-ment as denoting its standard conventional content or alternatively as denotingan anaphoric element to the phonologically identical to-be-clariﬁed subutterance.This is a prototypical instance of appeal to constructional meaning – a complexcontent that cannot be plausibly constructed using ‘standard combinatorial oper-ations’ (function application, uniﬁcation etc.) from its constituents. Thus, one wayof accommodating intended content RF is to posit a new phrasal type, qud-anaph-int-
+cl. This will encapsulate the two idiosyncratic facets of such utterances, namely theMaxQUD/content identity and the HD-DTR being an utt-anaph-ph:
+(70) qud-anaph-int-cl =⎡⎢⎣max-qud : InfoStruccont=max-qud.q : Questn
+hd-dtr : utt-anaph-ph⎤⎥⎦
+Given this, we can offer the following analysis of (71):(71) a. A: Is Georges here? B: Georges?
+b. B lacks referent for ‘Georges’; uses parameter identification to
+update MaxQUD accordingly:⎡⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣spkr=B
+addr=A
+pending =⟨[
+sit=w0’
+sit-type =IGH]⟩
+maxqud =[
+q=λxMean(A,p2,x) : Question
+fec=p2 : LocProp]
+: InfoStruc⎤⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 476 — #48
+476 Jonathan Ginzburg and Raquel Fernández
+Using qud-anaph-int-cl yields:
+(72) S
+qud-anaph-int-clmaxqud =
+S
+utt-anaph-ph
+BObu = max-qud.fec.sit-type.phon : Type
+phon : bucont = maxqud.qfec = p2 : LocPropq = lx Mean(A,p2,x) : Question: InfoStruc
+5 Extensions
+In this chapter we have surveyed some core phenomena that theories of dialogueneed to tackle. We also sketched a uniﬁed treatment of these phenomena. For rea-sons of space we could not enter into discussion of various other highly signiﬁcantaspects of dialogue. Here we point to some recent work that has tackled theseaspects.
+5.1 Automatic learning of dialogue management
+Recent advances have been made in the application of machine learning (ML) tech-niques to dialogue management. One of the most common methods used in thisline of research is reinforcement learning (Sutton & Barto 1998). In this approach,the conversational skills of a spoken dialogue system are modeled as a Markovdecision process (MDP) (Levin & Pieraccini, 1997; Levin et al., 1998). The modelconsists of a ﬁnite set of states S, a ﬁnite set of actions A, a transition function
+T(s
+′,a,s)that speciﬁes the probability of transitioning to state s′from state safter
+performing action a, and a reward function R(s′,a,s)that assigns a reward value
+to each transition. Given this model, the dialogue manager can be seen as a learn-ing agent that learns an optimal policy π:S↦→A, that is, a mapping from states to
+actions that maximizes the overall reward (which is a function, usually a weightedsum, of all reward values obtained).
+The use of ML techniques is attractive because it offers the possibility to develop
+data-driven approaches to dialogue management that bypass the need to handcraft the rules governing the behavior of a system. Instead of following handcrafted dialogue strategies (in the form of update or inference rules, or as statesand transitions in a manually designed ﬁnite state graph), in a reinforcement learn-ing (RL) framework the system learns interactively from the rewards it receives.
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 477 — #49
+Computational Models of Dialogue 477
+However, appealing as this may be, there are several drawbacks associated withthis approach (see, e.g., Paek & Chickering 2005; Paek & Pieraccini 2008). One ofthem is that, like most ML methods, dialogue managers based on reinforcementtechniques require large amounts of data for training. Collecting and annotatingthe dialogue corpora required to train the algorithms requires large amounts oftime and effort. A related issue, crucial in RL approaches, concerns the modelingof the state space S. Again, like all ML approaches, RL faces the problem of select-
+ing the appropriate features for training, i.e., deciding what state variables shouldbe included in the model. This task is for the most part performed manually.Once an initial set of variables has been chosen, the set can be reﬁned with auto-matic feature selection methods, but the initial candidate variables are selected byhand. Finally, another important parameter that needs to be set and adjusted is thereward function, which directly affects the adopted policy and hence the behaviorof the system. Although there is some research that explores methods to try to inferRfrom data (e.g., Ng & Russell 2000; Walker & Shannon 2000), the typical practice
+is to specify Rmanually, sometimes taking into account parameters linked to the
+task at hand or to user satisfaction (Singh et al., 1999; 2002).
+In principle, dialogue management policies learned with RL methods can make
+use of complex sets of variables encoding rich information (such as the dialoguehistory, ﬁlled and conﬁrmed slots, or information about the interlocutor). How-ever, this can easily lead to an explosion of the state space that may be intractablefor learning (Sutton & Barto 1998). Thus, in practice, researchers developing dia-logue systems have concentrated on learning limited policies, such as for exampleconﬁrmation strategies (Singh et al., 2002). Recent work attempts to address theproblem of large state spaces to provide more general policies (see e.g., Rieser &Lemon, 2008; Henderson et al., 2008a).
+Models can also take into account uncertain information such as the user’s
+intentions and beliefs. This information is not directly observable by the systembut in principle can be inferred from observable variables such as the user’s utter-ance. This can be modeled as a partially observable MDP (POMDP) (Zhang et al.,2001; Young 2006; Williams & Young 2007). In a POMDP the uncertainty about thecurrent state is represented as a probability distribution over Sor a belief state.
+The reward function thus computes the expected reward over belief states, whilea dialogue policy becomes a mapping from n-dimensional belief states to actions
+(see Kaelbling et al., 1995; 1996 for further details).
+5.2 Multiparty dialogue
+Our discussion has focused almost exclusively on two-person conversations, ashas the lion’s share of dialogue systems developed so far. However, the generalcase is multiparty dialogue (also known as multilogue ). A number of multiparty
+dialogue systems have been developed at the Institute for Creative Technology,including the Mission Rehearsal Exercise project (Swartout et al., 2006), a virtualreality-based training system. Traum (2004) considers some of the basic issues
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 478 — #50
+478 Jonathan Ginzburg and Raquel Fernández
+relating multiparty and two-person dialogue; based on NSU data, Ginzburg andFernández (2005) propose some benchmarks that two-person dialogue theoriesaspiring to scale up to multiparty need to fulﬁll and offer general scaling-up transformations applicable to two-person protocols. Kronlid (2008) reﬁnesthese transformations, while offering a detailed implementation of a turn-takingalgorithm.
+5.3 Multi-modal dialogue
+Although spoken language is the basis for communication, other modalities suchas gesture often play central roles in dialogue. There is an increasing amountof research dedicated to multi-modal communication and to the implementationof systems that can handle some form of multi-modal interaction. The simplestmulti-modal systems combine speech with other multi-modal input and outputsuch as the display of graphics or the recognition of pointing gestures such asmouse clicks. As discussed in the seminal paper by Nigay and Coutaz (1993), thekey questions faced by these systems are how information coming from differentmodalities can be integrated into a single message (e.g., to disambiguate a refer-ring expression by means of a gesture) and how different modalities can be fusedin generating multi-modal output. Delgado and Araki (2005) offer a good surveyof multi-modal interfaces.
+A parallel line of research focuses on developing animated characters or embod-
+ied conversational agents (Cassell et al., 2000). These are virtual characters that aimat communicating with humans using speech as well as natural facial expressions,hand gestures, and body posture.
+6 Conclusions
+Dialogue is one of the central disciplines of language sciences – languages areﬁrst encountered, learned, and used in interaction and this has been the case formillenia. And yet the lion’s share of both formal grammar and psycholinguisticwork does not presuppose an interactive setting. Dialogue is a ﬂourishing area inNLP and CL, though primarily in the context of developing dialogue systems.
+In this chapter we have sought to develop an approach to dialogue that
+combines theoretical and systems perspectives. To do so, we grounded ourdiscussion empirically in two dozen benchmarks, benchmarks concerning thetreatment of querying and assertion, domain adaptability and scalability, meta-communication, and the treatment of fragments. We have used these benchmarksto informally evaluate several inﬂuential current approaches to the developmentof dialogue managers for dialogue systems. We then sketched the theory KoS, for-mulated in the framework of type theory with records, which, with one or twoexceptions, fulﬁlls all the benchmarks. KoS involves formulating a rich theory ofinformation states and showing how these get modiﬁed in interaction. One of theimportant features of this theory is that it allows for an interleaving of locutionary
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 479 — #51
+Computational Models of Dialogue 479
+(e.g., grounding, clariﬁcation, and self-correction) and illocutionary (e.g., queryingand assertion) interaction.
+KoS provides an existence proof of a theory of dialogue that can satisfy various
+benchmarks concerning dialogue coherence, while underpinning fairly sophisti-cated linguistic analysis. As we note in the text, this combination also characterizesa number of other recently developed dialogue frameworks such as PTT andSDRT. It is important to emphasize, nonetheless, that formal/computational workin dialogue is still at a fairly early stage. As we noted in Section 5, a comprehensive
+theory of dialogue needs to accommodate the multi-modal nature of interac-tion and the fact that two-person dialogue is a particular instance of multipartydialogue, with the attendant complexity of turn allocation and split attention.
+We believe, furthermore, that one of the important areas of development for
+work in dialogue is embracing both ontogenetic and phylogenetic perspectives. Aphylogenetic or evolutionary perspective on language is gaining signiﬁcant inter-est among language scientists and is, moreover, rooted in interaction among acommunity of agents. Nonetheless, such work has, to date, not made much con-tact with computational work on dialogue. But this is clearly only a matter oftime. As discussed in Section 5, there is already a ﬂourishing body of work onlearning in dialogue, using various machine learning techniques. Such work issigniﬁcant for practical reasons, not least because it has the promise of allowingdomain speciﬁcity to be incorporated in a systematic and large-scale way. It is sig-niﬁcant also because it should provide us with a theory of language learning thatcaptures the fact that interaction between child and caregiver is a vital componentin the emergence of linguistic competence. Indeed, taking interaction seriously, aspointed out in Chapter 8,
+UNSUPERVISED LEARNING AND GRAMMAR INDUCTION ,
+could plausibly simplify the task of language learning signiﬁcantly. An importantchallenge for future work is fusing machine language techniques with symbolicones to achieve the robustness of the former with the linguistic sophistication ofthe latter.
+A dialogical perspective is also, as yet, generally lacking from work on com-
+plexity and formal language theory (though see Fernández and Endriss (2007) foran example of how the latter can inform work on dialogue). But for all the reasonswe have discussed above, there is nothing intrinsic in these lacunae, and one canconﬁdently expect these to be ﬁlled in the coming decade.
+ACKNOWLEDGMENT
+We would like to thank the editors for their very useful comments. Portions of this paperwere presented in our course on computational models of dialogue at the 2008 ESSLLIsummer school in Hamburg; we would like to thank the participants there for their feed-back. Parts of this paper were written while the second author was a research fellow at theCenter for the Study of Language and Information, Stanford University. The work of thesecond author has been partially supported by a Dutch NWO Veni project (grant number275-80-002).
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 480 — #52
+480 Jonathan Ginzburg and Raquel Fernández
+NOTES
+1 This taxonomy, inspired in part by earlier work by Sinclair and Coulthard (1975), in
+fact involves classiﬁcation at a number of levels: the move level, the game level, andthe transaction level.
+2 Annotation in DAMSL involves multiple levels, including levels that concern intel-
+ligibility/completion, semantic content, forward looking function – how the current
+utterance affects the discourse and its participants, and backward looking function –h o w
+the current utterance relates to the previous discourse.
+3 Some of the move types in DAMSL are actually supertypes, whose subtypes we have
+listed in parentheses in (3).
+4 By far the commonest type of what one might call meta-communicative intra actions are
+self-corrections, often referred to under the rubric of disﬂuencies, on which more below.
+5 See www.ling.gu.se/projekt/trindi/trindikit/ and www.ltg.ed.ac.uk/dipper/ for up-
+to-date information on the toolkits.
+6 PTT is not an acronym, but has some relation to the initials of its progenitors.7 A convention we employ here to distinguish phonological tokens and types is to refer
+to the latter with English words and the former with a mock representation of theirpronunciation.
+8 For answerhood and dependence plug your favorite semantics of questions (e.g.,
+Groenendijk and Stokhof 1997; Ginzburg & Sag 2000).
+9 Utterance (43(3)) is an initiating query. Any theory requires some means, typically one
+that makes reference to the domain in which the interaction takes place of licensingsuch queries. Here we appeal to the rule Free speech. This rule, from Ginzburg
+(2010), is a domain-independent principle that licenses the choice of anyquery or asser-
+tion assuming QUD is empty. We discuss how to reﬁne this with a principle that isdomain-speciﬁc in Section 4.6.
+10 The approach sketched here is inspired by work in Larsson (2002), work implemented
+in the GODIS system.
+11 A particularly detailed theory of grounding has been developed in the PTT framework,
+e.g., Poesio and Traum (1997); Poesio and Rieser (2009).
+12 This argumentation carries over to identifying the type of LatestMove as LocProp – this
+information is required to enable A to integrate a CR posed by B concerning A’s latestutterance. Data pointing towards the preservation of non-semantic structure in thelonger term comes from alignment phenomena (Garrod & Pickering 2004). However,the extent to which this is the case or only content is preserved in context long term isvery much an open question.
+13 Two utterances u
+0and u1areco-propositional iff the questions q0and q1they contribute
+to QUD are co-propositional.
+(1) qud-contrib(m0.cont) is m0.cont if m0.cont : Question(2) qud-contrib(m0.cont) is ?m0.cont if m0.cont : Propq
+0and q1are co-propositional if there exists a record rsuch that q0(r)=q1(r).T h i s
+means that, modulo their domain, the questions involve similar answers. For instance‘Whether Bo left,’ ‘Who left,’ and ‘Which student left’ (assuming Bo is a student) areall co-propositional.
+14 Some evidence towards the reality of the MaxQUD postulated in this CCUR is pro-
+vided by examples such as the following attested example: “Hmm. Lots of people are
+
+“9781405155816_4_016” — 2010/5/8 — 12:08 — page 481 — #53
+Computational Models of Dialogue 481
+texting in and getting involved on 606, and, er, what’s the word? Backtracking, that’sit” (from a BBC webcast of a football match, November 12, 2008).
+15 See Schlangen (2003) for an alternative approach to NSUs within SDRT.16 We have space here only to discuss a small number of cases. In particular, direct sluic-
+ing, the most complex non-MCI sentential fragment, would require discussion of ourtreatment of quantiﬁcation. For detailed treatments see Fernández (2006) and Ginzburg(2010).
+17 (69) makes one simplifying assumption: identifying the
+PHON value of the focus estab-
+lishing constituent with that of the utterance anaphoric phrase. In practice this shouldonly be the segmental phonological value.
+

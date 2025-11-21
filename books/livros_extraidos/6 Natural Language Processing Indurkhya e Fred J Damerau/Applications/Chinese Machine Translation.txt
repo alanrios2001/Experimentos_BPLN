@@ -1,0 +1,840 @@
+18
+Chinese Machine
+Translation
+Pascale Fung
+TheHongKongUniversityofScienceandTechnology18.1 Introduction ..........................................................42518.2 Preprocessing—WhatIsaChineseWord?........................426
+TheMaximumEntropyFrameworkforWordSegmentation •
+Translation-DrivenWordSegmentation
+18.3 Phrase-BasedSMT—FromWordstoPhrases ....................43018.4 Example-BasedMT—TranslationbyAnalogy ...................43118.5 Syntax-BasedMT—StructuralTransfer ...........................43218.6 Semantics-BasedSMTandInterlingua ............................436
+WordSenseTranslation •SemanticRoleLabels
+18.7 Applications...........................................................442
+ChineseTermandNamedEntityTranslation •ChineseSpokenLanguage
+Translation •CrosslingualInformationRetrievalUsingMachine
+Translation
+18.8 ConclusionandDiscussion .........................................447Acknowledgments ..........................................................448References....................................................................448
+18.1 Introduction
+Chinese, in particular Mandarin Chinese, is currently the most spoken language in the world, with anestimated 1.2 billion primary and secondary speakers, while English ranks a distant second with 330millionnativespeakers,andafurther150millionsecondaryspeakers.AmongvariousChineselanguages,StandardMandarin(Putonghua/Guoyu/Huayu)istheonlyoﬃcialwrittenformandistheonlycommonoﬃcial language in the four Chinese-speaking countries and regions, including the People’s Republicof China, the Republic of China (commonly known as “Taiwan”), Hong Kong, Macau, and Singapore.Standard Mandarin is also one of the six oﬃcial languages of the United Nations. (There are dialectswithin the Mandarin language family, spoken in various regions in the north and southwest of China.)Incidentally, Standard Mandarin Chinese, together with the other ﬁve oﬃcial UN languages, are alsoranked as the six most inﬂuential languages in the world, when judged by the total number of worldspeakers, the geographical inﬂuence, the economic power of countries speaking the language, and theliterary and scientiﬁc use of the language. China has the fastest growing economy in the world, and isthe second largest economy, after the United States, in terms of purchasing power parity GDP. Perhapsmost pertinent to the topic in this chapter, China (including Hong Kong) was the biggest exporter in2008 and is poised to become the world’s biggest importer in 2010. The largest trading partners withChina are (1) the European Union, (2) the United States, (3) Japan, and (4) the Association of SouthEast Asian Nations. Consequently, for various economic, political, cultural, and humanitarian reasons,
+425
+
+426 HandbookofNaturalLanguageProcessing
+machine translation (MT) of Chinese from and into other languages is an increasingly more importantapplicationinthenaturallanguageprocessing(NLP)area.
+Sincethe1950stothepresentday,thedevelopmentofChineseMTsystemshasparalleledthatoftheMT
+ﬁeldasawhole,fromrule-basedsystemswithinlimiteddomain,toextractingandadoptingexamplesfromcorpus, to statistical machine translation (SMT) approaches that appeared in the early 1990s and whichevolved into the mainstream approach today. Meanwhile, the dichotomy of rule-based versus corpus-basedmethodshasbecomeincreasinglyblurred.Systemsbyandlargeadoptalessideologicalapproach.Itiscommonforrule-basedsystemstorankrulesbystatisticsandforstatisticalsystemstoincorporatemorelinguisticrulesrelatedtosyntaxandsemantics.Assuch,thischapterfocusesmoreonthediscussionofthemerits and relationship between rule-based and corpus-based approaches, rather than contrasting theirdiﬀerences.
+In this chapter, we describe various approaches in Chinese MT, as pertaining to and motivated by
+the linguistic characteristics of the Chinese language, from words to phrases, from syntax to semantics.Section 18.2 describes the challenge in Chinese morphology and word segmentation, and the role thispreprocessing part plays in MT systems. We ask the question of whether it is important to pre-segmentChinesesentencesintowordsegmentsbeforetranslation.InSection18.3and18.4,weturntoacomparisonbetween two corpus-based MT approaches that handles lexical units beyond words, namely, example-based and phrase-based SMTs, and point out the commonality between the two approaches, and theirrelationshiptosyntax-basedmethods.Section18.5describessyntax-drivenMTandhowitisanapproachmotivatedbythewordorderdiﬀerencebetweenChineseandotherlanguages.AsChineseisoftenregardedas a semantics-centered language, Section 18.6 gives an overview of semantics-driven MT approaches,rangingfromtheearlierinterlinguaandtransfer-basedtranslationmethods,tothelatestsemantics-drivenSMT algorithms. We also give an overview of some of the applications related to MT in Section 18.7,such as Chinese term translation and spoken language translation. Finally, we conclude in Section 18.8.In organizing this chapter according to the linguistic characteristics of Chinese, we aim to explain the“why”behindeachapproach,inadditiontothe“how.”
+18.2 Preprocessing—What Is a Chinese Word?
+Astherearenospacedelimitersbetweenwords,morphologicalanalysismustﬁrsthandlethesegmentationof a sentence into words. The smallest lexical unit in Chinese is a monosyllabic character, Hanzi.M o s t
+characters possess meanings of their own. Words are formed from using one, two, three, or sometimesmorecharacters.ThemorphologicalanalysisofaChinesesentencemustﬁrstrefertoalexiconofwords.The written Chinese characters are ideographs that look like pictures and are, in eﬀect, evolved fromancient hieroglyphs carved onto oracles. However, most Chinese characters are composed of botha
+phonetic part and a semantic element. Over 80% of Chinese words contain one to two characters only.SinceChinesesentencesarewrittenwithoutspaceasdelimitersbetweenwords,compoundwordscanbearbitrarilylong. SometimesanentirephraseisconsideredonewordinChinese. Chineseisoftensaidtobe a morphology-poor language. Words in Chinese for the most part do not change forms according tochanges in tenses, voice, case, gender, or even number (there are, however, plural markers for personalpronouns). The character for the third person singular has three, sometimes four forms, according togender, whether it is a person, an animal, or a deity, though these are exceptions rather than the rule inChinese.Therearefewarticles.Instead,Chineserelyonusingadditionalwords,wordorder,andsentencestructure to indicate the function of a word in a sentence. Aspects and mood are indicated by the useo faf e wa r t i c l e ss u c ha sl e / 了, hai/, yijing/已 , etc. These characteristics of Chinese morphology pose a
+particular challenge to translation systems that translate Chinese into another language with a diﬀerentsetofmorphologicalrules. Todate, wordandphrasealignmentaccuraciesofChinesetoEnglishdonot
+
+ChineseMachineTranslation 427
+rival those between European languages, or even between Arabic and English. In particular, unlike inother languages, Chinese person names consist of a close set of family names in one or two characters,followed by an open set of ﬁrst names mostly in one or two characters drawn from the entire characterset.Itisdiﬃcultforatranslationsystemtodiscernwhetheracharactershouldbetrans literatedaspartof
+aname,ortranslated asasemanticunit.
+Like other aspects of Chinese language processing, current Chinese word segmentation systems are
+mostly statistical or machine learning-based, rather than rule-based, as a result of applying techniquesthathaveshowntoperformwellonEnglishﬁrst.Theincreasingdominanceofstatistical-basedapproachforChinesemorphologicalandsyntacticanalyzersseemstoparalleltheriseof statistical Chinese–English
+MTinthelasttwodecades.
+Fung and Wu (1994; 1995) ﬁrst used statistics to automatically analyze Chinese words from large
+corpora. They used spread, cohesion, etc., borrowed from previous work in automatic collocationextraction from English (Smadja 1992), and augmented with a few Chinese morphological rules. Fungwent on to use word signature features and signal processing tools to automatically extract Chinese–English bilingual dictionaries (Fung 1996; Fung and McKeown 1997; Fung and Lo 1998). Instead offocusingonwhatmorphologicalrulescancoverallChinesewords,theseworklargelyregardwords(andevenpersonnames),asabagofcharactersthatco-occurfrequentlytogetherbysomemeasure.
+ModernChinesemorphologicalanalyzers,includingsegmentationandpart-of-speechtagging,employ
+ahostofmethodsrangingfromdictionaryword-basedandN-gramstatistics-basedlanguagesmodels,tousingclassiﬁerssuchasMaximumEntropyandConditionalRandomFieldswithasetoffeatures.
+It has been shown (Fung et al. 2004; Zhai et al. 2004) that syntactic parsing results are better when
+word segmentation, part-of-speech tagging, and ﬁnal parsing are all carried out with one feature-basedclassiﬁer, with unsegmented text as input, rather than using a pipeline system of segmentation, tagging,andparsing.Thisisduetothefactthatfeaturespertinenttothelatterstagesofchunkingandparsingarehelpful to the earlier stages of segmentation and tagging as well. Most of the earlier attempts at Chineseparsing(Wu1995;BikelandChiang2000;XueandConverse2002)havethereforeignoredtheproblemofwordsegmentationandassumedgold-standard(i.e., hand-annotated)wordboundaries, whichisnotrealistic.
+TheproblemofChinesewordsegmentationisquitechallenging,owingtothelackofagooddeﬁnition
+for what constitutes a word in Chinese. Previous experiments involving native speakers achieved anagreement rate of only around 75% (Wu and Fung 1994; Sproat et al. 1996). Most Chinese wordsegmenters make use of large lexicons of manually deﬁned words. The limitations of this method,however,arethatthewordlistshavetobemanuallyconstructed,whichisatediousandtime-consumingprocess. In addition, the word lists constructed are heavily dependent on the domain at hand, as wordsvaryfromdomaintodomain.
+(Fung et al. 2004) presents a method in which a maximum entropy parser, is augmented by a
+transformation-based learner. The combined parser, which is purely corpus-driven, takes as input araw,unsegmentedChinesesentence,andoutputstheparsetreethatbestﬁtsthesentence.
+18.2.1 The Maximum Entropy Framework for Word Segmentation
+Maximum entropy has been applied to many NLP tasks, part-of-speech (POS) tagging and parsingamong them, achieving state-of-the-art results. Most maximum entropy parsers are close variations of(Ratnaparkhi1998),whichbreaksdowntheparsingprocessintothreesteps:tagging,chunking,andtreebuilding. The output of each component is piped into the next as input. Since the parser is working atthewordlevel,afourthcomponent,thewordsegmenter,isaddedasaninitial(preprocessing)step.Sincemaximum entropy models are inherently classiﬁers, the various subtasks are mapped to classiﬁcationtasks.
+
+428 HandbookofNaturalLanguageProcessing
+Theprobabilisticmodelsforallthesubtaskcomponentsfollowtheform:
+p(T|W)=n∑
+i=0p(
+yi|xi)
+p(
+yi|xi)
+=1
+Z(xi)exp⎛⎝m∑
+j=0(λi)×fj(xi,yi)⎞⎠
+where
+W={w
+0,w1,...,wn}istheinputcharactersequence
+Tisthemostlikelyoutputtagsequenceforthecorrespondingcomponentmodel
+Theoutput classiﬁcationfor theithsampleisdenoted by, yiwhicharedetermined asaprobabilityof
+thegivencontextualfeatures xi.
+18.2.1.1 Word SegmentationUnlike English and many other Western languages, Chinese (and Japanese) is not written with anycharacters or spaces between words. The task of word segmentation therefore attempts to word-delimita text by inserting indicators which mark the boundaries between predeﬁned words. The diﬃculty ofChinesewordsegmentationliesintheambiguityofthetask,aswellasthefactthatforanygivensentence,theremaybemorethanonevalidwordsegmentationsequence.
+Sincewordsfollowoneanotheranddonotoverlap,thetaskofwordsegmentationcanbeeasilymapped
+toataggingprobleminasimilarwaytothatpioneeredbyRamshawandMarcus(1995)forEnglishtextchunking.Thecharacterthatbeginsawordsegmentistaggedwitha“B,”whileallotherwordsaretaggedwith “I” to denote that they are inside a word segment. Each sample is therefore a character, and theoutputclassiﬁcationisthewordsegmenttag{B,I}thatbestﬁtsthecharacterinthatcontext.18.2.1.2 Part-of-Speech TaggingPOStagging,orsimplytagging,isoneofthemostbasictasksinNLP.Thetaskinvolveslabelingeachwordin a sentence with a tag indicating its POS function (e.g., noun, verb, adjective, etc.). Since many wordshave more than one POS tag, the task of the tagger is to use lexical and syntactic features of the wordto determine the most likely tag for that particular use of the word in the given sentence. The problemofPOSambiguityisespeciallysevereforChinese,sinceChinesewordslackmorphologicalinformation,whichisanimportantindicatorforsyntacticfunction.
+SincePOStaggingisalreadyaclassiﬁcationtask,noextrastepsareneededtomapitforclassiﬁcation
+algorithms. Eachsampleisnaturallyaword, andtheoutputclassiﬁcation, thePOStag(e.g., noun, verb,adjective)isthemostappropriateforthatparticularwordinstance.18.2.1.3 Text ChunkingAnintermediatestepbetweenPOStaggingandfullparsingistextchunking,whichisthetaskofdividingasentenceintosyntacticallycorrelatedsegmentscalledchunks,orbasephrases.Unlikeparseconstituents,chunksarenon-recursiveandareusuallybasedonsuperﬁcialsyntacticanalysis.Forexample,thesentence“第七屆世界游泳錦標賽在羅馬開幕”canbechunkedas
+[
+QP第七][CLP屆][NP世界游泳錦標賽][ PP在][NP羅馬][VP開幕]
+whereeachtextchunkisdelimitedwithbrackets([ ...])thatareannotatedwithchunktype.
+Sincetextchunksarenon-recursive, thetaskoftextchunkingcanbeeasilymappedtothatofaword
+classiﬁcation task (Ramshaw and Marcus 1995). Each word is tagged with information that denotes thechunk that the word is in (e.g., NP, VP, PP, etc.), as well as the position of the word within the chunk
+
+ChineseMachineTranslation 429
+Char
+WordB
+OD M NN NN NN P NP V VII I I I BB B B B B B II
+POS
+Chunk B-QP B-CLP B-NP I-NP I-NP B-PP B-NP B-VP
+FIGURE18.1 Markingwordsegment,POS,andchunktagsforasentence.
+(i.e., begin or inside). Words that did not ﬁt inside any chunk were classiﬁed as outside. The fact that
+textchunksarenonoverlapping makesitpossibletodeterministicallymapallpossible sequencesoftext
+chunkstosomesequenceofchunktags.Asampleforthechunkercomponentwouldthenbeaword,and
+theclassiﬁcationofitscorrespondingchunktag.
+As an example of the various subtasks, Figure 18.1 shows an example sentence tagged with word
+segment,POSandchunktags.
+18.2.2 Translation-Driven Word Segmentation
+Another approach in segmentation for MT is to learn the segmentation through bilingual sentence
+alignmentduringthetrainingstageforSMT(Wu1997; Xuetal. 2004). Thesemethodsaredescribedin
+detailinChapter16.Inthissection,wegiveabriefsummarizationofitinrelationtoChineseMT.
+Xuetal.(2004)trainedwordalignmentmodels—IBM-1,IBM-4(Brownetal.1993)andHiddenMarkov
+alignment model (Vogel et al. 1996) on an unsegmented bilingual corpus of Chinese and English. All
+thesemodelsgiverisetodiﬀerentdecompositionsofthealignmentprobabilityPr(
+fJ
+1,aJ
+1|eJ
+1)
+whereais
+thealignment, fisthesourceword,and ethetargetword.ChinesecharactersarealignedtoEnglishwords
+with this model. A bilingual lexicon of Chinese/English word pairs are extracted from the word aligned
+corpus. The Chinese text is subsequently segmented using this extracted bi-lexicon, and the translation
+modelisretrainedonthesegmentedcorpus.Theyshowedthattranslationqualitysuﬀeredonlyslightly,
+atarelative5%,whennosegmentationwasapplied aprioritotheChinesecharacterstrings,comparedto
+trainingonsegmentedtext.Theyalsoshowedthatthesegmentationresultlearnedthroughalignmentis
+compatiblewiththeLinguisticDataConsortium(LDC)manualsegmentationresults.Figure18.2shows
+anexampleofwordsegmentationasaresultofalignmentbetweenunsegmentedChinesecharacterstrings
+andEnglishwords.Forexample,theﬁrsttwoChinesecharactersarealignedto“industry”andsegmented
+asasingleChineseword.
+Since these Chinese morphological analyzers are used to serve the need of MT when Chinese is the
+sourcelanguage,itisnotsurprisingthatresearcherswouldquestiontheeﬀectofdiﬀerentmorphological
+analysis approaches on the ﬁnal translation performance. Zhang et al. (2008) explicitly compared four
+progress
+vigorous
+made
+restructuring
+industry
+FIGURE18.2 An example of Chinese word segmentation from alignment of Chinese characters to English words
+(From Xu, R. et al., The construction of a Chinese shallow treebank, in the Third SIGHAM Workshop on Chinese
+LanguageProcessing ,Barcelona,Spain,pp.94–101).
+
+430 HandbookofNaturalLanguageProcessing
+typesofChinesewordsegmentationmethodsintermsofﬁnaltranslationperformanceandsuggesttwomethods:asimpleconcatenationoftrainingdataandafeatureinterpolationapproachinwhichthesametypes of features of translation models from various Chinese word segmentation schemes are linearlyinterpolated. They found such combined approaches were very eﬀective in improving the quality oftranslations. Moreover, comparative experiments carried out on the GALE project data and the BTECdata using diﬀerent Chinese word segmentation systems showed no signiﬁcant diﬀerences between thesystemsininﬂuencingChinese–EnglishMTperformance.However,allautomaticsegmentationsystemsoutperformedmanualsegmentationforMT(team2008).Finally,tothequestionof“DoweneedChinesewordsegmentationfortranslation?,”theanswerseemstobe“Yes,butitisbestifthewordsaresegmentedinconjunction withtranslation.”
+18.3 Phrase-Based SMT—From Words to Phrases
+InChinese,aswordsarenotdelimitedbyspace,thereisnocleardistinctionbetweenwordsandphrases.Consequently,allChineseMTsystemscanbeconsideredasphrase-basedtosomeextent.ThedistinctionbetweenvariousChinese(statistical)MTsystemsliein(1)whetherthesegmentationofChinesesentencesare translation-driven; (2) whether sentences in the other language are translation-driven; (3) whetherthesystemallowsformultiplesegmentationintheoutputsentenceduringdecoding.Accordingtothesecriteria, the ﬁrst phrase-based SMT system was also a syntax-driven system based on the InversionTransduction Grammar (ITG). Wu (1995), designed speciﬁcally for optimizing the segmentation inChinese sentences in conjunction with the bracketing of both Chinese and English sentences in thetranslationprocess.
+Another common approach by phrase-based SMT systems learns a phrase alignment model usinga
+noisy channel model from parallel, translated texts. Unlike word-based SMT, multi word phrases orchunksarethebasiclexicalunitsforalignment.Phrasalboundariesandalignmentcanalsobesimultane-ously learned in a single Estimation-Maximization process (Och et al. 1999). The decoding process in atruephrase-basedSMTsystemmustallowformultiplesegmentationsintheoutputsentencecandidates.
+In particular, open source programs such as Moses are readily available for phrase-based SMT, given
+training corpus in any language pairs. Moses (Koehn et al. 2007) uses a beam search algorithm fordecoding phrase-based translations. It allows words to have factored representation in surface form,lemma,partofspeech,morphology,etc.
+TheMosessystemusesdiﬀerentapproachesforlearningphrasaltranslations(sometimescalledphrase
+tables). Marcu and Wong (2002) introduce a phrase-based joint probability model of the simultaneousoccurrence of the source and target sentence in a parallel corpus. They use expectation-maximizationlearningtoﬁnd(1)ajointprobability /Phi1(e,f)ofphrase eandphrase fbeingtranslationequivalents;and
+(2)ajointdistributionindicatingaphraseatposition iinthesourceistranslatedintooneatposition jin
+the target sentence. Och and Ney (2003) use expansion heuristics to ﬁnd phrase translations from wordalignmentmodelsfromthetwodirections.Basedonthis,Mosesstartswiththeintersectionbetweenthewordalignmentpointsfromthesourceandtargetlanguages,anditerativelyexpandtophrasalalignmentsusing unaligned words within the limit of the union of word alignment from both directions. Wordswithin a legal pair of phrasal translations are only aligned to each other, never outside of the phraseboundary.Zens,Och,andNey(2002)deﬁnethesetofbilingualphrases BPas
+BP(
+f
+J
+1,eJ
+1,A)
+={(
+fj+m
+j,ei+n
+i)}
+: forall (i′,j′)inA : j <=j′<=j+m<−>i<=i′<=i+n
+Venugopal et al. (2003) actually allow phrasal translations that violates word alignment constraints.
+Zens et al. (2002) look for a unique segmentation of the sentence pair with joint probability distribu-tions, to yield phrasal translations. Vogel et al. (2003) suggest combining diﬀerent methods for moreperformancegain.
+
+ChineseMachineTranslation 431
+Morerecently,theMultilingualApplicationNetworkforOlympicServices(MANOS)project(Boetal.
+2005)aimedtoprovidespeechrecognition,MT,andspeechsynthesisinmultiplelanguagesforthe2008OlympicGamesinBeijing. TheMTsystemisaphrase-basedtranslationsystem, usingnotonebutfourdiﬀerent approaches, all of them described in this chapter to extract the phrase table. The four methodstheyuseare(1)Integratedsegmentationandphrasealignment(ISA)(Zhangetal.2003);(2)HMMwordalignmentmodel(Vogeletal.1996);(3)GIZA++wordalignmentmodel(Ochetal.1999),and(4)(ITG)(Wu1997).
+18.4 Example-Based MT—Translation by Analogy
+The Chinese language diﬀers from many other major languages in terms of word order and syntacticstructure. Japanese, despite having borrowed a substantial amount of Chinese nouns, is not part ofthe Sino-Tibetan language family as Chinese is, and is unrelated to Chinese in terms of morphologicalreﬂections and syntax. Based on the assumption that languages that diﬀer signiﬁcantly in grammaticaland/orlexicalstructurecanbebetterhandledbyexamples, researchersinJapanhaveadopted example-basedmachinetranslation(EBMT)methodsforChinesetoJapanesetranslation.
+Nagao(1984)ﬁrstsuggestedanapproachofEBMTin1984. Thisapproachisessentiallyatranslation
+process by using analogies. In a departure from a previous belief that humans perform translation byﬁrst doing deep linguistic analysis of the source sentences. It is believed by some that, instead, humansoften perform the translation task by mentally retrieving previously learned phrases, or generalizingfrom examples. Examples ofphrasetranslationsorexamplesof translationtemplatesareretrievedfromtranslated,bilingualtexts.Assuch,EBMTwastheﬁrstcorpus-basedapproachinthisarea.Nagao(1984)proposestodispensewithdeepstructuralanalysis, andlookforanalogiesbetweensentencepairsstoredinthesystemandthesentencetobetranslated,inanalgorithmofEBMTasfollows:
+1. Convertaninputsourcesentenceintoacanonicalsententialstructure.2. Usecasegrammartoparsethissententialstructure.3. Lookupadictionarytoﬁndcandidatetargetwordtranslations,andexamplephrases.4. Useawordthesaurustomeasurethesimilaritybetweentheinputsententialphrasesandexample
+phrasesstoredinthedictionary.
+5. Generationoftargetsententialformastranslationsfromstep(4)above.6. Generationoflocalphrasalstructureswithintheconstraintofstep(5).
+Nagao (1984) noted thatsteps (5) and (6) are very challenging subtasks and remained, at the time, to
+besolved.
+Researchers at NICT, Kyoto University, University of Tokyo, Shizuoka University, and JST in Japan
+(Isaharaetal.2007)havebeendevelopinganexample-basedJapanese–ChineseMTsystem.Unlikeearlierversions of EBMT systems, Isahara et al. (2007) employ a host of statistical tools for various stages ofthe system. They have been developing a parallel corpus of Chinese–Japanese on the scale of 10 millionsentences as the corpus from which examples can be extracted. Examples are to be aligned using theirsyntactic structures, the latter obtained from statistical parsers. In the ﬁnal translation system, inputsentences are to be analyzed syntactically and decomposed into substructures. Example translations ofthesesubstructureswillberetrievedfromthedatabase,andrecombinedtogeneratethetargetsentence.
+Researchers at Tsinghua University and the Chinese Institute of Automation have developed an
+example-basedChinese–EnglishMTsystem(LiuandZong2004).Intheirapproach,arule-basedstandardtemplate database of 209 Chinese patterns is used in conjunction with a bilingual dictionary, thesaurus,and a sentence-aligned bilingual parallel corpus. In the translation process, sentences are divided intochunks and transformed into target chunks by looking up example templates by a set of similarity
+
+432 HandbookofNaturalLanguageProcessing
+rules. Translated chunks are recombined into target sentence and a ﬁnal generation phase takes intoconsideration tense, voice, person, and number. They point out that chunk alignment and templatesshouldbelearnedautomaticallyinfutureimprovementofsuchasystem.
+Zhang et al. (2001) showcase the advantage of the example-based approach by adapting a shallow
+EBMT system to Chinese–English translation, by using nothing more than the Hong Kong Hansardparallel corpus and a bilingual dictionary/phrase book from the LDC. Their system is a shallow EBMTsystemthat,givenaninputsentence,looksuptheChinesepartoftheparallelcorpusandtransformspartsofitintoEnglishbywordalignment.Translationsnotfoundinthecorpusareprovidedbythebilingualphrasebook.
+Perhaps aware of the relative strength and weakness of the example-based approach, researchers at
+the Harbin Institute of Technology (Yang et al. 2008) propose a Chinese–English EBMT system that isdomain sensitive. Examples are extracted from word-aligned corpus. Example translations are selectedthrough a combination of text classiﬁcation techniques. Researchers at the same institute also proposeusingMaximumEntropymethodtolearnexamplepatternsfromparallelcorpora(Chenetal.2007).
+Compared to other approaches in MT, example-based approach sits in between SMT using phrase
+tables and SMT using syntax. When example phrase translations are automatically learned from theparallel corpora of translation texts, and when example lookup becomes encoded in an implicit phrasealignment statistical model, itself learned from parallel corpora, we have migrated from example-basedapproach to a phrase-based SMT approach. When phrase alignment is syntactically motivated, whetherformallyorlinguistically,suchanapproachisconsideredsyntax-driven.
+18.5 Syntax-Based MT—Structural Transfer
+Asmentionedintheabovesection,Chinesehaslittlemorphologicalvariations.Consequentlyitdependson word order and sentence structure, rather than morphology to indicate the function of a word in asentence. As the Chinese language possesses no tenses, no voices, no numbers (singular, plural; thoughthere are plural markers, for example for personal pronouns), only a few articles, and no gender, it hasfewgrammaticalinﬂections.
+EventhoughtheChineselanguageingeneralfollowstheSubject–Verb–Objectwordorder,itssyntaxis
+farfromsimilartoWesternlanguagesthatalsofollowtheSVOwordorder.Forexample,Chinesemakesfrequent use of the topic-comment construction to form sentences. A common grammatical feature,which poses a huge challenge to MT systems, is the drop of pronouns and related subject. The use ofserialverbconstructionisalsoaChineselinguisticfeaturethatoftenleadstoambiguitiesinparsingandultimatelytranslation.
+Given the signiﬁcant diﬀerence in Chinese syntax compared to English, it is interesting, and perhaps
+notsurprising,thatsyntax-basedSMTwasﬁrstintroducedtotackleexactlythislanguagepair(Wu1997).As the other dominant SMT approach, the IBM SMT models, made use of a distortion model to tackle
+the word order diﬀerence between two languages. While such a distortion model works relatively wellfor sentence pairs in related languages such as French and English, it is largely inadequate for unrelatedlanguages with very diﬀerent syntax. The reason is that the basic IBM-style model is not able to coverdistortions over longer distances. In other words, reordering “ white house ”i n t o“la maison blanche”i s
+easy,reorderingonephrasefromthebeginningofthesentencetotheendofthesentenceismuchharder.AbetterapproachiscalledfortomodelthecomplexsyntacticrelationshipbetweensentencespairsthatbelongtounrelatedlanguagegroupssuchasChineseandEnglish.
+Wu’sStochasticITGformalismmodelsthiscomplexsyntacticrelationshipbetweenbilingualsentence
+pairswithakindofsynchronouscontext-freegrammarextractedautomaticallyfromtranslated,parallelsentences,andisparticularlywell-suitedtomodelorderingshiftsbetweenlanguages.
+The ITG remains to be a subset of context-free (syntax-directed) transduction grammars (Lewis and
+Stearns 1968). The ITG, unlike simple, pure transduction grammars, allows for generation of symbols
+
+ChineseMachineTranslation 433
+[SP Stop] S
+[NP VP] | [NP VV] | [NP V] SP
+[Prep NP] PP
+[Det NN] | [Det N] | [Pro] | [NP Conj NP] NP
+[A N] | [NN PP] NN
+[Aux VP] | [Aux VV] | [VV PP] VP
+[V NP] | [Cop A] VV
+the/є Det
+and / Conj
+be/є Cop
+./ Stop
+VV PP VPto / Prep
+I/ Pro
+authority / N
+accountable / A
+will / Aux| you /
+| secretary /
+| financial /
+(a)
+(b)
+FIGURE 18.3 (a) A simple transduction grammar and (b) an inverted orientation production. (From Wu, D.,
+Comput.Linguist .,23,377,1997.)
+from the right-hand-side constituents of a product rule in two directions, straight left-to-right and
+inverted right-to-left (Figure 18.3). This way, a bilingual sentence pair with diﬀerent syntax structures
+can be parsed by the same set of ITG rules. If [] indicates concatenation in the straight orientation, i.e.,
+[AB]yields (C1,C2)where ()C1=A1B1andC2=A2B2,a n d<>indicates the reverse, where <AB>
+meansC1=A1B1butC2=B2A2,thenthefollowingsentencepairinEnglishandChinese,withdiﬀerent
+syntaxstructure,canbegeneratedas:
+In the parse tree example in Figure 18.4, the English sentence is read in the depth-ﬁrst left-to-right
+straight order, but for the Chinese sentence, the right sub-tree is traversed instead of the left, whenever
+thereisahorizontalline.
+S
+SP
+VP
+NP
+VV
+To/
+The/є
+Financial/ Secretary/Be/є Accountable/The/є Authority/Will/VP
+PP
+NP
+NN./o
+FIGURE18.4 ITGparsetree.(FromWu,D., Comput.Linguist .,23,377,1997.)
+
+434 HandbookofNaturalLanguageProcessing
+Wu(1997)alsosurveyedanumberofapplicationsoftheITGformalism,includingtranslation-driven
+segmentation, word alignment, bilingual lexicon extraction, and translation-driven bi-bracketing. Wu(1995) also shows a training method based on expectation and maximization. The approach taken bythis work generalizes the inside–outside algorithm to improve the likelihood of a training corpus byadjusting the grammar parameters. For details of the ITG model and its application to MT, please seeChapter16.
+FollowingWu’swork,therehasbeenasteadygrowthinmodelingtreestructuresinMT,nottheleast
+for Chinese MT. Some of these approaches (Chiang 2005), are formal syntax-based, deriving bilingualparses from parallel corpora without any linguistic annotations. Chiang (2005) seeks to improve thereorderingpowerofphrase-basedSMTbyahierarchicalphrasemodel(seeFigure18.5).LikeWu(1997),thisapproachalso(1)inducesanITGfromparalleltextswithoutanylinguisticsyntacticannotation,and(2)allowsforentirephrasesintransductionrules.Chiang(2005)usesGIZA++wordalignmenttoolsonthetrainingparallelcorpustoobtaininitialphrasepairs(OchandNey2004).Chiang(2005)proposesaniterativeheuristicmethodforextractingthetransductiongrammarfromtheseinitialphrasepairs,usingthefollowingrules:
+1. Iftherearemultipleinitialphrasepairscontainingthesamesetofalignmentpoints,wekeeponly
+thesmallest.
+2. Initialphrasesarelimitedtoalengthof10ontheFrenchside,andruletoﬁve(nonterminalsplus
+terminals)ontheFrenchright-handside.
+3. In the subtraction step, f
+jimust have length greater than one. The rationale is that little would be
+gainedbycreatinganewrulethatisnoshorterthantheoriginal.
+4. Rulescanhaveatmosttwononterminals,whichsimpliﬁesthedecoderimplementation.Moreover,
+weprohibitnonterminalsthatareadjacentontheFrenchside,amajorcauseofspuriousambiguity.
+5. Arulemusthaveatleastonepairofalignedwords,makingtranslationdecisionsalwaysbasedon
+somelexicalevidence.
+Rulesnumbers(4)and(5)aboveessentiallymirrortheITGrulesinWu(1997)(seeChapter16).Froma
+trainingcorpusof7.2MwordsinChineseand9.2MwordsinEnglish,theyobtain24Mrules.Alog-linearmodel based decoder is used for the ﬁnal translation. For their experiment on Mandarin–English MT,7.5%relativeimprovementwasobtained,astatisticalsigniﬁcantresult.
+Another group of syntax-based methods using linguistically motivated grammars, employing parsers
+developed from manually annotated corpora (e.g., Penn Treebank). Some approach, such as YamadaandKnight(2001)proposedparsingthesourcelanguage,andtransformstheparsetreeintostringinthetarget language (tree-to-string), other approaches use bilingual grammars to parse both the source andthe target languages (tree-to-tree). Speciﬁcally deployed for Chinese MT, Zhang et al. (2007) proposedreorderingthesourceChinesechunksusingchunkinformationtrainedfromtheChineseTreebankandto represent these chunk reordering information in a lattice as a special feature function for the SMTdecoder. Ma et al. (2008) used syntactic dependencies to improve word alignment that ultimately ledto improvement in Chinese–English MT performance. Their method ﬁrst performs alignment on highprecisionanchorwordpairs,thenusessyntacticinformationtoaligntheremainingwords.
+One approach developed for small footprint Chinese–English translation on handheld devices uses
+dependency grammar between words (Shi et al. 2007). There are no nonterminals in this case. A tree-to-tree dependency mapping model is learned from Penn Treebank annotations. A bilingual phraselexiconiscollectedtobootstrapa treelettranslationmodel.Treeletsarenotnecessarilychunksorphrases.
+For decoding, Chinese sentences are parsed using the dependency parser, and the best target Englishdependency tree is found by dynamic programming over the translation model. This approach bridgesbetweensyntax-basedandexample-basedMTsystems.
+
+ChineseMachineTranslation 435
+Rank Chinese English
+1º
+XXthe.
+the X of X
+the X X
+one of X
+president X
+$ X
+X this year
+X percent
+under X
+before X
+the X that X
+have X with Xin
+’s
+XX
+X
+X
+X
+X
+X
+X
+X
+X
+XX
+X3
+2
+2 22 1
+1
+1
+1
+1
+1
+1111
+1
+1
+1
+1
+1
+1 221
+1
+1
+1 2214
+23
+577
+735
+763
+1201
+1240
+2091
+3253
+10508
+28426
+47015
+1752457
+1
+1
+FIGURE18.5 Example grammar rule extracted with ranks. (From Chiang, D., A hierarchical phrase-based model
+for statistical machine translation, In Proceedings of the 43rd Annual Meeting on Association for Computational
+Linguistics ,AnnArbor,MI,pp.263–270.AssociationforComputationalLinguistics,Morristown,NJ,2005.)
+Oneancestorofsuchlinguisticsyntaxrule-basedSMTsystemsiswhatiscalled“transfer-basedMT.”
+Traditionaltransfer-basedMTsystemsusetreestructuremapping.Theyrelyonanalyzingthesourceand
+target sentences by syntactic rules and then perform a rule transfer, combined with dictionary lookup
+andsemanticrules,toobtaintheﬁnaltranslation.Inthisregard,syntax-basedMThasindeedaverylong
+history.Perhapstheﬁrsttransfer-basedChineseMTsystemcanbesaidtobedatedtothe1950s(Zhiwei
+1954) under the auspices of the Chinese National Plan the Development of Science and Technology.
+Experiments were performed on Russian to Chinese MT with over a vocabulary size of 2030 Russian
+words and 29 rules. The Chinese government continued to be the major funding source for other MT
+eﬀorts in China today. Tree-based and rule-based systems use up to 1000 rules these days to translate
+technicaldomaindocumentsintoChinese.
+Intheearly1990s,SuandChang(1990)developedtheArchTran(recentlyrenamedasBehaviorTran)
+system for English–Chinese translation using a combination of a rule-based approach and statistical
+information. Like other pioneers of SMT at the time, Su’s team found that the problem of scalability
+of a rule-based system can be mitigated by incorporating statistics trained from large corpora. Looking
+back, this was probably the beginning of linguistically motivated syntax-based SMT for Chinese. Su
+(2005)furtherpointedouttheadvantageoflinguisticallymotivatedsyntaxtreesincoveringlongdistance
+dependencies,andurgedfurtherresearchintobetterunsupervisedlearningmethodsofsuchtreestructures
+inparallelcorpora.
+Syntax-basedMT,bornoutofthenecessitytomodelChinese–Englishsentencepairs,isnowamain-
+streamapproachinSMTWuandChiang(2009),usedforotherlanguagepairs,includingArabic–English,
+togreatsuccess.Zollmannetal.(2008)carriedoutasystematiccomparisonofphrase-based,hierarchical,
+and syntax-augmented SMT in Chinese–English, Arabic–English, and Urdu–English. They found that
+probabilistic synchronous context-free grammar (PSCFG) models give considerable performance gain
+to language pairs with very diﬀerent word orders, such as Chinese–English. Such gain is also consistent
+across small and large data scenarios. Likewise, Schwarz (Schwarz 2009) ﬁnds that hierarchical models
+yield signiﬁcant gain for Chinese–English versus Arabic–English—four points versus one to two points
+inBLEU.
+
+436 HandbookofNaturalLanguageProcessing
+18.6 Semantics-Based SMT and Interlingua
+The Chinese language is often described to be a semantic language, with its lack of case, tense, number,and gender morphological markers. Psycholinguistic experiments showed that there is no functionalprimacyofsyntaxoversemanticsinChinese(YuandZhang2008),unlikeinIndo-Europeanlanguages.This means humans can correctly interpret the meaning of a Chinese sentence even if there is syntaxviolation, but not the other way around. For example, the following single Chinese sentence can havemultiple English translations, with diﬀerences in person and tense (via personal communication withBDClinguistMs.Yu-LingHsu):
+•他們答應張三可以參加會議.
+•TheypromiseZhangSanthathecanattendthemeeting.
+•TheypromiseZhangSanthattheycanattendthemeeting.
+•TheypromiseZhangSanthathecanattendmeetings.
+•TheypromiseZhangSanthattheycanattendthemeetings.
+•TheypromisedZhangSanthathecouldattendthemeeting.
+•TheypromisedZhangSanthattheycouldattendthemeeting.
+•TheypromisedZhangSanthathecouldattendthemeetings.
+•TheypromisedZhangSanthattheycouldattendthemeetings.
+Semantics has been believed to be the Holy Grail of MT systems since the 1950s. Translation has
+always been about correctly conveying the Who did What to Whom, When, Where, and Why in asentence. Designers of interlingua systems look for a formal artiﬁcial semantic representation that canbe transformed into any natural language with additional syntactic and lexical add-on rules, believingthat this approach enables translation from any language to any other language possible. In reality, thecontinuing quest for the most suitable formal representation, be it in the form of semantic networkssuchasHowNet(DongandDong2000),FrameNet(Bakeretal.1998),orpredicate-argumentstructuressuch as Propbank, in diﬀerent MT approaches, underlines the undeniable role semantics plays. Asearly as in the 1950s, semantic nets were invented as an “interlingua” for MT. The “semantic net” or“semanticmap”thathumanspossessinthecognitiveprocessisastructureofconceptclassesandlexicon(Illesetal.1999).
+Su et al. (1995) adopted semantic tree mapping for MT. In their work, they use linguistically deﬁned
+case labels and word senses. Given bilingual sentence pairs and their associated syntactic structure, Suet al. (1995) ﬁrst perform syntactic normalization by ﬂattening the tree structure, and then, following astep of case and word sense labeling, perform semantic normalization by extracting linguistic featuressuch as modality and case-markers. Next, phrase or chunk mapping and transformation of the treetopology are performed to further enhance the compositionality. Finally, an unsupervised two-waytraining mechanism is conducted between these transformed tree pairs to automatically acquire thenondeterministicknowledgefromthebilingualcorpus.Su(2005)pointedoutthatabstractingstructuralmapping on the semantic level has the advantage of greater coverage than at the syntactic level (from4.19% of directly matching syntax trees between English and Chinese, to 34.1% of matching semantictrees. If sub-trees are considered, direct semantic structure mapping is found to be above 90%). Su(2005) suggests that “[learning] semantic tree structures would be a better strategy for statistical MTsystems.”
+In the late 1980s, the Overseas Development Agency of the Japanese government funded an
+ambiguous project to automatically translate between Japanese and major Asian languages, includingChinese. This project adopted an interlingua approach, with the assumption that this approach is themost eﬃcient for translating Japanese into multiple target languages. The formal semantic structure—interlingua,isabstractedfromtheanalysisofthesourcelanguage.Fromthere,multipletargetlanguages
+
+ChineseMachineTranslation 437
+can be synthesized from the interlingua. In reality, such a framework of analysis of source language,abstraction into interlingua, and synthesis of target language has met with numerous challenges ateachstage.
+18.6.1 Word Sense Translation
+Followingtheemergenceofvariousresearchonthetaskofwordsensedisambiguation(Yarowsky1994,please also see Chapter 14), it was only a matter of time before it was questioned whether explicit wordsensedisambiguationmethodscanbeappliedtohelpMT.Thesemethodslookatthecontextwordsanddiscourse surrounding the source word and use methods ranging from boostrapping (Li et al. 2003),EMiterations(KoehnandKnight2000; CaoandLi2002), andthecohesiverelationbetweenthesourcesentenceandtranslationcandidates(Fungetal.1999;Kikui1999).
+Fung and Chen (2006) suggest that in addition to dictionaries, bilingual frame semantics (word
+sense dictionary) is a useful resource for lexical selection in the translation process of a SMT system.They propose to generate a bilingual frame semantics mapping (word sense dictionary), simulating the“semantic map” in a bilingual speaker. Other questions of interest to us include how concept classes inEnglish and Chinese break down and map to each other. They suggest that while a source word in theinput sentence might have multiple translation candidates, the correct target word must have the samesense, i.e., belong to the same semantic frame. Fung and Chen (2006) designed an EM-based algorithmtoautomaticallyalignFrameNetEnglishsensestoHowNetChinesecategories.Theymadethefollowingassumptions:
+(1)Asourcesemanticframeismappedtoatargetsemanticframeifmanywordsensesinthetwoframes
+translate to each other; and (2) a source word sense translates into a target word sense if their parentframes map to each other. By using EM, they improve the probabilities of frame mapping in Pr (cf|ef)
+and word sense translations in Pr (cl,cf|el,ef)iteratively: We estimate sense translations based on
+uniform bilingual dictionary probabilities Pr (cl|el)ﬁrst. They obtain all word sense translations and
+framemappingfromtheEMalgorithm:
+(cl,cf)
+∗=argmax
+(cl,cf)Pr(cl,cf|el,ef)∀(el,ef)
+cf∗=argmax
+cfPr(cf|ef)∀ef
+ThesewordsandsomeoftheirsensetranslationsareshowninTable18.1.
+TABLE18.1 ExampleWordSenseTranslation
+Output
+tie.n,clothing->襻.n,part—部件tie.v,cause_conﬁnement->拘束.v,restrain—制止tie.v,cognitive_connection->聯結.v,connect— 連接
+make.n,type->性質.n,attribute—屬性make.v,building->建造.v,build— 建造
+make.v,causation->令.v,CauseToDo—使動roll.v,body-movement- >搖動.v,wave—擺動
+roll.v,mass_motion- >翻滾.v,roll—滾
+roll.v,reshaping->卷.v,FormChange— 形變
+feel.n,sensation- >手感.n,experience— 感受
+feel.v,perception_active- >覺得.v,perception— 感知
+feel.v,seeking->摸.v,LookFor— 尋
+
+438 HandbookofNaturalLanguageProcessing
+Fungetal.(2007)furtherinvestigatedtheuseofbilingualsemanticrolelabelingforMT.Semanticrole
+labeling, or shallow semantic parsing, has been made into a fully automatic process with relative highaccuracy in recent years (Gildea and Jurafsky 2002; Sun and Jurafsky 2004; Pradhan et al. 2004, 2005;Pradhan2005;Fungetal.2006;Fungetal.2007;GiménezandMàrquez2007b,2008).
+Bilingual sense dictionaries such as BiFrameNet have the potential to be applied to interlingua-based
+MT,aswellasSMT.Wecandesignanapproachinwhichbothsourceandtargetsentencesareannotatedautomatically with shallow semantic parsers, similar to those described in Pradhan 2005; Fung et al.(2006);WuandFung(2009).BiFrameNetdictionariescanbeusedastheintermediatelexicalsemanticsrepresentationinaninterlingual-basedsystem(Dorr1992).OritcanbeusedtoaugmentthephrasetableinaSMTsystemandhelpwithlexicalchoice.
+Morerecently,workfromlexicalsemanticshasalsoatlonglastbeensuccessfullyappliedtoincreasing
+SMT accuracy, in the form of techniques adapted from word sense disambiguation models (Carpuatand Dekai 2005; Chan et al. 2007; Giménez and Màrquez 2007a). (Chan et al. 2007) and Carpuatand Dekai (2005) contemporaneously showed for the ﬁrst time that incorporating the predictions ofa word sense disambiguation system within a typical phrase-based SMT model consistently improvestranslationquality.Inorderforwordsensedisambiguationorphrasesensedisambiguationtobeeﬀectivein improving SMT models, these work showed that sense candidates must be extracted automatically,andarenotthosewithinthemanuallydeﬁnedSensevalset.Inparticular,sensecandidatesaredeﬁnedbyastranslation candidates.CarpuatandWu(2007)alsoshowedthatextendingwordsensedisambiguation
+to phrase sense disambiguation yields statistically signiﬁcant improvements over all the large tasks.They pointed out that word-based SMT architectures already handle word disambiguation intrinsicallyin its model, choosing a priori sense translation candidates by using lexical translation probabilitieswith contextual language model probabilities. To improve upon disambiguation accuracy within thisframework, sense disambiguation techniques need to incorporate strong assumptions independent ofwhat the SMT model already covers. Dedicated word sense disambiguation techniques seem to beeﬀectivebecausetheyemployabroaderrangeofsenseselectionfeaturesandaremoresensitivetodynamiccontext.
+18.6.2 Semantic Role Labels
+Manyerrorsintoday’sSMTsystemsarethoseresultingfromtheconfusionofsemanticroles.Translationerrorsofthistypefrequentlyresultincriticalmisunderstandingsoftheessentialmeaningoftheoriginalinput language sentences—who did what to whom, for whom or what, how, where, when, and why.Manualinspectionofthecontrastiveerroranalysisdatafromastate-of-the-artSMTsystemshowedthataround 20% of the error sentences produced could have been avoided if the correct predicate argumentinformationwasused(Ochetal.2003).
+Semantic role confusions are errors of adequacy rather than ﬂuency. It has often been noted that the
+dominanceoflexicallyoriented,precision-basedmetricssuchasBLEUtendtorewardﬂuencymorethanadequacy. The length penalty in the BLEU metric, in particular, is only an indirect and weak indicatorof adequacy. As a result, SMT work has been driven to optimize systems such that they often producetranslationsthatcontainsigniﬁcantroleconfusionerrorsdespitereadingﬂuently.
+Canweimprovetranslationutilityviaastrategyoffavoringsemanticadequacyslightlymore—possibly
+attheexpenseofslightdegradationsinlexicalﬂuency?
+Shallow semantic parsing models have attained increasing levels of accuracy in recent years (Gildea
+andJurafsky2002;SunandJurafsky2004;Pradhanetal.2004,2005;Pradhan2005;Fungetal.2006;Funget al. 2007; Giménez and Màrquez 2007b, 2008). Such models, which identify semantic frames withininput sentences by marking its predicates, and labeling their arguments with the semantic roles thattheyﬁll.
+Evidence has begun to accumulate that semantic frames—predicates and semantic roles—tend to
+preserve consistency across translations better than syntactic roles do. Across Chinese and English, for
+
+ChineseMachineTranslation 439
+example, it has been reported that approximately 84% of semantic roles are preserved consistently (Wuetal.2006).Ofthese,roughly15%donotpreservesyntacticrolesconsistently.
+WuandFung(2009),presentanoveltwo-passhybridmodelthatsuccessfullyappliessemanticparsing
+technology to the challenge of improving the quality of Chinese–English SMT. The model makes use ofatypicalrepresentativeSMTsystembasedonMoses,plusshallowsemanticparsersforbothEnglishandChinese.18.6.2.1 Hybrid Two-Pass Semantic SMTWhile the accuracy of shallow semantic parsers has been approaching reasonably high levels in recentyearsforwell-studiedlanguagessuchasEnglish,andtoalesserextent,Chinese,theproblemofexcessivecomputational complexity is one of the primary challenges in adapting semantic parsing technology tothetranslationtask.
+Semantic parses, by deﬁnition, are less likely than syntactic parses to obey clearly nested hierarchical
+compositionrules.Moreover,thesemanticparsesarelesslikelytoshareanexactlyisomorphicstructureacrosstheinputandoutputlanguages,sincetheraisond’etreofsemanticparsingistocapturesemanticframeandroleregularitiesindependentofsyntacticvariation—monolinguallyandcrosslingually.
+ThismakesitdiﬃculttoincorporatesemanticparsingintoSMTmerelybyapplyingthesortofdynamic
+programmingtechniquesfoundincurrentsyntacticandtree-structuredSMTmodels,mostofwhichrelyonbeingabletofactorthecomputationintoindependentcomputationsonthesub-trees.Inotherwords,the key computational obstacle is that the semantic parse of a larger string (or string pair, in the case oftranslation) is not in general strictly mechanically composable from the semantic parses of its smallersubstrings(orsubstringpairs).
+In fact, the lack of easy compositionality is the reason that today’s most accurate shallow semantic
+parsers rely not primarily on compositional parsing techniques, but rather on ensembles of predictorsthat independently rate/rank a wide variety of factors supporting the role assignments given a broadsentence-wide range of context features. But while this improves semantic parsing accuracy, it poses amajorobstacleforeﬃcienttightintegrationintothesub-hypothesisconstructionandmaintenanceloopswithinSMTdecoders.
+To circumvent this computational obstacle, the hybrid two-pass model (Wu and Fung 2009) defers
+applicationofthenon-compositionalsemanticparsinginformationuntilaseconderror-correctingpass.Thisimposesadivisionoflaborbetweenthetwopasses.
+The ﬁrst pass is performed using a conventional phrase-based SMT model. The phrase-based SMT
+modelisassignedtothetasksof(a)providinganinitialbaselinehypothesistranslation,and(b)ﬁxingthelexical choice decisions. Note that the lexical choice decisions are not only at the single-word level, butareingeneralatthephrasallevel.
+The second pass takes the output of the ﬁrst pass, and reorders constituent phrases corresponding to
+semanticpredicatesandarguments,seekingtomaximizethecrosslingualmatchofthesemanticparseofthereorderedtranslationtothatoftheoriginalinputsentence. ThesecondpassalgorithmperformstheerrorcorrectionshowninAlgorithm18.1.
+The design decision to allow the ﬁrst pass to ﬁx all lexical choices follows an insight inspired by an
+empirical observation from our error analyses: the lexical choice decisions being made by today’s SMTmodelshaveattainedfairlyreasonablelevels,andarenotwherethemajorproblemsofadequacylie.Rather,the ordering of arguments in relation to their predicates is often where the main failures of adequacyoccur. By avoiding lexical choice variations while considering reordering hypotheses, a signiﬁcantlylarger amount of re-ordering can be done without further increasing computational complexity. So wesacriﬁce a small amount of ﬂuency by allowing reordering without compensating lexical choice—inexchangeforgainingpotentiallyalargeramountofﬂuencybygettingthepredicate-argumentstructureright.
+
+440 HandbookofNaturalLanguageProcessing
+Algorithm18.1 AlgorithmforSecondPass
+1. Applyasemanticparserforthe inputlanguagetotheinputsourcesentence.
+2. Applyasemanticparserforthe outputlanguagetothebaselinetranslationthatwasoutputbytheﬁrst
+pass.Note:thisalsoproducesashallowsyntacticparseasabyproduct.
+3. Ifthesemanticframes(targetpredicatesandtheirassociatedsemanticroles)areallconsistentbetween
+theinputandoutputsentences,andarealignedtoeachotherbythephrasealignmentsfromtheﬁrstpass,thenﬁnishimmediatelyandoutputthebaselinetranslation.
+4. Segmentthebaselinetranslationbyintroducingsegmentboundariesaroundeveryconstituentphrase
+whose shallow syntactic parse category (from step 2) was V, NP, or PP. This breaks the baselinetranslation into a small number of coarse chunks to consider during reordering, instead of a largenumberofindividualwords.
+5. Generateasetofcandidatereorderedtranslationhypothesesbyiterativelymovingconstituentphrases
+whose predicate or semantic role label was mismatched to the input sentence. Each new candidate
+generated may in turn spawn a further set of candidates (especially since moving one constituentphrasemaycauseanother’spredicateorsemanticrolelabeltochangefrommatchedtomismatched).This search is performed breadth-ﬁrst to favor fewer reorderings (in case the hypothesis generationgrowsbeyondallottedtime).
+6. Applyasemanticparserforthe outputlanguagetoeachcandidatere-orderedtranslationhypothesis
+asitisgenerated.
+7. Return the reordered translation hypothesis with the maximum match of semantic predicates and
+arguments.
+Themodelhasasimilarrationaleforemployingareorderingpassinsteadofre-rankingn-bestlistsor
+lattices.Oracleanalysisofn-bestlistsandlatticesshowthattheyoftenfocusonlexicalchoicealternativesratherthanreordering/rolevariationsthataremoreimportanttothesemanticadequacy.
+A Chinese–English experiment was conducted on the two-pass hybrid model. A phrase-based SMT
+baseline model was built by augmenting the open source SMT decoder Moses (Koehn et al. 2007)with additional preprocessors. English and Chinese shallow semantic parsers followed those discussedabove. The model was trained on LDC newswire parallel text consisting of 3.42 million sentence pairs,containing 64.1 million English words and 56.9 million Chinese words. The English was tokenized andcase-normalized; the Chinese was tokenized via a maximum-entropy model (Fung et al. 2004). Thephrase-based SMT model used for the ﬁrst pass achieves a BLEU score of 42.99, establishing a fairlystrong baseline to begin with. In comparison, the automatically error-corrected translations that areoutput by the second pass achieve a BLEU score of 43.51. This represents approximately half a pointimprovementoverthestrongbaseline.
+An example is seen in Figure 18.6. The SMT ﬁrst pass translation has an ARG0 National Devel-
+opment Bank of Japan in the capital market, which is badly mismatched to both the input sentence’sARG0家行and ARGM-LOC 在日本本市. The second pass ends up reordering the constituent phrase
+correspondingtothemismatchedARGM-LOC,ofJapaninthecapitalmarket,tofollowthePREDissued,wherethenewEnglishsemanticparsenowassignsmostofitswordsthecorrectlymatchedARGM-LOCsemanticrolelabel.Similarly,samuraibonds30billionyenisreorderedto30billionyensamuraibonds.
+To our knowledge, this is a ﬁrst result demonstrating that shallow semantic parsing can improve
+translation accuracy of SMT models. We note that accuracy here was measured via BLEU, and it hasbeen widely observed that the negative impacts of semantic predicate-argument errors on the utility ofthe translation are underestimated by evaluation metrics based on lexical criteria such as BLEU. Weconjecture that more expensive manual evaluation techniques that directly measure translation utilitycouldevenmorestronglyrevealimprovementinroleconfusionerrors.
+
+ChineseMachineTranslation 441
+ARGO
+ARGM-LOC
+ARGM-ADV
+PREDPREDARG1
+ARG0
+PRED
+PREDPREDARG1ARGM-TMP
+ARG1
+ARGM-LOC
+ARGM-MNRARGM-MNR
+ARGM-TMP(National Development Bank of Japan in the capital market) successfully issued (samurai bonds) (30 billion yen)
+(National Development Bank) successfully issued of Japan (in the capital market) (30 billion yen samurai bonds)
+(A few days ago), (the National Development Bank) successfully issued (30 billion yen of samurai bonds) (to Japan’s capital mar ket)ARG0ARG0Input:
+SMT:
+Reordered:
+Reference:ARG1ARG2ARGM-TMP
+FIGURE18.6 Example,showingtranslationsafterSMTﬁrstpassandafterreorderingsecondpass.
+
+442 HandbookofNaturalLanguageProcessing
+18.7 Applications
+Having overviewed the various approaches in Chinese MT, we will describe some applications in thissection.Wecoverthreesuchtopics,namely,Chinesetermandnamedentitytranslation,Chinesespokenlanguagetranslation,andChinesecrosslingualinformationretrieval(CLIR).
+18.7.1 Chinese Term and Named Entity Translation
+AnimportantcomponentandchallengingtaskofChineseMTsystemsisthetranslationofspeciallexicalitems such technical terms, domain-speciﬁc terms, and named entities. Technical and domain speciﬁctermsarenotoftenfoundinstandardbilingualdictionaries, andare, mostoftenthannot, newlycoinedwords. Even when such terms are found in a standard lexicon, its meaning in a particular domain isquite diﬀerent from the conventional sense. For example, the verb “run” in Chinese is “ 跑步/paobu” in
+theconventionaldictionaryasanaction,but“ 行/yunxing”inthecomputersciencedomaintomeanthe
+“execution of a program.” Named entities include person and organization names, as well as locationnames. Named entities again can be rare and domain-speciﬁc. Translations of such terms into or fromChinesegenerallyfollowtwostrategies—thatofphonetictransliterationandthatofsemantictranslation,orahybridofthetwo.Whereastheoriginofnewtechnicalanddomain-speciﬁcterms,aswellascertainnamed entities is often in English. The latter is not the sole source. Terms in biology can be from LatinorGreek,namedentitiescanbeinanypossiblelanguage.Dependingonthelanguageoriginoftheterm,phonetic transliterations are diﬀerent for the same grapheme form. Japanese names written in Chinesecharacters (Kanji) should be transliterated into the target language according to their pronunciationsin native Japanese (kun‘yomi), not in Chinese. Transliterations into Chinese of French-named entitiesshouldnotfollowEnglishgrapheme-to-phonemerules(e.g.,Paris- >巴黎/BĄĄLí).
+Unlike Japanese where a distinct character set, the Katakanas, is used to indicate a borrowed word,
+foreignnamesandplacesaretransliteratedortranslatedintoChineseusingcharactersfromthesameset.Whereasplacenamesbelongtoacloseset,personnamescanbedrawnfromallthelanguagesintheworldandtherefore,almostanopenset.ThehumantranslationofforeignnamesintoChineseisclosetoanartform, with multiple considerations to the original language of the name, its phonetic sound, the genderofthename,theconventionoftranslation,thepossiblesemanticconnotationsoftheindividualChinesecharacters used, and last but not least, the particular Chinese target language. Whereas most writtenformsofChineseinMainlandChina,Taiwan,HongKong,andSingapore,arestandardandindependentof geographic regions, technicaland domain speciﬁcterms, aswell asnamed entitiesdepend heavilyontheconventionsandpronunciationrulesofeachoftheseregions.
+Translations and transliterations in Hong Kong follow the phonetic sound of Cantonese, the local
+language. Mainland China and Taiwan both use Mandarin but with diﬀerent conventions in namingand spelling. Moreover, some historic foreign names have their transliterations in Shanghainese, thelocal language of the largest cosmopolitan city in China in the early twentieth century with heavyforeigninﬂuence.Consequently,acommonlyknownwesternnamecanhavemultiple,yetallacceptableand recognizable Chinese translations in mainland China, Hong Kong, and Taiwan. For example, thename of the actor “Arnold Schwarzenegger” is “ 阿諾施瓦辛格” in Mainland China and “阿 諾舒華
+辛力加” in Hong Kong. Whereas many of the foreign names and words have long become part of
+the Chinese lexicon and are included in any Chinese dictionary, others still pose a challenge to MTsystems.
+For transliteration tasks where Chinese is the source language, the challenge lies in the identiﬁcation
+ofthesourcelanguageoftheparticularname.Forexample,namesinHongKongaretransliteratedintoCantonese(e.g., 曾蔭權-> TsamYumKuen),thoseinMainlandChinaintoPinyin,andothersinTaiwan
+intoWadeGiles,andyetothersinSingaporeintotheFukiandialect.ForeignnamesinChineseareevenharder to transliterate as much phonetic information was lost when the name was transliterated into
+
+ChineseMachineTranslation 443
+Chineseintheﬁrstplace(e.g., 肯特雞-> KentuckyFriedChicken).JapanesenamesinChinesecharacters
+mustbetransliteratedintonativeJapanesephoneticsnotPinyin(e.g., 山本喜子-> YamamotoAkiko).
+18.7.1.1 Using Parallel CorporaStatistical methods were ﬁrst proposed in the early 1990s to meet this challenge by extracting termtranslations from parallel, translated texts using language-independent methods (Kupiec 1993; Daganand Church 1994; Smadja et al. 1996; Wu and Xia 1994). Indeed, commonly known named entitiesand their translations (e.g., 曾蔭權->Donald Tseng Yum Kuen, the Chief Executive of Hong Kong)
+can be extracted from large corpora of translated news articles and oﬃcial documents. Frequently usedtechnicalanddomainspeciﬁctermsandtheirtranslationscanbeextractedfromdomain-speciﬁcbilingualpublications. Parallel corpora are available from data consortiums such as the LDC and the EuropeanLinguistic Data Association who contract professional translators to manually translate large amountsof collected texts, and form the training data for all statistical translation systems anyway. Today’s SMTsystems are more than adequate in learning both the segmentation and translation via word or phrasealignmentmodels.
+Certain methods have been devised to translate speciﬁcally named entities into Chinese. Noting
+phonetic transliteration is inadequate, due to the variety of the language source of foreign names, thegenderandsemanticcontentofsomeofthenames,Lietal.(2007)proposeanIBM4noisychannelmodeltodecodesemantictransliterationsofnamesinLatinscriptintoChinese.Oneapproachofnamedentitytransliterationagainfollowstheextractivemodelsimilartothoseforothertermtranslations,fromlargebilingualcorpora(Sproatetal.2006).
+As noted in previous Section 18.5, the formal syntax-driven ITG model (Wu 1997) counts among its
+applications bilingual bracketing and chunk alignment. Words and phrases within a syntactic sub-treecanbeextracted,togetherwiththeirtranslationequivalents,byusingthismodel.
+Chapter16containsmoredetaileddescriptionsoftermextractionmethodsusingSMTmodels.
+18.7.1.2 Using Noisy Parallel Corpora and Nonparallel CorporaAllSMTmethodsrequireparallelcorpusastrainingdata.Andthesemethodsdonotworkwellwhenthesizeoftheparallelcorpusissmall,andiftheparallelcorpusis noisy,i.e.,ifitcontainssegmentsthatonly
+appear on one side of the bitext. When the corpus size is small, the alignment data is sparse, leading tofewreliablephrasaltranslations.Likewise,whenthecorpusisnoisy,thephrasalalignmentmodelbreaksdownandreturnsmanyerroneoustranslations.Noisecanarisefrommanysources,forexample:
+•Nonliteraltranslation
+•Out-of-ordertranslation
+•Omittedsections
+•Floatingpassages:footnotes,ﬁgures,examples,etc.
+•OCRerros
+•Sentencesegmentationerrors
+FungandMcKeown(1994);Fung(1995);FungandMcKeown(1997)proposedamethod,DK-vec,to
+performbothbilinguallexiconextractionandbitextalignment,whichworkwellevenonsmallandnoisycorpora. In particular, their method does not assume cognate mapping between related languages suchasEnglishandFrench,andthereforeisapplicabletolanguagepairswithdiﬀerentcharactersets.
+TheDK-vecmethodrepresentswordsinalexicalfeaturecalledthe recencyvector. Recencyisdeﬁned
+asthenumberofbytessincethelastoccurrenceofthesamewordtoken.Thisfeaturecanbeplottedasatypeof“wordsignaturesignal,”asshowninFigure18.7.
+The recency vector feature is far more robust and reliable in noisy bitexts than, say, the sentence
+lengthfeature.Forlexiconextraction,DynamicTimeWarping,adynamicprogrammingalgorithmwithconstraintsonstartingpoint,monotonicity,lengthandslope,isemployedtoﬁndpairsofrecencyvectorswiththehighestdynamictimewarpingscores.
+
+444 HandbookofNaturalLanguageProcessing
+FIGURE18.7 DK-vecsignalsshowingsimilaritybetween Government inEnglishandChinese,contrastingwith Bill
+andPresident.
+EventhoughtheDK-vecmethodwasmotivatedbytheobjectiveofaligningtextswithdiﬀerentcharacter
+sets, later on this method is often used for alignment in general, and lexicon extraction in particular,from noisy parallel corpora of moderate size in many diﬀerent languages. Somers and Ward (1996)report an evaluation of the front-end method for comparing DK-vecs of candidate word token pairs,upon a number of word token pairs involving English, French, German, Dutch, Spanish, and Japanese.The precision of the proposed word token pairs was found to range from 0% (English–French) to 34%(English–Japanese)to75%(French–Spanish).Manyfactorsapparentlycontributetothevariance:thesizeofthebitext,thehumantranslators,thethresholdsforselectingwords,andsoon.ChatterjeeandAgrawal(2006)reportnewconstraintsonthedynamicprogrammingpartoftheDK-vecmethodtoalignHindi/English.
+WenotethatthefullDK-vecmethodisinventedfortextalignmentaswellaslexiconextraction.Itcan
+alsoprovideaninitialpointforEM-basedwordalignmentmethods.
+However, even noisyparallel data are not available in all domains and the usage of some terms and
+named entities can be less frequent but critical. Using comparable but nonparallel multilingual data hasbecomedesirableandevennecessary(Fung1995;Rapp1995;Kikui1999;Fungetal.2009).
+To make use of large amounts of readily available comparable corpora is to extract bilingual terms
+directlyfromthemusingstatisticalmethods(Fung1995;FungandLo1998;ZweigenbaumandRapp2008;Fung et al. 2009). Fung and Lo (1998) propose a method called Convec, that was applied to extractingdomain-speciﬁc and new words/phrases from Chinese/English monolingual newspaper material. The
+
+ChineseMachineTranslation 445
+Convecmethodconsistsofconstructingacontextvectorforeachunknowntermwithdictionarywords.The vector length is equal to the size of a known bilingual dictionary. The feature in each dimensionof the vector could be simply the occurrence (1 or 0) of a known dictionary word found in the contextwindow of the target word, or as proposed by Fung and Lo (1998) the TF/IDF of the dictionary word.Thetext frequency (TF) of a dictionary word is deﬁned as its occurrence frequency in the context of the
+source/targetword.Its inversedocumentfrequency (IDF)isdeﬁnedastheoveralloccurrencefrequencyof
+thedictionarywordintheentirecorpus.Vectordistances,intermsofsimilaritymeasures,arecomputedbetween bilingual terms in the two languages and the highest-ranking candidate pairs are considered astranslationsofeachother. Conﬁdencemeasureisintroducedtoselectmorereliabledictionarywordsasseeds.
+In recent years, mining parallel data from comparable corpora has shown to be beneﬁcial to SMT
+systems(ZhaoandVogel2002;FungandCheung2004;Munteanuetal.2004;WuandFung2005).
+Theseapproachesaremethodsofminingparallelsentencepairsfromsegmentsoftextsthatarejudged
+to be probable sources for them. Zhao and Vogel (2002) and Munteanu et al. (2004) both proposediscovering parallel sentences from newspaper articles within the same time window (e.g., within ﬁvedays) in the source and target languages. Zhao and Vogel (2002) propose to discover parallel sentencesin the Xinhua Chinese–English corpus. Munteanu et al. (2004) propose to look for them from XinhuaNews,AgenceFrancePresse,BBC,etc.Inboththeseapproaches,theyﬁrstselectsimilaron-topicpairsofarticles.ZhaoandVogel(2002)useagenerativemaximumlikelihoodmodeltoiterativelyextractparallelsentences and bilingual lexicon. Munteanu et al. (2004) ﬁrst extract candidate parallel sentence pairs byusingaword-overlap-basedﬁlter,thentrainaMaximumEntropyclassiﬁeronparallelsentences,anduseit to determine whether a pair of extracted bilingual sentence pairs is truly parallel or not. The classiﬁeruses a list of features including sentence length, percentage of word overlap, as well as word alignmentfeaturesobtainedfromIBMModel1(Brownetal.1993).
+Fung and Cheung (2004) propose a method capable of extracting parallel sentences from far more
+disparate“quasi-comparablecorpora”thanprevious“comparablecorpora”methods,byexploitingboot-strapping on top of IBM Model 4 EM (Figure 18.8). They suggest the principle that text segments thatare found to contain at least one pair of parallel sentences are likely to contain more of them. Stepone of their method, like previous methods, uses similarity measures to ﬁnd matching documents in acorpusﬁrst,andthenextractsparallelsentencesaswellasnewwordtranslationsfromthesedocuments.But unlike previous methods, they extend this with an iterative bootstrapping framework based on theprinciple of “ﬁnd-one-get-more,” which claims that documents found to contain one pair of parallelsentences must contain others even if the documents are judged to be of low similarity. They re-matchdocumentsbasedonextractedsentencepairs,andreﬁnetheminingprocessiterativelyuntilconvergence.This novel “ﬁnd-one-get-more” principle allows us to add more parallel sentences from dissimilar doc-uments, to the baseline set. Experimental results show that our proposed method is nearly 50% moreeﬀective than the baseline method without iteration. They also show that this method is eﬀective inboosting the performance of the IBM Model 4 EM lexical learner as the latter, though stronger thanModel 1 used in previous work, does not perform well on data from quasi-comparable corpus. Eventhough this method is applied to Arabic–English corpora, it should be easily extendable to Chinesecorpora.
+WuandFung(2005)extendsthisworkfurtherbyﬁndingparallelsegmentsatboththesententialand
+sub-sententialchunklevelbyapplyinganITGonparallelsentencesfromFungandCheung(2004).ThisapproachleveragesastronglanguageuniversalconstraintpositedbytheITGhypothesis,thatcanserveasastronginductivebiasforvariouslanguagelearningproblems,resultinginbotheﬃciencyandaccuracygains.
+Sincemonolingualtechnicalanddomain-speciﬁcdataarequiteabundantforChineseandothermajor
+languages, this approach dispenses with the need for professional translators and is cost eﬀective andeﬃcient.
+
+446 HandbookofNaturalLanguageProcessing
+Document matching
+Document
+rematchVery-non-parallel corpusLanguage B Language A
+Matched documents
+Matched documents
+IBM model 4Sentence extraction Bilingual
+lexicon
+FIGURE 18.8 Parallel sentence and bilingual lexicon extraction from quasi-comparable corpora. (From Fung, P.
+and Cheung, P., Mining very-non-parallel corpora: Parallel sentence and lexicon extraction via bootstrapping and
+em,inProceedingsoftheConferenceonEmpiricalMethodsinNaturalLanguageProcessing(EMNLP2004) ,Barcelona,
+Spain,pp.57–63.)
+18.7.2 Chinese Spoken Language Translation
+One of the most practical applications of MT is spoken language translation for business and tourism
+alike. Chinese spoken language translation in the travel domain is one of the milestone tasks of the
+International Workshop on Spoken Language Translation (IWSLT), and within the C-Star Consortium
+(see http://www.c-star.org ). Spoken language translation requires a speech recognition interface before
+the MT module. The decoupling and coupling of these two modules are the topic of extensive research
+in this area (Paulik and Waibel 2008). The challenge for this task lies in the nature of Chinese spoken
+language—there are many diﬀerent forms of spoken languages though only one standard written form.
+There is as little in common between Mandarin Chinese and Cantonese than, say, between English and
+French.Amongthe11Siniticlanguages,onlyonebelongstothesamefamilyasMandarin,thestandard
+Chinese. There are nine dialects even within this family. Consequently, even if we consider that most
+Chinese speakers are able to communicate in Mandarin, there are a large variety of accent diﬀerences
+(FungandLiu2007).Anothercentralproblemtospokenlanguagetranslationistherecognitionofnamed
+entities from Chinese speech. Chinese person name recognition is an open problem with most of the
+names fall into the out-of-vocabulary (OOV) category. It was ﬁrst suggested in Zhai et al. (2004) that a
+dedicated named entity recognizer, optimizing over a wide range of acoustic and linguistic features, is
+eﬀective in recognition. Practical spoken language translation in restricted domains circumvents these
+problemssomewhatbylimitingtoasmallervocabularysizeandlowerperplexityinthelanguagemodel.
+Meanwhile,ithasalsobeensuggestedthatperhapsitisnotalwaysnecessaryorpossibletotranslateentire
+
+ChineseMachineTranslation 447
+lecturespeechormeetingconversations,thatitissuﬃcienttotranslateasummarizationofhighlightsofthesespokencontent(FungandSchultz2008).
+The latest research in spoken language translation include using synthetic parallel corpora from a
+knowledge-basedMTsystemtoenhancethetrainingofanSMTsystem(Wangetal.2008)newrescoringandre-rankingofn-besttranslationcandidatelists,newmodelingtechniques,newreorderingrules(He,Liu,andLin2008),andadvancedtechniquesforphraseextractionfromn-bestlist,andimprovedsystemcombinationusingmultipleSMTsystems.
+18.7.3 Crosslingual Information Retrieval Using Machine Translation
+Crosslingual information retrieval (CLIR) means the user would input a query in language A and thesystemsearchesforrelevantdocumentsinlanguageB.NotallCLIRsystemsuseMT.ThoseCLIRsystemsthat do use MT use it for two purposes: (1) translation of query from source to target language and(2) translation of documents from target language back to the source language. For over a decade, theNational Institute of Standards and Technology (NIST) in the United States has organized a series ofTextREtrieval Conferences (TREC) with the objective to advance the state-of-the-art in crosslingual IR.Such workshops produced a set of database and evaluation methods for common tasks. Crosslingual IRfromChinesewasoneofthemajortasks.MostsystemsuseSMTmodelstrainedfromparallelcorporaforthis purpose. Currently, the Global Autonomous Language Exploitation (GALE) program organized bytheU.S.DARPAisfundingtheresearchanddevelopmentofmultiplesystemsofspeechtranscriptionofChinesebroadcastnewsandbroadcastconversations,MTfromChinesetoEnglish,andthedistillationofthetranslatedEnglishdocumentsintopertinentandconsolidatedinformationtomilitarypersonnelandmonolingual English-speaking analysts in response to direct or implicit requests. This program has justentereditsfourthyearatthetimeofwriting.ManyoftheMTsystemsdescribedinthischapterhavebeendevelopedpartiallyundertheGALEprogram.ForCLIRapplications,thequalityofdocumenttranslationis of uttermost importance. As presumably the user cannot read in the target language, he or she wouldrelyentirelyontheMToutputtoformaviewofthepertinentinformation.Wesuggestthatfordocumenttranslation,itmightbeevenmoreimportanttohighlightthenamedentitiesandthesemanticroles.Thequality of query translation, on the other hand, has more impact on precision rather than recall, as agreedy dictionary lookup method would include all possible translations of the query words and ensurethatsomeofthemarecorrect.
+18.8 Conclusion and Discussion
+Chinese MT, started in the 1950s, with a few hundred rules for Russian–Chinese translation, is todaya cornerstone application in the MT ﬁeld as a whole. Various research and commercial systems use ahostofapproacheswithtransferrules,example-based,syntax-drivenstatistics,semantic-drivenstatistics,andultimatelysystemcombination.FollowingthegeneralevolutionofMTmethodologies,ChineseMThas gone evolved from transfer rule-based, example-based, to statistical methods. Today’s systems arefar from “pure”—rule-based systems or example-based systems all use statistical methods for extractingrules and patterns, or at least to rank them; statistical systems are enhanced by syntax, whether formalsyntax or linguistic syntax, and more recently with dedicated word sense disambiguation modules andevenpredicate-argumentsemanticstructures.
+We highlighted two diﬀerent approaches in word segmentation—a critical step when the source
+languageisChinese.Weaskedthequestionastowhetheritisbettertouseword-basedorcharacter-basedapproachforMTandconcludedthatword-basedorphrase-basedapproachgivessuperiorperformanceif and only if word and phrasal boundaries are learned in conjunction with the translation model. Sinceit has been argued that languages with very diﬀerent word orders ought to be translated by an EBMTscheme,weoverviewedChineseMTsystemsusingEBMTandphrase-basedSMTmethods,respectively.
+
+448 HandbookofNaturalLanguageProcessing
+The examples and phrase tables in both methods are learned from large corpora of bilingual sentencepairs, sometimes in the order of tens of millions of sentences. Next, we examined the innovation adecade ago and the recent resurgence of syntax-driven SMT, as a form of transfer-based approach withstatisticallearning.SinceChineseisoftentranslatedintolanguagesthatbelongtoaverydiﬀerentfamily,ChineseMTmustdealwithmismatchesinmorphology,syntax,andlexicalsemantics.Greatprogresshasbeen made in thelast decade to handle such mismatches by new modeling techniques thatdo not makeassumptions based on Indo-European languages. Approaches such as ITG-based SMT and hierarchicalphrase-basedSMThaveshowntoworkparticularlywellinthisregard.Wepointedoutthatsyntax-drivenSMT was initially motivated by the large diﬀerence in word order and syntactic structure between theChinese language and other languages. State-of-the-art results showed that, indeed, syntax-driven SMThas a larger impact on Chinese MT than, say, Arabic MT. We also showed that semantics-driven MT,with its origin in interlingua MT, is also enjoying a comeback. Statistical MT systems augmented withexplicit word sense disambiguation modules or with shallow semantic parsing, have shown promisingimprovementsintranslationquality.
+The translation of Chinese technical, domain-speciﬁc terms and named entities pose particular chal-
+lenge due to linguistic particularity. It has been shown that, again, hybrid semantic transliteration andextractivemethodsareeﬃcient,especiallywhentheyareappliedtoreadilyavailable,nonparallelbutcom-parablecorpora.Inthenearfuture,weexpecttoseemoreconvergencebetweendiﬀerentschoolsofMTmethodology,andbetweenlinguisticallymotivatedandcomputationalapproaches.Furtherimprovementstill need to be made to create higher quality dictionaries, thesauri, phrase tables, with better coverage.For future work, we forsee that the translation of regional Chinese languages, even minority languagesin China, will become increasing important as MT reaches the realm of practical applications. Sincethere is less linguistic analysis on these Chinese languages, but also little corpora available, there needbe more creative synergy between linguistics and engineering. One of the current applications of MT iscrosslingualinformationretrievalfromtwooftheworld’smajorlanguages,namely,ChineseandArabic.Lastbutnotleast,thetranslationofChinesespokenlanguageswillfaceadditionalchallengesofhandlingaccents,regionallanguages,andthedemandsofportableplatforms.
+Acknowledgments
+The author wishes to thank Professor Su Keh-Yih for his detailed and very helpful comments on apreviousdraftofthischapter,theeditorNitinIndurkhyaforhisusefulcommentsandpatience,RichardSchwartz and Jordan Cohen for helpful input to the chapter, to BDC linguist Ms. Yu-Ling Hsuand forher translation example, and to Li Ying for her help with the formatting. Some work described in thischapter was partly funded by Defence Advanced Research Projects (DARPA) under GALE, and by theHongKongResearchGrantsCouncil(RGC)underGRF621008, 612806, RGC6256/00E,6083/99E,andDAG03/04.E09.
+References
+Baker,C.,C.Fillmore,andJ.Lowe(1998).FrameNetproject.In ProceedingsoftheColing-ACL ,Montreal,
+Canada.
+Bikel, D. and D. Chiang (2000). Two statistical parsing models applied to the Chinese treebank. In
+ProceedingsoftheSecondWorkshoponChineseLanguageProcessing:HeldinConjunctionwiththe38th Annual Meeting of the Association for Computational Linguistics , Volume 12, Hong Kong,
+pp.1–6.AssociationforComputationalLinguistics,Morristown,NJ.
+
+ChineseMachineTranslation 449
+Bo, X., Z. Chen, W. Pan, and Z. Yang (2005). Phrase-based statistical machine translation for MANOS
+system.In Proceedingsofthe10thMachineTranslationSummit,Phuket,Thailand,pp.123–126.
+Brown,P.,V.DellaPietra,S.DellaPietra,andR.Mercer(1993).Themathematicsofstatisticalmachine
+translation:Parameterestimation. ComputationalLinguistics19 (2),263–311.
+Cao, Y. and H. Li (2002). Base noun phrase translation using Web data and the EM algorithm. In
+Proceedings of the 19th International Conference on Computational Linguistics , Volume 1, Taipei,
+Taiwan,pp.1–7.AssociationforComputationalLinguistics,Morristown,NJ.
+Carpuat, M. and W. Dekai (2005). Word sense disambiguation vs. statistical machine translation. In
+Proceedingsofthe43rdAnnualMeetingoftheAssociationsforComputationalLinguistics(ACL’05) ,
+AnnArbor,MI,pp.387–394.
+Carpuat,M.andD.Wu(2007).Howphrasesensedisambiguationoutperformswordsensedisambigua-
+tionforstatisticalmachinetranslation.In 11thConferenceonTheoreticalandMethodologicalIssues
+inMachineTranslation,Skovde,Sweden,pp.43–52.
+Chan, Y., H. Ng, and D. Chiang (2007). Word sense disambiguation improves statistical machine
+translation.In AnnualMeeting-AssociationforComputationalLinguistics ,Prague,CzechRepublic,
+Volume45,pp.33–40.
+Chatterjee, N. and S. Agrawal (2006). Word alignment in English-Hindi parallel corpus using recency-
+vectorapproach:Somestudies.In Proceedingsofthe21stInternationalConferenceonComputational
+Linguistics and the 44th Annual Meeting of the Association for Computational Linguistics , Sydney,
+Australia,pp.649–656.AssociationforComputationalLinguistics,Morristown,NJ.
+Chen, Y., M. Yang, and S. Li (2007). Maximum entropy model for example-based machine
+translation. International Journal of Computer Processing of Oriental Languages ,20(02n03),
+101–113.
+Chiang,D.(2005).Ahierarchicalphrase-basedmodelforstatisticalmachinetranslation.In Proceedingsof
+the43rdAnnualMeetingonAssociationforComputationalLinguistics ,AnnArbor,MI,pp.263–270.
+AssociationforComputationalLinguistics,Morristown,NJ.
+Dagan, I. and K. Church (1994). Termight: Identifying and translating technical terminology. In Pro-
+ceedingsoftheFourthConferenceonAppliedNaturalLanguageProcessing,Stuttgart,Germany,pp.34–40.AssociationforComputationalLinguistics,Morristown,NJ.
+Dong,Z.andQ.Dong(2000).HowNetChinese-Englishconceptualdatabase.Technicalreport,Technical
+ReportOnlineSoftwareDatabase,ReleasedatACL.http://www.keenage.com.
+Dorr,B.(1992).Theuseoflexicalsemanticsininterlingualmachinetranslation. MachineTranslation7 (3),
+135–193.
+Fung, P. (1995). Compiling bilingual lexicon entries from a non-parallel English-Chinese corpus. In
+ProceedingsoftheThirdWorkshoponVeryLargeCorpora ,Bosten,MA,pp.173–183.
+Fung, P. (1996). Domain word translation by space-frequency analysis of contextlength histograms. In
+Proceedings of the 1996 IEEE International Conference on Acoustics, Speech, and Signal Processing,1996(ICASSP-96 ),Atlanta,GA,Vol.1.
+Fung, P. and B. Chen (2006). Robust word sense translation by EM learning of frame semantics. In
+ProceedingsoftheCOLING/ACLonMainConferencePosterSessions ,Sydney,Australia,pp.239–246.
+AssociationforComputationalLinguistics,Morristown,NJ.
+Fung,P.andP.Cheung(2004).Miningvery-non-parallelcorpora:Parallelsentenceandlexiconextraction
+via bootstrapping and em. In Proceedings of the Conference on Empirical Methods in Natural
+LanguageProcessing(EMNLP2004) ,Barcelona,Spain,pp.57–63.
+Fung,P.andY.Liu(2007).SpontaneousMandarinspeechpronunciationmodeling. AdvancesinChinese
+SpokenLanguageProcessing ,WorldScientiﬁcPublishingCompany,Singapore,p.227.
+Fung,P.andY.Lo(1998).Translatingunknownwordsusingnonparallel,comparabletexts.In Proceedings
+of the 17th International Conference on Computational Linguistics and the 36th Annual Meetingof the Association for Computational Linguistics (COLING-ACL 98) , Montreal, Quebec, Canada,
+pp.414–420.
+
+450 HandbookofNaturalLanguageProcessing
+Fung,P.andK.McKeown(1994).Aligningnoisyparallelcorporaacrosslanguagegroups.In Proceedings
+ofAssociationforMachineTranslationintheAmericas ,Columbia,MD.
+Fung,P.andK.McKeown(1997).Atechnicalword-andterm-translationaidusingnoisyparallelcorpora
+acrosslanguagegroups. MachineTranslation12 (1),53–87.
+Fung, P. and T. Schultz (2008). Multilingual spoken language processing. IEEE Signal Processing
+Magazine25(3),89–97.
+Fung, P. and D. Wu (1994). Statistical augmentation of a Chinese machine-readable dictionary.
+ProceedingsoftheSecondAnnualWorkshoponVeryLargeCorpora ,Kyoto,Japan,pp.69–85.
+Fung, P. and D. Wu (1995). Coerced markov models for cross-lingual lexical-tag relations. In The Sixth
+InternationalConferenceonTheoreticalandMethodologicalIssuesinMachineTranslation ,Leuven,
+Belgium,pp.240–255.
+Fung, P., G. Ngai, Y. Yang, and B. Chen (2004). A maximum-entropy Chinese parser augmented
+by transformation-based learning. ACM Transactions on Asian Language Information Processing
+(TALIP)3 (2),159–168.
+Fung, P., Z. Wu, Y. Yang, and D. Wu (2007). Learning bilingual semantic frames: Shallow semantic
+parsingvs.semanticroleprojection.In 11thConferenceonTheoreticalandMethodologicalIssuesin
+MachineTranslation,Skovde,Sweden,pp. 75.
+Fung, P., L. Xiaohu, and C. Shun (1999). Mixed language query disambiguation. In Proceedings of the
+37thannualmeetingoftheAssociationforComputationalLinguisticsonComputationalLinguistics ,
+CollegePark,MD,pp.333–340.AssociationforComputationalLinguistics,Morristown,NJ.
+Fung, P., W. Zhaojun, Y. Yongsheng, and D. Wu (2006). Automatic learning of Chinese English
+semantic structure mapping. In IEEE Spoken Language Technology Workshop, 2006 ,A r u b a ,
+pp.230–233.
+Fung, P., P. Zweigenbaum, and R. Rapp (2009). In 2nd Workshop on Building and Using Comparable
+Corpora(BUCC2009):FromParalleltoNon-parallelCorpora ,Sunteo,Singapore.
+Gildea,D.andD.Jurafsky(2002).Automaticlabelingofsemanticroles. ComputationalLinguistics28(3),
+245–288.
+Giménez, J. and L. Màrquez (2007a). Context-aware discriminative phrase selection for SMT. In
+ProceedingsofWMTatACL,Prague,CzechRepublic.
+Giménez, J. and L. Màrquez (2007b). Linguistic features for automatic evaluation of heterogeneous MT
+systems. In Proceedings of the ACL Workshop on Statistical Machine Translation , Prague, Czech
+Republic,pp.256–264.
+Giménez, J. and L. Màrquez (2008). Discriminative phrase selection for statistical machine translation.
+LearningMachineTranslation,NIPSWorkshopSeries.MITPress.
+He,Z.,Q.Liu,andS.Lin(2008).Improvingstatisticalmachinetranslationusinglexicalizedruleselection.
+InProceedings of the 22nd International Conference on Computational Linguistics (Coling 2008) ,
+Manchester,U.K.,pp.321–328.
+Illes, J., W. Francis, J. Desmond, J. Gabrieli, G. Glover, R. Poldrack, C. Lee, and A. Wagner (1999).
+Convergentcorticalrepresentationofsemanticprocessinginbilinguals. BrainandLanguage70 (3),
+347–363.
+Isahara,H.etal.(2007).DevelopmentofaJapanese-Chinesemachinetranslationsystem. Proceedingsof
+theMachineTranslationSummitXI ,Copenhagen,Denmark.
+Kikui,G.(1999).Resolvingtranslationambiguityusingnon-parallelbilingualcorpora.In Proceedingsof
+ACL99WorkshoponUnsupervisedLearninginNaturalLanguageProcessing ,Baltimore,MD.
+Koehn, P. and K. Knight (2000). Estimating word translation probabilities from unrelated monolingual
+corpora using the EM algorithm. In Proceedings of the National Conference on Artiﬁcial Intelli-
+gence, Austin, TX, pp. 711–715. Menlo Park, CA; Cambridge, MA; London; AAAI Press; MITPress;1999.
+Koehn,P.,H.Hoang,A.Birch,C.Callison-Burch,M.Federico,N.Bertoldi,B.Cowan,W.Shen,C.Moran,
+R. Zens et al. (2007). Moses: Open source toolkit for statistical machine translation. In Annual
+Meeting-AssociationforComputationalLinguistics ,Prague,CzechRepublic,Volume45,pp. 2.
+
+ChineseMachineTranslation 451
+Kupiec, J. (1993). An algorithm for ﬁnding noun phrase correspondences in bilingual corpora. In
+Proceedingsofthe31stAnnualMeetingoftheAssociationforComputationalLinguistics ,pp.23–30.
+Lewis,P.andR.Stearns(1968).Syntax-directedtransduction, JournaloftheACM 15(3),465–488.
+Li,H.,Y.Cao,andC.Li(2003).Usingbilingualwebdatatomineandranktranslations. IEEEIntelligent
+Systems18(4),54–59.
+Li, H., K. Sim, J. Kuo, and M. Dong (2007). Semantic transliteration of personal names. In Annual
+Meeting-AssociationforComputationalLinguistics ,Prague,CzechRepublic,Vol.45,pp.120.
+Liu,Y.andC.Zong(2004).Example-basedChinese-EnglishMT.In 2004IEEEInternationalConference
+onSystems,ManandCybernetics ,Hague,theNetherlands,Vol.7.
+Ma,Y.,S.Ozdowska,Y.Sun,andA.Way(2008).Improvingwordalignmentusingsyntacticdependen-
+cies. InProceedings of the ACL-08: HLT Second Workshop on Syntax and Structure in Statistical
+Translation (SSST-2),Columbus,OH,pp.69–77.
+Marcu, D. and W. Wong (2002). A phrase-based, joint probability model for statistical machine
+translation.In ProceedingsofEMNLP ,Philadelphia,PA,Vol.2.
+Munteanu, D., A. Fraser, and D. Marcu (2004). Improved machine translation performance via parallel
+sentence extraction from comparable corpora. In Proceedings of the Human Language Technology
+and North American Association for Computational Linguistics Conference (HLT/NAACL 2004) ,
+Boston,MA.
+Nagao, M. (1984). A framework of a mechanical translation between Japanese and English by analogy
+principle Artiﬁcial and Human Intelligence, A. Elithorn and R. Barnerji (Eds.), North-Holand,
+Amsterdam,theNetherlands,pp.173–180.
+Och, F. and H. Ney (2003). A systematic comparison of various statistical alignment models.
+ComputationalLinguistics29 (1),19–51.
+Och, F. and H. Ney (2004). The alignment template approach to statistical machine translation.
+ComputationalLinguistics30(4),417–449.
+Och,F.,C.Tillmann,andH.Ney(1999).Improvedalignmentmodelsforstatisticalmachinetranslation.
+InProceedingsoftheJointSIGDATConferenceonEmpiricalMethodsinNaturalLanguageProcessing
+andVeryLargeCorpora ,CollegePark,MD,pp.20–28.
+Och,F.J.,D.Gildea,S.Khudanpur,A.Sarkar,K.Yamada,A.Fraser,S.Kumaretal.(2003).FinalReport
+of Johns Hopkins 2003 Summer Workshop on Syntax for Statistical Machine Translation, JohnsHopkinsUniversity,Baltimore,MD.
+Paulik, M. and A. Waibel (2008). Extracting clues from human interpreter speech for spoken language
+translation. In IEEE International Conference on Acoustics, Speech and Signal Processing, 2008
+(ICASSP2008 ),LasVegas,NV,pp.5097–5100.
+Pradhan,S.(2005).ASSERT:AutomaticStatisticalSEmanticRoleTagger.http://cemantix.org/assertPradhan,S.,K.Hacioglu,V.Krugler,W.Ward,J.Martin,andD.Jurafsky(2005).Supportvectorlearning
+forsemanticargumentclassiﬁcation. MachineLearning 60 (1),11–39.
+Pradhan, S., W. Ward, K. Hacioglu, J. Martin, and D. Jurafsky (2004). Shallow semantic parsing using
+supportvectormachines.In ProceedingsofHLT/NAACL-2004,Boston,MA.
+Ramshaw,L.andM.Marcus(1995).Textchunkingusingtransformation-basedlearning.In Proceedings
+oftheThirdACLWorkshoponVeryLargeCorpora ,Cambridge,MA,pp.82–94.
+Rapp, R. (1995). Identifying word translations in non-parallel texts. In Proceedings of the 33rd annual
+meeting on Association for Computational Linguistics , Cambridge, MA, pp. 320–322. Association
+forComputationalLinguistics,Morristown,NJ.
+Ratnaparkhi,A.(1998). Maximumentropymodelsfornaturallanguageambiguityresolution.PhDthesis,
+UniversityofPennsylvania,Philadelphia,PA.
+Schwarz,T.(2009). MessenundbewertenvonWerkstückenmitdemdigitalenMessschieber(unterweisung
+Feinwerkmechaniker/-in) .GRINVerlag.
+Shi,X.,Y.Chen,andJ.Jia(2007).Dependency-basedChinese-Englishstatisticalmachinetranslation.In
+ProceedingsoftheSeventhInternationalConferenceonIntellignetTextProcessingandComputationalLinguistics (CICLing-2007 )4394,MexicoCity,Mexico,p.385.
+
+452 HandbookofNaturalLanguageProcessing
+Smadja, F. (1992). Extracting collocations from text. An application: Language generation. PhD Thesis.
+UMIorderNo.GAX92-09894,ColumbiaUniversity,NewYork,NY.
+Smadja,F.,K.McKeown,andV.Hatzivassiloglou(1996).Translatingcollocationsforbilinguallexicons:
+Astatisticalapproach. ComputationalLinguistics22(1),1–38.
+Somers, H. and A. Ward (1996). Some more experiments in bilingual text alignments. In Proceedings of
+theSecondInternationalConferenceonNewMethodsinLanguageMethodsinLanguageProcessing ,
+Cambridge,MA,pp.66–78.
+Sproat,R.,C.Shih,W.Gale,andN.Chang(1996).Astochasticﬁnite-stateword-segmentationalgorithm
+forChinese. ComputationalLinguistics22(3),377–404.
+Sproat, R., T. Tao, and C. Zhai (2006). Named entity transliteration with comparable corpora. In
+Proceedingsofthe21stInternationalConferenceonComputationalLinguisticsandthe44thannualmeetingoftheAssociationforComputationalLinguistics ,Sydney,Australia,pp.73–80.Association
+forComputationalLinguistics,Morristown,NJ.
+Su,K.(2005).Tohavelinguistictreestructuresinstatisticalmachinetranslation?In Proceedingsof2005
+IEEE International Conference on Natural Language Processing and Knowledge Engineering, 2005(IEEENLP-KE’05),Wuhan,China,pp.3–6.
+Su,K.andJ.Chang(1990).SomekeyissuesindesigningMTsystems. MachineTranslation5 (4),265–300.
+Su,K.,J.Chang,andY.Hsu(1995).Acorpus-basedstatistics-orientedtwo-waydesignforparameterized
+MTsystems:Rationale,architectureandtrainingissues. SixthTheoreticalandMethodologicalIssues
+inMachineTranslation (TMI-95),Leuven,Belgium,pp.334–353.
+Sun, H. and D. Jurafsky (2004). Shallow semantic parsing of Chinese. In Proceedings of NAACL 2004 ,
+Boston,MA,pp.249–256.
+Nightingale.(2008).NightingaleGALETeamInternalCommunication.Venugopal, A., S. Vogel, and A. Waibel (2003). Eﬀective phrase translation extraction from alignment
+models. In Proceedings of the 41st Annual Meeting on Association for Computational Linguistics ,
+Volume1,Sparro,Japan,pp.319–326.AssociationforComputationalLinguistics,Morristown,NJ.
+Vogel, S., H. Ney, and C. Tillmann (1996). HMM-based word alignment in statistical translation. In
+Proceedingsofthe16thConferenceonComputationalLinguistics,Volume2,Copenhagen,Denmark,pp.836–841.AssociationforComputationalLinguistics,Morristown,NJ.
+Vogel, S., Y. Zhang, F. Huang, A. Tribble, A. Venugopal, B. Zhao, and A. Waibel (2003). The CMU
+statisticalmachinetranslationsystem.In ProceedingsofMTSummit ,NewOrleans,LA,Vol.9.
+Wang,H.,H.Wu,X.Hu,Z.Liu,J.Li,D.Ren,andZ.Niu(2008).TheTCHMachineTranslationSystemfor
+InternationalWorkshoponSpokenLanguageTranslation2008(IWSLT2008),Honolulu,Hawaii,pp.124–131.
+Wu, D. (1995). Trainable coarse bilingual grammars for parallel text bracketing. In Proceedings of the
+ThirdAnnualWorkshoponVeryLargeCorpora,Cambridge,MA,pp.69–81.
+Wu, D. (1997). Stochastic inversion transduction grammars and bilingual parsing of parallel corpora.
+ComputationalLinguistics23(3),377–403.
+Wu,D.andD.Chiang(2009). ProceedingsofSSST-3,Boulder,CO.
+Wu,D.andP.Fung(October,1994).ImprovingChinesetokenizationwithlinguisticﬁltersonstatistical
+lexicalacquisition.In ProceedingsoftheFourthConferenceonAppliedNaturalLanguageProcessing,
+Stuttgart,Germany,pp.13–15.
+Wu, D. and P. Fung (2005). Inversion transduction grammar constraints for mining parallel sen-
+tencesfromquasi-comparablecorpora. Lecturenotesincomputerscience3651,JejioIsland,Korea,
+p.257.
+Wu, D. and P. Fung (June 2009). Semantic Roles for SMT: A hybrid two-pass model. In Proceedings of
+theHLT/NAACL,2009,Boulder,CO.
+Wu, D. and X. Xia (1994). Learning an English-Chinese lexicon from a parallel corpus. In Proceedings
+oftheFirstConferenceoftheAssociationforMachineTranslationintheAmericas, Columbia, MD,pp.206–213.
+
+ChineseMachineTranslation 453
+Wu,D.,M.Carpuat,andY.Shen(2006).Inversiontransductiongrammarcoverageofarabic-englishword
+alignmentfortree-structuredstatisticalmachinetranslation.In IEEESpokenLanguageTechnology
+Workshop,2006 ,Aruba,pp.234–237.
+Xu, R., Q. Lu, Y. Li, and W. Li (2004). The construction of a Chinese shallow treebank. In the Third
+SIGHANWorkshoponChineseLanguageProcessing,Barcelona,Spain,pp.94–101.
+Xue, N. and S. Converse (2002). Combining classiﬁers for Chinese word segmentation. In Proceedings
+of the ﬁrst SIGHAN workshop on Chinese Language Processing, Vol. 18, Taipei, Taiwan, pp. 1–7.AssociationforComputationalLinguistics,Morristown,NJ.
+Yamada, K. and K. Knight (2001). A decoder for syntax-based statistical MT. In Proceedings of the
+40thAnnualMeetingonAssociationforComputationalLinguistics ,Philadelphia,PA,pp.303–310.
+AssociationforComputationalLinguistics,Morristown,NJ.
+Yang,M.,H.Jiang,Z.Tiejun,S.Li,andD.Liu(2008).DomainsensitiveChinese-Englishexamplebased
+machinetranslation.In FifthInternationalConferenceonFuzzySystemsandKnowledgeDiscovery,
+2008(FSKD’08),Shandong,China,Vol.2.
+Yarowsky,D.(1994).Decisionlistsforlexicalambiguityresolution:Applicationtoaccentrestorationin
+SpanishandFrench.In Proceedingsofthe32ndAnnualMeetingoftheAssociationforComputational
+Linguistics .LasCruces,NM,pp.88-95.
+Yu,J.andY.Zhang(2008).WhenChinesesemanticsmeetsfailedsyntax. Neuroreport 19(7),745–749.
+Zens, R., F. Och, and H. Ney (2002). Phrase-based statistical machine translation. In Proceedings of
+the 25th Annual German Conference on AI: Advances in Artiﬁcial Intelligence (KI2002), Aachen,
+Germany,pp.18–32.
+Zhai,Y.,Y.Qu,andZ.Gao(2004).Agent-basedmodelingforvirtualorganizationsingrid. LectureNotes
+inComputerScience,Springer-Verlag,Berlin,pp.83–89.
+Zhang, R., K. Yasuda, and E. Sumita (2008). Chinese word segmentation and statistical machine
+translation. ACMTransactionsonSpeechandLanguageProcessing5 (2),articleno.4.
+Zhang,Y.,R.Brown,andR.Frederking(2001).Adaptinganexample-basedtranslationsystemtoChinese.
+InProceedingsofHumanLanguageTechnologyConference2001 ,SanDiego,CA,pp.7–10.
+Zhang, Y., S. Vogel, and A. Waibel (2003). Integrated phrase segmentation and alignment algorithm
+for statistical machine translation. In Proceedings of the 2003 International Conference on Natural
+LanguageProcessingandKnowledgeEngineering,2003,Beijing,China,pp.567–573.
+Zhang, Y., R. Zens, and H. Ney (2007). Chunk-level reordering of source language sentences with
+automaticallylearnedrulesforstatisticalmachinetranslation.In ProceedingsofSSST,NAACL-HLT
+2007/AMTAWorkshoponSyntaxandStructureinStatisticalTranslation ,Rochester,NewYork.
+Zhao, B. and S. Vogel (2002). Adaptive parallel sentences mining from web bilingual news collection.
+In2002 IEEE International Conference on Data Mining, 2002. ICDM 2002. Proceedings , Maebashi
+City,Japan,pp.745–748.
+Zhiwei,F.(1954).Thecurrentsituationandproblemsinmachinetranslation. Korea1966 (1977),1991.
+Zollmann,A.,A.Venugopal,F.Och,andJ.Ponte(2008).Asystematiccomparisonofphrase-based,hier-
+archicalandsyntax-augmentedstatisticalMT.In Proceedingsofthe22ndInternationalConference
+onComputationalLinguistics ,Manchester,U.K.,pp.1145–1152.
+Zweigenbaum,P.andR.Rapp(2008). LREC2008WorkshoponComparableCorpora ,Marrake,Morocco.
+
+
+

@@ -1,0 +1,496 @@
+2
+Text Preprocessing
+David D. Palmer
+AutonomyVirage2.1 Introduction ........................................................... 92.2 ChallengesofTextPreprocessing ...................................10
+Character-SetDependence •LanguageDependence •Corpus
+Dependence •ApplicationDependence
+2.3 Tokenization...........................................................15
+TokenizationinSpace-DelimitedLanguages •Tokenizationin
+UnsegmentedLanguages
+2.4 SentenceSegmentation...............................................22
+SentenceBoundaryPunctuation •TheImportanceofContext •
+TraditionalRule-BasedApproaches •RobustnessandTrainability •
+TrainableAlgorithms
+2.5 Conclusion.............................................................27References.....................................................................28
+2.1 Introduction
+Inthelinguisticanalysisofadigitalnaturallanguagetext, itisnecessarytoclearlydeﬁnethecharacters,words, and sentencesin anydocument. Deﬁningtheseunits presentsdiﬀerentchallengesdepending onthelanguagebeingprocessedandthesourceofthedocuments,andthetaskisnottrivial,especiallywhenconsidering the variety of human languages and writing systems. Natural languages contain inherentambiguities, and writing systems often amplify ambiguities as well as generate additional ambiguities.MuchofthechallengeofNaturalLanguageProcessing(NLP)involvesresolvingtheseambiguities.Earlywork in NLP focused on a small number of well-formed corpora in a small number of languages, butsigniﬁcantadvanceshavebeenmadeinrecentyearsbyusinglargeanddiversecorporafromawiderangeof sources, including a vast and ever-growing supply of dynamically generated text from the Internet.This explosion in corpus size and variety has necessitated techniques for automatically harvesting andpreparingtextcorporaforNLPtasks.
+Inthischapter,wediscussthechallengesposedby textpreprocessing,thetaskofconvertingarawtext
+ﬁle, essentially a sequence of digital bits, into a well-deﬁned sequence of linguistically meaningful units:atthelowestlevelcharactersrepresentingtheindividualgraphemesinalanguage’swrittensystem,wordsconsistingofoneormorecharacters,andsentencesconsistingofoneormorewords.TextpreprocessingisanessentialpartofanyNLPsystem, sincethecharacters, words, andsentencesidentiﬁedatthisstagearethefundamentalunitspassedtoallfurtherprocessingstages,fromanalysisandtaggingcomponents,such as morphological analyzers and part-of-speech taggers, through applications, such as informationretrievalandmachinetranslationsystems.
+Textpreprocessingcanbedividedintotwostages:documenttriageandtextsegmentation. Document
+triageistheprocessofconvertingasetofdigitalﬁlesintowell-deﬁnedtextdocuments.Forearlycorpora,
+this was a slow, manual process, and these early corpora were rarely more than a few million words.
+9
+
+10 HandbookofNaturalLanguageProcessing
+Incontrast,currentcorporaharvestedfromtheInternetcanencompassbillionsofwords eachday,which
+requiresafullyautomateddocumenttriageprocess.Thisprocesscaninvolveseveralsteps,dependingonthe origin of the ﬁles being processed. First, in order for any natural language document to be machinereadable, its characters must be represented in a character encoding, in which one or more bytes in aﬁle maps to a known character. Character encoding identiﬁcation determines the character encoding
+(or encodings) for any ﬁle and optionally converts between encodings. Second, in order to know whatlanguage-speciﬁc algorithms to apply to a document, language identiﬁcation determines the natural
+language for a document; this step is closely linked to, but not uniquely determined by, the characterencoding. Finally, textsectioning identiﬁestheactualcontentwithinaﬁlewhilediscardingundesirable
+elements, such as images, tables, headers, links, and HTML formatting. The output of the documenttriage stage is a well-deﬁned text corpus, organized by language, suitable for text segmentation andfurtheranalysis.
+Text segmentation is the process of converting a well-deﬁned text corpus into its component words
+and sentences. Wordsegmentation breaks up the sequence of characters in a text by locating the word
+boundaries,thepointswhereonewordendsandanotherbegins.Forcomputationallinguisticspurposes,the words thus identiﬁed are frequently referred to as tokens, and word segmentation is also known as
+tokenization. Text normalization is a related step that involves merging diﬀerent written forms of a
+token into a canonical normalized form; for example, a document may contain the equivalent tokens“Mr.”,“Mr”,“mister”,and“Mister”thatwouldallbenormalizedtoasingleform.
+Sentencesegmentation istheprocessofdeterminingthelongerprocessingunitsconsistingofoneor
+more words. This task involves identifying sentence boundaries between words in diﬀerent sentences.
+Since most written languages have punctuation marks that occur at sentence boundaries, sentence seg-mentationisfrequentlyreferredtoas sentenceboundarydetection, sentenceboundarydisambiguation,
+orsentenceboundaryrecognition .Allthesetermsrefertothesametask:determininghowatextshould
+bedividedintosentencesforfurtherprocessing.
+Inpractice,sentenceandwordsegmentationcannotbeperformedsuccessfullyindependentfromone
+another. For example, an essential subtask in both word and sentence segmentation for most Europeanlanguages is identifying abbreviations, because a period can be used to mark an abbreviation as wellas to mark the end of a sentence. In the case of a period marking an abbreviation, the period is usuallyconsideredapartoftheabbreviationtoken,whereasaperiodattheendofasentenceisusuallyconsideredatokeninandofitself.Inthecaseofanabbreviationattheendofasentence,theperiodmarks boththe
+abbreviationandthesentenceboundary.
+This chapter provides an introduction to text preprocessing in a variety of languages and writing
+systems. We begin in Section 2.2 with a discussion of the challenges posed by text preprocessing, andemphasize the document triage issues that must be considered before implementing a tokenization orsentencesegmentationalgorithm.Thesectiondescribesthedependenciesonthelanguagebeingprocessedandthecharactersetinwhichthelanguageisencoded.Italsodiscussesthedependencyontheapplicationthatusestheoutputofthesegmentationandthedependencyonthecharacteristicsofthespeciﬁccorpusbeingprocessed.
+InSection2.3,weintroducesomecommontechniquescurrentlyusedfortokenization.Theﬁrstpartof
+thesectionfocusesonissuesthatariseintokenizingandnormalizinglanguagesinwhichwordsaresepa-ratedbywhitespace.Thesecondpartofthesectiondiscussestokenizationtechniquesinlanguageswherenosuchwhitespacewordboundariesexist.InSection2.4,wediscusstheproblemofsentencesegmentationandintroducesomecommontechniquescurrentlyusedtoidentifysentenceboundariesintexts.
+2.2 Challenges of Text Preprocessing
+There are many issues that arise in text preprocessing that need to be addressed when designing NLPsystems,andmanycanbeaddressedaspartofdocumenttriageinpreparingacorpusforanalysis.
+
+TextPreprocessing 11
+The type of writing system used for a language is the most important factor for determining the
+best approach to text preprocessing. Writing systems can be logographic, where a large number (often
+thousands) of individual symbols represent words. In contrast, writing systems can be syllabic,i n
+which individual symbols represent syllables, or alphabetic, in which individual symbols (more or less)
+represent sounds; unlike logographic systems, syllabic and alphabetic systems typically have fewer than100 symbols. According to Comrie et al. (1996), the majority of all written languages use an alphabeticor syllabic system. However, in practice, no modern writing system employs symbols of only one kind,so no natural language writing system can be classiﬁed as purely logographic, syllabic, or alphabetic.EvenEnglish,withitsrelativelysimplewritingsystembasedontheRomanalphabet,utilizeslogographicsymbolsincludingArabicnumerals(0–9),currencysymbols($,£),andothersymbols(%,&,#).Englishisneverthelesspredominatelyalphabetic,andmostotherwritingsystemsarecomprisedofsymbolswhicharemainlyofonetype.
+In this section, we discuss the essential document triage steps, and we emphasize the main types
+of dependencies that must be addressed in developing algorithms for text segmentation: character-set
+dependence (Section 2.2.1), language dependence (Section 2.2.2), corpus dependence (Section 2.2.3),
+andapplicationdependence (Section2.2.4).
+2.2.1 Character-Set Dependence
+At its lowest level, a computer-based text or document is merely a sequence of digital bits in a ﬁle. Theﬁrstessentialtaskistointerpretthesebitsascharactersofawritingsystemofanaturallanguage.2.2.1.1 About Character SetsHistorically, interpreting digital text ﬁles was trivial, since nearly all texts were encoded in the 7-bit
+character set ASCII, which allowed only 128 (2
+7) characters and included only the Roman (or Latin)
+alphabet and essential characters for writing English. This limitation required the “asciiﬁcation” or“romanization”ofmanytexts,inwhichASCIIequivalentsweredeﬁnedforcharactersnotdeﬁnedinthecharacterset. An example of this asciiﬁcationis theadaptation of many European languages containingumlauts and accents, in which the umlauts are replaced by a double quotation mark or the letter ‘e’ andaccents are denoted by a single quotation mark or even a number code. In this system, the Germanwordüberwould be written as u”berorueber, and the French word déjàwould be written as de’ja‘or
+de1ja2.Languagesthatdonotusetheromanalphabet,suchasRussianandArabic,requiredmuchmore
+elaborate romanization systems, usually based on a phonetic mapping of the source characters to theroman characters. The Pinyin transliteration of Chinese writing is another example of asciiﬁcation of amorecomplexwritingsystem.Theseadaptationsarestillcommonduetothewidespreadfamiliaritywiththeromancharacters;inaddition,somecomputerapplicationsarestilllimitedtothis7-bitencoding.
+Eight-bit character sets can encode 256 (2
+8) characters using a single 8-bit byte, but most of these
+8-bitsetsreservetheﬁrst128charactersfortheoriginalASCIIcharacters.Eight-bitencodingsexistforallcommonalphabeticandsomesyllabicwritingsystems;forexample,theISO-8859seriesof10+charactersets contains encoding deﬁnitions for most European characters, including separate ISO-8859 sets forthe Cyrillic and Greek alphabets. However, since all 8-bit character sets are limited to exactly the same256bytecodes(decimal0–255),thisresultsinalargenumberofoverlappingcharactersetsforencodingcharactersindiﬀerentlanguages.
+Writingsystemswithlargercharactersets,suchasthoseofwrittenChineseandJapanese,whichhave
+several thousand distinct characters, require multiple bytes to encode a single character. A two-byte
+character set can represent 65,536 (2
+16) distinct characters, since 2 bytes contain 16 bits. Determining
+individual characters in two-byte character sets involves grouping pairs of bytes representing a singlecharacter. This process can be complicated by the tokenization equivalent of code-switching, in whichcharactersfrommanydiﬀerentwritingsystemsoccurwithinthesametext. Itisverycommon indigitaltexts to encounter multiple writing systems and thus multiple encodings, or as discussed previously,
+
+12 HandbookofNaturalLanguageProcessing
+character encodings that include other encodings as subsets. In Chinese and Japanese texts, single-byteletters,spaces,punctuationmarks(e.g.,periods,quotationmarks,andparentheses),andArabicnumerals(0–9)arecommonlyinterspersedwith2-byteChineseandJapanesecharacters.Suchtextsalsofrequentlycontain ASCII headers. Multiple encodings also exist for these character sets; for example, the Chinesecharacter set is represented in two widely used encodings, Big-5 for the complex-form (traditional)character set and GB for the simple-form (simpliﬁed) set, with several minor variants of these sets alsocommonlyfound.
+TheUnicode5.0standard (UnicodeConsortium2006)seekstoeliminatethischaractersetambiguity
+by specifying a Universal Character Set that includes over 100,000 distinct coded characters derivedfromover75supportedscriptsrepresentingallthewritingsystemscommonlyusedtoday.TheUnicodestandard is most commonly implemented in the UTF-8 variable-length character encoding ,i nw h i c h
+eachcharacterisrepresentedbya1to4byteencoding.IntheUTF-8encoding,ASCIIcharactersrequire1 byte, most other characters included in ISO-8859 character encodings and other alphabetic systemsrequire 2 bytes, and all other characters, including Chinese, Japanese, and Korean, require 3 bytes (andvery rarely 4 bytes). The Unicode standard and its implementation in UTF-8 allow for the encoding ofall supported characters with no overlap or confusion between conﬂicting byte ranges, and it is rapidlyreplacingoldercharacterencodingsetsformultilingualapplications.2.2.1.2 Character Encoding Identiﬁcation and Its Impact on TokenizationDespite the growing use of Unicode, the fact that the same range of numeric values can representdiﬀerent characters in diﬀerent encodings can be a problem for tokenization. For example, English orSpanisharebothnormallystoredinthecommon8-bitencodingLatin-1(orISO-8859-1).AnEnglishorSpanishtokenizerwouldneedtobeawarethatbytesinthe(decimal)range161–191inLatin-1representpunctuation marks and other symbols (such as ‘¡’, ‘¿’, ‘£’, and ‘ c⃝’). Tokenization rules would then
+be required to handle each symbol (and thus its byte code) appropriately for that language. However,this same byte range in UTF-8 represents the second (or third or fourth) byte of a multi-byte sequenceand is meaningless by itself; an English or Spanish tokenizer for UTF-8 would thus need to modelmulti-byte character sequences explicitly. Furthermore, the same byte range in ISO-8859-5, a commonRussianencoding,containsCyrilliccharacters;inKOI8-R,anotherRussianencoding,therangecontainsadiﬀerent set of Cyrillic characters. Tokenizers thus must be targeted to a speciﬁc language in a speciﬁc
+encoding.
+Tokenization is unavoidably linked to the underlying character encoding of the text being processed,
+and character encoding identiﬁcation is an essential ﬁrst step. While the header of a digital documentmaycontaininformationregardingitscharacterencoding,thisinformationisnotalwayspresentorevenreliable,inwhichcasetheencodingmustbedeterminedautomatically.
+Acharacterencodingidentiﬁcationalgorithmmustﬁrstexplicitlymodeltheknownencodingsystems,
+inordertoknowinwhatbyterangestolookforvalidcharactersaswellaswhichbyterangesareunlikelytoappearfrequentlyinthatencoding.Thealgorithmthenanalyzesthebytesinaﬁletoconstructaproﬁleofwhichbyterangesarerepresentedintheﬁle.Next,thealgorithmcomparesthepatternsofbytesfoundin the ﬁle to the expected byte ranges from the known encodings and decides which encoding best ﬁtsthedata.
+Russianencodingsprovideagoodexampleofthediﬀerentbyterangesencounteredforagivenlanguage.
+In the ISO-8859-5 encoding for Russian texts, the capital Cyrillic letters are in the (hexadecimal) rangeB0-CF(andarelistedinthetraditionalCyrillicalphabeticalorder);thelowercaselettersareintherangeD0-EF.Incontrast,intheKOI8-Rencoding,thecapitallettersareE0-FF(andarelistedinpseudo-Romanorder);thelowercaselettersareC0-DF.InUnicode,Cyrilliccharactersrequiretwobytes,andthecapitallettersareintherange0410(thebyte04followedbythebyte10)through042F;thelowercaselettersareintherange0430-045F.AcharacterencodingidentiﬁcationalgorithmseekingtodeterminetheencodingofagivenRussiantextwouldexaminethebytescontainedintheﬁletodeterminethebyterangespresent.Thehexbyte04isararecontrolcharacterinISO-8859-5andinKOI8-Rbutwouldcomprisenearlyhalf
+
+TextPreprocessing 13
+thebytesinaUnicodeRussianﬁle.Similarly,aﬁleinISO-8859-5wouldlikelycontainmanybytesintherange B0-BF but few in F0-FF, while a ﬁle in KOI8-R would contain few in B0-BF and many in F0-FF.Using these simple heuristics to analyze the byte distribution in a ﬁle should allow for straightforwardencodingidentiﬁcationforRussiantexts.
+Notethat,duetotheoverlapbetweenexistingcharacterencodings,evenwithahigh-qualitycharacter
+encoding classiﬁer, it may be impossible to determine the character encoding. For example, since mostcharacter encodings reserve the ﬁrst 128 characters for the ASCII characters, a document that containsonlythese128characterscouldbeanyoftheISO-8859encodingsorevenUTF-8.
+2.2.2 Language Dependence
+2.2.2.1 Impact of Writing System on Text SegmentationIn addition to the variety of symbol types (logographic, syllabic, or alphabetic) used in writing systems,thereisarangeoforthographicconventionsusedinwrittenlanguagestodenotetheboundariesbetweenlinguisticunits suchassyllables, words, or sentences. In manywritten Amharictexts, for example, bothwordandsentenceboundariesareexplicitlymarked,whileinwrittenThaitextsneitherismarked.Inthelatter case, where no boundaries are explicitly indicated in the written language, written Thai is similarto spoken language, where there are no explicit boundaries and few cues to indicate segments at anylevel.Betweenthetwoextremesarelanguagesthatmarkboundariestodiﬀerentdegrees.Englishemployswhitespace between most words and punctuation marks at sentence boundaries, but neither feature issuﬃcient to segment the text completely and unambiguously. Tibetan and Vietnamese both explicitlymarksyllableboundaries, eitherthrough layoutor by punctuation, but neithermarksword boundaries.Written Chinese and Japanese have adopted punctuation marks for sentence boundaries, but neitherdenoteswordboundaries.
+Inthischapter,weprovidegeneraltechniquesapplicabletoavarietyofdiﬀerentwritingsystems.Since
+many segmentation issues are language-speciﬁc, we will also highlight the challenges faced by robust,broad-coverage tokenization eﬀorts. For a very thorough description of the various writing systemsemployed to represent natural languages, including detailed examples of all languages and featuresdiscussedinthischapter,werecommendDanielsandBright(1996).2.2.2.2 Language IdentiﬁcationThe wide range of writing systems used by the languages of the world result in language-speciﬁc as wellas orthography-speciﬁc features that must be taken into account for successful text segmentation. Animportantstepinthedocumenttriagestageisthustoidentifythelanguageofeachdocumentordocumentsection,sincesomedocumentsaremultilingualatthesectionlevelorevenparagraphlevel.
+For languages with a unique alphabet not used by any other languages, such as Greek or Hebrew,
+languageidentiﬁcationisdeterminedbycharactersetidentiﬁcation.Similarly,charactersetidentiﬁcationcanbeusedtonarrowthetaskoflanguageidentiﬁcationtoasmallernumberoflanguagesthatallsharemanycharacters, suchasArabicvs. Persian, Russianvs. Ukrainian, orNorwegianvs. Swedish. Thebyterangedistributionusedtodeterminecharactersetidentiﬁcationcanfurtherbeusedtoidentifybytes,andthuscharacters,thatarepredominantinoneoftheremainingcandidatelanguages,ifthelanguagesdonotshare exactly the same characters. For example, while Arabic and Persian both use the Arabic alphabet,thePersianlanguageusesseveralsupplementalcharactersthatdonotappearinArabic.Formorediﬃcultcases, suchasEuropeanlanguagesthatuseexactlythesamecharactersetbutwithdiﬀerentfrequencies,ﬁnal identiﬁcation can be performed by training models of byte/character distributions in each of thelanguages. A basic but very eﬀective algorithm for this would sort the bytes in a ﬁle by frequency countandusethesortedlistasasignaturevectorforcomparisonviaann-gramorvectordistancemodel.
+
+14 HandbookofNaturalLanguageProcessing
+2.2.3 Corpus Dependence
+Early NLP systems rarely addressed the problem of robustness, and they normally could process onlywell-formedinputconformingtotheirhand-builtgrammars.Theincreasingavailabilityoflargecorporain multiple languages that encompass a wide range of data types (e.g., newswire texts, email messages,closed captioning data, Internet news pages, and weblogs) has required the development of robustNLPapproaches,asthesecorporafrequentlycontainmisspellings,erraticpunctuationandspacing,andother irregular features. It has become increasingly clear that algorithms which rely on input texts to bewell-formedaremuchlesssuccessfulonthesediﬀerenttypesoftexts.
+Similarly, algorithms that expect a corpus to follow a set of conventions for a written language are
+frequentlynotrobustenoughtohandleavarietyofcorpora,especiallythoseharvestedfromtheInternet.Itisnotoriouslydiﬃculttoprescriberulesgoverningtheuseofawrittenlanguage;itisevenmorediﬃcultto get people to “follow the rules.” This is in large part due to the nature of written language, in whichthe conventions are not always in line with actual usage and are subject to frequent change. So whilepunctuation roughly corresponds to the use of suprasegmental features in spoken language, reliance onwell-formed sentences delimited by predictable punctuation can be very problematic. In many corpora,traditionalprescriptiverulesarecommonlyignored.Thisfactisparticularlyimportanttoourdiscussionofbothwordandsentencesegmentation,whichtoalargedegreedependsontheregularityofspacingandpunctuation.Mostexistingsegmentationalgorithmsfornaturallanguagesarebothlanguage-speciﬁcandcorpus-dependent,developedtohandlethepredictableambiguitiesinawell-formedtext.Dependingontheoriginandpurposeofatext,capitalizationandpunctuationrulesmaybefollowedveryclosely(asinmost works of literature), erratically (as in various newspaper texts), or not at all (as in email messagesandpersonalWebpages).CorporaautomaticallyharvestedfromtheInternetcanbeespeciallyill-formed,suchasExample(1),anactualpostingtoaUsenetnewsgroup,whichshowstheerraticuseofcapitalizationandpunctuation,“creative”spelling,anddomain-speciﬁcterminologyinherentinsuchtexts.
+(1)ive just loaded pcl onto my akcl. when i do an ‘in- package’ to load pcl, ill get the prompt but
+im not able to use functions like defclass, etc... is there womething basic im missing or am i just lefthanging,twistinginthebreeze?
+Many digital text ﬁles, such as those harvested from the Internet, contain large regions of text that areundesirable for the NLP application processing the ﬁle. For example, Web pages can contain headers,images, advertisements, site navigation links, browser scripts, search engine optimization terms, andothermarkup,littleofwhichisconsideredactual content.Robusttextsegmentationalgorithmsdesigned
+for use with such corpora must therefore have the capabilityto handle the range of irregularities, whichdistinguish these texts from well-formed corpora. A key task in the document triage stage for such ﬁlesis text sectioning, in which extraneous text is removed. The sectioning and cleaning of Web pages hasrecentlybecomethefocusofCleaneval,“asharedtaskandcompetitiveevaluationonthetopicofcleaningarbitraryWebpages,withthegoalofpreparingWebdataforuseasacorpusforlinguisticandlanguagetechnologyresearchanddevelopment.”(Baronietal.2008)
+2.2.4 Application Dependence
+Althoughwordandsentencesegmentationarenecessary,inreality,thereisnoabsolutedeﬁnitionforwhatconstitutesawordorasentence.Botharerelativelyarbitrarydistinctionsthatvarygreatlyacrosswrittenlanguages.However,forthepurposesofcomputationallinguisticsweneedtodeﬁneexactlywhatweneedforfurtherprocessing;inmostcases,thelanguageandtaskathanddeterminethenecessaryconventions.Forexample,theEnglishwords Iamarefrequentlycontractedto I’m,andatokenizerfrequentlyexpands
+the contraction to recover the essential grammatical features of the pronoun and the verb. A tokenizerthat does not expand this contraction to the component words would pass the single token I’mto later
+processing stages. Unless these processors, which may include morphological analyzers, part-of-speech
+
+TextPreprocessing 15
+taggers,lexicallookuproutines,orparsers,areawareofboththecontractedanduncontractedforms,thetokenmaybetreatedasanunknownword.
+Anotherexampleofthedependenceoftokenizationoutputonlaterprocessingstagesisthetreatment
+of the English possessive ’sin various tagged corpora.
+∗In theBrown corpus (Francisand Kucera1982),
+the word governor’s is considered one token and is tagged as a possessive noun. In the Susanne corpus
+(Sampson 1995), on the other hand, the same word is treated as two tokens, governor and’s, tagged
+singularnounandpossessive,respectively.
+Examplessuchastheaboveareusuallyaddressedduringtokenizationbynormalizingthetexttomeet
+therequirementsoftheapplications. Forexample, languagemodelingforautomaticspeechrecognitionrequires that the tokens be represented in a form similar to how they are spoken (and thus inputto the speech recognizer). For example, the written token $300 would be spoken as “three hundreddollars,” and the text normalization would convert the original to the desired three tokens. Otherapplicationsmayrequirethatthisandallothermonetaryamountsbeconvertedtoasingletokensuchas“MONETARY_TOKEN.”
+In languages such as Chinese, which do not contain white space between any words, a wide range of
+wordsegmentationconventionsarecurrentlyinuse.Diﬀerentsegmentationstandardshaveasigniﬁcantimpact on applications such as information retrieval and text-to-speech synthesis, as discussed in Wu(2003).Task-orientedChinesesegmentationhasreceivedagreatdealofattentionintheMTcommunity(Changetal.2008;MaandWay2009;Zhangetal.2008).
+The tasks of word and sentence segmentation overlap with the techniques discussed in many other
+chaptersinthishandbook,inparticularthechaptersonLexicalAnalysis,CorpusCreation,andMultiwordExpressions,aswellaspracticalapplicationsdiscussedinotherchapters.
+2.3 Tokenization
+Section 2.2 discussed the many challenges inherent in segmenting freely occurring text. In this section,wefocusonthespeciﬁctechnicalissuesthatariseintokenization.
+Tokenization is well-established and well-understood for artiﬁcial languages such as programming
+languages.
+†However, such artiﬁcial languages can be strictly deﬁned to eliminate lexical and structural
+ambiguities; we do not have this luxury with natural languages, in which the same character can servemany diﬀerent purposes and in which the syntax is not strictly deﬁned. Many factors can aﬀect thediﬃculty of tokenizing a particular natural language. One fundamental diﬀerence exists between tok-enization approaches for space-delimited languages and approaches for unsegmented languages. In
+space-delimited languages, such as most European languages, some word boundaries are indicated bythe insertion of whitespace. The character sequences delimited are not necessarily the tokens requiredfor further processing, due both to the ambiguous nature of the writing systems and to the range oftokenizationconventionsrequiredbydiﬀerentapplications.Inunsegmentedlanguages,suchasChineseand Thai, words are written in succession with no indication of word boundaries. The tokenization ofunsegmentedlanguagesthereforerequiresadditionallexicalandmorphologicalinformation.
+Inbothunsegmentedandspace-delimitedlanguages,thespeciﬁcchallengesposedbytokenizationare
+largelydependentonboththewritingsystem(logographic,syllabic,oralphabetic,asdiscussedinSection2.2.2) and the typographical structure of the words. There are three main categories into which wordstructures can be placed,
+‡and each category exists in both unsegmented and space-delimited writing
+systems.Themorphologyofwordsinalanguagecanbe isolating,wherewordsdonotdivideintosmaller
+units;agglutinating (oragglutinative), where words divide into smaller units (morphemes) with clear
+∗ThisexampleistakenfromGrefenstetteandTapanainen(1994).
+†Forathoroughintroductiontothebasictechniquesoftokenizationinprogramminglanguages,seeAhoetal.(1986).
+‡ThisclassiﬁcationcomesfromComrieetal.(1996)andCrystal(1987).
+
+16 HandbookofNaturalLanguageProcessing
+boundariesbetweenthemorphemes;or inﬂectional,wheretheboundariesbetweenmorphemesarenot
+clear and where the component morphemes can express more than one grammatical meaning. Whileindividuallanguagesshowtendenciestowardonespeciﬁctype(e.g.,MandarinChineseispredominantlyisolating, Japanese is strongly agglutinative, and Latin is largely inﬂectional), most languages exhibittracesofallthree.Afourthtypologicalclassiﬁcationfrequentlystudiedbylinguists, polysynthetic ,canbe
+consideredanextremecaseofagglutinative,whereseveralmorphemesareputtogethertoformcomplexwords that can function as a whole sentence. Chukchi and Inuktitut are examples of polysyntheticlanguages,andsomeresearchinmachinetranslationhasfocusedonaNunavutHansardsparallelcorpusofInuktitutandEnglish(Martinetal.2003).
+Since the techniques used in tokenizing space-delimited languages are very diﬀerent from those used
+in tokenizing unsegmented languages, we discuss the techniques separately in Sections 2.3.1 and 2.3.2,respectively.
+2.3.1 Tokenization in Space-Delimited Languages
+In many alphabeticwriting systems, including those that use the Latin alphabet, words are separated bywhitespace.Yeteveninawell-formedcorpusofsentences,therearemanyissuestoresolveintokenization.Mosttokenizationambiguityexistsamongusesofpunctuationmarks,suchasperiods,commas,quotationmarks, apostrophes, and hyphens, since the same punctuation mark can serve many diﬀerent functionsin a single sentence, let alone a single text. Consider example sentence (3) from the Wall Street Journal
+(1988).
+(3)ClairsonInternationalCorp.saiditexpectstoreportanetlossforitssecondquarterendedMarch
+26 and doesn’t expect to meet analysts’ proﬁt estimates of $3.9 to $4 million, or 76 cents a share to79centsashare,foritsyearendingSept.24.
+This sentence has several items of interest that are common for Latinate, alphabetic, space-delimitedlanguages.First,itusesperiodsinthreediﬀerentways:withinnumbersasadecimalpoint($3.9),tomarkabbreviations(Corp. andSept.), andtomarktheendofthesentence, inwhichcasetheperiodfollowing
+the number 24is not a decimal point. The sentence uses apostrophes in two ways: to mark the genitive
+case(wheretheapostrophedenotespossession)in analysts’andtoshowcontractions(placeswhereletters
+havebeenleftoutofwords)in doesn’t.Thetokenizermustthusbeawareoftheusesofpunctuationmarks
+and be able to determine when a punctuation mark is part of another token and when it is a separatetoken.
+In addition to resolving these cases, we must make tokenization decisions about a phrase such as 76
+centsashare ,whichonthesurfaceconsistsoffourtokens.However,whenusedadjectivallysuchasinthe
+phrasea76-cents-a-sharedividend, itisnormallyhyphenatedandappearsasone. Thesemanticcontent
+isthesamedespitetheorthographicdiﬀerences,soitmakessensetotreatthetwoidentically,asthesamenumberoftokens.Similarly,wemustdecidewhethertotreatthephrase $3.9to$4million diﬀerentlythan
+ifithadbeenwrittenas 3.9to4milliondollars or$3,900,000to$4,000,000 . Notealsothatthesemantics
+ofnumberscanbedependentonboththegenreandtheapplication;inscientiﬁcliterature,forexample,thenumbers3.9,3.90,and3.900havediﬀerentsigniﬁcantdigitsandarenotsemanticallyequivalent.Wediscusstheseambiguitiesandotherissuesinthefollowingsections.
+A logical initial tokenization of a space-delimited language would be to consider as a separate token
+any sequence of characters preceded and followed by space. This successfully tokenizes words that area sequence of alphabetic characters, but does not take into account punctuation characters. In manycases,characterssuchascommas,semicolons,andperiodsshouldbetreatedasseparatetokens,althoughthey are not preceded by whitespace (such as the case with the comma after $4 million in Example (3)).
+Additionally, many texts contain certain classes of character sequences which should be ﬁltered outbeforeactualtokenization;theseincludeexistingmarkupandheaders(includingHTMLmarkup),extrawhitespace,andextraneouscontrolcharacters.
+
+TextPreprocessing 17
+2.3.1.1 Tokenizing PunctuationWhile punctuation characters are usually treated as separate tokens, there are many cases when theyshould be “attached” to another token. The speciﬁc cases vary from one language to the next, and thespeciﬁc treatment of the punctuation characters needs to be enumerated within the tokenizer for eachlanguage.Inthissection,wegiveexamplesofEnglishtokenization.
+Abbreviations are used in written language to denote the shortened form of a word. In many cases,
+abbreviations are written as a sequence of characters terminated with a period. When an abbreviationoccursattheendofasentence, asingleperiodmarksboththeabbreviationandthesentenceboundary.For this reason, recognizing abbreviations is essential for both tokenization and sentence segmentation.Compiling a list of abbreviations can help in recognizing them, but abbreviations are productive, andit is not possible to compile an exhaustive list of all abbreviations in any language. Additionally, manyabbreviationscanalsooccuraswordselsewhereinatext(e.g.,theword Massisalsotheabbreviationfor
+Massachusetts). An abbreviation can also represent several diﬀerent words, as is the case for St.which
+can stand for Saint,Street,o r State. However, as Saintit is less likely to occur at a sentence boundary
+than asStreet,o r State. Examples (4) and (5) from the Wall Street Journal (1991 and 1987 respectively)
+demonstratethediﬃcultiesproducedbysuchambiguouscases,wherethesameabbreviationcanrepresentdiﬀerentwordsandcanoccurbothwithinandattheendofasentence.
+(4)The contemporary viewer may simply ogle the vast wooded vistas rising up from the Saguenay
+RiverandLacSt.Jean,standinginfortheSt.LawrenceRiver.(5)Theﬁrmsaiditplanstosubleaseitscurrentheadquartersat55WaterSt.Aspokesmandeclined
+toelaborate.
+Recognizinganabbreviationisthusnotsuﬃcientforcompletetokenization,andtheappropriatedeﬁnitionforanabbreviationcanbeambiguous,asdiscussedinParkandByrd(2001).WeaddressabbreviationsatsentenceboundariesfullyinSection2.4.2.
+Quotationmarksandapostrophes(“”‘’)areamajorsourceoftokenizationambiguity.Inmostcases,
+single and double quotes indicate a quoted passage, and the extent of the tokenization decision is todetermine whether they open or close the passage. In many character sets, single quote and apostropheare the same character, and it is therefore not always possible to immediately determine if the singlequotation mark closes a quoted passage, or serves another purpose as an apostrophe. In addition, asdiscussedinSection2.2.1,quotationmarksarealsocommonlyusedwhen“romanizing”writingsystems,inwhichumlautsarereplacedbyadoublequotationmarkandaccentsaredenotedbyasinglequotationmarkoranapostrophe.
+The apostrophe is a very ambiguous character. In English, the main uses of apostrophes are to mark
+thegenitiveformofanoun,tomarkcontractions,andtomarkcertainpluralforms.Inthegenitivecase,some applications require a separate token while some require a single token, as discussed in Section2.2.4.Howtotreatthegenitivecaseisimportant,sinceinotherlanguages,thepossessiveformofawordis not marked with an apostrophe and cannot be as readily recognized. In German, for example, thepossessive form of a noun is usually formed by adding the letter sto the word, without an apostrophe,
+as inPeters Kopf (Peter’s head ). However, in modern (informal) usage in German, Peter’s Kopf would
+alsobecommon;theapostropheisalsofrequentlyomittedinmodern(informal)Englishsuchthat Peters
+headis a possible construction. Furthermore, in English, ’scan serve as a contraction for the verb is,a s
+inhe’s,it’s,she’s,a n d Peter’s head and shoulders above the rest . It also occurs in the plural form of some
+words,suchas I.D.’sor1980’s,althoughtheapostropheisalsofrequentlyomittedfromsuchplurals.The
+tokenizationdecisioninthesecasesiscontextdependentandiscloselytiedtosyntacticanalysis.
+In the case of apostrophe as contraction, tokenization may require the expansion of the word to
+eliminatetheapostrophe,butthecaseswherethisisnecessaryareverylanguage-dependent.TheEnglishcontraction I’mcouldbetokenizedasthetwowords Iam,andwe’vecouldbecome wehave.WrittenFrench
+containsacompletelydiﬀerentsetofcontractions,includingcontractedarticles(l’homme, c’etait),aswell
+
+18 HandbookofNaturalLanguageProcessing
+ascontractedpronouns( j’ai,jel’ai)andotherformssuchas n’y,qu’ils,d’ailleurs,andaujourd’hui .Clearly,
+recognizingthecontractionstoexpandrequiresknowledgeofthelanguage,andthespeciﬁccontractionsto expand, as well as the expanded forms, must be enumerated. All other word-internal apostrophesare treated as a part of the token and not expanded, which allows the proper tokenization of multiply-contractedwordssuchas fo’c’s’le(forecastle)and Pudd’n’head (Puddinghead)assinglewords.Inaddition,
+sincecontractionsarenotalwaysdemarcatedwithapostrophes,asintheFrench du,whichisacontraction
+ofdele,ortheSpanish del,contractionof deel,otherwordstoexpandmustalsobelistedinthetokenizer.
+2.3.1.2 Multi-Part WordsTodiﬀerentdegrees,manywrittenlanguagescontainspace-delimitedwordscomposedofmultipleunits,each expressing a particular grammatical meaning. For example, the single Turkish word çöplüklerim-
+izdekilerdenmiydi means “was it from those that were in our garbage cans?”
+∗This type of construction
+is particularly common in strongly agglutinative languages such as Swahili, Quechua, and most Altaiclanguages. It is also common in languages such as German, where noun–noun ( Lebensversicherung,l i f e
+insurance), adverb–noun (Nichtraucher, nonsmoker), and preposition–noun (Nachkriegszeit,p o s t w a r
+period) compounding are all possible. In fact, though it is not an agglutinative language, Germancompounding can be quite complex, as in Feuerundlebensversicherung (ﬁre and life insurance) or
+Kundenzufriedenheitsabfragen (customersatisfactionsurvey).
+Tosomeextent,agglutinatingconstructionsarepresentinnearlyalllanguages,thoughthiscompound-
+ing can be marked by hyphenation, in which the use of hyphens can create a single word with multiplegrammaticalparts.InEnglish,itiscommonlyusedtocreatesingle-tokenwordslike end-of-line aswellas
+multi-token words like Boston-based . As with the apostrophe, the use of the hyphen is not uniform; for
+example,hyphenusagevariesgreatlybetweenBritishandAmericanEnglish,aswellasbetweendiﬀerentlanguages. However, as with the case of apostrophes as contractions, many common language-speciﬁcusesofhyphenscanbeenumeratedinthetokenizer.
+Many languages use the hyphen to create essential grammatical structures. In French, for example,
+hyphenated compounds such as va-t-il(will it?), c’est-à-dire (that is to say), and celui-ci(it) need to be
+expanded during tokenization, in order to recover necessary grammatical features of the sentence. Inthese cases, the tokenizer needs to contain an enumerated list of structures to be expanded, as with thecontractionsdiscussedabove.
+Another tokenization diﬃculty involving hyphens stems from the practice, common in traditional
+typesetting, of using hyphens at the ends of lines to break a word too long to include on one line.Such end-of-line hyphens can thus occur within words that are not normally hyphenated. Removingthese hyphens is necessary during tokenization, yet it is diﬃcult to distinguish between such incidentalhyphenationandcaseswherenaturallyhyphenatedwordshappentooccuratalinebreak.Inanattemptto dehyphenate the artiﬁcial cases, it is possible to incorrectly remove necessary hyphens. Grefenstetteand Tapanainen (1994) found that nearly 5% of the end-of-line hyphens in an English corpus wereword-internalhyphens,whichhappenedtoalsooccurasend-of-linehyphens.
+In tokenizing multi-part words, such as hyphenated or agglutinative words, whitespace does not
+providemuchusefulinformationtofurtherprocessingstages.Insuchcases,theproblemoftokenizationis very closely related both to tokenization in unsegmented languages, discussed in Section 2.3.2, and tomorphologicalanalysis,discussedinChapter3ofthishandbook.2.3.1.3 Multiword ExpressionsSpacingconventionsinwrittenlanguagesdonotalwayscorrespondtothedesiredtokenizationforNLPapplications,andtheresultingmultiwordexpressionsareanimportantconsiderationinthetokenizationstage.AlaterchapterofthishandbookaddressesMultiwordExpressionsinfulldetail,sowetouchbrieﬂyinthissectiononsomeofthetokenizationissuesraisedbymultiwordexpressions.
+∗ThisexampleisfromHankamer(1986).
+
+TextPreprocessing 19
+For example, the three-word English expression in spite of is, for all intents and purposes, equivalent
+tothesingleword despite,andbothcouldbetreatedasasingletoken.Similarly,manycommonEnglish
+expressions, such as au pair,de facto,a n d joie de vivre , consist of foreign loan words that can be treated
+asasingletoken.
+Multiword numerical expressions are also commonly identiﬁed in the tokenization stage. Numbers
+areubiquitousinalltypesoftextsineverylanguage,buttheirrepresentationinthetextcanvarygreatly.For most applications, sequences of digits and certain types of numerical expressions, such as dates andtimes,moneyexpressions,andpercents,canbetreatedasasingletoken.Severalexamplesofsuchphrasescan be seen in Example (3) above: March 26, $ 3 . 9t o$ 4m i l l i o n ,a n dSept. 24could each be treated as a
+singletoken.Similarly,phrasessuchas 76centsashare and$3-a-share conveyroughlythesamemeaning,
+despite the diﬀerence in hyphenation, and the tokenizer should normalize the two phrases to the samenumber of tokens (either one or four). Tokenizing numeric expressions requires the knowledge of thesyntax of such expressions, since numerical expressions are written diﬀerently in diﬀerent languages.Even within a language or in languages as similar as English and French, major diﬀerences exist in thesyntaxofnumericexpressions,inadditiontotheobviousvocabularydiﬀerences.Forexample,theEnglishdateNovember 18, 1989 could alternately appear in English texts as any number of variations, such as
+Nov. 18, 1989, 18 November 1989, 11/18/89 or18/11/89. These examples underscore the importance of
+textnormalizationduringthetokenizationprocess,suchthatdates,times,monetaryexpressions,andallothernumericphrasescanbeconvertedintoaformthatisconsistentwiththeprocessingrequiredbytheNLPapplication.
+Closelyrelatedtohyphenation,thetreatmentofmultiwordexpressionsishighlylanguage-dependent
+and application-dependent, but can easily be handled in the tokenization stage if necessary. We need tobe careful, however, when combining words into a single token. The phrase no one, along with noone
+andno-one, is a commonly encountered English equivalent for nobody, and should normally be treated
+as a single token. However, in a context such as No one man can do it alone , it needs to be treated as
+twowords.Thesameistrueofthetwo-wordphrase cannot,whichisnotalwaysequivalenttothesingle
+wordcannotorthecontraction can’t.
+∗Insuchcases, itissafertoallowalaterprocess(suchasaparser)
+tomakethedecision.
+2.3.2 Tokenization in Unsegmented Languages
+The nature of the tokenization task in unsegmented languages like Chinese, Japanese, and Thai isfundamentally diﬀerent from tokenization in space-delimited languages like English. The lack of anyspaces between words necessitates a more informed approach than simple lexical analysis. The speciﬁcapproach to word segmentation for a particular unsegmented language is further limited by the writingsystem and orthography of the language, and a single general approach has not been developed. InSection2.3.2.1,wedescribesomealgorithms,whichhavebeenappliedtotheproblemtoobtainaninitialapproximationforavarietyoflanguages.InSections2.3.2.2and2.3.2.3,wegivedetailsofsomesuccessfulapproachestoChineseandJapanesesegmentation,andinSection2.3.2.4,wedescribesomeapproaches,whichhavebeenappliedtolanguageswithunsegmentedalphabeticorsyllabicwritingsystems.2.3.2.1 Common ApproachesAnextensivewordlistcombinedwithaninformedsegmentationalgorithmcanhelptoachieveacertaindegree of accuracy in word segmentation, but the greatest barrier to accurate word segmentation is inrecognizing unknown (or out-of-vocabulary) words, words not in the lexicon of the segmenter. Thisproblem is dependent both on the source of the lexicon as well as the correspondence (in vocabulary)betweenthetextinquestionandthelexicon;forexample,WuandFung(1994)reportedthatsegmentation
+∗Forexample,considerthefollowingsentence:“WhyismysodacannotwhereIleftit?”
+
+20 HandbookofNaturalLanguageProcessing
+accuracyinChineseissigniﬁcantlyhigherwhenthelexiconisconstructedusingthesametypeofcorpusasthecorpusonwhichitistested.
+Another obstacle to high-accuracy word segmentation is the fact that there are no widely accepted
+guidelines as to what constitutes a word, and there is therefore no agreement on how to “correctly”segmentatextinanunsegmentedlanguage.Nativespeakersofalanguagedonotalwaysagreeaboutthe“correct” segmentation, and the same text could be segmented into several very diﬀerent (and equallycorrect)setsofwordsbydiﬀerentnativespeakers.AsimpleexamplefromEnglishwouldbethehyphenatedphraseBoston-based . If asked to “segment” this phrase into words, some native English speakers might
+sayBoston-based is a single word and some might say Bostonandbasedare two separate words; in this
+lattercasetheremightalsobedisagreementaboutwhetherthehyphen“belongs”tooneofthetwowords(and to which one) or whether it is a “word” by itself. Disagreement by native speakers of Chinese ismuch more prevalent; in fact, Sproat et al. (1996) give empirical results showing that native speakersof Chinese agree on the correct segmentation in fewer than 70% of the cases. Such ambiguity in thedeﬁnition of what constitutes a word makes it diﬃcult to evaluate segmentation algorithms that followdiﬀerentconventions,sinceitisnearlyimpossibletoconstructa“goldstandard”againstwhichtodirectlycompareresults.
+A simple word segmentation algorithm consists of considering each character to be a distinct word.
+ThisispracticalforChinesebecausetheaveragewordlengthisveryshort(usuallybetweenoneandtwocharacters,dependingonthecorpus
+∗)andactualwordscanberecognizedwiththisalgorithm.Althoughit
+doesnotassistintaskssuchasparsing,part-of-speechtagging,ortext-to-speechsystems(seeSproatetal.1996), thecharacter-as-wordsegmentationalgorithmisverycommoninChineseinformationretrieval,a task in which the words in a text play a major role in indexing and where incorrect segmentation canhurtsystemperformance.
+A very common approach to word segmentation is to use a variation of the maximum matching
+algorithm ,frequentlyreferredtoasthe greedyalgorithm .Thegreedyalgorithmstartsattheﬁrstcharacter
+inatextand,usingawordlistforthelanguagebeingsegmented,attemptstoﬁndthelongestwordintheliststartingwiththatcharacter.Ifawordisfound,themaximum-matchingalgorithmmarksaboundaryattheendofthelongestword,thenbeginsthesamelongestmatchsearchstartingatthecharacterfollowingthematch.Ifnomatchisfoundinthewordlist,thegreedyalgorithmsimplysegmentsthatcharacterasaword(asinthecharacter-as-wordalgorithmabove)andbeginsthesearchstartingatthenextcharacter.A variation of the greedy algorithm segments a sequence of unmatched characters as a single word; thisvariantismorelikelytobesuccessfulinwritingsystemswithlongeraveragewordlengths.Inthismanner,aninitialsegmentationcanbeobtainedthatismoreinformedthanasimplecharacter-as-wordapproach.Thesuccessofthisalgorithmislargelydependentonthewordlist.
+As a demonstration of the application of the character-as-word and greedy algorithms, consider an
+example of artiﬁcially “desegmented” English, in which all the white space has been removed. Thedesegmented version of the phrase the table down there would thus be thetabledownthere. Applying the
+character-as-wordalgorithmwouldresultintheuselesssequenceoftokens thetabledownthere ,
+which is why this algorithm only makes sense for languages with short average word length, such asChinese. Applying the greedy algorithm with a “perfect” word list containing all known English wordswould ﬁrst identify the word theta, since that is the longest sequence of letters starting at the initial t,
+which forms an actual word. Starting at the bfollowing theta, the algorithm would then identify bledas
+themaximummatch. Continuinginthismanner, thetabledownthere wouldbesegmentedbythegreedy
+algorithmas thetabledownthere.
+Avariantofthemaximummatchingalgorithmisthe reversemaximummatching algorithm,inwhich
+thematchingproceedsfromtheendofthestringofcharacters,ratherthanthebeginning.Intheexampleabove,thetabledownthere wouldbecorrectlysegmentedas thetabledownthere bythereversemaximum
+matchingalgorithm.Greedymatchingfromthebeginningandtheendofthestringofcharactersenablesan
+∗Asmanyas95%ofChinesewordsconsistofoneortwocharacters,accordingtoFungandWu(1994).
+
+TextPreprocessing 21
+algorithmsuchas forward-backwardmatching , inwhichtheresultsarecomparedandthesegmentation
+optimized based on the two results. In addition to simple greedy matching, it is possible to encodelanguage-speciﬁcheuristicstoreﬁnethematchingasitprogresses.2.3.2.2 Chinese SegmentationTheChinesewritingsystemconsistsofseveralthousandcharactersknownas Hanzi,withawordconsisting
+ofoneormorecharacters.Inthissection,weprovideafewexamplesofpreviousapproachestoChinesewordsegmentation,butadetailedtreatmentisbeyondthescopeofthischapter.MuchofoursummaryistakenfromSproatetal.(1996)andSproatandShih(2001).ForacomprehensivesummaryofearlyworkinChinesesegmentation,wealsorecommendWuandTseng(1993).
+MostpreviousworkinChinesesegmentationfallsintooneofthethreecategories:statisticalapproaches,
+lexical rule-based approaches, and hybrid approaches that use both statistical and lexical information.Statistical approaches use data such as the mutual information between characters, compiled from atraining corpus, to determine which characters are most likely to form words. Lexical approaches usemanually encoded features about the language, such as syntactic and semantic information, commonphrasalstructures,andmorphologicalrules,inordertoreﬁnethesegmentation.Thehybridapproachescombineinformationfrombothstatisticalandlexicalsources.
+Sproat et al. (1996) describe such a hybrid approach that uses a weighted ﬁnite-state transducer to
+identifybothdictionaryentriesaswellasunknownwordsderivedbyproductivelexicalprocesses.Palmer(1997) also describes a hybrid statistical-lexical approach in which the segmentation is incrementallyimproved by a trainable sequence of transformation rules; Hockenmaier and Brew (1998) describe asimilar approach. Teahan et al. (2000) describe a novel approach based on adaptive language modelssimilartothoseusedintextcompression.Gaoetal.(2005)describeanadaptivesegmentationalgorithmthat allows for rapid retraining for new genres or segmentation standards and which does not assume auniversalsegmentationstandard.
+Oneofthesigniﬁcantchallengesincomparingsegmentationalgorithmsistherangeinsegmentation
+standards,andthusthelackofacommonevaluationcorpus,whichwouldenablethedirectcomparisonof algorithms. In response to this challenge, Chinese word segmentation has been the focus of severalorganized evaluations in recent years. The “First International Chinese Word Segmentation Bakeoﬀ”in 2003 (Sproat and Emerson 2003), and several others since, have built on similar evaluations withinChina to encourage a direct comparison of segmentation methods. These evaluations have helped todevelop consistent standards both for segmentation and for evaluation, and they have made signiﬁcantcontributionsbycleaningupinconsistencieswithinexistingcorpora.2.3.2.3 Japanese SegmentationTheJapanesewritingsystemincorporatesalphabetic,syllabicandlogographicsymbols.ModernJapanesetexts,forexample,frequentlyconsistofmanydiﬀerentwritingsystems:Kanji(ChineseHanzisymbols),hiragana (a syllabary for grammatical markers and for words of Japanese origin), katakana (a syllabaryfor words of foreign origin), romanji (words written in the Roman alphabet), Arabic numerals, andvarious punctuation symbols. In some ways, the multiple character sets make tokenization easier, astransitionsbetweencharactersetsgivevaluableinformationaboutwordboundaries.However,characterset transitions are not enough, since a single word may contain characters from multiple character sets,such as inﬂected verbs, which can contain a Kanji base and hiragana inﬂectional ending. CompanynamesalsofrequentlycontainamixofKanjiandromanji.Forthesereasons,mostpreviousapproachestoJapanesesegmentation,suchasthepopularJUMAN(MatsumotoandNagao1994)andChasenprograms(Matsumotoetal.1997),relyonmanuallyderivedmorphologicalanalysisrules.
+Tosomeextent,JapanesecanbesegmentedusingthesamestatisticaltechniquesdevelopedforChinese.
+For example, Nagata (1994) describes an algorithm for Japanese segmentation similar to that usedfor Chinese segmentation by Sproat et al. (1996). More recently, Ando and Lee (2003) developed an
+
+22 HandbookofNaturalLanguageProcessing
+unsupervisedstatisticalsegmentationmethodbasedonn-gramcountsinKanjisequencesthatproduceshighperformanceonlongKanjisequences.2.3.2.4 Unsegmented Alphabetic and Syllabic LanguagesCommon unsegmented alphabetic and syllabic languages are Thai, Balinese, Javanese, and Khmer.While such writing systems have fewer characters than Chinese and Japanese, they also have longerwords;localizedoptimizationisthusnotaspracticalasinChineseorJapanesesegmentation.Therichermorphology of such languages often allows initial segmentations based on lists of words, names, andaﬃxes, usually using some variation of the maximum matching algorithm. Successful high-accuracysegmentation requires a thorough knowledge of the lexical and morphological features of the language.AnearlydiscussionofThaisegmentationcanbefoundinKawtrakuletal.(1996),describingarobustrule-based Thai segmenter and morphological analyzer. Meknavin et al. (1997) use lexical and collocationalfeaturesautomaticallyderivedusingmachinelearningtoselectanoptimalsegmentationfromann-bestmaximum matching set. Aroonmanakun (2002) uses a statistical Thai segmentation approach, whichﬁrstseekstosegmenttheThaitextintosyllables.Syllablesarethenmergedintowordsbasedonatrainedmodelofsyllablecollocation.
+2.4 Sentence Segmentation
+Sentencesinmostwrittenlanguagesaredelimitedbypunctuationmarks, yetthespeciﬁcusagerulesforpunctuationarenotalwayscoherentlydeﬁned.Evenwhenastrictsetofrulesexists,theadherencetotherules can vary dramatically based on the origin of the text source and the type of text. Additionally, indiﬀerentlanguages,sentencesandsubsentencesarefrequentlydelimitedbydiﬀerentpunctuationmarks.Successfulsentencesegmentationforagivenlanguagethusrequiresanunderstandingofthevarioususesof punctuation characters in that language. In most languages, the problem of sentence segmentationreducestodisambiguatingallinstancesofpunctuationcharactersthatmaydelimitsentences.Thescopeofthisproblemvariesgreatlybylanguage, asdoesthenumberofdiﬀerentpunctuationmarksthatneedtobeconsidered.
+Written languages that do not use many punctuation marks present a very diﬃcult challenge in
+recognizing sentence boundaries. Thai, for one, does not use a period (or any other punctuation mark)to mark sentence boundaries. A space is sometimes used at sentence breaks, but very often the spaceis indistinguishable from the carriage return, or there is no separation between sentences. Spaces aresometimes also used to separate phrases or clauses, where commas would be used in English, but thisis also unreliable. In cases such as written Thai where punctuation gives no reliable information aboutsentence boundaries, locating sentence boundaries is best treated as a special class of locating wordboundaries.
+Even languages with relatively rich punctuation systems like English present surprising problems.
+Recognizingboundariesinsuchawrittenlanguageinvolvesdeterminingtherolesofallpunctuationmarks,which can denote sentence boundaries: periods, question marks, exclamation points, and sometimessemicolons,colons,dashes,andcommas.Inlargedocumentcollections,eachofthesepunctuationmarkscanserveseveraldiﬀerentpurposes inadditiontomarkingsentenceboundaries. Aperiod, forexample,can denote a decimal point or a thousands marker, an abbreviation, the end of a sentence, or even anabbreviation at the end of a sentence. Ellipsis (a series of periods (...)) can occur both within sentencesand at sentence boundaries. Exclamation points and question marks can occur at the end of a sentence,butalsowithinquotationmarksorparentheses(really!)oreven(albeitinfrequently)withinaword,suchas in the Internet company Yahoo!and the language name !X˜u. However, conventions for the use of
+thesetwopunctuationmarksalsovarybylanguage;inSpanish,bothcanbeunambiguouslyrecognizedassentencedelimitersbythepresenceof‘¡’or‘¿’atthestartofthesentence.Inthissection,weintroducethe
+
+TextPreprocessing 23
+challengesposedbytherangeofcorporaavailableandthevarietyoftechniquesthathavebeensuccessfullyappliedtothisproblemanddiscusstheiradvantagesanddisadvantages.
+2.4.1 Sentence Boundary Punctuation
+Justasthedeﬁnitionofwhatconstitutesasentenceisratherarbitrary,theuseofcertainpunctuationmarksto separate sentences depends largely on an author’s adherence to changeable and frequently ignoredconventions. In most NLP applications, the only sentence boundary punctuation marks considered arethe period, question mark, and exclamation point, and the deﬁnition of sentence is limited to the text-
+sentence(asdeﬁnedbyNunberg1990),whichbeginswithacapitalletterandendsinafullstop.However,
+grammatical sentences can be delimited by many other punctuation marks, and restricting sentenceboundarypunctuationtothesethreecancauseanapplicationtooverlookmanymeaningfulsentencesorcanunnecessarilycomplicateprocessingbyallowingonlylonger,complexsentences.ConsiderExamples(6)and(7),twoEnglishsentencesthatconveyexactlythesamemeaning;yet,bythetraditionaldeﬁnitions,theﬁrstwouldbeclassiﬁedastwosentences,thesecondasjustone.ThesemicoloninExample(7)couldlikewise be replaced by a comma or a dash, retain the same meaning, but still be considered a singlesentence. Replacing the semicolon with a colon is also possible, though the resulting meaning would beslightlydiﬀerent.
+(6)Hereisasentence.Hereisanother.
+(7)Hereisasentence;hereisanother.
+Thedistinctionisparticularlyimportantforanapplicationlikepart-of-speechtagging.Manytaggersseekto optimize a tag sequence for a sentence, with the locations of sentence boundaries being provided tothe tagger at the outset. The optimal sequence will usually be diﬀerent depending on the deﬁnition ofsentenceboundaryandhowthetaggertreats“sentence-internal”punctuation.
+For an even more striking example of the problem of restricting sentence boundary punctuation,
+considerExample(8), fromLewisCarroll’s AliceinWonderland,i nw h i c h .!?arecompletelyinadequate
+forsegmentingthemeaningfulunitsofthepassage:
+(8)There was nothing so VERY remarkable in that; nor did Alice think it so VERY much out of
+the way to hear the Rabbit say to itself, ‘Oh dear! Oh dear! I shall be late!’ (when she thought itover afterwards, it occurred to her that she ought to have wondered at this, but at the time it allseemedquitenatural);butwhentheRabbitactuallyTOOKAWATCHOUTOFITSWAISTCOAT-POCKET, and looked at it, and then hurried on, Alice started to her feet, for it ﬂashed across hermind that she had never before seen a rabbit with either a waistcoat-pocket, or a watch to take outofit,andburningwithcuriosity,sheranacrosstheﬁeldafterit,andfortunatelywasjustintimetoseeitpopdownalargerabbit-holeunderthehedge.
+This example contains a single period at the end and three exclamation points within a quoted passage.However,ifthesemicolonandcommawereallowedtoendsentences,theexamplecouldbedecomposedinto as many as ten grammatical sentences. This decomposition could greatly assist in nearly all NLPtasks, since long sentences are more likely to produce (and compound) errors of analysis. For example,parsersconsistentlyhavediﬃcultywithsentenceslongerthan15–25words,anditishighlyunlikelythatanyparsercouldeversuccessfullyanalyzethisexampleinitsentirety.
+In addition to determining which punctuation marks delimit sentences, the sentence in parentheses
+as well as the quoted sentences ‘ Oh dear! Oh dear! I shall be late! ’ suggest the possibility of a further
+decompositionofthesentenceboundaryproblemintotypesofsentenceboundaries,oneofwhichwouldbe“embeddedsentenceboundary.”Treatingembeddedsentencesandtheirpunctuationdiﬀerentlycouldassist in the processing of the entire text-sentence. Of course, multiple levels of embedding would bepossible, as in Example (9), taken from Watership Down by Richard Adams. In this example, the main
+
+24 HandbookofNaturalLanguageProcessing
+sentencecontainsanembeddedsentence(delimitedbydashes),andthisembeddedsentencealsocontainsanembeddedquotedsentence.
+(9)Theholes certainlywererough- “Justrightfor alot ofvagabonds like us,” said Bigwig- butthe
+exhaustedandthosewhowanderinstrangecountryarenotparticularabouttheirquarters.
+Itshouldbeclearfromtheseexamplesthattruesentencesegmentation,includingtreatmentofembeddedsentences, can only be achieved through an approach, which integrates segmentation with parsing.Unfortunately,therehasbeenlittleresearchinintegratingthetwo;infact,littleresearchincomputationallinguisticshasfocusedontheroleofpunctuationinwrittenlanguage.
+∗Withtheavailabilityofawiderange
+of corpora and the resulting need for robust approaches to NLP, the problem of sentence segmentationhas recently received a lot of attention. Unfortunately, nearly all published research in this area hasfocused on the problem of sentence boundary detection in a small set of European languages, and allthis work has focused exclusively on disambiguating the occurrences of period, exclamation point, andquestionmark.Agreatdealofrecentworkhasfocusedontrainableapproachestosentencesegmentation,whichwediscussinSection2.4.4. Thesenewmethods, whichcanbeadaptedtodiﬀerentlanguagesanddiﬀerent text genres, should make a tighter coupling of sentence segmentation and parsing possible.While the remainder of this chapter focuses on published work that deals with the segmentation of atextintotext-sentences,whichrepresentthemajorityofsentencesencounteredinmosttextcorpora,theabovediscussionofsentencepunctuationindicatesthattheapplicationoftrainabletechniquestobroaderproblems may be possible. It is also important to note that this chapter focuses on disambiguation ofpunctuation in text and thus does not address the related problem of the insertion of punctuation and
+otherstructuraleventsintoautomaticspeechrecognitiontranscriptsofspokenlanguage.
+2.4.2 The Importance of Context
+In any attempt to disambiguate the various uses of punctuation marks, whether in text-sentences orembeddedsentences,someamountofthecontextinwhichthepunctuationoccursisessential.Inmanycases, theessentialcontextcanbelimitedtothecharacterimmediatelyfollowingthepunctuationmark.When analyzing well-formed English documents, for example, it is tempting to believe that sentenceboundary detection is simply a matter of ﬁnding a period followed by one or more spaces followed by awordbeginningwithacapitalletter,perhapsalsowithquotationmarksbeforeorafterthespace.Indeed,insomecorpora(e.g.,literarytexts)thissingleperiod-space-capital(orperiod-quote-space-capital)patternaccountsforalmostallsentenceboundaries.In TheCalloftheWild byJackLondon,forexample,which
+has1640periodsassentenceboundaries,thissinglerulecorrectlyidentiﬁes1608boundaries(98%)(Bayeretal. 1998). However, theresultsarediﬀerentinjournalistictextssuchasthe WallStreetJournal (WSJ).
+In a small corpus of the WSJfrom 1989 that has 16,466 periods as sentence boundaries, this simple rule
+would detect only 14,562 (88.4%) while producing 2900 false positives, placing a boundary where one
+doesnotexist.
+Mostoftheerrorsresultingfromthissimplerulearecaseswheretheperiodoccursimmediatelyafter
+an abbreviation. Expanding the context to consider whether the word preceding the period is a knownabbreviation is thus a logical step. This improved abbreviation-period-space-capital rule can producemixed results, since the use of abbreviations in a text depends on the particular text and text genre.The new rule improves performance on The Call of the Wild to 98.4% by eliminating ﬁve false positives
+(previously introduced by the phrase “St. Bernard” within a sentence). On the WSJcorpus, this new
+rule also eliminates all but 283 of the false positives introduced by the ﬁrst rule. However, this rule alsointroduces 713 falsenegatives, erasing boundaries where they were previously correctly placed, yet still
+improving the overall score. Recognizing an abbreviation is therefore not suﬃcient to disambiguate theperiod,becausewealsomustdetermineiftheabbreviationoccursattheendofasentence.
+∗AnotableexceptionisNunberg(1990).
+
+TextPreprocessing 25
+The diﬃculty of disambiguating abbreviation-periods can vary depending on the corpus. Liberman
+andChurch(LibermanandChurch1992)reportthat47%oftheperiodsina WallStreetJournal corpus
+denoteabbreviations,comparedtoonly10%intheBrowncorpus(FrancisandKucera1982),asreportedbyRiley(1989).Incontrast,Mülleretal.(1980)reportsabbreviation-periodstatisticsrangingfrom54.7%to 92.8% within a corpus of English scientiﬁc abstracts. Such a range of ﬁgures suggests the need for amore informed treatment of the context that considers more than just the word preceding or followingthepunctuationmark.Indiﬃcultcases,suchasanabbreviationwhichcanoccurattheendofasentence,three or more words preceding and following must be considered. This is the case in the followingexamplesof“gardenpathsentenceboundaries,”theﬁrstconsistingofasinglesentence,theotheroftwosentences.
+(10)Twohigh-rankingpositionswereﬁlledFridaybyPennSt.UniversityPresidentGrahamSpanier.
+(11)Twohigh-rankingpositionswereﬁlledFridayatPennSt.UniversityPresidentGrahamSpanier
+announcedtheappointments.
+Many contextual factors have been shown to assist sentence segmentation in diﬃcult cases. Thesecontextualfactorsinclude
+•Case distinctions—In languages and corpora where both uppercase and lowercase letters areconsistentlyused,whetherawordiscapitalizedprovidesinformationaboutsentenceboundaries.
+•Part of speech —Palmer and Hearst (1997) showed that the parts of speech of the words within
+three tokens of the punctuation mark can assist in sentence segmentation. Their results indicatethatevenanestimateofthe possiblepartsofspeechcanproducegoodresults.
+•Wordlength—Riley(1989)usedthelengthofthewordsbeforeandafteraperiodasonecontextualfeature.
+•Lexicalendings—Mülleretal.(1980)usedmorphologicalanalysistorecognizesuﬃxesandtherebyﬁlteroutwordswhichwerenotlikelytobeabbreviations.Theanalysismadeitpossibletoidentifywordsthatwerenototherwisepresentintheextensivewordlistsusedtoidentifyabbreviations.
+•Preﬁxesandsuﬃxes —ReynarandRatnaparkhi(1997)usedbothpreﬁxesandsuﬃxesofthewords
+surroundingthepunctuationmarkasonecontextualfeature.
+•Abbreviation classes —Riley (1989) and Reynar and Ratnaparkhi (1997) further divided abbre-
+viations into categories such as titles (which are not likely to occur at a sentence boundary) andcorporatedesignators(whicharemorelikelytooccurataboundary).
+•Internal punctuation —Kiss and Strunk (2006) used the presence of periods within a token as a
+feature.
+•Proper nouns—Mikheev (2002) used the presence of a proper noun to the right of a period as afeature.
+2.4.3 Traditional Rule-Based Approaches
+Thesuccessofthefewsimplerulesdescribedintheprevioussectionisamajorreasonsentencesegmen-tationhasbeenfrequentlyoverlookedoridealizedaway.Inwell-behavedcorpora,simplerulesrelyingonregularpunctuation, spacing, andcapitalizationcanbequicklywritten, andareusuallyquitesuccessful.Traditionally,themethodwidelyusedfordeterminingsentenceboundariesisaregulargrammar,usuallywithlimitedlookahead.Moreelaborateimplementationsincludeextensivewordlistsandexceptionliststoattempttorecognizeabbreviationsandpropernouns.Suchsystemsareusuallydevelopedspeciﬁcallyfor a text corpus in a single language and rely on special language-speciﬁc word lists; as a result theyare not portable to other natural languages without repeating the eﬀort of compiling extensive lists andrewriting rules. Although the regular grammar approach can be successful, it requires a large manualeﬀort to compile the individual rules used to recognize the sentence boundaries. Nevertheless, since
+
+26 HandbookofNaturalLanguageProcessing
+rule-based sentence segmentation algorithms can be very successful when an application does deal withwell-behavedcorpora,weprovideadescriptionofthesetechniques.
+Anexampleofaverysuccessfulregular-expression-basedsentencesegmentationalgorithmisthetext
+segmentation stage of the Alembic information extraction system (Aberdeen et al. 1995), which wascreatedusingthelexicalscannergeneratorﬂex(Nicol1993).TheAlembicsystemusesﬂexinapreprocesspipeline to perform tokenization and sentence segmentation at the same time. Various modules in thepipelineattempttoclassifyallinstancesofpunctuationmarksbyidentifyingperiodsinnumbers,dateandtimeexpressions,andabbreviations.Thepreprocessutilizesalistof75abbreviationsandaseriesofover100 hand-crafted rules and was developed over the course of more than six staﬀ months. The Alembicsystemaloneachievedaveryhighaccuracyrate(99.1%)onalarge WallStreetJournal corpus.However,
+theperformancewasimprovedwhenintegratedwiththetrainablesystemSatz,describedinPalmerandHearst(1997),andsummarizedlaterinthischapter.Inthishybridsystem,therule-basedAlembicsystemwasusedtodisambiguatetherelativelyunambiguouscases,whileSatzwasusedtodisambiguatediﬃcultcasessuchastheﬁveabbreviations Co.,Corp.,Ltd.,Inc.,andU.S.,whichfrequentlyoccurinEnglishtexts
+both within sentences and at sentence boundaries. The hybrid system achieved an accuracy of 99.5%,higherthaneitherofthetwocomponentsystemsalone.
+2.4.4 Robustness and Trainability
+Throughout this chapter we have emphasized the need for robustness in NLP systems, and sentencesegmentationisnoexception.Thetraditionalrule-basedsystems,whichrelyonfeaturessuchasspacingand capitalization, will not be as successful when processing texts where these features are not present,suchasinExample(1)above.Similarly,someimportantkindsoftextconsistsolelyofuppercaseletters;closed captioning (CC) data is an example of such a corpus. In addition to being uppercase-only, CCdata also has erratic spelling and punctuation, as can be seen from the following example of CC datafromCNN:
+(12)THISISADESPERATEATTEMPTBYTHEREPUBLICANSTOSPINTHEIRSTORYTHAT
+NOTHINGSEARWHYOUS–SERIOUSHASBEENDONEANDTRYTOSAVETHESPEAKER’SSPEAKERSHIPANDTHISHASBEENASERIOUSPROBLEMFORTHESPEAKER,HEDIDNOTTELLTHETRUTHTOTHECOMMITTEE,NUMBERONE.
+The limitations of manually crafted rule-based approaches suggest the need for trainable approachesto sentence segmentation, in order to allow for variations between languages, applications, and genres.Trainable methods provide a means for addressing the problem of embedded sentence boundariesdiscussedearlier,aswellasthecapabilityofprocessingarangeofcorporaandtheproblemstheypresent,suchaserraticspacing,spellingerrors,single-case,andOCRerrors.
+Foreachpunctuationmarktobedisambiguated, atypicaltrainablesentencesegmentationalgorithm
+willautomaticallyencodethecontextusingsomeorallofthefeaturesdescribedabove.Asetoftrainingdata, in which the sentence boundaries have been manually labeled, is then used to train a machinelearning algorithm to recognize the salient features in the context. As we describe below, machinelearningalgorithmsthathavebeenusedintrainablesentencesegmentationsystemshaveincludedneuralnetworks,decisiontrees,andmaximumentropycalculation.
+2.4.5 Trainable Algorithms
+One of the ﬁrst published works describing a trainable sentence segmentation algorithm was Riley(1989). The method described used regression trees (Breiman et al. 1984) to classify periods accordingto contextual features describing the single word preceding and following the period. These contextualfeaturesincludedwordlength,punctuationaftertheperiod,abbreviationclass,caseoftheword,andtheprobabilityofthewordoccurringatbeginningorendofasentence.Riley’smethodwastrainedusing25
+
+TextPreprocessing 27
+million words from the AP newswire, and he reported an accuracy of 99.8% when tested on the Browncorpus.
+PalmerandHearst(1997)developedasentencesegmentationsystemcalledSatz,whichusedamachine
+learning algorithm to disambiguate all occurrences of periods, exclamation points, and question marks.The system deﬁned a contextual feature array for three words preceding and three words following thepunctuation mark; the feature array encoded the context as the parts of speech, which can be attributedto each word in the context. Using the lexical feature arrays, both a neural network and a decision treewere trained to disambiguate the punctuation marks, and achieved a high accuracy rate (98%–99%) ona large corpus from the Wall Street Journal . They also demonstrated the algorithm, which was trainable
+in as little as one minute and required less than 1000 sentences of training data, to be rapidly portedto new languages. They adapted the system to French and German, in each case achieving a very highaccuracy.Additionally,theydemonstratedthetrainablemethodtobeextremelyrobust,asitwasabletosuccessfullydisambiguatesingle-casetextsandOCRdata.
+ReynarandRatnaparkhi(1997)describedatrainableapproachtoidentifyEnglishsentenceboundaries
+using a statistical maximum entropy model. The system used a system of contextual templates, whichencoded one word of context preceding and following the punctuation mark, using such features aspreﬁxes, suﬃxes, and abbreviation class. They also reported success in inducing an abbreviation listfrom the training data for use in the disambiguation. The algorithm, trained in less than 30min on40,000 manually annotated sentences, achieved a high accuracy rate (98%+) on the same test corpusused by Palmer and Hearst (1997), without requiring speciﬁc lexical information, word lists, or anydomain-speciﬁcinformation.ThoughtheyonlyreportedresultsonEnglish,theyindicatedthattheeaseoftrainabilityshouldallowthealgorithmtobeusedwithotherRoman-alphabetlanguages,givenadequatetrainingdata.
+Mikheev (2002) developed a high-performing sentence segmentation algorithm that jointly identiﬁes
+abbreviations, proper names, and sentence boundaries. The algorithm casts the sentence segmentationproblem as one of disambiguating abbreviations to the left of a period and proper names to the right.While using unsupervised training methods, the algorithm encodes a great deal of manual informationregardingabbreviationstructureandlength.Thealgorithmalsoreliesheavilyonconsistentcapitalizationinordertoidentifypropernames.
+KissandStrunk(2006)developedalargelyunsupervisedapproachtosentenceboundarydetectionthat
+focusesprimarilyonidentifyingabbreviations.Thealgorithmencodesmanualheuristicsforabbreviationdetection into a statistical model that ﬁrst identiﬁes abbreviations and then disambiguates sentenceboundaries.Theapproachisessentiallylanguageindependent,andtheyreportresultsforalargenumberofEuropeanlanguages.
+Trainable sentence segmentation algorithms such as these are clearly necessary for enabling robust
+processingofavarietyoftextsandlanguages. Algorithmsthatoﬀerrapidtrainingwhilerequiringsmallamounts of training data allow systems to be retargeted in hours or minutes to new text genres andlanguages. This adaptation can take into account the reality that good segmentation is task dependent.Forexample, inparallelcorpusconstructionandprocessing, thesegmentationneedstobeconsistentinboth the source and target language corpus, even if that consistency comes at the expense of theoreticalaccuracyineitherlanguage.
+2.5 Conclusion
+The problem of text preprocessing was largely overlooked or idealized away in early NLP systems;tokenization and sentence segmentation were frequently dismissed as uninteresting. This was possiblebecausemostsystemsweredesignedtoprocesssmall,monolingualtextsthathadalreadybeenmanuallyselected, triaged, and preprocessed. When processing texts in a single language with predictable ortho-graphicconventions,itwaspossibletocreateandmaintainhand-builtalgorithmstoperformtokenization
+
+28 HandbookofNaturalLanguageProcessing
+and sentence segmentation. However, the recent explosion in availability of large unrestricted corporain many diﬀerent languages, and the resultant demand for tools to process such corpora, has forcedresearcherstoexaminethemanychallengesposedbyprocessingunrestrictedtexts.Theresulthasbeenamovetowarddevelopingrobustalgorithms,whichdonotdependonthewell-formednessofthetextsbeingprocessed.Manyofthehand-builttechniqueshavebeenreplacedbytrainablecorpus-basedapproaches,whichusemachinelearningtoimprovetheirperformance.
+The move toward trainable robust segmentation systems has enabled research on a much broader
+range of corpora in many languages. Since errors at the text segmentation stage directly aﬀect all laterprocessing stages, it is essential to completely understand and address the issues involved in documenttriage, tokenization, andsentencesegmentationandhowtheyimpactfurtherprocessing. Manyoftheseissuesarelanguage-dependent:thecomplexityoftokenizationandsentencesegmentationandthespeciﬁcimplementation decisions depend largely on the language being processed and the characteristics of itswriting system. For a corpus in a particular language, the corpus characteristics and the applicationrequirements also aﬀect the design and implementation of tokenization and sentence segmentationalgorithms.Inmostcases,sincetextsegmentationisnottheprimaryobjectiveofNLPsystems,itcannotbe thoughtof as simply anindependent “preprocessing”step, but rathermust be tightlyintegrated withthedesignandimplementationofallotherstagesofthesystem.
+References
+Aberdeen, J., J. Burger, D. Day, L. Hirschman, P. Robinson, and M. Vilain (1995). MITRE: Descrip-
+tion of the Alembic system used for MUC-6. In Proceedings of the Sixth Message Understanding
+Conference (MUC-6),Columbia,MD.
+Aho,A.V.,R.Sethi,andJ.D.Ullman(1986). Compilers,Principles,Techniques,andTools .Reading,MA:
+Addison-WesleyPublishingCompany.
+Ando,R.K.andL.Lee(2003).Mostly-unsupervisedstatisticalsegmentationofJapaneseKanjisequences.
+JournalofNaturalLanguageEngineering 9,127–149.
+Aroonmanakun, W. (2002). Collocation and Thai word segmentation. In Proceedings of SNLP-
+COCOSDA2002,Bangkok,Thailand.
+Baroni, M., F. Chantree, A. Kilgarriﬀ, and S. Sharoﬀ (2008). Cleaneval: A competition for cleaning web
+pages. In Proceedings of the Sixth Language Resources and Evaluation Conference (LREC 2008),
+Marrakech,Morocco.
+Bayer, S., J. Aberdeen, J. Burger, L. Hirschman, D. Palmer, and M. Vilain (1998). Theoretical and
+computationallinguistics:Towardamutualunderstanding.InJ.LawlerandH.A.Dry(Eds.), Using
+ComputersinLinguistics .London,U.K.:Routledge.
+Breiman, L., J. H. Friedman, R. Olshen, and C. J. Stone (1984). Classiﬁcation and Regression Trees .
+Belmont,CA:WadsworthInternationalGroup.
+Chang,P.-C.,M.Galley,andC.D.Manning(2008).OptimizingChinesewordsegmentationformachine
+translationperformance.In ProceedingsoftheThirdWorkshoponStatisticalMachineTranslation,
+Columbus,OH,pp.224–232.
+Comrie,B.,S.Matthews,andM.Polinsky(1996). TheAtlasofLanguages .London,U.K.:QuartoInc.
+Crystal, D. (1987). The Cambridge Encyclopedia of Language . Cambridge, U.K.: Cambridge University
+Press.
+Daniels,P.T.andW.Bright(1996). TheWorld’sWritingSystems .NewYork:OxfordUniversityPress.
+Francis, W. N. and H. Kucera (1982). Frequency Analysis of English Usage .N e wY o r k :H o u g h t o n
+MiﬄinCo.
+Fung, P. and D. Wu (1994). Statistical augmentation of a Chinese machine-readable dictionary. In
+ProceedingsofSecondWorkshoponVeryLargeCorpora (WVLC-94),Kyoto,Japan.
+
+TextPreprocessing 29
+Gao,J.,M.Li,A.Wu,andC.-N.Huang(2005).Chinesewordsegmentationandnamedentityrecognition:
+Apragmaticapproach. ComputationalLinguistics31(4),531–574.
+Grefenstette,G.andP.Tapanainen(1994).Whatisaword,Whatisasentence?ProblemsofTokenization.
+InThe3rdInternationalConferenceonComputationalLexicography (COMPLEX1994),Budapest,
+Hungary.
+Hankamer,J.(1986).Finitestatemorphologyandlefttorightphonology.In ProceedingsoftheFifthWest
+CoastConferenceonFormalLinguistics ,Stanford,CA.
+Hockenmaier, J. and C. Brew (1998). Error driven segmentation of Chinese. Communications of
+COLIPS8(1),69–84.
+Kawtrakul, A., C. Thumkanon, T. Jamjanya, P. Muangyunnan, K. Poolwan, and Y. Inagaki (1996).
+AgradualreﬁnementmodelforarobustThaimorphologicalanalyzer.In ProceedingsofCOLING96,
+Copenhagen,Denmark.
+Kiss, T. and J. Strunk (2006). Unsupervised multilingual sentence boundary detection. Computational
+Linguistics32(4),485–525.
+Liberman, M. Y. and K. W. Church (1992). Text analysis and word pronunciation in text-to-speech
+synthesis.InS.FuruiandM.M.Sondhi(Eds.), AdvancesinSpeechSignalProcessing ,pp.791–831.
+NewYork:MarcelDekker,Inc.
+Ma, Y. and A. Way (2009). Bilingually motivated domain-adapted word segmentation for statistical
+machine translation. In Proceedings of the 12th Conference of the European Chapter of the ACL
+(EACL2009 ),Athens,Greece,pp.549–557.
+Martin, J., H. Johnson, B. Farley, and A. Maclachlan (2003). Aligning and using an english-inuktitut
+parallel corpus. In Proceedings of the HLT-NAACL 2003 Workshop on Building and Using Parallel
+TextsDataDriven:MachineTranslationandBeyond,Edmonton,Canada,pp.115–118.
+Matsumoto, Y. and M. Nagao (1994). Improvements of Japanese morphological analyzer JUMAN. In
+ProceedingsoftheInternationalWorkshoponSharableNaturalLanguageResources ,Nara,Japan.
+Matsumoto,Y.,A.Kitauchi,T.Yamashita,Y.Hirano,O.Imaichi,andT.Imamura(1997).Japanesemor-
+phological analysis system ChaSen manual. Technical Report NAIST-IS-TR97007, Nara InstituteofScienceandTechnology,Nara,Japan(inJapanese).
+Meknavin,S.,P.Charoenpornsawat,andB.Kijsirikul(1997).Feature-basedThaiwordsegmentation.In
+Proceedings of the Natural Language Processing Paciﬁc Rim Symposium 1997 (NLPRS97 ), Phuket,
+Thailand.
+Mikheev,A.(2002).Periods,capitalizedwords,etc. ComputationalLinguistics28(3),289–318.
+Müller, H., V. Amerl, and G. Natalis (1980). Worterkennungsverfahren als Grundlage einer Universal-
+methode zur automatischen Segmentierung von Texten in Sätze. Ein Verfahren zur maschinellenSatzgrenzenbestimmungimEnglischen. SpracheundDatenverarbeitung 1.
+Nagata,M.(1994).AstochasticJapanesemorphologicalanalyzerusingaForward-DPbackwardA*n-best
+searchalgorithm.In ProceedingsofCOLING94,Kyoto,Japan.
+Nicol,G.T.(1993). Flex—TheLexicalScannerGenerator .Cambridge,MA:TheFreeSoftwareFoundation.
+Nunberg, G. (1990). The Linguistics of Punctuation . C.S.L.I. Lecture Notes, Number 18. Stanford, CA:
+CenterfortheStudyofLanguageandInformation.
+Palmer,D.D.(1997).Atrainablerule-basedalgorithmforwordsegmentation.In Proceedingsofthe35th
+AnnualMeetingoftheAssociationforComputationalLinguistics (ACL97),Madrid,Spain.
+Palmer, D. D. and M. A. Hearst (1997). Adaptive multilingual sentence boundary disambiguation.
+ComputationalLinguistics23(2),241–67.
+Park, Y. and R. J. Byrd (2001). Hybrid text mining for ﬁnding abbreviations and their deﬁnitions.
+InProceedings of the 2001 Conference on Empirical Methods in Natural Language Processing,
+Pittsburgh,PA.
+Reynar, J. C. and A. Ratnaparkhi (1997). A maximum entropy approach to identifying sentence
+boundaries. In Proceedings of the Fifth ACL Conference on Applied Natural Language Processing,
+Washington,DC.
+
+30 HandbookofNaturalLanguageProcessing
+Riley, M. D. (1989). Some applications of tree-based modelling to speech and language indexing. In
+Proceedings of the DARPA Speech and Natural Language Workshop , San Mateo, CA, pp. 339–352.
+MorganKaufmann.
+Sampson,G.R.(1995). EnglishfortheComputer.Oxford,U.K.:OxfordUniversityPress.
+Sproat, R. and T. Emerson (2003). The ﬁrst international Chinese word segmentation bakeoﬀ. In
+ProceedingsoftheSecondSigHanWorkshoponChineseLanguageProcessing ,Sapporo,Japan.
+Sproat,R.andC.Shih(2001).Corpus-basedmethodsinChinesemorphologyandphonology.Technical
+Report,LinguisticSocietyofAmericaSummerInstitute,SantaBarbara,CA.
+Sproat, R. W., C. Shih, W. Gale, and N. Chang (1996). A stochastic ﬁnite-state word-segmentation
+algorithmforChinese. ComputationalLinguistics22(3),377–404.
+Teahan, W.J., Y.Wen, R.McNab, andI.H.Witten(2000). Acompression-based algorithm for Chinese
+wordsegmentation. ComputationalLinguistics26 (3),375–393.
+UnicodeConsortium(2006). TheUnicodeStandard,Version5.0.Boston,MA:Addison-Wesley.
+Wu, A. (2003). Customizable segmentation of morphologically derived words in Chinese. International
+JournalofComputationalLinguisticsandChineseLanguageProcessing 8 (1),1–27.
+Wu, D. and P. Fung (1994). Improving Chinese tokenization with linguistic ﬁlters on statistical lexical
+acquisition. In ProceedingsoftheFourthACLConferenceonAppliedNaturalLanguageProcessing,
+Stuttgart,Germany.
+Wu, Z. and G. Tseng (1993). Chinese text segmentation for text retrieval: Achievements and problems.
+JournaloftheAmericanSocietyforInformationScience44(9),532–542.
+Zhang,R.,K.Yasuda,andE.Sumita(2008).ImprovedstatisticalmachinetranslationbymultipleChinese
+word segmentation. In Proceedings of the Third Workshop on Statistical Machine Translation,
+Columbus,OH,pp.216–223.
+

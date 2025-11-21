@@ -1,0 +1,1565 @@
+p/CX /CX12 Probabilistic Parsing
+The practice of parsing can be considered as a straightforward im-
+plementation of the idea of chunking – recognizing higher level units of chunking
+structure that allow us to compress our description of a sentence. One
+way to capture the regularity of chunks over diﬀerent sentences is tolearn a grammar that explains the structure of the chunks one ﬁnds. Thisis the problem of grammar induction . There has been considerable work
+grammar induction
+on grammar induction, because it is exploring the empiricist question of
+how to learn structure from unannotated textual input, but we will not
+cover it here. Suﬃce it to say that grammar induction techniques arereasonably well understood for ﬁnite state languages, but that inductionis very diﬃcult for context-free or more complex languages of the scaleneeded to handle a decent proportion of the complexity of human lan-guages. It is not hard to induce some form of structure over a corpus
+of text. Any algorithm for making chunks – such as recognizing com-
+mon subsequences – will produce some form of chunked representation
+of sentences, which we might interpret as a phrase structure tree. How-ever, most often the representations one ﬁnds bear little resemblance tothe kind of phrase structure that is normally proposed in linguistics and
+NLP.
+Now, there is enough argument and disagreement within the ﬁeld of
+syntax that one might ﬁnd someone who has proposed syntactic struc-
+tures similar to the ones that the grammar induction procedure which
+you have sweated over happens to produce. This can and has been takenas evidence for that model of syntactic structure. However, such an ap-proach has more than a whiﬀ of circularity to it. The structures founddepend on the implicit inductive bias of the learning program. This sug-gests another tack. We need to get straight what structure we expect our
+
+p/CX /CX408 12 Probabilistic Parsing
+can he see meseamy
+totwotoo
+daydie cannyKenny
+hissyKennedy
+care knee seem
+todayseem meat
+meet
+Figure 12.1 A word lattice (simpliﬁed).
+model to ﬁnd before we start building it. This suggests that we should
+begin by deciding what we want to do with parsed sentences. There arevarious possible goals: using syntactic structure as a ﬁrst step towardssemantic interpretation, detecting phrasal chunks for indexing in an IRsystem, or trying to build a probabilistic parser that outperforms n-gram
+models as a language model. For any of these tasks, the overall goal is
+to produce a system that can place a provably useful structure over arbi-
+trary sentences, that is, to build a parser . For this goal, there is no need
+parser
+to insist that one begins with a tabula rasa . If one just wants to do a
+good job at producing useful syntactic structure, one should use all theprior information that one has. This is the approach that will be adoptedin this chapter.
+The rest of this chapter is divided into two parts. The ﬁrst introduces
+some general concepts, ideas, and approaches of broad general relevance,
+which turn up in various places in the statistical parsing literature (and acouple which should turn up more often than they do). The second thenlooks at some actual parsing systems that exploit some of these ideas,and at how they perform in practice.
+12.1 Some Concepts
+12.1.1 Parsing for disambiguation
+There are at least three distinct ways in which one can use probabilitiesin a parser:
+
+19
+pa/CX /CX12.1 Some Concepts 409
+Probabilities for determining the sentence. One possibility is to use
+a parser as a language model over a word lattice in order to determine word lattice
+what sequence of words running along a path through the lattice has
+highest probability. In applications such as speech recognizers, theactual input sentence is uncertain, and there are various hypotheses,
+which are normally represented by a word lattice as in ﬁgure 12.1.
+1
+The job of the parser here is to be a language model that tries to de-
+termine what someone probably said. A recent example of using aparser in this way is (Chelba and Jelinek 1998).
+Probabilities for speedier parsing. A second goal is to use probabil-
+ities to order or prune the search space of a parser. The task hereis to enable the parser to ﬁnd the best parse more quickly while notharming the quality of the results being produced. A recent study ofeﬀective methods for achieving this goal is (Caraballo and Charniak
+1998).
+Probabilities for choosing between parses. The parser can be used
+to choose from among the many parses of the input sentence which
+ones are most likely.
+In this section, and in this chapter, we will concentrate on the third use of
+probabilities over parse trees: using a statistical parser for disambigua-tion.
+Capturing the tree structure of a particular sentence has been seen as
+key to the goal of disambiguation – the problem we discussed in chap-ter 1. For instance, to determine the meaning of the sentence in (12.1),we need to determine what are the meaningful units and how they relate.
+In particular we need to resolve ambiguities such as the ones represented
+in whether the correct parse for the sentence is (12.2a) or (12.2b), (12.2c)or (12.2d), or even (12.2e).
+(12.1) The post oﬃce will hold out discounts and service concessions as incen-
+tives.
+1. Alternatively, they may be represented by an n-best list , but that has the unfortunate
+eﬀect of multiplying out ambiguities in what are often disjoint areas of uncertainty in thesignal.
+
+19
+pa/CX /CX410 12 Probabilistic Parsing
+(12.2) a. S
+NP
+The post oﬃceAux
+willVP
+V
+hold outNP
+NP
+discountsConj
+andNP
+service concessionsPP
+as incentives
+b. S
+NP
+The post oﬃceAux
+willVP
+VP
+V
+hold outNP
+discountsConj
+andVP
+V
+serviceNP
+concessionsPP
+as incentives
+c. S
+NP
+The post oﬃceAux
+willVP
+V
+hold outNP
+NP
+discountsConj
+andNP
+N
+serviceN
+concessionsPP
+as incentives
+d. S
+NP
+The post oﬃceAux
+willVP
+V
+holdPP
+P
+outNP
+NP
+discountsConj
+andNP
+service concessionsPP
+as incentives
+
+p/CX /CX12.1 Some Concepts 411
+e. S
+NP
+The post oﬃce will holdVP
+VP
+V
+outNP
+discountsConj
+andVP
+V
+serviceNP
+concessionsPP
+as incentives
+One might get the impression from computational linguistics books
+that such ambiguities are rare and artiﬁcial, because most books containthe same somewhat unnatural-sounding examples (ones about pens andboxes, or seeing men with telescopes). But that’s just because simple
+short examples are practical to use. Such ambiguities are actually ubi-
+quitous. To provide some freshness in our example (12.1), we adoptedthe following approach: we randomly chose a Wall Street Journal article,
+and used the ﬁrst sentence as the basis for making our point. Findingambiguities was not diﬃcult.
+2If you are still not convinced about the
+severity of the disambiguation problem, then you should immediately doexercise 12.1 before continuing to read this chapter.
+What is one to do about all these ambiguities? In classical categorical
+approaches, some ambiguities are seen as genuine syntactic ambiguities,and it is the job of the parser to return structures corresponding to allof these, but other weird things that one’s parser spits out are seen asfaults of the grammar, and the grammar writer will attempt to reﬁnethe grammar, in order to generate less crazy parses. For instance, the
+grammar writer might feel that (12.2d) should be ruled out, because hold
+needs an object noun phrase, and enforce that by a subcategorizationframe placed on the verb hold. But actually that would be a mistake,
+because then the parser would not be able to handle a sentence such as:The ﬂood waters reached a height of 8 metres, but the sandbags held .
+In contrast, a statistically-minded linguist will not be much interested
+in how many parses his parser produces for a sentence. Normally there
+is still some categorical base to the grammar and so there is a ﬁxed ﬁnite
+2. We refrained from actually using the ﬁrst sentence, since like so many sentences in
+newspapers, it was rather long. It would have been diﬃcult to ﬁt trees for a 38 wordsentence on the page. But for reference, here it is: Postmaster General Anthony Frank, in a
+speech to a mailers’ convention today, is expected to set a goal of having computer-readablebar codes on all business mail by 1995, holding out discounts and service concessions asincentives .
+
+p/CX /CX412 12 Probabilistic Parsing
+number of parses, but statistically-minded linguists can aﬀord to be quite
+licentious about what they allow into their grammar, and so they usuallyare. What is important is the probability distribution over the parses gen-erated by the grammar. We want to be able to separate out the few parsesthat are likely to be correct from the many that are syntactically possible,
+but extremely unlikely. In many cases, we are just interested in “the best
+parse,” which is the one deemed to be most likely to be correct. Statisticalparsers generally disambiguate and rate how likely diﬀerent parses areas they parse, whereas in conventional parsers, the output trees wouldnormally be sent to downstream models of semantics and world know-ledge that would choose between the parses. A statistical parser usuallydisambiguates as it goes by using various extended notions of word and
+category collocation as a surrogate for semantic and world knowledge.
+This implements the idea that the ways in which a word tends to be usedgives us at least some handle on its meaning.
+12.1.2 Treebanks
+We mentioned earlier that pure grammar induction approaches tend not
+to produce the parse trees that people want. A fairly obvious approach
+to this problem is to give a learning tool some examples of the kindsof parse trees that are wanted. A collection of such example parses isreferred to as a treebank . Because of the usefulness of collections of
+treebank
+correctly-parsed sentences for building statistical parsers, a number of
+people and groups have produced treebanks, but by far the most widelyused one, reﬂecting both its size and readily available status, is the Penn
+Penn Treebank
+Treebank .
+An example of a Penn Treebank tree is shown in ﬁgure 12.2. This exam-
+ple illustrates most of the major features of trees in the Penn treebank.Trees are represented in a straightforward (Lisp) notation via bracketing.The grouping of words into phrases is fairly ﬂat (for example there is nodisambiguation of compound nouns in phrases such as Arizona real es-
+tate loans ), but the major types of phrases recognized in contemporary
+syntax are fairly faithfully represented. The treebank also makes some
+attempt to indicate grammatical and semantic functions (the -SBJ and
+-LOC tags in the ﬁgure, which are used to tag the subject and a locative,
+respectively), and makes use of empty nodes to indicate understood sub-jects and extraction gaps, as in the understood subject of the adverbialclause in the example, where the empty node is marked as *. In table 12.1,
+
+p/CX /CX12.1 Some Concepts 413
+( (S (NP-SBJ The move)
+(VP followed
+(NP (NP a round)
+(PP of
+(NP (NP similar increases)
+(PP by
+(NP other lenders))
+(PP against
+(NP Arizona real estate loans)))))
+,(S-ADV (NP-SBJ *)
+(VP reflecting
+(NP (NP a continuing decline)
+(PP-LOC in
+(NP that market))))))
+.))
+Figure 12.2 A Penn Treebank tree.
+S Simple clause (sentence) CONJP Multiword conjunction phrases
+SBAR S0clause with complementizer FRAG Fragment
+SBARQ Wh-question S0clause INTJ Interjection
+SQ Inverted Yes/No question S0clause LST List marker
+SINV Declarative inverted S0clause NAC Not A Constituent grouping
+ADJP Adjective Phrase NX Nominal constituent inside NPADVP Adverbial Phrase PRN ParentheticalNP Noun Phrase PRT Particle
+PP Prepositional Phrase RRC Reduced Relative Clause
+QP Quantiﬁer Phrase (inside NP) UCP Unlike Coordinated PhraseVP Verb Phrase X Unknown or uncertainWHNP Wh-Noun Phrase WHADJP Wh-Adjective Phrase
+WHPP Wh-Prepositional Phrase WHADVP Wh-Adverb Phrase
+Table 12.1 Abbreviations for phrasal categories in the Penn Treebank. The
+common categories are gathered in the left column. The categorization includes
+a number of rare categories for various oddities.
+
+p/CX /CX414 12 Probabilistic Parsing
+we summarize the phrasal categories used in the Penn Treebank (which
+basically follow the categories discussed in chapter 3).
+One oddity, to which we shall return, is that complex noun phrases are
+represented by an NP-over-NP structure. An example in ﬁgure 12.2 is theNP starting with similar increases . The lower NP node, often referred to
+as the ‘baseNP’ contain just the head noun and preceding material such
+as determiners and adjectives, and then a higher NP node (or sometimestwo) contains the lower NP node and following arguments and modiﬁers.This structure is wrong by the standards of most contemporary syntac-tic theories which argue that NP postmodiﬁers belong with the head un-der some sort of N
+0node, and lower than the determiner (section 3.2.3).
+On the other hand, this organization captures rather well the notion of
+chunks proposed by Abney (1991), where, impressionistically, the head chunking
+noun and prehead modiﬁers seem to form one chunk, whereas phrasal
+postmodiﬁers are separate chunks. At any rate, some work on parsinghas directly adopted this Penn Treebank structure and treats baseNPs asa unit in parsing.
+Even when using a treebank, there is still an induction problem of
+extracting the grammatical knowledge that is implicit in the example
+parses. But for many methods, this induction is trivial. For example,
+to determine a
+PCFG from a treebank, we need do nothing more than
+count the frequencies of local trees, and then normalize these to giveprobabilities.
+Many people have argued that it is better to have linguists construct-
+ing treebanks than grammars, because it is easier to work out the cor-rect parse of individual actual sentences than to try to determine (often
+largely by intuition) what all possible manifestations of a certain rule
+or grammatical construct are. This is probably true in the sense that alinguist is unlikely to immediately think of all the possibilities for a con-struction oﬀ the top of his head, but at least an implicit grammar mustbe assumed in order to be able to treebank. In multiperson treebankingprojects, there has normally been a need to make this grammar explicit.The treebanking manual for the Penn Treebank runs to over 300 pages.
+12.1.3 Parsing models vs. language models
+The idea of parsing is to be able to take a sentence sand to work out
+parse trees for it according to some grammar G. In probabilistic parsing,
+we would like to place a ranking on possible parses showing how likely
+
+p/CX /CX12.1 Some Concepts 415
+each one is, or maybe to just return the most likely parse of a sentence.
+Thinking like this, the most natural thing to do is to deﬁne a probabilisticparsing model , which evaluates the probability of trees tfor a sentence s
+parsing model
+by ﬁnding:
+Ptjs;G whereX
+tPtjs;G1 (12.3)
+Given a probabilistic parsing model, the job of a parser is to ﬁnd the most
+probable parse of a sentence ˆt:
+ˆtarg max
+tPtjs;G (12.4)
+This is normally straightforward, but sometimes for practical reasons
+various sorts of heuristic or sampling parsers are used, methods whichin most cases ﬁnd the most probable parse, but sometimes don’t.
+One can directly estimate a parsing model, and people have done this,
+but they are a little odd in that one is using probabilities conditionedon a particular sentence. In general, we need to base our probabilityestimates on some more general class of data. The more usual approach
+is to start oﬀ by deﬁning a language model, which assigns a probability
+language model
+to all trees generated by the grammar. Then we can examine the joint
+probabilityPt;sjG. Given that the sentence is determined by the tree
+(and recoverable from its leaf nodes), this is just PtjG,i fy i e l dt
+s, and 0 otherwise. Under such a model, PtjGis the probability of a
+particular parse of a particular sentence according to the grammar G.
+Below we suppress the conditioning of the probability according to the
+grammar, and just write Pt for this quantity.
+In a language model, probabilities are for the entire language L,s ow e
+have that:
+X
+ft: yieldt2LgPt1 (12.5)
+We can ﬁnd the overall probability of a sentence as:
+PsX
+tPs;t (12.6)
+X
+ft: yieldtsgPt
+
+p/CX /CX416 12 Probabilistic Parsing
+This means that it is straightforward to make a parsing model out of a
+language model. We simply divide the probability of a tree in the lan-guage model by the above quantity. The best parse is given by:
+ˆtarg max
+tPtjsarg max
+tPt;s
+Psarg max
+tPt;s (12.7)
+So a language model can always be used as a parsing model for the pur-
+pose of choosing between parses. But a language model can also be usedfor other purposes (for example, as a speech recognition language model,or for estimating the entropy of a language).
+On the other hand, there is not a way to convert an arbitrary parsing
+model into a language model. Nevertheless, noticing some of the biasesof
+PCFG parsing models that we discussed in chapter 11, a strand of work
+atIBMexplored the idea that it might be better to build parsing models
+directly rather than deﬁning them indirectly via a language model (Je-linek et al. 1994; Magerman 1995), and directly deﬁned parsing modelshave also been used by others (Collins 1996). However, in this work,
+although the overall probabilities calculated are conditioned on a partic-
+ular sentence, the atomic probabilities that the probability of a parse isdecomposed into are not dependent on the individual sentence, but arestill estimated from the whole training corpus. Moreover, when Collins(1997) reﬁned his initial model (Collins 1996) so that parsing probabilitieswere deﬁned via an explicit language model, this signiﬁcantly increasedthe performance of his parser. So, while language models are not neces-
+sarily to be preferred to parsing models, they appear to provide a better
+foundation for modeling.
+12.1.4 Weakening the independence assumptions of PCFG s
+Context and independence assumptions
+It is widely accepted in studies of language understanding that humans
+make wide use of the context of an utterance to disambiguate languageas they listen. This use of context assumes many forms, for example the
+context where we are listening (to TV or in a bar), who we are listening
+to, and also the immediate prior context of the conversation. The priordiscourse context will inﬂuence our interpretation of later sentences (thisis the eﬀect known as priming in the psychological literature). People will
+priming
+ﬁnd semantically intuitive readings for sentences in preference to weird
+ones. Furthermore, much recent work shows that these many sources of
+
+p/CX /CX12.1 Some Concepts 417
+information are incorporated in real time while people parse sentences.3
+In our previous PCFG model, we were eﬀectively making an independence
+assumption that none of these factors were relevant to the probability ofa parse tree. But, in fact, all of these sources of evidence are relevant toand might be usable for disambiguating probabilistic parses. Even if we
+are not directly modeling the discourse context or its meaning, we can
+approximate these by using notions of collocation to help in more localsemantic disambiguation, and the prior text as an indication of discoursecontext (for instance, we might detect the genre of the text, or its topic).To build a better statistical parser than a
+PCFG ,w ew a n tt ob ea b l et o
+incorporate at least some of these sources of information.
+Lexicalization
+There are two somewhat separable weaknesses that stem from the in-
+dependence assumptions of PCFG s. The most often remarked on one is
+their lack of lexicalization .I na PCFG , the chance of a VP expanding as a lexicalization
+verb followed by two noun phrases is independent of the choice of verb
+involved. This is ridiculous, as this possibility is much more likely with
+ditransitive verbs like hand ortell, than with other verbs. Table 12.2
+uses data from the Penn Treebank to show how the probabilities of vari-ous common subcategorization frames diﬀer depending on the verb thatheads the VP.
+4This suggests that somehow we want to include more in-
+formation about what the actual words in the sentence are when makingdecisions about the structure of the parse tree.
+In other places as well, the need for lexicalization is obvious. A clear
+case is the issue of choosing phrasal attachment positions. As discussedat length in chapter 8, it is clear that the lexical content of phrases almostalways provides enough information to decide the correct attachmentsite, whereas the syntactic category of the phrase normally provides verylittle information. One of the ways in which standard
+PCFG s are much
+3. This last statement is not uncontroversial. Work in psycholinguistics that is inﬂuenced
+by a Chomskyan approach to language has long tried to argue that people construct syn-tactic parses ﬁrst, and then choose between them in a disambiguation phase (e.g., Frazier
+1978). But a variety of recent work (e.g., Tanenhaus and Trueswell 1995, Pearlmutter and
+MacDonald 1992) has argued against this and suggested that semantic and contextualinformation does get incorporated immediately during sentence understanding.
+4. One can’t help but suspect that some of the very low but non-zero entries might reveal
+errors in the treebank, but note that because functional tags are being ignored, an NP canappear after an intransitive verb if it is a temporal NP like last week .
+
+p/CX /CX418 12 Probabilistic Parsing
+Verb
+Local tree come take think want
+VP!V 9.5% 2.6% 4.6% 5.7%
+VP!V NP 1.1% 32.1% 0.2% 13.9%
+VP!V PP 34.5% 3.1% 7.1% 0.3%
+VP!V SBAR 6.6% 0.3% 73.0% 0.2%
+VP!V S 2.2% 1.3% 4.8% 70.8%
+VP!V NP S 0.1% 5.7% 0.0% 0.3%
+VP!V PRT NP 0.3% 5.8% 0.0% 0.0%
+VP!V PRT PP 6.1% 1.5% 0.2% 0.0%
+Table 12.2 Frequency of common subcategorization frames (local trees ex-
+panding VP) for selected verbs. The data show that the rule used to expandVP is highly dependent on the lexical identity of the verb. The counts ignoredistinctions in verbal form tags. Phrase names are as in table 12.1, and tags arePenn Treebank tags (tables 4.5 and 4.6).
+worse thann-gram models is that they totally fail to capture the lexical
+dependencies between words. We want to get this back, while maintain-
+ing a richer model than the purely linear word-level n-gram models. The
+most straightforward and common way to lexicalize a CFG is by having
+each phrasal node be marked by its head word, so that the tree in (12.8a)will be lexicalized as the tree in (12.8b).
+(12.8) a. S
+NP
+NNP
+SueVP
+VBD
+walkedPP
+P
+intoNP
+DT
+theNN
+storeb. S walked
+NPSue
+NNP Sue
+SueVPwalked
+VBD walked
+walkedPPinto
+Pinto
+intoNPstore
+DTthe
+theNNstore
+store
+Central to this model of lexicalization is the idea that the strong lexi-
+cal dependencies are between heads and their dependents, for examplebetween a head noun and a modifying adjective, or between a verb and
+
+p/CX /CX12.1 Some Concepts 419
+a noun phrase object, where the noun phrase object can in turn be ap-
+proximated by its head noun. This is normally true and hence this is aneﬀective strategy, but it is worth pointing out that there are some depen-dencies between pairs of non-heads. For example, for the object NP in(12.9):
+(12.9) I got [ npthe easier problem [of the two] [to solve]].
+both the posthead modiﬁers of the two andto solve are dependents of the
+prehead modiﬁer easier . Their appearance is only weakly conditioned
+by the head of the NP problem . Here are two other examples of this
+sort, where the head is in bold, and the words involved in the nonhead
+dependency are in italics:
+(12.10) a. Her approach was more quickly understood than mine .
+b. He lives in what must be the farthest suburb from the university .
+See also exercise 8.16.
+Probabilities dependent on structural context
+However,
+PCFG s are also deﬁcient on purely structural grounds. Inherent
+to the idea of a PCFG is that probabilities are context-free: for instance,
+that the probability of a noun phrase expanding in a certain way is inde-pendent of where the NP is in the tree. Even if we in some way lexical-ize
+PCFG s to remove the other deﬁciency, this assumption of structural
+context-freeness remains. But this grammatical assumption is actually
+quite wrong. For example, table 12.3 shows how the probabilities of ex-
+panding an NP node in the Penn Treebank diﬀer wildly between subjectposition and object position. Pronouns, proper names and deﬁnite NPsappear more commonly in subject position while NPs containing post-head modiﬁers and bare nouns occur more commonly in object position.This reﬂects the fact that the subject normally expresses the sentence-internal topic. As another example, table 12.4 compares the expansions
+for the ﬁrst and second object NPs of ditransitive verbs. The disprefer-
+ence for pronouns to be second objects is well-known, and the preferencefor ‘NP SBAR’ expansions as second objects reﬂects the well-known ten-dency for heavy elements to appear at the end of the clause, but it wouldtake a more thorough corpus study to understand some of the other ef-fects. For instance, it is not immediately clear to us why bare plural
+
+p/CX /CX420 12 Probabilistic Parsing
+Expansion % as Subj % as Obj
+NP!PRP 13.7% 2.1%
+NP!NNP 3.5% 0.9%
+NP!DT NN 5.6% 4.6%
+NP!NN 1.4% 2.8%
+NP!NP SBAR 0.5% 2.6%
+NP!NP PP 5.6% 14.1%
+Table 12.3 Selected common expansions of NP as Subject vs. Object, ordered
+by log odds ratio. The data show that the rule used to expand NP is highlydependent on its parent node(s), which corresponds to either a subject or an
+object.
+Expansion % as 1st Obj % as 2nd Obj
+NP!NNS 7.5% 0.2%
+NP!PRP 13.4% 0.9%
+NP!NP PP 12.2% 14.4%
+NP!DT NN 10.4% 13.3%
+NP!NNP 4.5% 5.9%
+NP!NN 3.9% 9.2%
+NP!JJ NN 1.1% 10.4%
+NP!NP SBAR 0.3% 5.1%
+Table 12.4 Selected common expansions of NP as ﬁrst and second object inside
+VP. The data are another example of the importance of structural context fornonterminal expansions.
+nouns are so infrequent in the second object position. But at any rate,
+the context-dependent nature of the distribution is again manifest.
+The upshot of these observations is that we should be able to build
+a much better probabilistic parser than one based on a PCFG by better
+taking into account lexical and structural context. The challenge (as sooften) is to ﬁnd factors that give us a lot of extra discrimination whilenot defeating us with a multiplicity of parameters that lead to sparsedata problems. The systems in the second half of this chapter present anumber of approaches along these lines.
+
+p/CX /CX12.1 Some Concepts 421
+(a) S
+NP VPNV Pastronomers VP
+astronomers VN P
+astronomers saw NP
+astronomers saw N
+astronomers saw telescopes(b) S
+NP VPNV Pastronomers VP
+astronomers VN P
+astronomers VN
+astronomers Vtelescopes
+astronomers saw telescopes
+Figure 12.3 Two CFGderivations of the same tree.
+12.1.5 Tree probabilities and derivational probabilities
+In the PCFG framework, one can work out the probability of a tree by just
+multiplying the probabilities of each local subtree of the tree, where theprobability of a local subtree is given by the rule that produced it. Thetree can be thought of as a compact record of a branching process whereone is making a choice at each node, conditioned solely on the label of thenode. As we saw in chapter 3, within generative models of syntax,
+5one
+generates sentences from a grammar, classically by starting with a start
+symbol, and performing a derivation which is a sequence of top-down
+rewrites until one has a phrase marker all of whose leaf nodes are termi-nals (that is, words). For example, ﬁgure 12.3 (a) shows the derivation ofa sentence using the grammar of table 11.2, where at each stage one non-terminal symbol gets rewritten according to the grammar. A straightfor-ward way to make rewrite systems probabilistic is to deﬁne probabilitydistributions over each choice point in the derivation. For instance, at
+the last step, we chose to rewrite the ﬁnal N as telescopes , but could have
+chosen something else, in accord with the grammar. The linear steps ofa derivational process map directly onto a standard stochastic process,where the states are productions of the grammar. Since the generativegrammar can generate all sentences of the language, a derivational modelis inherently a language model.
+Thus a way to work out a probability for a parse tree is in terms of
+the probability of derivations of it. Now in general a given parse treecan have multiple derivations. For instance, the tree in (12.11) has not
+5. In the original sense of Chomsky (1957); in more recent work Chomsky has suggested
+that ‘generative’ means nothing more than ‘formal’ (Chomsky 1995: 162).
+
+p/CX /CX422 12 Probabilistic Parsing
+only the derivation in ﬁgure 12.3 (a), but also others, such as the one in
+ﬁgure 12.3 (b), where the second NP is rewritten before the V.
+(12.11) S
+NP
+N
+astronomersVP
+V
+sawNP
+N
+telescopes
+So, in general, to estimate the probability of a tree, we have to calculate:
+PtX
+fd:dis a derivation of tgPd (12.12)
+However, in many cases, such as the PCFG case, this extra complication
+is unnecessary. It is fairly obvious to see (though rather more diﬃcultto prove) that the choice of derivational order in the
+PCFG case makes
+no diﬀerence to the ﬁnal probabilities.6Regardless of what probability
+distribution we assume over the choice of which node to rewrite next in aderivation, the ﬁnal probability for a tree is otherwise the same. Thus wecan simplify things by ﬁnding a way of choosing a unique derivation foreach tree, which we will refer to as a canonical derivation . For instance,
+canonical
+derivation the leftmost derivation shown in ﬁgure 12.3 (a), where at each step we
+expand the leftmost non-terminal can be used as a canonical derivation.
+When this is possible, we can say:
+PtPd wheredis the canonical derivation of t (12.13)
+Whether this simpliﬁcation is possible depends on the nature of the prob-
+abilistic conditioning in the model. It is possible in the PCFG case because
+probabilities depend only on the parent node, and so it doesn’t matter ifother nodes have been rewritten yet or not. If more context is used,or there are alternative ways to generate the same pieces of structure,then the probability of a tree might well depend on the derivation. See
+sections 12.2.1 and 12.2.2.
+7
+6. The proof depends on using the kind of derivation to tree mapping developed in
+(Hopcroft and Ullman 1979).
+7. Even in such cases, one might choose to approximate tree probabilities by estimating
+
+p/CX /CX12.1 Some Concepts 423
+Let us writeuri!vfor an individual rewriting step rirewriting the
+stringuasv. To calculate the probability of a derivation, we use the
+chain rule, and assign a probability to each step in the derivation, con-
+ditioned by preceding steps. For a standard rewrite grammar, this lookslike this:
+PdPSr1!1r2!2r3!:::rm!msmY
+i1Prijr1;:::ri−1 (12.14)
+We can think of the conditioning terms above, that is, the rewrite rules
+already applied, as the history of the parse, which we will refer to as hi.
+Sohir1;:::;ri−1. This is what led to the notion of history-based history-based
+grammars grammars (HBGs) explored initially at IBM. Since we can never model the
+entire history, normally what we have to do is form equivalence classesof the history via an equivalencing function and estimate the above as:
+PdmY
+i1Prijhi (12.15)
+This framework includes PCFG s as a special case. The equivalencing func-
+tion for PCFG s simply returns the leftmost non-terminal remaining in the
+phrase marker. So, hih0
+iiﬀ leftmost NTileftmost NT0
+i.
+12.1.6 There’s more than one way to do it
+The way we augmented a CFGwith probabilities in chapter 11 seems so
+natural that one might think that this is the only, or at least the onlysensible, way to do it. The use of the term
+PCFG – probabilistic context-
+free grammar – tends to give credence to this view. Hence it is impor-tant to realize that this is untrue. Unlike the case of categorical contextfree languages, where so many diﬀerent possibilities and parsing meth-
+ods converge on strongly or weakly equivalent results, with probabilistic
+grammars, diﬀerent ways of doing things normally lead to diﬀerent prob-abilistic grammars. What is important from the probabilistic viewpointis what the probabilities of diﬀerent things are conditioned on (or look-ing from the other direction, what independence assumptions are made).While probabilistic grammars are sometimes equivalent – for example
+them according to the probabilities of a canonical derivation, but this could be expected
+to have a detrimental eﬀect on performance.
+
+p/CX /CX424 12 Probabilistic Parsing
+anHMM working from left-to-right gives the same results as one work-
+ing from right-to-left, if the conditioning fundamentally changes, thenthere will be a diﬀerent probabilistic grammar, even if it has the samecategorical base. As an example of this, we will consider here anotherway of building a probabilistic grammar with a
+CFG basis, Probabilistic
+Left-Corner Grammars ( PLCG s).
+Probabilistic left-corner grammars
+If we think in parsing terms, a PCFG corresponds to a probabilistic version
+oftop-down parsing . This is because at each stage we are trying to predict top-down parsing
+the child nodes given knowledge only of the parent node. Other parsing
+methods suggest diﬀerent models of probabilistic conditioning. Usually,such conditioning is a mixture of top-down and bottom-up information .
+One such possibility is suggested by a left-corner parsing strategy.
+Left corner parsers (Rosenkrantz and Lewis 1970; Demers 1977) work
+left corner parser
+by a combination of bottom-up and top-down processing. One begins
+with a goal category (the root of what is currently being constructed),and then looks at the left corner of the string (i.e., one shifts the nextterminal). If the left corner is the same category as the goal category,then one can stop. Otherwise, one projects a possible local tree from
+the left corner, by looking for a rule in the grammar which has the left
+corner category as the ﬁrst thing on its right hand side. The remainingchildren of this projected local tree then become goal categories and onerecursively does left corner parsing of each. When this local tree is ﬁn-ished, one again recursively does left-corner parsing with the subtree asthe left corner, and the same goal category as we started with. To makethis description more precise, pseudocode for a simple left corner recog-
+nizer is shown in ﬁgure 12.4.
+8This particular parser assumes that lexical
+material is introduced on the right-hand side of a rule, e.g., as N !house ,
+and that the top of the stack is to the left when written horizontally.The parser works in terms of a stack of found and sought constituents,the latter being represented on the stack as categories with a bar overthem. We use to represent a single terminal or non-terminal (or the
+empty string, if we wish to accommodate empty categories in the gram-
+mar), andγto stand for a (possibly empty) sequence of terminals and
+8. The presentation here borrows from an unpublished manuscript of Mark Johnson and
+Ed Stabler, 1993.
+
+p/CX /CX12.1 Some Concepts 425
+1comment : Initialization
+2Place the predicted start symbol Son top of the stack
+3comment : Parser
+4whilean action is possible doone of the following
+5 actions
+6 [Shift] Put the next input symbol on top of the stack
+7 [Attach] Ifis on top of the stack, remove both
+8 [Project] Ifis on top of the stack and A!γ, replacebyγA
+9 endactions
+10end
+11comment : Termination
+12ifempty(input) ^empty(stack)
+13 then
+14 exitsuccess
+15 else
+16 exitfailure
+17ﬁ
+Figure 12.4 An LC stack parser.
+non-terminals. The parser has three operations, shifting ,projecting ,a n d shifting
+projectingattaching . We will put probability distributions over these operations.
+attachingWhen to shift is deterministic: If the thing on top of the stack is a sought
+categoryC, then one must shift, and one can never successfully shift
+at other times. But there will be a probability distribution over what isshifted. At other times we must decide whether to attach or project. Theonly interesting choice here is deciding whether to attach in cases wherethe left corner category and the goal category are the same. Otherwisewe must project. Finally we need probabilities for projecting a certain
+local tree given the left corner ( lc) and the goal category ( gc). Under this
+model, we might have probabilities for this last operation like this:
+PSBAR!IN SjlcIN;gcS0:25
+PPP!IN NPjlcIN;gcS0:55
+To produce a language model that reﬂects the operation of a left corner
+parser, we can regard each step of the parsing operation as a step in aderivation. In other words, we can generate trees using left corner proba-bilities. Then, just as in the last section, we can express the probability of
+
+p/CX /CX426 12 Probabilistic Parsing
+a parse tree in terms of the probabilities of left corner derivations of that
+parse tree. Under left corner generation, each parse tree has a uniquederivation and so we have:
+P
+lctPlcd wheredis the LC derivation of t
+And the left corner probability of a sentence can then be calculated in the
+usual way:
+PlcsX
+ft: yieldtsgPlct
+The probability of a derivation can be expressed as a product in terms
+of the probabilities of each of the individual operations in the derivation.
+Suppose that C1;:::;Cmis the sequence of operations in the LC parse
+derivationdoft. Then, by the chain rule, we have:
+PtPdmY
+i1PCijC1;:::;Ci−1
+In practice, we cannot condition the probability of each parse decision
+on the entire history. The simplest left-corner model, which is all that wewill develop here, assumes that the probability of each parse decision islargely independent of the parse history, and just depends on the stateof the parser. In particular, we will assume that it depends simply on the
+left corner and top goal categories of the parse stack.
+Each elementary operation of a left corner parser is either a shift, an
+attach or a left corner projection. Under the independence assumptionsmentioned above, the probability of a shift will simply be the probabilityof a certain left corner child ( lc) being shifted given the current goal cat-
+egory (gc), which we will model by P
+shift. When to shift is deterministic.
+If a goal (i.e., barred) category is on top of the stack (and hence there is
+no left corner category), then one must shift. Otherwise one cannot. If
+one is not shifting, one must choose to attach or project, which we modelbyP
+att. Attaching only has a non-zero probability if the left corner and
+the goal category are the same, but we deﬁne it for all pairs. If we donot attach, we project a constituent based on the left corner with prob-abilityP
+proj. Thus the probability of each elementary operation Cican
+be expressed in terms of probability distributions Pshift,Patt,a n dPprojas
+follows:
+PCishiftlc(
+Pshiftlcjgc if top isgc
+0 otherwise(12.16)
+
+p/CX /CX12.1 Some Concepts 427
+PCiattach(
+Pattlc;gc if top is notgc
+0 otherwise(12.17)
+PCiprojA!γ8
+><
+>:1−Pattlc;gcP projA!γjlc;gc
+if top is notgc
+0 otherwise(12.18)
+Where these operations obey the following constraints:
+X
+lcPshiftlcjgc1 (12.19)
+Iflc6gc,Pattlc;gc0 (12.20)X
+fA!γ:γlc :::gPprojA!γjlc;gc1 (12.21)
+From the above we note that the probabilities of the choice of diﬀerent
+shifts and projections sum to one, and hence, since other probabilities
+are complements of each other, the probabilities of the actions availablefor each elementary operation sum to one. There are also no dead endsin a derivation, because unless Ais a possible left corner constituent of
+gc,P
+projA!γjlc;gc0. Thus we have shown that these probabilities
+deﬁne a language model.9That is,P
+sPlcsjG1.
+Manning and Carpenter (1997) present some initial exploration of this
+form of PLCG s. While the independence assumptions used above are still
+quite drastic, one nevertheless gets a slightly richer probabilistic modelthan a
+PCFG , because elementary left-corner parsing actions are condi-
+tioned by the goal category, rather than simply being the probability of alocal tree. For instance, the probability of a certain expansion of NP canbe diﬀerent in subject position and object position, because the goal cat-egory is diﬀerent. So the distributional diﬀerences shown in table 12.3
+can be captured.
+10Manning and Carpenter (1997) show how, because of
+this, a PLCG signiﬁcantly outperforms a basic PCFG .
+Other ways of doing it
+Left-corner parsing is a particularly interesting case: left-corner parsers
+work incrementally from left-to-right, combine top-down and bottom-up
+prediction, and hold pride of place in the family of Generalized Left Cor-ner Parsing models discussed in exercise 12.6. Nevertheless it is not the
+9. Subject to showing that the probability mass accumulates in ﬁnite trees, the issue
+discussed in chapter 11.
+10. However, one might note that those in table 12.4 will not be captured.
+
+p/CX /CX428 12 Probabilistic Parsing
+only other possibility for making probabilistic parsers based on CFGpars-
+ing algorithms, and indeed other approaches were investigated earlier.
+Working with bottom-up shift-reduce parsers is another obvious pos-
+sibility. In particular, a thread of work has looked at making probabilis-tic versions of the Generalized LR parsing approach of Tomita (1991).
+Briscoe and Carroll (1993) did the initial work in this area, but their
+model is probabilistically improper in that the LR parse tables guide auniﬁcation-based parser, and uniﬁcation failures cause parse failures thatare not captured by the probability distributions. A solidly probabilisticLR parser is described in (Inui et al. 1997).
+12.1.7 Phrase structure grammars and dependency grammars
+The dominant tradition within modern linguistics and NLPhas been to
+use phrase structure trees to describe the structure of sentences. But analternative, and much older, tradition is to describe linguistic structure interms of dependencies between words. Such a framework is referred to asadependency grammar . In a dependency grammar, one word is the head
+dependency
+grammar of a sentence, and all other words are either a dependent of that word,
+or else dependent on some other word which connects to the headword
+through a sequence of dependencies. Dependencies are usually shown ascurved arrows, as for example in (12.22).
+(12.22) The old man ate the rice slowly
+Thinking in terms of dependencies is useful in Statistical NLP, but one
+also wants to understand the relationship between phrase structure anddependency models. In his work on disambiguating compound nounstructures (see page 286), Lauer (1995a; 1995b) argues that a dependency
+model is better than an adjacency model. Suppose we want to disam-
+biguate a compound noun such as phrase structure model . Previous work
+had considered the two possible tree structures for this compound noun,as shown in (12.23) and had tried to choose between them according towhether corpus evidence showed a tighter collocational bond betweenphrase$structure or between structure$model .
+
+p/CX /CX12.1 Some Concepts 429
+(12.23) a. 
+
+phrase structuremodelb. 
+phrase 
+structure model
+Lauer argues that instead one should examine the ambiguity in terms of
+dependency structures, as in (12.24), and there it is clear that the dif-ference between them is whether phrase is a dependent of structure or
+whether it is a dependent of model . He tests this model against the ad-
+jacency model and shows that the dependency model outperforms theadjacency model.
+(12.24) a. phrase structure model
+b. phrase structure model
+Now Lauer is right to point out that the earlier work had been ﬂawed,
+and could maintain that it is easier to see what is going on in a depen-dency model. But this result does not show a fundamental advantageof dependency grammars over phrase structure grammars. The prob-lem with the adjacency model was that in the trees, repeated annotated
+as (12.25), the model was only considering the nodes N
+yandNv,a n d
+ignoring the nodes NxandNu.
+(12.25) a. Nx
+Ny
+phrase structuremodelb.Nu
+phrase Nv
+structure model
+If one corrects the adjacency model so that one also considers the nodes
+NxandNu, and does the obvious lexicalization of the phrase structure
+tree, so thatNyis annotated with structure andNvwith model (since En-
+glish noun compounds are right-headed), then one can easily see that thetwo models become equivalent. Under a lexicalized
+PCFG type model, we
+ﬁnd thatPNxPNv, and so the way to decide between the possibil-
+ities is by comparing PNyvs.PNu. But this is exactly equivalent to
+comparing the bond between phrase!structure andphrase!model .
+There are in fact isomorphisms between various kinds of dependency
+grammars and corresponding types of phrase structure grammars. A de-pendency grammar using undirected arcs is equivalent to a phrase struc-ture grammar where every rule introduces at least one terminal node. For
+
+p/CX /CX430 12 Probabilistic Parsing
+(a) VP
+VN PP PP P(b)
+V(P) N(P) P(P) P(P)(c) VP
+VN PP P(d) VP
+VP PP P
+Figure 12.5 Decomposing a local tree into dependencies.
+the more usual case of directed arcs, the equivalence is with 1-bar level
+X0grammars. That is, for each terminal tin the grammar, there is a non-
+terminalt, and the only rules in the grammar are of the form t!t
+whereandare (possibly empty) sequences of non-terminals (cf. sec-
+tion 3.2.3). Another common option in dependency grammars is for thedependencies to be labeled. This in turn is equivalent to not only labelingone child of each local subtree as the head (as was implicitly achieved
+head
+by the X-bar scheme), but labeling every child node with a relationship.
+Providing the probabilistic conditioning is the same, these results carryover to the probabilistic versions of both kinds of grammars.
+11
+Nevertheless, dependency grammars have their uses in probabilistic
+parsing, and, indeed, have become increasingly popular. There appear tobe two key advantages. We argued before that lexical information is keyto resolving most parsing ambiguities. Because dependency grammarswork directly in terms of dependencies between words, disambiguationdecisions are being made directly in terms of these word dependencies.There is no need to build a large superstructure (that is, a phrase struc-
+ture tree) over a sentence, and there is no need to make disambiguation
+decisions high up in that structure, well away from the words of the sen-tence. In particular, there is no need to worry about questions of howto lexicalize a phrase structure tree, because there simply is no structurethat is divorced from the words of the sentence. Indeed, a dependencygrammarian would argue that much of the superstructure of a phrasestructure tree is otiose: it is not really needed for constructing an under-
+standing of sentences.
+The second advantage of thinking in terms of dependencies is that de-
+pendencies give one a way of decomposing phrase structure rules, andestimates of their probabilities. A problem with inducing parsers fromthe Penn Treebank is that, because the trees are very ﬂat, there are lots
+11. Note that there is thus no way to represent within dependency grammars the two
+or even three level X0schemata that have been widely used in modern phrase structure
+approaches.
+
+p/CX /CX12.1 Some Concepts 431
+of rare kinds of ﬂat trees with many children. And in unseen data, one
+will encounter yet other such trees that one has never seen before. Thisis problematic for a
+PCFG which tries to estimate the probability of a local
+subtree all at once. Note then how a dependency grammar decomposesthis, by estimating the probability of each head-dependent relationship
+separately. If we have never seen the local tree in ﬁgure 12.5 (a) before,
+t h e ni na
+PCFG model we would at best back oﬀ to some default ‘un-
+seen tree’ probability. But if we decompose the tree into dependencies,as in (b), then providing we had seen other trees like (c) and (d) before,then we would expect to be able to give quite a reasonable estimate forthe probability of the tree in (a). This seems much more promising thansimply backing oﬀ to an ‘unseen tree’ probability, but note that we are
+making a further important independence assumption. For example, here
+we might be presuming that the probability of a PP attaching to a VP (thatis, a preposition depending on a verb in dependency grammar terms) isindependent of how many NPs there are in the VP (that is, how manynoun dependents the verb has). It turns out that assuming complete in-dependence of dependencies does not work very well, and we also needsome system to account for the relative ordering of dependencies. To
+solve these problems, practical systems adopt various methods of allow-
+ing some conditioning between dependencies (as described below).
+12.1.8 Evaluation
+An important question is how to evaluate the success of a statisticalparser. If we are developing a language model (not just a parsing model),
+then one possibility is to measure the cross entropy of the model with re-
+spect to held out data. This would be impeccable if our goal had merelybeen to ﬁnd some form of structure in the data that allowed us to predictthe data better. But we suggested earlier that we wanted to build proba-bilistic parsers that found particular parse trees that we had in mind, andso, while perhaps of some use as an evaluation metric, ending up doingevaluation by means of measuring cross entropy is rather inconsistent
+with our stated objective. Cross entropy or perplexity measures only the
+probabilistic weak equivalence of models, and not the tree structure thatwe regard as important for other tasks. In particular, probabilisticallyweakly equivalent grammars have the same cross entropy, but if they arenot strongly equivalent, we may greatly prefer one or the other for ourtask.
+
+p/CX /CX432 12 Probabilistic Parsing
+Why are we interested in particular parse trees for sentences? People
+are rarely interested in syntactic analysis for its own sake. Presumablyour ultimate goal is to build a system for information extraction, questionanswering, translation, or whatever. In principle a better way to evaluateparsers is to embed them in such a larger system and to investigate the
+diﬀerences that the various parsers make in such a task-based evalua-
+tion. These are the kind of diﬀerences that someone outside the parsingcommunity might actually care about.
+However, often a desire for simplicity and modularization means that
+it would be convenient to have measures on which a parser can be sim-ply and easily evaluated, and which one might expect to lead to betterperformance on tasks. If we have good reason to believe that a certain
+style of parse tree is useful for further tasks, then it seems that what we
+could do is compare the parses found by the program with the results ofhand-parsing of sentences, which we regard as a gold standard. But howshould we evaluate our parsing attempts, or in other words, what is theobjective criterion that we are trying to maximize? The strictest criterion
+objective criterion
+is to award the parser 1 point if it gets the parse tree completely right,
+and 0 points if it makes any kind of mistake. This is the tree accuracy tree accuracy
+orexact match criterion. It is the toughest standard, but in many ways exact match
+it is a sensible one to use. In part this is because most standard parsing
+methods, such as the Viterbi algorithm for PCFG s try to maximize this
+quantity. So, since it is generally sensible for one’s objective criterionto match what one’s parser is maximizing, in a way using this criterionmakes sense. However, clearly, in this line of reasoning, we are puttingthe cart before the horse. But for many potential tasks, partly right parses
+are not much use, and so it is a reasonable objective criterion. For exam-
+ple, things will not work very well in a database query system if one getsthe scope of operators wrong, and it does not help much that the systemgot part of the parse tree right.
+On the other hand, parser designers, like students, appreciate getting
+part-credit for mostly right parses, and for some purposes partially rightparses can be useful. At any rate, the measures that have most commonly
+been used for parser evaluation are the PARSEVAL measures , which origi-
+PARSEVAL measures
+nate in an attempt to compare the performance of non-statistical parsers.
+These measures evaluate the component pieces of a parse. An exampleof a parsed tree, a gold standard tree, and the results on the
+PARSEVAL
+measures as they have usually been applied in Statistical NLP work is
+shown in ﬁgure 12.6. Three basic measures are proposed: precision is precision
+
+p/CX /CX12.1 Some Concepts 433
+(a) ROOT
+S
+NP
+NNS
+0Sales 1NNS
+executives 2VP
+VBD
+wereVP
+VBG
+3examiningNP
+DT
+4theNNS
+5ﬁguresPP
+IN
+6withNP
+JJ
+7greatNN
+8care 9NP
+NN
+yesterday 10.
+.11
+(b) ROOT
+S
+NP
+NNS
+0Sales 1NNS
+executives 2VP
+VBD
+wereVP
+VBG
+3examiningNP
+NP
+DT
+4theNNS
+5ﬁguresPP
+IN
+6withNP
+NN
+7greatNN
+8care 9NN
+yesterday 10.
+.11
+(c) Brackets in gold standard tree (a.):
+S-(0:11) ,NP-(0:2) , VP-(2:9), VP-(3:9), NP-(4:6) , PP-(6-9), NP-(7,9), *NP-(9:10)
+(d) Brackets in candidate parse (b.):
+S-(0:11) ,NP-(0:2) , VP-(2:10), VP-(3:10), NP-(4:10), NP-(4:6) , PP-(6-10), NP-(7,10)
+(e) Precision: 3/8 = 37.5% Crossing Brackets: 0
+Recall: 3/8 = 37.5% Crossing Accuracy: 100%Labeled Precision: 3/8 = 37.5% Tagging Accuracy: 10/11 = 90.9%Labeled Recall: 3/8 = 37.5%
+Figure 12.6 An example of the PARSEVAL measures. The PARSEVAL measures
+are easily calculated by extracting the ranges which are spanned by non-terminal
+nodes, as indicated in (c) and (d) and then calculating the intersection, eitherincluding or not including labels while doing so. The matching brackets areshown in bold. The root node is ignored in all calculations, and the preterminal
+nodes are used only for the tagging accuracy calculation. The starred unarynode would be excluded in calculations according to the original standard, butis included here.
+
+p/CX /CX434 12 Probabilistic Parsing
+B1 ()
+B2 ()
+B3()
+B4 ()
+w1w2w3w4w5w6w7w8
+Figure 12.7 The idea of crossing brackets. Bracket B1crosses both brackets
+B2andB4. All the other brackets are consistent. The guiding intuition is that
+crossing brackets cannot be combined into a single tree structure.
+how many brackets in the parse match those in the correct tree, recall recall
+measures how many of the brackets in the correct tree are in the parse,
+andcrossing brackets gives the average of how many constituents in one crossing brackets
+tree cross over constituent boundaries in the other tree. A picture to help
+understand crossing brackets is in ﬁgure 12.7. Errors of this sort have of-
+ten been seen as particularly dire. Rather than giving crossing brackets
+per tree (independent of tree size) an alternative is to report the non-crossing accuracy, the measure of the percentage of brackets that are notcrossing brackets. The original
+PARSEVAL measures (because they were
+designed for implementations of various incompatible syntactic theories)ignored node labels, unary branching nodes, and performed various other(ad hoc) tree normalizations. However, if a parser is trying to duplicate
+parses being performed by hand, then it is reasonable to include node
+labels, and this is normally done, giving measures of labeled precisionand recall. It is also reasonable to include unary nodes, except that theunary root and preterminal nodes are not included.
+12
+The PARSEVAL measures are not very discriminating. As we will see
+12. The Penn Treebank gives all trees an unlabeled top node, here called root . This
+is useful so that one can have rules rewriting the root as the actual top node of the
+sentence, whether S or NP or whatever. (A surprising number of ‘sentences’ in newswiretext are actually just noun phrases.) Including this node, and the preterminal nodes wouldinﬂate the precision and recall ﬁgures, as they are unary nodes which one could not get
+wrong. Including preterminal labels in the labeled measures is more defensible, but would
+mean that one’s ability to do part of speech tagging is rolled into the performance of theparser, whereas some people feel it is best reported separately. Chains of unary nodespresent some problems for these measures: the measures fail to capture the dominanceordering of the nodes, and, if multiple nodes have the same category, care must be takenin the calculation of recall. Finally we note that most evaluations of Statistical
+NLPparsers
+on the Penn Treebank have used their own ad-hoc normalizations, principally discountingsentence-internal punctuation and the distinction between the categories ADVP and PRT.
+
+p/CX /CX12.1 Some Concepts 435
+below, Charniak (1996) shows that according to these measures, one can
+do surprisingly well on parsing the Penn Treebank by inducing a vanilla
+PCFG which ignores all lexical content. This somewhat surprising result
+seems to reﬂect that in many respects the PARSEVAL measures are quite
+easy ones to do well on, particularly for the kind of tree structures as-
+sumed by the Penn Treebank. Firstly, it is important to note that they
+are measuring success at the level of individual decisions – and normallywhat makes
+NLPhard is that you have to make many consecutive deci-
+sions correctly to succeed. The overall success rate is then the nthpower
+of the individual decision success rate – a number that easily becomessmall.
+But beyond this, there are a number of features particular to the struc-
+ture of the Penn Treebank that make these measures particularly easy.
+Success on crossing brackets is helped by the fact that Penn Treebanktrees are quite ﬂat. To the extent that sentences have very few bracketsin them, the number of crossing brackets is likely to be small. Identi-fying troublesome brackets that would lower precision and recall mea-sures is also avoided. For example, recall that there is no disambiguationof compound noun structures within the Penn Treebank, which gives a
+completely ﬂat structure to a noun compound (and any other prehead
+modiﬁers) as shown below (note that the ﬁrst example also illustratesthe rather questionable Penn Treebank practice of tagging hyphenatednon-ﬁnal portions of noun compounds as adjectives!).
+(12.26) [ npa/dtstock-index/ jjarbitrage/ nnsell/nnprogram/ nn]
+[npa/dtjoint/ jjventure/ nnadvertising/ nnagency/ nn]
+Another case where peculiarities of the Penn Treebank help is the non-
+standard adjunction structures given to post noun-head modiﬁers, of thegeneral form (NP (NP the man) (PP in (NP the moon))). As we discussedin section 8.3, a frequent parsing ambiguity is whether PPs attach to apreceding NP or VP – or even to a higher preceding node – and this isa situation where lexical or contextual information is more important
+than structural factors. Note now that the use of the above adjunction
+structure reduces the penalty for making this decision wrongly. For thediﬀerent tree brackettings for Penn Treebank style structures and thet y p eo fN
+0structure more commonly assumed in linguistics, as shown in
+ﬁgure 12.8, the errors assessed for diﬀerent attachments are as shown intable 12.5. The forgivingness of the Penn Treebank scheme is manifest.
+
+p/CX /CX436 12 Probabilistic Parsing
+Penn VP attach (VP saw (NP the man) (PP with (NP a telescope)))
+Penn NP attach (VP saw (NP (NP the man) (PP with (NP a telescope))))Another VP attach (VP saw (NP the (N
+0man)) (PP with (NP a (N0telescope)))))
+Another NP attach (VP saw (NP the (N0man (PP with (NP a (N0telescope))))))
+Figure 12.8 Penn trees versus other trees.
+Error Errors assessed
+Prec. Rec. CBs
+Penn VP instead of NP 0 1 0
+NP instead of VP 1 0 0
+Another VP instead of NP 2 2 1
+NP instead of VP 2 2 1
+Table 12.5 Precision and recall evaluation results for PP attachment errors for
+diﬀerent styles of phrase structure.
+One can get the attachment wrong and not have any crossing brackets,
+and the errors in precision and recall are minimal.13
+On the other hand, there is at least one respect in which the PARSEVAL
+measures seem too harsh. If there is a constituent that attaches veryhigh (in a complex right-branching sentence), but the parser by mistakeattaches it very low, then every node in the right-branching complex will
+be wrong, seriously damaging both precision and recall, whereas arguably
+only a single mistake was made by the parser. This is what happened togive the very bad results in ﬁgure 12.6. While there are two attachmenterrors in the candidate parse, the one that causes enormous damage inthe results is attaching yesterday low rather than high (the parser which
+generated this example unfortunately didn’t know about temporal nouns,to its great detriment).
+This all suggests that these measures are imperfect, and one might
+wonder whether something else should be introduced to replace them.One idea would be to look at dependencies, and to measure how manyof the dependencies in the sentence are right or wrong. However, thediﬃculty in doing this is that dependency information is not shown in
+13. This comparison assumes that one is including unary brackets. The general contrast
+remains even if one does not do so, but the badness of the non-Penn case is slightlyreduced.
+
+p/CX /CX12.1 Some Concepts 437
+the Penn Treebank. While one can fairly successfully induce dependency
+relationships from the phrase structure trees given, there is no real goldstandard available.
+Returning to the idea of evaluating a parser with respect to a task, the
+correct approach is to examine whether success on the
+PARSEVAL mea-
+sures is indicative of success on real tasks. Many small parsing mistakes
+might not aﬀect tasks of semantic interpretation. This is suggested byresults of (Bonnema 1996; Bonnema et al. 1997). For instance, in one ex-periment, the percentage of correct semantic interpretations was 88%,even though the tree accuracy of the parser was only 62%. The cor-relation between the
+PARSEVAL measures and task-based performance
+is brieﬂy investigated by Hermjakob and Mooney (1997) with respect to
+their task of English to German translation. In general they ﬁnd a quite
+good correlation between the PARSEVAL measures and generating accept-
+able translations. Labeled precision has by far the best correlation witha semantically adequate translation (0.78), whereas the correlation withthe weaker measure of crossing brackets is much more modest (0.54).Whether there are other evaluation criteria that correlate better with suc-cess on ﬁnal tasks, and whether diﬀerent criteria better predict perfor-
+mance on diﬀerent kinds of ﬁnal tasks remain open questions. However,
+at the moment, people generally feel that these measures are adequatefor the purpose of comparing parsers.
+12.1.9 Equivalent models
+When comparing two probabilistic grammars, it is easy to think that theyare diﬀerent because they are using diﬀerent surface trappings, but whatis essential is to work out what information is being used to conditionthe prediction of what. Providing the answers to that question are the
+same, then the probabilistic models are equivalent.
+In particular, often there are three diﬀerent ways of thinking about
+things: in terms of remembering more of the derivational history, look-ing at a bigger context in a phrase structure tree, or by enriching thevocabulary of the tree in deterministic ways.
+Let us take a simple example. Johnson (1998) demonstrates the utility
+of using the grandparent node ( G) as additional contextual information
+when rewriting a parent non-terminal ( P)i na
+PCFG . For instance, con-
+sider the tree in (12.27).
+
+p/CX /CX438 12 Probabilistic Parsing
+(12.27) S
+NP1 VP
+VN P 2
+When expanding the NP non-terminals in (12.27), for NP 1, we would be us-
+ingPNP!jP NP;GS,w h i l ef o rN P 2we would use PNP!jP
+NP;G VP. This model can also capture the diﬀerences in the proba-
+bility distributions for subject and object NPs shown in table 12.3 (while
+again failing to capture the distributional diﬀerences shown in table 12.4).
+Including information about the grandparent is surprisingly eﬀective.Johnson shows that this simple model actually outperforms the proba-bilistic left-corner model presented earlier, and that in general it appearsto be the most valuable simple enrichment of a
+PCFG model, short of
+lexicalization, and the concomitant need to handle sparse data that thatintroduces.
+But the point that we wish to make here is that one can think of this
+model in three diﬀerent ways: as using more of the derivational history,as using more of the parse tree context, or as enriching the categorylabels. The ﬁrst way to think of it is in derivational terms, as in a history-based grammar. There we would be saying that we are doing a ﬁnerequivalence classing of derivational histories. For two derivational histo-ries to be equivalent, not only would they have to have the same leftmost
+non-terminal remaining in the phrase marker, but both of these would
+have to have resulted from rewriting the same category. That is:
+hh
+0iﬀ(
+leftmost NTmleftmost NT0
+mNx&
+9Ny:Ny!:::Nx:::2h^Ny!:::Nx:::2h0
+If two non-terminals were in diﬀerent equivalence classes, they would be
+able to (and usually would) have diﬀerent probabilities for rewriting.
+But, instead of doing this, we could think of this new model simply
+in terms of the probability of tree structures, but suggest that ratherthan working out the probability of a local subtree just by looking at the
+nodes that comprise the subtree, we could also look at more surrounding
+context. One can get into trouble if one tries to look at the surroundingcontext in all directions at once, because then one can no longer producea well-founded probabilistic model or parsing method – there has to be acertain directionality in the use of context. But if one is thinking of thetree being built top-down, then one can certainly include as much context
+
+p/CX /CX12.1 Some Concepts 439
+from higher up in the tree as one wishes. Building equivalence classes
+of sequences of derivational steps is equivalent to building equivalenceclasses of partial trees. Just including the identity of the grandparentnode is a particularly simple example of enriching context in this way.
+Or thirdly, one can do what Johnson actually did and just use a generic
+PCFG parser, but enrich the vocabulary of the tree labels to encode this ex-
+tra contextual information. Johnson simply relabeled every non-terminalwith a composite label that recorded both the node’s original label andits parent’s label (for instance, NP
+1in (12.27) was relabeled as NP-S). Two
+nodes in the new trees had the same label if and only if both they andtheir parents had the same label in the original trees. Johnson could thenuse a standard
+PCFG parser over these new trees to simulate the eﬀect of
+using extra contextual information in the original trees. All three of these
+methods produce equivalent probabilistic models. But the third methodseems a particularly good one to remember, since it is frequently easierto write a quick program to produce transformed trees than to write anew probabilistic parser.
+12.1.10 Building parsers: Search methods
+For certain classes of probabilistic grammars, there are eﬃcient algo-rithms that can ﬁnd the highest probability parse in polynomial time. Theway such algorithms work is by maintaining some form of tableau that
+tableau
+stores steps in a parse derivation as they are calculated in a bottom-up
+fashion. The tableau is organized in such a way that if two subderiva-tions are placed into one cell of the tableau, we know that both of them
+will be able to be extended in the same ways into larger subderivations
+and complete derivations. In such derivations, the lower probability oneof the two will always lead to lower probability complete derivations, andso it may be discarded. Such algorithms are in general known as Viterbi
+Viterbi algorithm
+algorithms , and we have seen a couple of examples in earlier chapters.
+When using more complex statistical grammar formalisms, such algo-
+rithms may not be available. This can be for two reasons. There may not
+be (known) tabular parsing methods for these formalisms. But secondly,
+the above discussion assumed that by caching derivation probabilitiesone could eﬃciently ﬁnd parse probabilities. Viterbi algorithms are ameans of ﬁnding the highest probability derivation of a tree. They onlyallow us to ﬁnd the highest probability parse for a tree if we can deﬁnea unique canonical derivation for each parse tree (as discussed earlier).
+
+p/CX /CX440 12 Probabilistic Parsing
+If there is not a one-to-one relationship between derivations and parses,
+then an eﬃcient polynomial time algorithm for ﬁnding the highest prob-ability tree may not exist. We will see an example below in section 12.2.1.
+For such models, “the decoding problem” of ﬁnding the best parse be-
+comes exponential. We nevertheless need some eﬃcient way of moving
+through a large search space. If we think of a parsing problem as a search
+problem in this way, we can use any of the general search methods thathave been developed within AI. But we will start with the original andbest-known algorithm for doing this within the Statistical
+NLPcommu-
+nity, the stack decoding algorithm.
+The stack decoding algorithm
+The stack decoding algorithm was initially developed by Jelinek (1969) for
+the purpose of decoding information transmissions across noisy chan-
+nels. However, it is a method for exploring any tree-structured search
+space, such as commonly occurs in Statistical NLPalgorithms. For ex-
+ample, a derivational parsing model gives a tree-structured search space,since we start with various choices for the ﬁrst step of the derivation,and each of those will lead to a (normally diﬀerent) range of choices forthe second step of the derivation. It is an example of what in AI is knownas a uniform-cost search algorithm: one where one always expands the
+uniform-cost
+search least-cost leaf node ﬁrst.
+The stack decoding algorithm can be described via a priority queue
+object, an ordered list of items with operations of pushing an item andpopping the highest-ranked item. Priority queues can be eﬃciently imple-mented using a heap data structure.
+14One starts with a priority queue
+that contains one item – the initial state of the parser. Then one goesinto a loop where at each step one takes the highest probability item oﬀ
+the top of the priority queue, and extends it by advancing it from an n
+step derivation to an n1 step derivation (in general there will be multi-
+ple ways of doing this). These longer derivations are placed back on thepriority queue ordered by probability. This process repeats until thereis a complete derivation on top of the priority queue. If one assumes aninﬁnite priority queue, then this algorithm is guaranteed to ﬁnd the high-est probability parse, because a higher probability partial derivation will
+always be extended before a lower probability one. That is, it is complete
+14. This is described in many books on algorithms, such as (Cormen et al. 1990).
+
+p/CX /CX12.1 Some Concepts 441
+(guaranteed to ﬁnd a solution if there is one) and optimal (guaranteed to
+ﬁnd the best solution when there are several). If, as is common, a lim-ited priority queue size is assumed, then one is not guaranteed to ﬁndthe best parse, but the method is an eﬀective heuristic for usually ﬁnd-ing the best parse. The term beam search is used to describe systems
+beam search
+which only keep and extend the best partial results. A beam may either
+be ﬁxed size, or keep all results whose goodness is within a factor of
+the goodness of the best item in the beam.
+In the simplest version of the method, as described above, when one
+takes the highest probability item oﬀ the heap, one ﬁnds all the possibleways to extend it from an nstep derivation to an n1 step derivation, by
+seeing which next parsing steps are appropriate, and pushing the result-
+ingn1 step derivations back onto the heap. But Jelinek (1969) describes
+an optimization (which he attributes to John Cocke), where instead of do-ing that, one only applies the highest probability next step, and thereforepushes only the highest probability n1 step derivation onto the stack,
+together with continuation information which can serve to point to thestate at stepnand the other extensions that were possible. Thereafter, if
+this state is popped from the stack, one not only determines and pushes
+on the highest probability n2 step derivation, but one retrieves the con-
+tinuation, applies the second highest probability rule, and pushes on thesecond highest probability n1 step derivation (perhaps with its own
+continuation). This method of working with continuations is in practicevery eﬀective at reducing the beam size needed for eﬀective parsing usingthe stack decoding algorithm.
+A* search
+Uniform-cost search can be rather ineﬃcient, because it will expand
+all partial derivations (in a breadth-ﬁrst-like manner) a certain distance,rather than directly considering whether they are likely to lead to a highprobability complete derivation. There exist also best-ﬁrst search algo-
+best-ﬁrst search
+rithms which do the opposite, and judge which derivation to expand
+based on how near to a complete solution it is. But really what we want
+to do is ﬁnd a method that combines both of these and so tries to expandthe derivation that looks like it will lead to the highest probability parse,based on both the derivational steps already taken and the work still leftto do. Working out the probability of the steps already taken is easy. Thetricky part is working out the probability of the work still to do. It turns
+
+p/CX /CX442 12 Probabilistic Parsing
+out, though, that the right thing to do is to choose an optimistic estimate,
+meaning that the probability estimate for the steps still to be taken is al-ways equal to or higher than the actual cost will turn out to be. If we cando that, it can be shown that the resulting search algorithm is still com-plete and optimal. Search methods that work in this way are called A*
+A* search
+search algorithms. A* search algorithms are much more eﬃcient because
+they direct the parser towards the partial derivations that look nearest toleading to a complete derivation. Indeed, A* search is optimally eﬃcient
+optimally efﬁcient
+meaning that no other optimal algorithm can be guaranteed to explore
+less of the search space.
+Other methods
+We have merely scratched the surface of the literature on search meth-
+ods. More information can be found in most AI textbooks, for example(Russell and Norvig 1995: ch. 3–4).
+We might end this subsection by noting that in cases where the Viterbi
+algorithm is inapplicable, one also usually gives up ‘eﬃcient’ training:one cannot use the EM algorithm any more either. But one can do other
+things. One approach which has been explored at
+IBMis growing a deci-
+sion tree to maximize the likelihood of a treebank (see below).
+12.1.11 Use of the geometric mean
+Any standard probabilistic approach ends up multiplying a large num-ber of probabilities. This sequence of multiplications is justiﬁed by the
+chain rule, but most usually, large assumptions of conditional indepen-
+dence are made to make the models usable. Since these independenceassumptions are often quite unjustiﬁable, large errors may accumulate.In particular, failing to model dependencies tends to mean that the esti-mated probability of a tree becomes far too low. Two other problems aresparse data where probability estimates for infrequent unseen constructsmay also be far too low, and defective models like
+PCFG s that are wrongly
+biased to give short sentences higher probabilities than long sentences.
+As a result of this, sentences with bigger trees, or longer derivational his-tories tend to be penalized in existing statistical parsers. To handle this,it has sometimes been suggested (Magerman and Marcus 1991; Carroll1994) that one should rather calculate the geometric mean (or equiva-lently the average log probability) of the various derivational steps. Such
+
+p/CX /CX12.2 Some Approaches 443
+a move takes one out of the world of probabilistic approaches (however
+crude the assumptions) and into the world of ad hoc scoring functions
+for parsers. This approach can sometimes prove quite eﬀective in prac-tice, but it is treating the symptoms not the cause of the problem. For thegoal of speeding up chart parsing, Caraballo and Charniak (1998) show
+that using the geometric mean of the probability of the rules making up
+a constituent works much better than simply using the probability of theconstituent for rating which edges to focus on extending – this is bothbecause the
+PCFG model is strongly biased to give higher probabilities
+to smaller trees, and because this measure ignores the probability of therest of the tree. But they go on to show that one can do much better stillby developing better probabilistic metrics of goodness.
+12.2 Some Approaches
+In the remainder of this chapter, we examine ways that some of the ideaspresented above have been combined into statistical parsers. The pre-sentations are quite brief, but give an overview of some of the methodsthat are being used and the current state of the art.
+12.2.1 Non-lexicalized treebank grammars
+A basic division in probabilistic parsers is between lexicalized parserswhich deal with words, and those that operate over word categories. Wewill ﬁrst describe non-lexicalized parsers. For a non-lexicalized parser,the input ‘sentence’ to parse is really just a list of word category tags,the preterminals of a normal parse tree. This obviously gives one much
+less information to go on than a sentence with real words, and in the
+second half we will discuss higher-performing lexicalized parsers. How-ever, apart from general theoretical interest, the nice thing about non-lexicalized parsers is that the small terminal alphabet makes them easyto build. One doesn’t have to worry too much about either computationaleﬃciency or issues of smoothing sparse data.
+PCFG estimation from a treebank: Charniak (1996)
+Charniak (1996) addresses the important empirical question of how well
+a parser can do if it ignores lexical information. He takes the Penn Tree-bank, uses the part of speech and phrasal categories it uses (ignoring
+
+p/CX /CX444 12 Probabilistic Parsing
+functional tags), induces a maximum likelihood PCFG from the trees by
+using the relative frequency of local trees as the estimates for rules inthe obvious way, makes no attempt to do any smoothing or collapsing ofrules, and sets out to try to parse unseen sentences.
+15
+The result was that this grammar performed surprisingly well. Its per-
+formance in terms of precision, recall, and crossing brackets is not far
+below that of the best lexicalized parsers (see table 12.6). It is inter-esting to consider why this is. This result is surprising because such aparser will always choose the same resolution of an attachment ambigu-ity when confronted with the same structural context – and hence mustoften be wrong (cf. section 8.3. We feel that part of the answer is thatthese scoring measures are undiscerning on Penn Treebank trees, as we
+discussed in section 12.1.8. But it perhaps also suggests that while inter-
+esting parsing decisions, such as classic attachment ambiguities, clearlyrequire semantic or lexical information, perhaps the majority of parsingdecisions are mundane, and can be handled quite well by an unlexical-ized
+PCFG . The precision, recall, and crossing brackets measures record
+average performance, and one can fare quite well on average with just a
+PCFG .
+The other interesting point is that this result was achieved without
+any smoothing of the induced grammar, despite the fact that the PennTreebank is well-known for its ﬂat many-branching constituents, manyof which are individually rare. As Charniak shows, the grammar in-duced from the Penn Treebank ends up placing almost no categoricalconstraints on what part of speech can occur next in a sentence, so onecan parse any sentence. While it is certainly true that some rare local
+trees appear in the test set that were unseen during training, it is un-
+likely that they would ever occur in the highest probability parse, evenif smoothing were done. Thus, under these circumstances, just usingmaximum likelihood estimates does no harm.
+Partially unsupervised learning: Pereira and Schabes (1992)
+We have discussed how the parameter estimation space for realistic-sized
+PCFG s is so big that the EM algorithm unaided tends to be of fairly little
+use, because it always gets stuck in a local maximum. One way to try to
+15. We simplify slightly. Charniak did do a couple of things: recoding auxiliary verbs via
+anaux tag, and incorporating a ‘right-branching correction,’ so as to get the parser to
+prefer right branching structures.
+
+p/CX /CX12.2 Some Approaches 445
+encourage the probabilities into a good region of the parameter space is
+proposed by Pereira and Schabes (1992) and Schabes et al. (1993). Theybegin with a Chomsky normal form grammar with 15 non-terminals overan alphabet of 45 part of speech tags as terminals, and train it not on rawsentences but on treebank sentences, where they ignore the non-terminal
+labels, but use the treebank bracketing. They employ a variant of the
+Inside-Outside algorithm constrained so as to only consider parses thatdo not cross Penn-Treebank nodes. Their parser always parses into bi-nary constituents, but it can learn from any style of bracketing, which theparser regards as a partial bracketing of the sentence. We will not presenthere their modiﬁed versions of the Inside-Outside algorithm equations,but the basic idea is to reduce to zero the contribution to the reestima-
+tion equations of any proposed constituent which is not consistent with
+the treebank bracketing. Since bracketing decreases the number of rulesplit points to be considered, a bracketed training corpus also speeds upthe Inside-Outside algorithm.
+On a small test corpus, Pereira and Schabes (1992) show the eﬃcacy of
+the basic method. Interestingly, both the grammars trained on unbrack-eted and bracketed training material converge on a very similar cross-
+entropy, but they diﬀer hugely on how well their bracketings correspond
+to the desired bracketings present in the treebank. When the input wasunbracketed, only 37% of the brackets the parser put on test sentenceswere correct, but when it had been trained on bracketed sentences, 90%of the brackets placed on test sentences were correct. Moreover, whileEM training on the unbracketed data was successful in decreasing thecross-entropy, it was ineﬀective at improving the bracketing accuracy of
+the parser over the accuracy of the model resulting from random ini-
+tialization of the parameters. This result underlines the discussion atthe beginning of the chapter: current learning methods are eﬀective atﬁnding models with low entropy, but they are insuﬃcient to learn syn-tactic structure from raw text. Only by chance will the inferred grammaragree with the usual judgements of sentence structure. At the presenttime, it is an open question whether the normally assumed hierarchical
+structure of language is underdetermined by the raw data, or whether the
+evidence for it is simply too subtle to be discovered by current inductiontechniques.
+Schabes et al. (1993) test the same method on a larger corpus including
+longer sentences with similar results. They make use of one additionalinteresting idea, which is to impose a uniform right branching binary
+
+p/CX /CX446 12 Probabilistic Parsing
+structure on all ﬂat n-ary branching local trees of the Penn Treebank in
+the training data so as to maximize the speed-up to the Inside-Outsidealgorithm that comes from bracketing being present.
+Parsing directly from trees: Data-Oriented Parsing
+An interesting alternative to the grammar-based models that we have
+considered so far is to work out statistics directly on pieces of trees in a
+treebank, where the treebank is assumed to represent the body of parsesthat one has previously explored. Rather than deriving a grammar fromthe treebank, we let the parsing process use whichever fragments of treesappear to be useful. This has the apparent advantage that idiom chunksliketo take advantage of will be used where they are present, whereas
+such chunks are not straightforwardly captured in
+PCFG -style models.
+Such an approach has been explored within the Data-Oriented Parsing
+(DOP) framework of Rens Bod and Remko Scha (Sima’an et al. 1994; Bod
+1995, 1996, 1998). In this section, we will look at the DOP1 model.
+Suppose we have a corpus of two sentences, as in (12.28):
+(12.28) a. S
+NP
+SueVP
+V
+sawNP
+Job. S
+NP
+KayVP
+V
+heardNP
+Jim
+Then, to parse a new sentence like Sue heard Jim , we could do it by
+putting together tree fragments that we have already seen. For examplewe can compose these two tree fragments:
+(12.29) a. S
+NP
+SueVPb. VP
+V
+heardNP
+Jim
+We can work out the probability of each tree fragment in the corpus,
+given that one is expanding a certain node, and, assuming independence,we can multiply these probabilities together (for instance, there are 8
+
+p/CX /CX12.2 Some Approaches 447
+fragments with VP as the parent node – fragments must include either all
+or none of the children of a node – among which (12.29b) occurs once, soits probability is 1/8). But that is only one derivation of this parse tree.In general there are many. Here is another one from our corpus, this timeinvolving the composition of three tree fragments:
+(12.30) a. S
+NP
+SueVP
+VN Pb. V
+heardc. NP
+Jim
+Since there are multiple fundamentally distinct derivations of a single
+tree in this DOP model, here we have an example of a grammar where the
+highest probability parse cannot be found eﬃciently by a Viterbi algo-
+rithm (Sima’an 1996) – see exercise 12.8. Parsing has therefore been done
+using Monte Carlo simulation methods. This is a technique whereby the Monte Carlo
+simulation probability of an event is estimated by taking random samples. One ran-
+domly produces a large number of derivations and uses these to estimatethe most probable parse. With a large enough sample, these estimates canbe made as accurate as desired, but the parsing process becomes slow.
+The
+DOP approach is in some ways similar to the memory-based learn-
+ing ( MBL) approach (Zavrel and Daelemans 1997) in doing prediction di-
+rectly from a corpus, but diﬀers in that whereas the MBL approach pre-
+dicts based on a few similar exemplars, the DOP model uses statistics
+over the entire corpus.
+The DOP model provides a diﬀerent way of thinking, but it is important
+to realize that it is not that diﬀerent to what we have been doing with
+PCFG s. After all, rather than writing grammar rules like S !NP VP and
+VP!V NP, we could instead write tree fragments:
+(12.31) S
+NP VPVP
+VN P
+And the probabilities that we estimate for grammar rules from a tree-
+bank are exactly the same as would be assigned based on their relativefrequency in the treebank on the
+DOP model.
+The diﬀerence between PCFG s and what we have here is that rather
+than only having local trees of depth 1, we can have bigger tree frag-
+
+p/CX /CX448 12 Probabilistic Parsing
+ments. The model can be formalized as a Probabilistic Tree Substitution Probabilistic Tree
+Substitution
+GrammarGrammar (PTSG ), which has ﬁve components just like the deﬁnition of
+aPCFG in chapter 11. However, rather than a set of rules, we have a set
+of tree fragments of arbitrary depth whose top and interior nodes arenonterminals and whose leaf nodes are terminals or nonterminals, and
+the probability function assigns probabilities to these fragments.
+PTSG s
+are thus a generalization of PCFG s, and are stochastically more powerful,
+because one can give particular probabilities to fragments – or just wholeparses – which cannot be generated as a multiplication of rule probabil-ities in a
+PCFG . Bod (1995) shows that by starting with a PCFG model of
+depth 1 fragments and then progressively allowing in larger fragmentsparsing accuracy does increase signiﬁcantly (this mirrors the result of
+Johnson (1998) on the utility of context from higher nodes in the tree).
+So the
+DOP model provides another way to build probabilistic models
+that use more conditioning context.
+12.2.2 Lexicalized models using derivational histories
+History-based grammars ( HBGs)
+Probabilistic methods based on the history of the derivation, and in-
+cluding a rich supply of lexical and other information, were ﬁrst ex-plored in large scale experiments at
+IBM, and are reported in (Black et al.
+1993). This work exploited a one-to-one correspondence between left-most derivations and parse trees, to avoid summing over possible deriva-tions. The general idea was that all prior parse decisions could inﬂuencefollowing parse decisions in the derivation, however, in the 1993 model,
+the only conditioning features considered were those on a path from the
+node currently being expanded to the root of the derivation, along withwhat number child of the parent a node is (from left to right).
+16Black
+et al. (1993) used decision trees to decide which features in the deriva-tional history were important in determining the expansion of the currentnode. We will cover decision trees in section 16.1, but they can be thoughtof just as a tool that divides up the history into highly predictive equiva-
+lence classes.
+16. Simply using a feature of being the nthchild of the parent seems linguistically some-
+what unpromising, since who knows what material may be in the other children, but thisgives some handle on the varying distribution shown in table 12.4.
+
+p/CX /CX12.2 Some Approaches 449
+Unlike most other work, this work used a custom treebank, produced
+by the University of Lancaster. In the 1993 experiments, they restrictedthemselves to sentences completely covered by the most frequent 3000words in the corpus (which eﬀectively avoids many sparse data issues).Black et al. began with an existing hand-built broad-coverage feature-
+based uniﬁcation grammar. This was converted into a
+PCFG by making
+equivalence classes out of certain labels (by ignoring or grouping certainfeatures and feature-value pairs). This
+PCFG was then reestimated using
+a version of the Inside-Outside algorithm that prevents bracket crossing,as in the work of Pereira and Schabes (1992) discussed above.
+Black et al. lexicalize their grammar so that phrasal nodes inherit two
+words, a lexical head H
+1, and a secondary head H2. The lexical head
+is the familiar syntactic head of the phrase, while the secondary head
+is another word that is deemed useful (for instance, in a prepositionalphrase, the lexical head is the preposition, while the secondary head isthe head of the complement noun phrase). Further, they deﬁne a set ofabout 50 each of syntactic and semantic categories, fSyn
+pgandfSempg,
+to be used to classify non-terminal nodes. In the HBG parser, these two
+features, the two lexical heads, and the rule Rto be applied at a node are
+predicted based on the same features of the parent node, and the index I
+expressing what number child of the parent node is being expanded. Thatis, we wish to calculate:
+PSyn;Sem;R;H
+1;H2jSynp;Semp;Rp;Ipc;H1p;H2p
+This joint probability is decomposed via the chain rule and each of the
+features is estimated individually using decision trees.
+The idea guiding the IBM work was that rather than having a lin-
+guist tinker with a grammar to improve parsing preferences, the linguistshould instead just produce a parser that is capable of parsing all sen-tences. One then gets a statistical parser to learn from the information ina treebank so that it can predict the correct parse by conditioning parsingsteps on the derivation history. The
+HBG parser was tested on sentences
+of 7–17 words, by comparing its performance to the existing uniﬁcation-
+based parser. The uniﬁcation-based parser chose the correct parse for
+sentences about 60% of the time, while the HBG parser found the correct
+parse about 75% of the time, so the statistical parser was successful inproducing a 37% reduction in error over the best disambiguation rulesthat the
+IBMlinguist had produced by hand.
+
+p/CX /CX450 12 Probabilistic Parsing
+SPATTER
+The HBG work was based on a language model, but work at IBMthen
+started experimenting with building a parsing model directly. The earlywork reported in Jelinek et al. (1994) was developed as the
+SPATTER
+model in Magerman (1994, 1995), which we brieﬂy review here.
+SPATTER also works by determining probabilities over derivations, but
+it works in a bottom-up fashion, by starting with the words and build-ing structure over them. Decision tree models are again used to pick
+out features of the derivational history that are predictive for a certain
+parsing decision.
+SPATTER began the trend of decomposing local phrase
+structure trees into individual parsing decisions, but rather than using avariant of dependency grammar, as in most other work, it used a some-what odd technique of predicting which way the branch above a nodepointed.
+In
+SPATTER , a parse tree is encoded in terms of words ,p a r to fs p e e c h
+tags, non-terminal labels ,a n d extensions , which encode the tree shape.
+Tagging was done as part of the parsing process. Since the grammar isfully lexicalized, the word and tag of the head child is always carried upto non-terminal nodes. If we start with some words and want to predictthe subtree they form, things look something like this:
+(12.32)
+
+a brown dogright up left
+A node predicts an extension which expresses the type of the line above it
+connecting it to the parent node. There are ﬁve extensions: for subtreeswith two or more branches, right is assigned to the leftmost child, left
+is assigned to the rightmost child, and upis assigned to any children in
+between, while unary is assigned to an ‘only child’ and root is assigned
+to the root node of the tree. (Note that right and left are thus switched!)
+These features, including the
+POStags of the words, are predicted by
+decision-tree models. For one node, features are predicted in terms offeatures of surrounding and lower nodes, where these features have al-ready been determined. The models use the following questions (whereXis one of the four features mentioned above):
+
+p/CX /CX12.2 Some Approaches 451
+What is theXat the {current node/node {1/2} to the {left/right}}?
+What is theXat the current node’s {ﬁrst/second} {left/right}-most
+child?
+How many children does the node have?
+What is the span of the node in words?
+[For tags:] What are the two previous POStags?
+The parser was allowed to explore diﬀerent derivation sequences, so
+it could start working where the best predictive information was avail-able (although in practice possible derivational orders were greatly con-strained). The probability of a parse was found by summing over deriva-tions.
+Some features of
+SPATTER , such as the extensions feature, were rather
+weird, and overall the result was a large and complex system that re-
+quired a great deal of computer power to train and run (the decision treetraining and smoothing algorithms were particularly computationally in-tensive). But there was no doubting its success.
+SPATTER showed that
+one could automatically induce from treebank data a successful statisti-cal parser which clearly outperformed any existing hand-crafted parserin its ability to handle naturally occurring text.
+12.2.3 Dependency-based models
+Collins (1996)
+More recently Collins (1996; 1997) has produced probabilistic parsing
+models from treebank data that are simpler, more intuitive, and morequickly computable than those explored in the preceding subsection, butwhich perform as well or better.
+Collins (1996) introduces a lexicalized generally Dependency Grammar-
+like framework, except that baseNP units in the Penn Treebank are
+treated as chunks (using chunks in parsing in this way is reminiscent
+of the approach of Abney (1991)). The original model was again a parsingmodel. A sentence was represented as a bag of its baseNPs and otherwords (B)w i t hd e p e n d e n c i e s( D) between them:
+(12.33) [The woman] in [the next row] yawned.
+
+p/CX /CX452 12 Probabilistic Parsing
+Then:
+PtjsPB;DjsPBjsPDjs;B
+Tagging was an independent process, and was performed by the max-
+imum entropy tagger of Ratnaparkhi (1996). The probability estimatefor baseNPs uses the idea of Church (1988) for identifying NPs (see sec-tion 10.6.2). Each gap G
+ibetween words is classiﬁed as either the start or
+end of an NP, between two NPs or none of the above. Then the probabilityof a baseNPof lengthmstarting atw
+uis given in terms of the predicted
+gap features as:
+PjsumY
+iu1ˆPGijwi−1;ti−1;wi;ti;ci
+wherecirepresents whether there is a ‘comma’ between the words or not.
+Deleted interpolation is used to smooth this probability.
+For the dependency model, Collins replaced each baseNP with its head
+word and removed punctuation to give a reduced sentence. But punc-tuation is used to guide parsing. Part of what is clever about Collins’
+approach is that he works directly with the phrase structures of the Penn
+Treebank, but derives a notation for dependencies automatically fromthem. Dependencies are named based on the head and two child con-stituents. So if one has a subtree as in (12.34), the dependency betweenthe PP and verb is labeled VBD_VP_PP.
+(12.34) VP
+VBD
+livedPP
+in a shoe
+In other words, the dependency names are derived from purely categorial
+labels, but end up capturing much of the functional information that one
+would like to use in a parser. Nevertheless, the system does still have
+a few limitations – for instance, these dependency labels do not capturethe diﬀerence between the two objects of a ditransitive verb.
+Each dependency is assumed to be independent – a somewhat unre-
+alistic assumption. Then, each word w
+mapart from the main predicate
+of the sentence will be dependent on some head hwmvia a dependency
+
+p/CX /CX12.2 Some Approaches 453
+relationshipRwm;hwm. ThusDcan be written as a set of dependencies
+fdwi;hwi;Rwi;hwig, and we have that:
+PDjS;BnY
+j1P(
+dwj;hwj;Rwj;hwj
+Collins calculates the probability that two word-tag pairs hwi;tiiand
+hwj;tjiappear in the same reduced sentence with relationship Rwithin
+the Penn treebank in the obvious way. He counts up how common onerelationship is compared to the space of all relationships:
+ˆFRjhw
+i;tii;hwj;tjiCR;hwi;tii;hwj;tji
+Chwi;tii;hwj;tji
+And then he normalizes this quantity to give a probability.
+This model was then complicated by adding conditioning based on the
+‘distance’ over which the dependency stretched, where distance was eval-
+uated by an ad hoc function that included not only the distance, butdirection, whether there was an intervening verb, and how many inter-vening commas there were.
+The parser used a beam search with various pruning heuristics for
+eﬃciency. The whole system can be trained in 15 minutes, and runsquickly, performing well even when a quite small beam is used. Collins’
+parser slightly outperforms
+SPATTER , but the main advance seems to be
+in building a much simpler and faster system that performs basically aswell. Collins also evaluates his system both using and not using lexi-cal information and suggests that lexical information gives about a 10%improvement on labeled precision and recall. The odd thing about thisresult is that the unlexicalized version ends up performing rather worsethan Charniak’s
+PCFG parser. One might hypothesize that while splitting
+up local subtrees into independent dependencies is useful for avoiding
+data sparseness when dealing with a lexicalized model, it neverthelessmeans that one doesn’t capture some (statistical) dependencies whichare being proﬁtably used in the basic
+PCFG model.
+A lexicalized dependency-based language model
+Collins (1997) redevelops the work of Collins (1996) as a generative lan-
+guage model (whereas the original had been a probabilistically deﬁcientparsing model). He builds a sequence of progressively more complex
+
+p/CX /CX454 12 Probabilistic Parsing
+models, at each stage getting somewhat improved performance. The gen-
+eral approach of the language model is to start with a parent node and ahead and then to model the successive generation of dependents on boththe left and right side of the head. In the ﬁrst model, the probability ofeach dependent is basically independent of other dependents (it depends
+on the parent and head nodes’ category, the head lexical item, and a ﬁ-
+nal composite feature that is a function of distance, intervening words,and punctuation). Dependents continue to be generated until a specialpseudo-nonterminal
+STOP is generated.
+Collins then tries to build more complex models that do capture some
+of the (statistical) dependencies between diﬀerent dependents of a head.What is of particular interest is that the models start bringing in a
+lot of traditional linguistics. The second model makes use of the ar-
+gument/adjunct distinction and models the subcategorization framesof heads. A subcategorization frame is predicted for each head, andthe generation of dependents is additionally conditioned on the bag ofsubcategorized arguments predicted that have not yet been generated.A problem caused by trying to model subcategorization is that varioussubcategorized arguments may not be overtly present in their normal
+place, due to processes like the implicit object alternation (section 8.4)
+orWh-movement. In the ﬁnal model Collins attempts to incorporate Wh-
+movement into the probabilistic model, through the use of traces andcoindexed ﬁllers (which are present in the Penn treebank). While thesecond model performs considerably better than the ﬁrst, this ﬁnal com-plication is not shown to give signiﬁcantly better performance).
+12.2.4 Discussion
+Some overall parsing performance ﬁgures for some roughly comparablesystems are shown in table 12.6.
+17At the time of writing, Collins’ results
+are the best for a broad coverage statistical parser. It remains an openresearch problem to see whether one can weld useful elements of the
+IBM
+work (such as using held out data to estimate model parameters, the use
+17. All these systems were trained on the Penn Treebank, and tested on an unseen test
+set of sentences of 2–40 words, also from the Penn Treebank. However, various details ofthe treatment of punctuation, choosing to ignore certain non-terminal distinctions, etc.,nevertheless mean that the results are usually not exactly comparable. The results for
+SPATTER are the results Collins (1996) gives for running SPATTER on the same test set as
+his own parsers, and diﬀer slightly from the results reported in (Magerman 1995).
+
+p/CX /CX12.2 Some Approaches 455
+Sentences of 40 words
+% LR % LP CB % 0 CBs
+Charniak (1996) PCFG 80.4 78.8 n/a n/a
+Magerman (1995) SPATTER 84.6 84.9 1.26 56.6
+Collins (1996) best 85.8 86.3 1.14 59.9Charniak (1997a) best 87.5 87.4 1.00 62.1Collins (1997) best 88.1 88.6 0.91 66.5
+Table 12.6 Comparison of some statistical parsing systems. LR = labeled recall,
+LP = labeled precision, CB = crossing brackets, n/a means that a result is notgiven (Charniak (1996) gives a result of 87.7% for non-crossing accuracy).
+of decision trees, and more sophisticated deleted estimation techniques)
+with the key ideas of Collins’ work to produce even better parsers. Addi-
+tionally, we note that there are several other systems with almost as goodperformance, which use quite diﬀerent parsing techniques, and so therestill seems plenty of room for further investigation of other techniques.For instance, Charniak (1997a) uses probability estimates for conven-tional grammar rules (suitably lexicalized). The rule by which to expanda node is predicted based on the the node’s category, its parent’s cate-
+gory, and its lexical head. The head of each child is then predicted based
+on the child’s category and the parent node’s category and lexical head.Charniak provides a particularly insightful analysis of the diﬀerences inthe conditioning used in several recent state-of-the-art statistical parsersand of what are probably the main determinants of better and worseperformance.
+Just as in tagging, the availability of rich lexical resources (principally,
+the Penn treebank) and the use of statistical techniques brought new lev-
+els of parsing performance. However, we note that recent incrementalprogress, while signiﬁcant, has been reasonably modest. As Charniak(1997a: 601) points out:
+This seems to suggest that if our goal is to get, say, 95% average
+labeled precision and recall, further incremental improvements onthis basic scheme may not get us there.
+Qualitative breakthroughs may well require semantically richer lexical re-
+sources and probabilistic models.
+
+p/CX /CX456 12 Probabilistic Parsing
+12.3 Further Reading
+A variety of work on grammar induction can be found in the biennial
+proceedings of the International Colloquium on Grammar Inference (Car-rasco and Oncina 1994; Miclet and de la Higuera 1996; Honavar and
+Slutzki 1998).
+The current generation of work on probabilistic parsing of unrestricted
+text emerged within the
+DARPA Speech and Natural Language community.
+Commonly cited early papers include (Chitrao and Grishman 1990) and(Magerman and Marcus 1991). In particular, Magerman and Marcus makeearly reference to the varying structural properties of NPs in diﬀerentpositions.
+Another thread of early work on statistical parsing occurred at the Uni-
+versity of Lancaster. Atwell (1987) and Garside and Leech (1987) describea constituent boundary ﬁnder that is similar to the NP ﬁnding of (Church1988). A
+PCFG trained on a small treebank is then used to choose between
+possible constituents. Some discussion of the possibilities of using sim-ulated annealing also appears. They suggest that their system could ﬁndan “acceptable” parse about 50% of the time.
+Another important arena of work on statistical parsing is work within
+the pattern recognition community, an area pioneered by King-Sun Fu.See in particular (Fu 1974).
+An approachable introduction to statistical parsing including part-of-
+speech tagging appears in (Charniak 1997b). The design of the Penn Tree-bank is discussed in (Marcus et al. 1993) and (Marcus et al. 1994). It isavailable from the Linguistic Data Consortium.
+The original PARSEVAL measures can be found in (Black et al. 1991) or
+PARSEVAL measures
+(Harrison et al. 1991). A study of various parsing evaluation metrics, their
+relationships, and appropriate parsing algorithms for diﬀerent objectivefunctions can be found in (Goodman 1996).
+The ideas of dependency grammar stretch back into the work of me-
+dependency
+grammar dieval Arab grammarians, but received a clear formal statement in the
+work of Tesnière (1959). Perhaps the earliest work on probabilistic de-
+pendency grammars was the Probabilistic Link Grammar model of Laf-
+ferty et al. (1992). Except for one particular quirky property where a wordcan be bi-linked in both directions, link grammar can be thought of as anotational variant of dependency grammar. Other work on dependency-based statistical parsers includes Carroll and Charniak (1992).
+We have discussed only a few papers from the current ﬂurry of work
+
+p/CX /CX12.3 Further Reading 457
+on statistical parsing. Systems with very similar performance to (Collins
+1997), but very diﬀerent grammar models, are presented by Charniak(1997a) and Ratnaparkhi (1997a). See also (Eisner 1996) for another re-cent approach to dependency-based statistical parsers, quite similar to(Collins 1997).
+Most of the work here represents probabilistic parsing with a context-
+free base. There has been some work on probabilistic versions of morepowerful grammatical frameworks. Probabilistic
+TAGs(Tree-Adjoining Tree-Adjoining
+Grammars Grammars ) are discussed by Resnik (1992) and Schabes (1992). Early
+work on probabilistic versions of uniﬁcation grammars like Head-drivenPhrase Structure Grammar (Pollard and Sag 1994) and Lexical-FunctionalGrammar (Kaplan and Bresnan 1982), such as (Brew 1995), used improper
+distributions, because the dependencies within the uniﬁcation grammar
+were not properly accounted for. A ﬁrmer footing for such work is pro-vided in the work of Abney (1997). See also (Smith and Cleary 1997). Bodet al. (1996) and Bod and Kaplan (1998) explore a
+DOP approach to LFG.
+Transformation-based learning has also been applied to parsing and Transformation-
+based
+learninggrammar induction (Brill 1993a,c; Brill and Resnik 1994). See chapter 10
+for a general introduction to the transformation-based learning approach.
+Hermjakob and Mooney (1997) apply a non-probabilistic parser based
+on machine learning techniques (decision lists) to the problem of tree-bank parsing, and achieve quite good results. The main take-home mes-sage for future Statistical
+NLPresearch in their work is the value they
+get from features for semantic classes, whereas most existing Statistical
+NLPwork has tended to overemphasize syntactic features (for the obvi-
+ous reason that they are what is most easily obtained from the currently
+available treebanks).
+Chelba and Jelinek (1998) provide the ﬁrst clear demonstration of a
+probabilistic parser outperforming a trigram model as a language modelforspeech recognition . They use a lexicalized binarized grammar (essen-
+speech recognition
+tially equivalent to a dependency grammar) and predict words based on
+the two previous heads not yet contained in a bigger constituent.
+Most of the exposition in this chapter has treated parsing as an end
+in itself. Partly because parsers do not perform well enough yet, parsing
+has rarely been applied to higher-level tasks like speech recognition andlanguage understanding. However, there is growing interest in semantic
+semantic parsing
+parsing , an approach that attempts to build a meaning representation of
+a sentence from its syntactic parse in a process that integrates syntacticand semantic processing. See (Ng and Zelle 1997) for a recent overview
+
+pa/CX /CX458 12 Probabilistic Parsing
+article. A system that is statistically trained to process sentences all the
+way from words to discourse representations for an airline reservationapplication is described by Miller et al. (1996).
+12.4 Exercises
+Exercise 12.1 [«]
+The second sentence in the Wall Street Journal article referred to at the start of
+the chapter is:
+(12.35) The agency sees widespread use of the codes as a way of handling the rapidly
+growing mail volume and controlling labor costs.
+Find at least ﬁve well-formed syntactic structures for this sentence. If you cannot
+do this exercise, you should proceed to exercise 12.2.
+Exercise 12.2 [««]
+Write a context-free grammar parser, which takes a grammar of rewrite rules,
+and uses it to ﬁnd all the parses of a sentence. Use this parser and the grammarin (12.36) to parse the sentence in exercise 12.1. (The format of this grammar isverbose and ugly because it does not use the abbreviatory conventions, such asoptionality, commonly used for phrase structure grammars. On the other hand,it is particularly easy to write a parser that handles grammars in this form.) Howmany parses do you get? (The answer you should get is 83.)
+(12.36) a. S !NP VP
+b. VP!{V B ZN PjVBZ NP PPjV B ZN PP PP P}
+c. VPG!VBG NP
+d. NP!{N PC CN PjDT NBARjNBAR }
+e. NBAR!{A PN B A RjNBAR PPjVPGjNjNN}
+f. PP!PN P
+g. AP!{AjRB A }
+h. N!{agency ,use,codes ,way,mail,volume ,labor ,costs }
+i. DT!{the,a}
+j. V!sees
+k. A!{widespread ,growing }
+l. P!{of,as}
+m. VBG!{handling ,controlling }
+n. RB!rapidly
+o. CC!and
+
+pa/CX /CX12.4 Exercises 459
+While writing the parser, leave provision for attaching probabilities to rules, so
+that you will be able to use the parser for experiments of the sort discussed laterin the chapter.
+Exercise 12.3 [«]
+In chapter 11, we suggested that
+PCFG s have a bad bias towards using nontermi-
+nals with few expansions. Suppose that one has as a training corpus the treebankgiven below, where ‘ n’ indicates how many times a certain tree appears in the
+training corpus. What
+PCFG would one get from the treebank (using MLEas dis-
+cussed in the text)? What is the most likely parse of the string ‘ aa’ using that
+grammar. Is this a reasonable result? Was the problem of bias stated correctlyin chapter 11? Discuss.
+8
+>>>>><
+>>>>>:10S
+BaB
+a
+,9 5S
+A
+aA
+a, 325S
+A
+fA
+g,8S
+A
+fA
+a, 428S
+A
+gA
+f9
+>>>>>=
+>>>>>;
+Exercise 12.4 [««]
+Can one combine a leftmost derivation of aCFGwith ann-gram model to produce
+a probabilistically sound language model that uses phrase structure? If so, what
+kinds of independence assumptions does one have to make? (If the approachyou work out seems interesting, you could try implementing it!)
+Exercise 12.5 [«]
+While a
+PLCG can have diﬀerent probabilities for a certain expansion of NP in
+subject position and object position, we noted in a footnote that a PLCG could
+not capture the diﬀerent distributions of NPs as ﬁrst and second objects of averb that were shown in table 12.4. Explain why this is so.
+Exercise 12.6 [««« ]
+As shown by Demers (1977), left-corner parsers, top-down parsers and bottom-
+up parsers can all be ﬁt within a large family of Generalized Left-Corner Parserswhose behavior depends on how much of the input they have looked at beforeundertaking various actions. This suggests other possible probabilistic modelsimplementing other points in this space. Are there other particularly usefulpoints in this space? What are appropriate probabilistic models for them?
+Exercise 12.7 [««]
+In section 12.2.1 we pointed out that a non-lexicalized parser will always choose
+the same attachment in the same structural conﬁguration. However, thinkingabout the issue of PP attachment discussed in section 8.3, that does not quitemean that it must always choose noun attachments or always choose verb at-tachments for PPs. Why not? Investigate in a corpus whether there is any utilityin being able to distinguish the cases that a
+PCFG can distinguish.
+
+p/CX /CX460 12 Probabilistic Parsing
+Exercise 12.8 [«]
+The aim of this exercise is to appreciate why one cannot build a Viterbi algorithm
+forDOP parsing. For PCFG parsing, if we have built the two constituents/partial
+derivations shown in (12.37a) and (12.37b), and PNiin (12.37a)>P Niin
+(12.37b), then we can discard (12.37b) because any bigger tree built using(12.37b) will have a lower probability than a tree which is otherwise identicalbut substitutes (12.37a). But we cannot do this in the
+DOP model. Why not?
+Hint: Suppose that the tree fragment (12.37c) is in the corpus.
+(12.37) a. Ni
+Nj
+abcdb.Ni
+aNk
+bc dc.Nh
+Ni
+aNkNg
+Exercise 12.9 [««« ]
+Build, train, and test your own statistical parser using the Penn treebank. Your
+results are more likely to be useful to others if you chose some clear hypothesisto explore.
+

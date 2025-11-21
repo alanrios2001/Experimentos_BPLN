@@ -1,0 +1,479 @@
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 197 — #1
+8 Unsupervised Learning and
+Grammar Induction
+ALEXANDER CLARKAND SHALOM LAPPIN
+In this chapter we consider unsupervised learning from two perspectives. First,we brieﬂy look at its advantages and disadvantages as an engineering tech-nique applied to large corpora in natural language processing. While supervisedlearning generally achieves greater accuracy with less data, unsupervised learn-ing offers signiﬁcant savings in the intensive labor required for annotating text.Second, we discuss the possible relevance of unsupervised learning to debateson the cognitive basis of human language acquisition. In this context we explorethe implications of recent work on grammar induction for poverty of stimulusarguments that purport to motivate a strong bias model of language learning, com-monly formulated as a theory of universal grammar (UG). We examine the secondissue both as a problem in computational learning theory, and with reference toempirical work on unsupervised machine learning (ML) of syntactic structure. Wecompare two models of learning theory and the place of unsupervised learningwithin each of them. Looking at recent work on part-of-speech tagging and therecognition of syntactic structure, we see how far unsupervised ML methods havecome in acquiring different kinds of grammatical knowledge from raw text.
+1 Overview
+1.1 Machine learning in natural language processing
+and computational linguistics
+The machine learning methods presented in this handbook have been appliedto a wide variety of problems in natural language processing. These range fromspeech recognition (Chapter 12) through morphological analysis (Chapter 14) andsyntactic parsing (Chapter 4), to the complex text and discourse understandingapplications dealt with in Part IV . ML has produced increasingly successful sys-tems for handling a large domain of natural language engineering tasks. Whenevaluating different types of ML there are a variety of technological issues that
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 198 — #2
+198 Alexander Clark and Shalom Lappin
+arise, some of which we will consider in the context of the distinction betweensupervised and unsupervised learning procedures.
+From an engineering perspective, the main issue to be addressed when compar-
+ing the relative merits of supervised vs. unsupervised learning, for a particulartask, is the degree of accuracy that each method achieves in proportion to thecost of resources that it requires. As we will see, characterizing an optimal bal-ance between accuracy and cost is not always straightforward. It is necessary toconsider a variety of factors in calculating both of the values that determine thisbalance.
+It is also interesting to consider if ML has implications for some of the scientiﬁc
+questions that animate linguistics and cognitive science. Speciﬁcally, it is worthasking if the success of ML methods in solving language engineering problemsilluminates the sorts of learning processes that humans could, in principle, employin acquiring knowledge of their language. Clearly the fact that an ML procedure isable to efﬁciently acquire important elements of human grammatical knowledgefrom corpora does not, in itself, show that human learning operates according tothis procedure. However, to the extent that grammar induction through domain-general learning methods succeeds on the basis of evidence of the kind availableto children, we achieve insight into the computational credibility of such methodsas models of language acquisition.
+1.2 Grammar induction as a machine learning problem
+A machine learning system implements a learning algorithm whose output is afunction from a domain of input samples to a range of output values. We divide acorpus of examples into a training and a test set. The learning algorithm is spec-iﬁed in conjunction with a model of the phenomenon to be learned. This modeldeﬁnes the space of possible hypotheses that the algorithm can generate from theinput data. When the values of the model’s parameters are determined throughtraining of the algorithm on the test set, an element of the hypothesis space isselected. In the case of grammar induction the algorithm learns from the train-ing data to construct a parser that assigns descriptions of syntactic structure toinput strings from the test data. It provides a learning procedure for acquiring agrammar that parses new strings in the corpus.
+If we have a gold standard of correct parses in a corpus, then it is possible to
+compute the percentage of correct parses that the algorithm produces when testedon an unseen subpart of this corpus. A more common procedure for scoring anML algorithm on a test set is to evaluate its performance for recall and precision.
+1
+The recall of a parsing algorithm Ais the percentage of brackets of the test set
+that it correctly identiﬁes, where these brackets specify the constituent tree struc-ture of each sentence in the set. A’sprecision is the percentage of the brackets
+that it returns which correspond to those in the gold standard. A uniﬁed scoreforA, known as an F-score, can be computed as an average of its recall and its
+precision.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 199 — #3
+Unsupervised Learning and Grammar Induction 199
+The choice of parameters and their possible values deﬁnes a bias for the lan-
+guage model by imposing prior constraints on the set of learnable hypotheses. Alllearning requires some sort of bias to restrict the set of possible hypotheses for thephenomenon to be learned. This bias can express strong assumptions about thenature of the domain of learning. Alternatively, it can deﬁne comparatively weakdomain-speciﬁc constraints, with learning driven primarily by domain-generalprocedures and conditions.
+One way of formalizing a learning bias is as a prior probability distribution on
+the elements of the hypothesis space that favors some hypotheses as more likelythan others. The paradigm of Bayesian learning in cognitive science implementsthis approach.
+2The simplicity and compactness measure that Perfors et al. (2006)
+use is an example of a very general prior. We can describe this measure as follows.
+LetDbe data, and Ha hypothesis. Maximum likelihood chooses the Hwhich
+makes the Dmost likely (the maximum probability value of Dgiven H):
+(1) arg max H(P(D|H ))
+Posterior probability is proportional to the prior probability times the likelihood.
+(2) P(H|D)∝P(H)P(D|H )
+The maximum a posteriori approach chooses the Hwhich maximizes the
+posterior probability:(3) arg max
+H(P(H)P(D|H ))
+The bias of the model is explicitly represented in the prior P(H). Perfors et al.
+(2006) deﬁne this prior to give higher values to grammars whose rule sets areof smaller cardinality, and whose rules are formulated with fewer non-terminalsymbols.
+1.3 Supervised learning
+When the samples of the training set are annotated with the classiﬁcations andstructures that the learning algorithm is intended to produce as output for the testset, then learning is described as supervised . Grammar induction that is supervised
+involves training an ML system on a corpus annotated with the parse structuresthat correspond to a gold standard of correct parse descriptions. The learning algo-rithm infers a function for assigning appropriate parse output to input sentenceson the basis of a training set of sentence argument-parse value pairs.
+As an example of supervised grammar induction, consider the learning of
+aprobabilistic context-free grammar (PCFG).
+3Such a grammar conditions the
+probability of a child sequence on that of the parent non-terminal. Each ofits context-free grammar (CFG) rules N→X
+1...Xnexpands a non-terminal
+Ninto a sequence X1...Xnof non-terminal and terminal symbols, and the
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 200 — #4
+200 Alexander Clark and Shalom Lappin
+rule is assigned a probability value. The grammar provides conditional prob-abilities of the form P(X
+1...Xn|N)for each non-terminal Nand sequence
+X1...Xnof items from the set of non-terminals and the vocabulary of termi-
+nals in the grammar. It also speciﬁes a probability distribution over the labelof the root of the tree P
+s(N). For a PCFG G, the conditional probabilities
+P(X 1...Xn|N)correspond to probabilistic parameters that govern the expansion
+of a node in a parse-tree according to a corresponding context-free rule N→
+X1...XninG.
+The probabilistic parameter values of a PCFG can be learned from a parse anno-
+tated training corpus by computing the frequency of CFG rules instantiated in thecorpus, in accordance with a maximum likelihood estimation (MLE) condition.
+(4)c(A→β
+1... β k)
+c(A→γ)
+where c(R) = the number of occurrences of a rule R in the annotated corpus .
+In practice, MLE does not perform as well as more sophisticated estimation
+methods based on distribution-free techniques (see Collins 2004).
+It is possible to signiﬁcantly improve the performance of a PCFG by adding
+additional bias to the language model that it deﬁnes. Collins (1999) constructsalexicalized probabilistic context-free grammar (LPCFG) in which the probabilities
+of the CFG rules are conditioned on lexical heads of the phrases that non-terminal symbols represent. In Collins’ LPCFG non-terminals are replaced bynon-terminal/head pairs. The probability distributions of the model are of theform P
+s(N/h)and P(X 1/h1···H/h···Xn/hn|N/h)(where His the category of
+the head of the phrase that expands N) . Collins’ LPCFG achieves an F-measure
+performance of approximately 88 percent. Charniak and Johnson (2005) presentan LPCFG with an F-score of approximately 91 percent.
+Rather than encoding a particular categorical bias into his language model by
+excluding certain context-free rules, Collins allows all such rules. He incorporatesbias by adjusting the prior distribution of probabilities over all lexicalized CFGrules. The model imposes the requirements that (1) sentences have hierarchicalconstituent structure, (2) constituents have heads that select for their siblings, and(3) this selection is determined by the headwords of the siblings.
+The bias that Collins, and Charniak and Johnson, specify for their respective
+LPCFGs does not express the complex syntactic parameters that have been pro-posed as elements of a strong bias view of universal grammar (UG). So, for exam-ple, these models do not contain a parameter for head-complement directionality.However, they still learn the correct generalizations concerning head-complementorder. The bias of a statistical parsing model has implications for the theory of UG.It expresses the prior constraints on the hypothesis space required for a particularlearning procedure to achieve effective grammar induction from the input datathat the corpus supplies.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 201 — #5
+Unsupervised Learning and Grammar Induction 201
+1.4 Unsupervised learning
+In unsupervised learning we do not annotate the training corpus with the struc-tures or properties that the learning algorithm is intended to produce as its outputvalues. Rather, the algorithm is provided with the data alone, and must learn someinteresting structure through identifying distributional patterns and clusteringproperties of more basic features in the training data. In a machine learning sense,the most basic task of unsupervised learning is density estimation, which in NLPgenerally involves language modeling (see Chapter 3 of this book,
+STATISTICAL
+LANGUAGE MODELLING ).
+In the case of grammar induction, we are interested in recovering phrases and
+hierarchical constituent structure, which could be used for language modeling,machine translation, or other NLP tasks.
+We will also brieﬂy consider semi-supervised learning (see Abney 2008). This
+approach recognizes that in reality there will only be limited amounts of annotateddata, and yet such data can be extremely useful when combined with much largeramounts of unannotated data.
+2 Computational Learning Theory
+One way of gaining insight into the problem of unsupervised learning is throughtheoretical analysis. While supervised learning has been the subject of detailedtheoretical investigation that has yielded the design of efﬁcient classiﬁcation algo-rithms (Vapnik 1998), unsupervised learning of language offers a different kindof challenge. The initial formulations of the problem, most notably by Gold(1967), suggested that it is fundamentally intractable. Subsequent accounts withinthe PAC (probably approximately correct) learning framework (Valiant 1984;Kearns & Vazirani 1994) appeared to conﬁrm this conclusion. As a result, whilethere have been numerous attempts over the years to learn grammars from rawdata, very few have been informed by theoretical learning models. Instead, theseefforts have relied primarily on heuristics. The very earliest attempts at unsuper-vised grammar induction (Lamb 1961) lacked any theoretical underpinnings, andmost current work in this area continues to pursue a non-theoretical, heuristicapproach.
+In our view, the theoretical problems have been misunderstood, and, in some
+cases, not properly formulated. Learnability results depend on quite subtle detailsof the formalisms. Small changes in the modeling assumptions can produce rad-ically different results. In this section, we will review some of the competingtheoretical models for unsupervised learning of natural languages, and draw con-clusions that depart substantially from the received wisdom of the ﬁeld. Our goalis to use formal methods to illuminate the nature of learning through realisticassumptions. If the model trivializes the learning problem so that anything islearnable, then it is vacuous. Conversely, if it rules out efﬁcient learning wherewe know that learning takes place, then it is clearly misguided.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 202 — #6
+202 Alexander Clark and Shalom Lappin
+As we have noted, the ﬁeld of grammatical inference owes its origins to Gold
+(1967). In his paper Gold presents a number of different learning paradigms.We limit ourselves to the one in which the learner must acquire a languageclass only from positive data. As has been pointed out before, this model suf-fers from a number of serious shortcomings.
+4On one hand, it fails to place
+restrictions on the learner that are necessary to achieve rapid learning within theavailable resources of time and computation. On the other hand, it imposes exces-sively stringent limitations on learning by requiring that languages be acquiredunder far more difﬁcult circumstances than those which children have to dealwith.
+We will discuss one of these problems brieﬂy to give a sense of what is
+involved. In the Gold paradigm the learner is provided with an inﬁnite sequenceof examples. His/her model requires the learner to produce correct grammatical-ity judgments after making only a ﬁnite number of errors. The learner must do thisfor every possible presentation of the language. A presentation is characterizedso that every string in the language (every grammatical sentence) appears at leastonce in the data, and no ungrammatical sentences are included. These are the min-imum requirements for a presentation to fully exhibit a particular language (ratherthan others). But on reﬂection this paradigm makes absurd demands on humanlearning. The learner is obliged to acquire a language on every presentation, evenwhen the sequence of data samples are chosen by an inﬁnitely powerful adver-sary, with knowledge of the internal structure of the learner, who is designing thepresentation in order to make learning maximally difﬁcult. This situation does notcorrespond to the one in which children normally acquire their language. They aregenerally exposed to helpfully organized sequences of sentences from supportiveadults interested in facilitating learning. It is instructive to work through the proofof Gold’s most celebrated result, that no supra-ﬁnite language class is identiﬁablein the limit, to see the crucial role that unconstrained presentations of data play inthis proof.
+5
+Conversely, because sample presentations are not restricted, Gold cannot con-
+strain either the speed or the complexity of the learning process (although subse-quent researchers have tried to add constraints to control these properties, such asPitt (1989) and de la Higuera (1997)).
+In the Gold model, there are two important positive results. The ﬁrst is that
+the class of all ﬁnite languages is learnable. The second is that any ﬁnite class oflanguages is learnable. The ﬁrst class is inﬁnite, but its members are all ﬁnite. Thesecond is ﬁnite, but one or more of its elements can be inﬁnite. Both of these resultsuse fairly trivial learning algorithms.
+To learn the class of all ﬁnite languages the learner uses rote learning. He/she
+does not need to generalize at all, but can simply memorize the examples thathave been seen. At each point, the learner returns the maximally conservativehypothesis that the language he/she is learning consists of only those sentencesthat he/she has already seen. It is easy to see that this very simple process ofenumeration allows for only a ﬁnite number of errors, where the number of errorsis bounded by the size of the language.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 203 — #7
+Unsupervised Learning and Grammar Induction 203
+To learn a ﬁnite class of languages from a presentation, the learner proceeds as
+follows. The learner has access to a hypothesis space of all the languages in theclass, where these languages are arranged in a superset hierarchy. The smallestlanguage appears at the lowest point of the hierarchy and the largest at the top. Aswe noted, every data presentation consists of the strings of a language containingat least one appearance of each string. When a learner encounters a sentence in apresentation, he/she deletes from the hypothesis hierarchy any language that doesnot contain that sentence. He/she returns the ﬁrst language (hence the smallest)that is compatible with the strings of the presentation. It is easy to see that, as thepresentation approaches the limit, the learner will return the correct language forthe data.
+Gold proves a negative result to the effect that no supra-ﬁnite language class
+can be learned in the limit from positive data samples presented arbitrarily froma corpus. However, he also demonstrates that with negative as well as positiveevidence the class of primitive recursive languages can be learned in the limit.This class includes the set of context-sensitive languages as a proper subset. Inthis Gold learning paradigm negative evidence is provided by an informant whoacts as a decision procedure, telling the learner for each data sample presentedwhether it is in the language to be learned, or in its complement set.
+The view of learnability for language classes that is associated with Gold’s theo-
+rems has provided one of the motivations for the principles and parameters (P&P)view of UG.
+6If the relevant formal results concerning grammar induction are
+those just cited and we assume that children do not have access to negative evi-dence, then, given that they do generalize, one might conclude that they can onlyeffectively acquire their grammar if there is a ﬁnite number of possible humanlanguages. This would seem to follow from Gold’s learnability results, and theassumptions that (1) natural languages are inﬁnite, and (2) children do not haveaccess to negative evidence. The assertion that the class of natural languages isﬁnite follows from the P&P claim that UG contains a ﬁnite set of parameters, witha ﬁnite set of values, ideally binary (Chomsky 1981). While both advocates andcritics of linguistic nativism have, for the most part, agreed in the past that neg-ative data does not play a signiﬁcant role in language acquisition, this issue hasbecome increasingly controversial in recent years.
+7
+In fact the assumption that effective learning requires a ﬁnite hypothesis space
+of possible grammars is incorrect. There are many positive results even withinthe Gold paradigm which establish that inﬁnite classes of inﬁnite languages arelearnable with some non-trivial algorithms (Angluin & Laird 1988; Clark & Eyraud2007).
+It is important to keep in mind that, because the Gold paradigm does not accu-
+rately reﬂect the situation of the child learner, any conclusions we draw from itare not likely to be reliable. Rather than trying to repair it by adding variousconstraints on presentations and polynomial bounds on the amount of possiblecomputation, generating samples by a ﬁxed distribution, etc., we take a differ-ent approach. We will construct a model based on the actual facts of languagelearning, rather than ﬁrst starting with a model and then trying to force it onto
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 204 — #8
+204 Alexander Clark and Shalom Lappin
+the facts. We shall end up with a model that resembles that of Valiant (1984), butwhich departs from it in several key respects.
+We start with some standard assumptions. The objects being learned are lan-
+guages, which will normally be inﬁnite objects, and these will be represented byﬁnite systems. These systems can be thought of as grammars, though they mightbe encoded in another kind of formalism. The learner is provided with someinformation about the language. In the most basic case this will be examples ofsentences in the language, though other sources of information may be consid-ered. We assume that the learner is provided with the information one piece ata time, in a sequence of steps, and that at each step the learner either selects ahypothesis in the form of a representation of the language, or he/she abstains inthe early phases of the algorithm. We say that the learner has successfully learnedthe language if, as the amount of data increases, the hypothesis converges (in asense to be made precise) to the correct language.
+This very rough outline provides a framework within which we can construct
+particular models of learning, through specifying precisely details like the classesof representations and languages, the sorts of information that the learner isprovided with, the deﬁnition of convergence, and additional constraints onemight want to place on the learner. Obviously, in order to achieve computationaltractability we will need to make certain simplifying assumptions. In some cases,these assumptions will make learning more difﬁcult, while in others they maymake it easier. It is important to monitor these assumptions closely when interpret-ing the formal properties of each model. We need to emphasize that learning does,of course, occur in the real world. Therefore, if our model predicts that learning isimpossible, it is clearly wrong.
+We now proceed to develop this framework by making appropriate choices for
+the components that we have indicated. The ﬁrst and most critical one to consideris the class of languages (or representations of them). This class corresponds tothe set of possible grammars from which the child must select the grammar ofhis/her language. We know that it must include all of the attested natural lan-guages, and presumably all languages that differ from them only through lexicalchanges, and other minor differences. The key questions are the following. Howmuch larger can this class be while remaining effectively learnable? What are thedeﬁning properties of this class that determine its learnability?
+We assume for the moment that the learner is provided only with positive exam-
+ples. There are three possibilities to consider. First, the samples are provided by anadversary, as in Gold’s model. Second, the samples are presented randomly. Understandard assumptions we can say that they are generated independently and iden-tically from some ﬁxed distribution. Third, the samples are produced helpfully, bya teacher trying to assist the learner (Goldman & Mathias 1996). While this lastpossibility may seem the most plausible, it is difﬁcult to formalize in a way thatdoes not trivialize the learning problem. Therefore, we will choose the randomoption as a reasonable model.
+We observe that the child learns rapidly, in the sense that languages are complex
+objects, yet the amount of data which the child requires is only in the range of
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 205 — #9
+Unsupervised Learning and Grammar Induction 205
+tens of millions of words. Hence we require the learner to learn in a time thatis polynomially bounded in the size of the representation being learned, and weconstrain the learner to be efﬁcient, in that the computation it requires is boundedalso by a polynomial function for the amount of data it sees.
+8
+As for convergence, in the real world we generally do not see exact identiﬁca-
+tion of a correct hypothesis: indeed we cannot directly observe the hypotheses.Instead we ﬁnd that disagreements on grammaticality judgments are infrequentamong members of a speech community. Generational differences do, of course,emerge as languages change. As a convergence criterion we can require that theprobability of disagreement between the learner and the adult grammar tend tozero as it sees more data, and this must happen rapidly.
+These conditions naturally yield a version of the PAC learning paradigm. In this
+framework a hypothesis (such as a grammar) is learned to within a range of error,represented by a constant ϵ, and a range of probability, expressed by a constant
+δ, in relation to the size of a data sample. An algorithm APAC-learns a class of
+representations for languages R, if and only if,
+(1) there is a polynomial q, such that
+(a) for every R∈R, which deﬁnes a language L
+(b) every probability distribution Don the samples of the data, and
+(c) every ϵ,δ>0,
+(2) whenever Asees a number of examples greater than q(1/ϵ ,1/δ,|R|),
+(a) it returns a hypothesis Hsuch that,
+(b) with probability greater than 1 −δ,
+(c) the error of the hypothesis P
+D((H−L)∪(L−H)) < ϵ ,a n d
+(3) Aruns in polynomial time in the total size of the examples seen.
+These conditions require that learning be rapid for any language, that com-
+plex languages take more time than simple ones, but that the growth in time forlearning in proportion to complexity of the language be slow.
+Note that for a realistic model it is important to incorporate this dependency of
+learning time on language complexity, as removing it leads to the absurd conclu-sion that a rote learner cannot acquire ﬁnite languages. Thus for the class of ﬁnitegrammars, where the representation is just a list of the grammatical sentences, it isunrealistic to expect the learner to be able to learn any list, no matter how long, in aﬁxed amount of time. A rote learner can learn lists of a restricted size within a rea-sonable time, but will require more time to learn longer lists. Thus it is reasonable,and standard in the machine learning literature, to allow the number of samples,as expressed by the polynomial q, to depend on the size of the representation |R|.
+A standard PAC-model is distribution free, which entails that learning is equally
+rapid for all possible probability distributions on the data. From a mathematicalperspective, this assumption is very convenient, and it forms the basis for the VC(Vapnik–Chervonenkis) theory of learnability (Vapnik 1998). However, it is unre-alistic. The samples to which a child is exposed are generated by people in his/herenvironment who speak the language he/she is acquiring. The distributions of
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 206 — #10
+206 Alexander Clark and Shalom Lappin
+samples in the primary linguistic data (PLD) are not selected to make learning dif-
+ﬁcult, but rather to help it proceed.9Clearly, the distribution of the samples must
+depend on the language being learned: French children hear different sentencesfrom English ones.
+Many researchers (Li & Vitányi 1991) have noted that the distribution free
+assumption of the classical PAC framework is harsh, but yields powerful tech-niques. This approach may be mathematically desirable, and it might provideimprovements over other estimation methods (Collins 2004). However, if werequire learnability for any distribution, we ﬁnd that learning becomes intractablyhard. By contrast, if we restrict the class of distributions in some way, for exampleto simple distributions (Li & Vitányi 1991; Denis 2001) or to distributions gen-erated by the stochastic variations of the representations, such as probabilisticdeterministic ﬁnite state automata (PDFA) or PCFGs, then we ﬁnd that efﬁcientlearning is possible (Clark & Thollard 2004; Clark 2006).
+Additional problems for learnability derive from the computational complex-
+ity of the learning problem. Learning statistical models of the kinds standardlyemployed in current NLP work is hard. So, for example Abe and Warmuth (1992)show that training a hidden Markov model (HMM) is computationally hard undercommon assumptions.
+10On standard cryptographic methods, computationally
+hard problems can be embedded in the learning of even simple acyclic determin-istic automata (Kearns & Valiant 1989; Kearns et al., 1994). The natural conclusionis that the child would not be able to learn such classes. Indeed the sorts of lan-guages that these problems give rise to bear no relation to natural languages, asthey involve computing parity functions, or multiplying large integers together.From a formal point of view this means that uniform learning over the entire classof languages is not possible.
+However, Ron et al. (1998) suggest a useful strategy for dealing with these dif-
+ﬁculties. A class of languages can be stratiﬁed by a parameter that separates itinto subclasses according to how hard each one is to learn. The speciﬁc parameterfor Ron is a distinguishability condition. Similar approaches can be applied to thelearnability of context-free grammars (Clark 2006).
+2.1 Summary
+What insight can we gain from these formal results and considerations? Unsuper-vised learning of languages is difﬁcult but possible. This is a favorable outcome,as it implies that the study of learnability can offer us useful guidance in dealingwith both engineering and cognitive issues in grammar induction.
+Under the best possible theoretical analysis, we can see that negative results
+rule out uniform learning from positive data of the full classes of regular lan-guages and context-free languages, but that regular languages, represented bydeterministic ﬁnite state automata, and some subclasses of context-free languages,may be learnable when the distributions of examples are benignly speciﬁed.Both of these representations are based on observable properties of languages.The non-terminals or states are identiﬁed with distributional properties of the
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 207 — #11
+Unsupervised Learning and Grammar Induction 207
+substrings of the languages. In the case of the regular languages, these are theresidual languages (Clark & Thollard 2004), and with context-free languages theseare the congruence classes (Clark 2006). Conversely it seems that representationsbased on deep hidden structures, such as trees, especially trees with many emptynodes, where the structure is not directly detectable from the surface utterance,may be hard to learn.
+We might also be able to obtain positive results for a class of languages that
+is very restricted or even ﬁnite, although the languages in this class may them-selves be inﬁnite. But even here we may encounter problems. Finiteness in itselfdoes not ensure efﬁcient computation. For example, the negative results in Kearnset al. (1994) are based on ﬁnite sets of ﬁnite languages. Despite the fact that they areﬁnite, they are unlearnable, because the problem of identifying the correct hypoth-esis is too hard. Even though these families of languages are speciﬁed by a smallnumber of binary valued parameters, the parameters are very tightly entwinedin the computation of a parity function. This causes the class to be not efﬁcientlylearnable.
+From a theoretical point of view, the interesting question is whether these results
+rule out domain-general learning approaches, and necessitate a very restrictedclass of languages. The answer seems to be that they do not. They clearly point todifferent language classes from those in the Chomsky hierarchy. The classes thatwe use in our learning analyses do not necessarily correspond to normal familiesof languages, and certainly not to the Chomsky classes, such as context-free gram-mars. They might include, for example, some regular languages, some context-freelanguages, and some context-sensitive languages, but they may not cover all themembers of these classes. It is also important not to confuse the hypothesis classof the learner with the class of languages that may be learnable. As Poggio et al.(2004: 422) say:
+Thus, for example, it may be possible that the language learning algorithm may
+be easy to describe mathematically while the class of possible natural languagegrammars may be difﬁcult to describe.
+The hypothesis class could be very much larger than the class of languages for
+which it is guaranteed to learn. So, for example, the learner in Clark (2006) repre-sents its hypotheses as context-free languages. All of these hypotheses lie withinthe (smaller) class of non-terminally separated (NTS) languages. The proof giventhere establishes that it will learn a PAC-learnable class of unambiguous languagesunder some plausible assumptions about the data sample distributions. But ifthe samples are generated adversarially (as in one of Gold’s paradigms), thenthe learner is only guaranteed to acquire the still smaller class of substitutablelanguages (Clark & Eyraud 2007). The algorithm, however, remains unchanged.
+These are rather different conclusions from other recent analyses. For example,
+Nowak et al. (2002) and Niyogi (2006) claim that the PAC-analysis rules out learn-ing without speciﬁc restrictions. This is largely because their approach does notallow the size of the language representation to depend on the amount of datathat the learner can have, as discussed above in Section 1.1.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 208 — #12
+208 Alexander Clark and Shalom Lappin
+Our theoretical understanding of learning is changing rapidly. Modifying
+Chomsky’s terminology somewhat, we can say that linguistic representationsmay achieve varying levels of adequacy. Observational adequacy is the require-ment that the representations are sufﬁciently powerful to express the distinc-tion between grammatical and ungrammatical sentences. Explanatory adequacyimposes the additional requirement that the representations can be learned fromthe available data.
+We have not yet achieved explanatory adequacy. The most descriptively ade-
+quate frameworks use very powerful systems of representation, such as treeadjoining grammar (TAG) (Joshi 1987) or head driven phrase structure grammar(HPSG) (Pollard & Sag 1994), while the grammars developed to date that can beefﬁciently learned are not powerful enough to cover the full complexity of naturallanguage syntax. Whether there are observationally adequate grammars that canbe learned using unsupervised learning from raw corpora remains very much anopen question. Our theoretical analysis points in general towards shallower lin-guistic representations, regardless of whether these are conceived of in terms ofparameters of a language model, formal grammars, or a more situated accountof learning, which leverages extralinguistic context to a far greater extent thanconsidered here.
+3 Empirical Learning
+We now turn to empirical work on unsupervised learning, where ML algorithmsare applied to naturally occurring natural language corpora. We will look in detailat two NLP tasks. One is the unsupervised learning of word classes, and the otheris unsupervised induction of syntactic parsing.
+First, we will brieﬂy take up the problem of evaluation, which is particularly
+problematic in the case of unsupervised learning.
+11Three methodologies have
+been used. The ﬁrst is naïve. It involves having observers evaluate an algo-rithm’s output on the basis of their intuitions concerning the property or structurethat the procedure is designed to identify. This approach may offer some insightinto the strengths and weaknesses of the method, but it is both subjective andimprecise.
+A second evaluation technique measures the correspondence between the
+results that the algorithm generates and those of a gold standard for the corpus.So, for example, when evaluating induced word classes one can compare the wordclasses that an ML procedure generates for a corpus with the traditional lexicalcategories that are assigned to the corpus by a reliable part-of-speech (POS) taggerthat uses these categories. This comparison can be done using standard informa-tion theoretic criteria. For example the conditional entropy of the gold standardtags with respect to the induced tags will tell you how much of the informationin the gold standard tags remains unaccounted for by the induced tags. If thisnumber is very low or zero, then the gold standard tags are predictable from theinduced tags.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 209 — #13
+Unsupervised Learning and Grammar Induction 209
+Table 8.1 Comparison of different tag sets on IPSM data. Conditional entropy
+of row given column. Blanks (–) are where the two sets have different tokeniza-tion due to differing treatment of the possessive clitic
+Tag set nH Brown ICE LLC LOB Parts POW Sec UPenn
+Brown 3.16 0.00 – 0.34 0.22 1.10 0.99 0.32 –ICE 3.38 – 0.00 – – – – – 0.84LLC 3.34 0.52 – 0.00 0.44 1.30 1.00 0.45 –LOB 3.24 0.31 – 0.35 0.00 1.20 1.00 0.24 –Parts 2.46 0.41 – 0.40 0.41 0.00 0.75 0.38 –POW 2.72 0.55 – 0.42 0.46 1.00 0.00 0.43 –Sec 3.24 0.40 – 0.35 0.24 1.20 0.95 0.00 –Upenn 2.92 – 0.38 – – – – – 0.00
+This comparison yields objective numerical evaluation, but the gold standard
+in linguistic annotation often incorporates theoretical assumptions that may notbe well motivated. Alternative annotations of the text may be possible. The goldstandard might simply reﬂect the prestige of the organization that produced theannotation, the theoretical framework it employs, the amount of data annotated, theavailability of the corpus, or other factors irrelevant to a sound evaluation standard.
+In part-of-speech annotations of English, for example, there are signiﬁcant
+differences between various tag sets. Using data provided by the AMALGAM(Automatic Mapping Among Lexico-Grammatical Annotation Models) project(Atwell et al., 1995), which provided text annotated with eight different tag sets,we measured the conditional entropy of each tag set with respect to the others.Table 8.1 shows the results. We see that the conditional entropy here varies up to1.3 for these equally valid, manually constructed tag sets,
+12and it is zero, as one
+would expect, down the leading diagonal. By comparing these competing goldstandards against each other, we observe the range of possible outcomes that wemight expect.
+In unsupervised parsing this approach involves using a treebank and measuring
+derived trees against gold standard trees: an evaluation approach ﬁrst employedby van Zaanen (2000).
+The third and ﬁnal evaluation technique is to invoke some objective and
+theoretically neutral evaluation strategy. For example, one can compute the pre-dictive power of a derived language model for word class induction (Ney et al.,1994). This is usually deﬁned in terms of perplexity, which measures the abilityof the model to predict the next word in a string or corpus.
+13This evalua-
+tion metric has two advantages. First, it directly measures a useful property ofthe model. Such models can be used in speech recognition, and models withlower (better) perplexity will perform with a lower error rate. Second, the met-ric does not depend on linguistic annotations, which as we have noted, are notuncontroversial. It relies solely on raw, naturally occurring data.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 210 — #14
+210 Alexander Clark and Shalom Lappin
+Alternatively, we could consider performance in an end-to-end problem in
+which the results of one procedure are taken as input for a second application.The output of the latter provide an indirect measure for the success of the former.Bod (2007a) does this when he uses the trees of his unsupervised parser to sup-port a machine translation system. However, it is not clear how well this approachcaptures the linguistic accuracy of the ﬁrst algorithm.
+3.1 Learning word classes
+One of the earliest NLP problems to which unsupervised learning was success-fully applied is the induction of parts of speech. The words in every language canbe divided into lexical categories that partially correspond to traditional parts ofspeech. Nearly all lexical resources use some ﬁxed categories of this type, as dosyntactically annotated corpora. While for many purposes manual tagging of textis adequate, it is frequently desirable, for reasons of efﬁciency, to extract lexicalclasses from corpora automatically. Moreover, from a cognitive perspective it isimportant to determine the extent to which purely distributional algorithms canlearn these categories, as they provide the basis for post-lexical syntactic analysis.
+Corresponding to engineering and to cognitive concerns we ﬁnd two strands
+of research. The cognitive science approach is most notably represented by NickChater and his co-workers (Finch et al., 1995; Redington et al., 1998). The engineer-ing direction focuses on statistical language modeling, where lexical categoriesare invoked to smooth n-gram models by specifying conditional probabilities for
+strings in terms of word classes rather than individual lexical items. The basicmethods of this approach are studied in detail by Ney et al. (1994), Martin et al.(1998), and Brown et al. (1992).
+We assume a vocabulary of words V={W
+1,...}. Our task is to learn a deter-
+ministic clustering, which we can represent as a class membership function gfrom
+Vinto the set of class labels {1,...,n}. The clustering can be used to deﬁne a num-
+ber of simple statistical models. The objective function we try to maximise willbe the likelihood of some model, understood as the probability of the data withrespect to that model. The simplest candidate is the class-bigram model, thoughthis approach can be extended to class-trigram models. Suppose we have a corpusw
+1,...,wNof length N. We can assume an additional sentence boundary token.
+Then the class-bigram model deﬁnes the probability of the next word given thehistory as(5)P(
+w
+i⏐⏐⏐w
+i−11)
+=P(w i|g(w i))P(g(w i−1)|g(w i−2))
+It is not computationally feasible to search through all of the exponentially many
+possible partitions of the vocabulary to ﬁnd the one with the highest likelihoodvalue. Therefore we need a search algorithm that will give us a local optimum.The standard techniques (Ney et al., 1994; Martin et al., 1998) use an exchangealgorithm similar to the k-means algorithm for clustering. This procedure (1) itera-
+tively improves the likelihood of a given clustering by moving each word from its
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 211 — #15
+Unsupervised Learning and Grammar Induction 211
+current cluster to the cluster that will give the maximum increase in likelihood,or (2) leaves it in its original cluster if no improvement can be found. There area number of different ways in which an initial clustering can be chosen. It hasbeen found that the initialization method has little effect on the ﬁnal quality of theclusters, but it can have a marked effect on the speed of convergence for the algo-rithm. A more important variation for our purposes is how rare words are treated.Martin et al. (1998) leave all words with a frequency of less than 5 in a particularclass, from which they may not be moved.
+These techniques, using purely distributional evidence, work remarkably well
+for frequent words. However, as Rosenfeld (2000b: 1313–14) points out, in lan-guage modeling the most important task is to cluster the infrequent words. Wehave sufﬁciently reliable information about the statistical properties of the fre-quent words that they do not need to be smoothed with the clusters, and so itis the infrequent words that are most in need of smoothing.
+14B u ti ti st h e s ew o r d s
+that are most difﬁcult to cluster.
+Distributional data is of course not the only information relevant to identify-
+ing the syntactic category of a word class. Words are not atoms, but sequencesof letters or phonemes, and this information can be used by a learning algo-rithm. Moreover, words have relative frequency, and infrequent words will exhibitdifferent frequency patterns from frequent words. Pronouns, for example, tend tobe very frequent.
+Consider a trivial case of the ﬁrst type from written language. If we encounter
+an unknown word, say £212,000, then merely looking at the sequence of characters
+that compose it may well be sufﬁcient to allow us to reliably estimate its part ofspeech. Less trivially, sufﬁxes like -ing or-lyon an English word are a strong clue
+as to its lexical category.
+Clark (2003) presents a method for determining how frequency and morpho-
+logical information can be incorporated into this approach, and tests the methodon a number of different languages from different families. He uses texts pre-pared for the MULTEXT-East project (Erjavec & Ide 1998), which consists of data(George Orwell’s novel 1984) in seven languages: the original English together
+with Romanian, Czech, Slovene, Bulgarian, Estonian, and Hungarian.
+Table 8.2 from Clark (2003) shows the results of the cross-linguistic evaluation
+of this data (to get a sense of how to interpret the values in this table it is worthconsulting Table 8.1 again).
+This method was also evaluated by comparing the perplexity of a class-based
+language model derived from these classes.
+3.2 Unsupervised parsing
+Initial experiments with unsupervised grammar induction (like those describedin Carroll & Charniak 1992) were not particularly encouraging. Far more promis-ing results have been achieved in work over the past decade. Klein and Manning(2002) propose a method that learns constituent structure from POS tagged inputby unsupervised techniques. It assigns probability values to all subsequences of
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 212 — #16
+212 Alexander Clark and Shalom Lappin
+Table 8.2 Cross-linguistic evaluation: 64 clusters, left all words, right f≤5. We
+compare the baseline with algorithms using purely distributional (D) evidence,supplemented with morphological (M) and frequency (F) information
+Base D0 D5 D+MD +FD +M+FB a s eD 0 D +MD +FD +M+F
+H(G|C) All words f≤5
+English 1.52 0.98 0.95 1.00 0.97 0.94 2.33 1.53 1.20 1.51 1.16
+Bulgarian 2.12 1.69 1.55 1.56 1.63 1.53 3.67 2.86 2.48 2.86 2.57
+Czech 2.93 2.64 2.27 2.35 2.60 2.31 4.55 3.87 3.22 3.88 3.31Estonian 2.44 2.31 1.88 2.12 2.29 2.09 4.01 3.42 3.14 3.42 3.14
+Hungarian 2.16 2.04 1.76 1.80 2.01 1.70 4.07 3.46 3.06 3.40 3.18
+Romanian 2.26 1.74 1.53 1.57 1.61 1.49 3.66 2.52 2.20 2.63 2.22
+Slovene 2.60 2.28 2.01 2.08 2.21 2.07 4.59 3.72 3.25 3.73 3.55
+tagged elements in an input string, construed as possible constituents in a tree.The model that this method employs imposes the constraint of binary branch-ing on all non-terminal elements of a parse-tree. Klein and Manning invokeanexpectation maximization (EM) algorithm to select the most likely parse for a
+sentence. Their method identiﬁes (unlabeled) constituents through the distribu-tional co-occurrence of POS sequences in the same contexts. The model partiallycharacterizes phrase structure by the condition that sister phrases do not have(non-empty) intersections. Binary branching and the non-overlap requirement arebiases of the model.
+Evaluated against Penn Treebank parses (Marcus 1993) as the gold standard, this
+unsupervised parse procedure achieves an F-measure of 71 percent on Wall Street
+Journal (WSJ ) test data. This score is achieved despite a serious limitation imposed
+by the gold standard. The Penn Treebank allows for non-binary branching formany constituents. A binary branching parse algorithm of the sort that Klein andManning employ can only achieve a maximum F-score of 87 percent against thisstandard. As it turns out, many of the algorithm’s binary constituent analyses thatare excluded by the gold standard are, in fact, linguistically defensible parses. So,for example, while the treebank analyzes noun phrases as having ﬂat structure, theiterated binary branching constituent structure that the Klein–Manning procedureassigns to NPs is well motivated on syntactic grounds.
+The Klein–Manning parser is, in fact, constructed by semi-supervised, rather
+than fully unsupervised, learning. The input to the learning algorithm is a corpusannotated with the POS tagging of the Penn Treebank. If POS annotation is, inturn, provided by a tagger that uses unsupervised learning, then the entire pars-ing procedure can be construed as a sequenced process of unsupervised grammarinduction.
+15
+Klein and Manning (2002) report an experiment in which their parser achieves
+an F-score of 63.2 percent on WSJ text annotated by an unsupervised POS tag-
+ger. They observe that this tagger is not particularly reliable. Other unsupervised
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 213 — #17
+Unsupervised Learning and Grammar Induction 213
+taggers, like the one presented in Clark (2003), produce good results that mightwell allow the Klein–Manning unsupervised constituency parser to perform at alevel comparable to that which it achieves with Penn Treebank tags.
+Klein and Manning (2004) present an unsupervised learning procedure for
+acquiring lexicalized head-dependency grammars. It assigns probabilities to pos-sible dependency relations in a sentence Sby estimating the likelihood that each
+word in Sis a head for particular sequences of words to its left and to its right,
+taken as its syntactic arguments or adjuncts. The probabilities for these alternativedependency relations are computed on the basis of the context in which each headoccurs. The context consists of the words (word classes) that are immediately adja-cent to it on either side. The dependency structure model associated with the learn-ing algorithm requires binary branching as a condition on dependency relations.The procedure achieves an F-measure of 52.1 percent on Penn Treebank test data.
+Klein and Manning (2004) combine their dependency and constituent structure
+grammar induction systems into an integrated model that produces better resultsthan either of its component parsers. The composite model computes the score fora tree as the product of the dependency and constituency structure grammars. Thisprocedure employs both constituent clustering and head dependency relations topredict binary constituent parse structure. It achieves an F-score of 77.6 percentwith Penn Treebank POS tagging, and an F-score of 72.9 percent with Schütze’s(1995) unsupervised tagger.
+Bod (2006a; 2007a; 2007b) proposes an alternative system for unsupervised
+parsing, which he refers to as unsupervised data-oriented parsing (U-DOP). U-DOP
+generates all possible binary branching subtrees for a sentence S. The preferred
+parse for Sis the one which can be obtained through the smallest number of sub-
+stitutions of subtrees into nodes in larger trees. In cases where more than onederivation satisﬁes this condition, the derivation using subtrees with the highestfrequency in previously parsed text is selected. Bod (2006a) reports an F-score of82.9 percent when U-DOP is combined with a maximum likelihood estimator andapplied to the WSJ corpus on which Klein and Manning tested their parsers.
+While U-DOP improves on the accuracy and coverage of Klein and Manning’s
+(2004) combined unsupervised dependency-constituency model, it generates avery large number of subtrees for each parse that it produces. Bod (2007a)describes a procedure for greatly reducing this number by converting a U-DOPmodel into a type of PCFG. The resulting parser produces far fewer possible sub-trees for each sentence, but at the cost of performance. It yields a reported F-scoreof 77.9 percent on the WSJ test corpus (Bod 2007a).
+An important advantage that U-DOP has over simple PCFGs is its capacity to
+represent discontinuous syntactic structures, like subject–auxiliary inversion inquestions, and complex determiners such as more...than..., as complete construc-
+tions.
+16U-DOP incorporates binary branching tree recursion as the main bias of
+its model. It can parse structures not previously encountered, either through theequivalent of PCFG rules, or by identifying structural analogies between possibletree constructions for a current input and those assigned to previously parsedstrings in a test set.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 214 — #18
+214 Alexander Clark and Shalom Lappin
+ADIOS is another recent unsupervised algorithm for grammar induction (Solan
+et al., 2005). It is interesting not so much for the algorithmic properties that itexempliﬁes (these are largely taken from other models, although they are com-bined in a novel way), but for the extensive and original method of evaluation towhich it is subjected. Solan et al. (2005) use a number of different techniques todemonstrate the robustness of ADIOS. These include a language modeling task,and application of the algorithm to test children’s reading comprehension.
+3.3 Accuracy vs. cost in supervised, unsupervised,
+and semi-supervised learning
+In general supervised learning algorithms achieve greater accuracy than unsu-pervised procedures. So LPCFG parsers trained on WSJ corpora annotated with
+constituent structure information in the Penn Treebank obtain F-measures of88 percent to 91 percent (Collins 1999; Charniak and Johnson 2005), while efﬁcientunsupervised parsers currently score in the mid to high 70s (Klein & Manning2004; Bod 2007a). However, hand annotating corpora for training supervised algo-rithms adds a signiﬁcant cost that must be weighed against the accuracy that theseprocedures provide. To the extent that unsupervised algorithms do not incur thesecosts, they offer an important advantage, if they can sustain an acceptable level ofperformance in the applications for which they are designed.
+Banko and Brill (2001) use a method of semi-supervised learning that combines
+some of the beneﬁts of both systems. They train 10 distinct classiﬁers for a worddisambiguation problem on an annotated test set. They then run all the classi-ﬁers on an unannotated corpus and select the instances for which there is fullagreement among them. This automatically annotated data is added to the origi-nal hand annotated corpus for a new cycle of training, and the process is iteratedwith additional unannotated corpora. In the experiments they describe how accu-racy is improved through unsupervised extensions of a supervised base corpus upto a certain phase in the learning cycles, after which it begins to decline. They sug-gest that this effect may be due to the learning process reaching a point at whichthe beneﬁts that additional data contribute are outweighed by the distortion ofsample bias imported with the new samples, which causes overﬁtting of the data.
+Bank and Brill’s approach can be generalized to grammar induction and pars-
+ing. This would involve training several supervised parsing systems on an initialparsed corpus and then optimizing these procedures through iterated parsing oftext containing only POS tagging. The tagging can be done automatically using areliable tagger.
+There are, in fact, good engineering reasons for investing more research effort
+in the development of robust unsupervised and semi-supervised learning proce-dures. Very large quantities of raw natural language text are now available onlineand easily accessible. While supervised grammar induction has achieved a highlevel of accuracy, generating the necessary training corpora is an expensive andtime-consuming process. The use of unsupervised and semi-supervised learning
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 215 — #19
+Unsupervised Learning and Grammar Induction 215
+algorithms reduces much of this expense. The amount of data that hand annotatedtraining sets provide is very limited in comparison to the corpora of unanno-tated text currently available at little or no cost. As the accuracy and coverageof unsupervised systems improves, they become increasingly attractive alterna-tives to supervised methods. It is reasonable, then, to expect a greater focus on thedevelopment of these systems in future NLP work.
+4 Unsupervised Grammar Induction and Human
+Language Acquisition
+The promising results of recent work on unsupervised procedures for grammarinduction raise interesting questions for long-standing debates over the cognitivebasis for human language acquisition. Theoretical linguistics has been dominatedfor the past 50 years by a strong version of linguistic nativism.
+17On this view, a
+set of rich, domain-speciﬁc biases provide the basis for language acquisition. Thesebiases are formulated as the constraints of a universal grammar, which constitutesa biologically determined, task-speciﬁc language faculty.
+The main consideration offered in support of this notion of a language faculty
+is the argument from the poverty of the stimulus (APS). According to the APS the
+amount and quality of the primary linguistic data available to children acquiringtheir ﬁrst language is not sufﬁcient to account for the grammar that expresses adultlinguistic competence if acquisition of the adult grammar is mediated primarilyby domain-general procedures of induction, such as those applied in machinelearning. A classic instance of the APS is the use of subject–auxiliary inversionto claim that language learners have an innate bias towards learning grammati-cal rules formulated in terms of a hierarchical phrase structure representation ofsentences.
+18
+(6) a. Is the student who is in the garden hungry?
+b. *Is the student who in the garden is hungry?
+The rule of auxiliary inversion requires that (something like) the following
+structures be assigned to (6a), (6b), respectively.
+(7) a. [ S′is2[S[NPthe [ N′student [ RCwho [ VPis1in the garden]]]] [ VP[Ve2]
+hungry]]]
+b. [ S′is1[S[NPthe [ N′student [ RCwho [ VPe1in the garden]]]] [ VP[Vis2]
+hungry]]]
+Advocates of the APS maintain that the data to which children are exposed does
+not provide an adequate basis for inferring a structure-dependent rule of subject–auxiliary inversion unless the children come to the task of language acquisitionalready equipped with a mechanism for organizing strings of words into phrasalconstituents of the sort that facilitate the formulation of this rule.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 216 — #20
+216 Alexander Clark and Shalom Lappin
+The APS has recently been subject to strong challenges.19Both sides of this
+debate have tended to focus on the availability of evidence for grammar inductionthrough data-driven methods. However, it is not possible to decide how much,and what sort of, data is required for effective language acquisition independentlyof a clearly speciﬁed theory of learning. This question is meaningful and interest-ing only when considered in relation to a particular learning theory or class of suchtheories. Linguistic nativists have generally argued for the paucity of data withoutspecifying a strong bias model that will generate the class of grammars which theyposit, given the set of linguistic samples which they assume as evidence. Similarly,some critics of the APS have insisted that the child has access to sufﬁcient linguis-tic data to produce the grammar of his/her ﬁrst language without indicating howlearning is achieved.
+To the extent that machine learning algorithms can acquire accurate and the-
+oretically viable grammars of languages from corpora through unsupervisedmethods, employing weak rather than strong learning biases, they underminethe APS as an argument for strong linguistic nativism.
+20Speciﬁcally, they show
+that it is possible to implement a learning algorithm that can effectively acquirea signiﬁcant element of human linguistic knowledge relying primarily on gener-alized information theoretic techniques for classifying data, with comparativelyweak domain-speciﬁc constraints on the set of possible grammars in its hypothe-sis space. As we have observed, unsupervised grammar induction has recentlyyielded encouraging results for parsing WSJ text according to the gold stan-
+dard given by the Penn Treebank. Moreover, Bod (2006a, 2007a), and Clark andEyraud (2006) present systems that learn subject–auxiliary inversion rules efﬁ-ciently without being exposed to sample sentences like (6a) or its full declarativecounterpart.
+(8) The student who is in the garden is hungry.However, most of these unsupervised grammar-induction procedures incorpo-
+rate learning biases that restrict their hypothesis spaces to constituent structuregrammars of some kind.
+21An advocate of the APS can claim that these biases
+are precisely the sort of conditions that the argument is intended to motivate asnecessary learning priors for language acquisition.
+In fact it is possible to argue that a preference for hierarchical constituent
+structure is not, in itself, an irreducible bias on a language model. It can bederived from a more basic and general learning prior. As we have seen, Perforset al. (2006) deﬁne a very general prior for smaller grammars with fewer rulesand fewer non-terminal symbols. It does not specify a bias towards constituentstructure. They apply their Bayesian posterior probability measure, given in (3)(arg max
+H(P(H)P(D|H ))), to a hypothesis space of three types of grammar, which
+they evaluate on a subset of CHILDES (MacWhinney 1995), a corpus of childdirected discourse.
+The three types of grammar that Perfors et al. (2006) consider are:
+(1) a ﬂat grammar that generates strings directly from Swithout intermediate
+non-terminal symbols;
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 217 — #21
+Unsupervised Learning and Grammar Induction 217
+(2) a probabilistic regular grammar (PRG); and(3) a probabilistic context-free grammar (PCFG).They compute the posterior probability of each grammar for the CHILDES sen-tences. The PCFG receives a higher posterior probability value and covers signiﬁ-cantly more sentence types in the corpus than either the PRG or the ﬂat grammar.The grammar with maximum a posteriori probability makes the correct gener-alization. This result suggests that it may be possible to decide among radicallydistinct types of grammars on the basis of a Bayesian model with relatively weaklearning priors, when using a corpus that accurately reﬂects the linguistic datathat children are exposed to in the course of ﬁrst language acquisition. The priorthat Perfors et al. (2006) invoke does not impose a constituent structure bias, but ageneral preference for smaller, more compact hypotheses.
+While the success of weak bias unsupervised ML procedures in grammar induc-
+tion (and related tasks) vitiates the APS case for strong domain-speciﬁc learningpriors as necessary conditions for language acquisition, it does not tell us anythingabout the actual cognitive mechanisms that humans employ in acquiring their ﬁrstlanguage. Even discounting the APS, a strong nativist view of UG could, in prin-ciple, turn out to be correct on the basis of the psychological and biological factsof language acquisition.
+Is there, then, any psycholinguistic evidence showing that ML methods play a
+signiﬁcant role in human language learning? In fact there is. Saffran et al. (1996)report a set of experiments in which eight-month-old infants learn to identifyword boundaries in continuous syllable sequences on the basis of a two-minuteexposure to training data. The words are nonsense terms constructed out of three-syllable sequences. The transitional probabilities between syllables within a wordare maximal (set at 1), while those between syllables crossing word boundaries arelow (generally around 0.33). The transitional probability of a syllable pair XY(X
+followed by Y) is computed as the conditional probability P(Y|X)according to its
+Bayesian MLE condition (where c(α) is the frequency count for the sequence α).
+(9)P(Y|X)=c(XY)
+c(X)
+The infants were able to distinguish familiar words heard in the training sam-
+ples from novel non-words on the basis of very limited exposure to a word set.Saffran et al. (1996) conclude that they employed the difference in transitionalprobabilities between word internal syllable sequences and word external pairsin order to infer word boundaries.
+22
+Thompson and Newport (2007) extend this experimental approach to investi-
+gate the learning of phrasal boundaries and constituent structure. They describea series of experiments in which English-speaking adults are exposed to trainingsets of samples from simple artiﬁcial languages with six word classes, each con-taining three words (the word number of some classes is modiﬁed for one of theexperiments). Phrases consist of word pairs where each element of the pair comesfrom a distinct word class. The training sets contain a canonical phrasal pattern ofword class sequences, and variations on these patterns involving:
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 218 — #22
+218 Alexander Clark and Shalom Lappin
+(1) the presence of repeated phrases,(2) optional constituents,(3) permutations of phrases (moved constituents), and(4) variation in the lexical size of two of the four phrase types.
+Each of the three conditions in (1)–(3) introduces a signiﬁcant difference in
+intra-phrasal vs. inter-phrasal transitional probabilities between word classes. Theformer are set at 1, while the latter are lower. For each of these four conditions acontrol group is exposed to a training set in which the conditions do not apply todiscrete phrases, but are formulated only for word classes. As a result, there is nosubstantial difference in the transitional probabilities that hold between differentword class pairs in the control language.
+After training, both the experimental and the control groups were tested on
+their ability to identify well-formed sentential and phrasal patterns in the lan-guage. Thompson and Newport (2007) found that for conditions (1)–(3) theexperimental group outperformed the control group in learning both sentence andphrasal structure. When all four conditions were combined in a single language,the difference between intra-phrasal and inter-phrasal transitions substantiallyincreased. In an experiment with variants of this language type in which thetwo groups were exposed to a comparatively small set of canonical sentencepatterns (5 percent of the training set), the experimental subjects achieved fargreater success than the control subjects in learning both sentence and phrasalpatterns.
+These results indicate that transitional probabilities can provide an important
+cue for identifying constituent structure from word sequences. While the experi-ments provide data only on syntax learning by adults, when taken together withSaffran et al.’s (1996) research on infant identiﬁcation of word boundaries, theystrongly suggest that Bayesian inference of the kind employed by ML methods inNLP plays a signiﬁcant role in human language acquisition at a variety of levelsof morphological and syntactic structure.
+This work also gives credence to a bootstrapping view of language learn-
+ing on which information theoretic methods yield an initial classiﬁcation oflinguistic entities that can then be used to construct successive levels of repre-sentation. Each previous cycle of learning provides a set of structural constraintson the entities out of which the next stage is developed by the same kindsof Bayesian inference. If this view is sustained by further research, then theweak bias model of language learning proposed in Lappin (2005), Lappin andShieber (2007), and Clark (2004) will achieve psychological as well as computa-tional credibility. Clearly much additional work remains to be done in clarifyingthese issues before any such model can be endorsed with any conﬁdence asan account of human language acquisition. It does, however, provide a seriousalternative to the strong nativist approach that has dominated linguistics and cog-nitive science for the past ﬁve decades, generally without a learning theory tomotivate it.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 219 — #23
+Unsupervised Learning and Grammar Induction 219
+5 Conclusion
+Unsupervised learning is a rich and varied area of research. It includes differ-ent motivations, techniques, and methods of evaluation. In this chapter we havesurveyed the ﬁeld and provided an overview of what we regard as the mostsigniﬁcant theoretical and engineering developments.
+It is important to recognize that while the application of these techniques to
+practical problems in NLP is still at an early stage, unsupervised learning is almostcertain to expand as an area of interest and activity.
+It is also plausible to hope that, as we make progress in understanding the capac-
+ities and limits of unsupervised methods, we will achieve deeper insight into howmuch and what kinds of linguistic knowledge can be acquired by domain-generallearning algorithms operating on raw linguistic data. Such insight is of directsigniﬁcance to work in theoretical linguistics and the study of human cognition.
+NOTES
+1 See, Chapter 18 of this book, INFORMATION EXTRACTION , Section 3.4, and Jurafsky
+and Martin (2009: 455) for discussions of recall, precision, and weighted F-measures.
+2 See Manning and Schütze (1999) for a discussion of Bayesian inference and the role of
+Bayesian reasoning about probability in statistical NLP .
+3 See Chapter 13 of this book, STATISTICAL PARSING , Manning and Schütze (1999),
+and Jurafsky and Martin (2009) for accounts of probabilistic context-free grammarsand lexicalized probabilistic context-free grammars as language models for supervisedgrammar induction.
+4 See Lappin and Shieber (2007) and Clark (2001a, chapter 4) for discussions of some of
+the problematic assumptions in Gold’s identiﬁcation in the limit learning paradigm.
+5 A supra-ﬁnite class includes all ﬁnite languages and at least one inﬁnite language.6 See, for example Crain and Thornton (1998) for arguments to the effect that, because
+the class of natural languages is unlearnable from positive evidence only, a rich innateUG must be posited to explain human language acquisition.
+7 See, for example, Saxton (1997) and Chouinard and Clark (2003) for psycholinguistic
+research supporting the widespread availability and effectiveness of negative evidencein child grammar induction. See also Clark and Lappin (2009) for a proposal on howindirect negative evidence can be stochastically modeled within a PAC framework.
+8 See Chapter 2,
+COMPUTATIONAL COMPLEXITY , for the relevant notions of complexity
+and efﬁciency of computation.
+9 Questions have been raised about the extent to which this helps the child (Gleitman
+et al., 2001).
+10 The Baum–Welch algorithm (also known as the forward–backward algorithm) used
+to estimate the parameter values for such models only ﬁnds a local optimum. SeeManning and Schütze (1999) for discussion of this procedure.
+
+“9781405155816_4_008” — 2010/5/8 — 11:48 — page 220 — #24
+220 Alexander Clark and Shalom Lappin
+11 See Chapter 11, EVALUATION OF NLP SYSTEMS , and Chapter 10, LINGUISTIC ANNO -
+TATION , for discussions of this and related issues in connection with a variety of NLP
+tasks.
+12 The texts were tagged automatically, which might introduce some variability.13 See Chelba,
+STATISTICAL LANGUAGE MODELING , and Manning and Schütze (1999),
+Section 2.2 for discussions of perplexity and entropy.
+14 See Chapter 3, STATISTICAL LANGUAGE MODELING , and Pereira (2000) on the applica-
+tion of smoothing techniques for statistical modeling, originally introduced by Good(1953), in NLP .
+15 Actually, an unsupervised POS tagger will also rely on morphological analysis of the
+words in a corpus. This can be provided by an unsupervised morphological analyzer.See Goldsmith (2001), Chapter 14 of this book,
+SEGMENTATION AND MORPHOLOGY ,
+and Schone and Jurafsky (2001) for alternative systems of unsupervised morphologicalanalysis.
+16 See Clark and Eyraud (2006) for a simple unsupervised distributional algorithm that
+learns a PCFG which correctly handles subject–auxiliary inversion.
+17 See, inter alia, Chomsky (1965; 1971; 1981; 1986; 1995; 2000; 2005), and Pinker (1989;
+1996).
+18 See Chomsky (1971); Crain and Nakayama (1987); Crain (1991); Berwick and Chomsky
+(2009) for versions of this argument, and Clark and Lappin (2010) for critical discussionof it.
+19 Pullum and Scholz (2002) and their critics conduct a lively debate on the APS in Volume
+19 (2002) of The Linguistic Review. Scholz and Pullum (2006) offer an updated version
+of some of their criticisms of the APS.
+20 For detailed discussion of the relevance of work in machine learning and computa-
+tional learning theory to APS-based claims for linguistic nativism see Lappin (2005);Lappin and Shieber (2007); Clark (2004); and Clark and Lappin (2010).
+21 This is not the case for the algorithm proposed in Clark and Eyraud (2006), which uses
+a simple criterion of distributional congruence to identify equivalence classes of wordsand phrases.
+22 Yang (2004) disputes this conclusion. He reports a word identiﬁcation experiment on a
+subset of the CHILDES corpus using transitional syllable probabilities. The results ofthe experiment indicate poor recall and precision for this procedure. As he observes,this is due to the fact that 85 percent of the words in his test set are monosyllabic.Therefore there is no signiﬁcant distinction between intra-word and inter-word transi-tional probabilities for most of the terms in this corpus. Yang claims that his experimentshows that transitional probability is not an adequate cue for word boundary identi-ﬁcation in realistic data of the sort that children receive. In fact, this claim is seriouslyundermotivated. Child directed speech of the kind that appears in CHILDES does notexhaust the linguistic samples to which children are exposed in their normal envi-ronments. They generally have access to the full range of multi-syllabic utterancesof normal adult speech, even when it is not directed to them. There is no reason toexclude this additional data from the range of evidence that children can make useof when computing transitional probabilities for syllable pairs. It is not unreasonableto hypothesize that, when one takes account of the full range of evidence availableto child language learners, a signiﬁcant correlation between transitional probabilitypatterns and word boundaries in real language data will prove robust.
+

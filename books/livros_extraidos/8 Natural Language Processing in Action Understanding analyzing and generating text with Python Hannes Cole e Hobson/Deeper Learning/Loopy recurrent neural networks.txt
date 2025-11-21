@@ -1,0 +1,1091 @@
+247Loopy (recurrent)
+neural networks (RNNs)
+Chapter 7 showed how convolutional neural  nets can analyze a fragment or sen-
+tence all at once, keeping tr ack of nearby words in the sequence by passing a filter
+of shared weights over those words (convo lving over them). Words that occurred in
+clusters could be detected together. If thos e words jostled a little bit in position, the
+network could be resilient to it. Most impo rtantly, concepts that appeared near to
+one another could have a big impact on th e network. But what if you want to look
+at the bigger picture and consider those re lationships over a longer period of time,
+a broader window than three or four toke ns of a sentence. Can you give the net a
+concept of what went on earlier? A memory?
+ For each training example (or batch of unordered examples) and output (or
+batch of outputs) of a feedforward network,  the network weights will be adjusted inThis chapter covers
+Creating memory in a neural net
+Building a recurrent neural net
+Data handling for RNNs
+Backpropagating through time (BPTT)
+ 
+
+248 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+the individual neurons based on the error, using backpropagation. This you’ve seen.
+But the effects of the next example’s lear ning stage are largely independent of the
+order of input data. Convolutional neural ne ts make an attempt to capture that order-
+ing relationship by capturing localized relationships, but there’s another way.
+ In a convolutional neural network, you passed in each sample as a collection of
+word tokens gathered together. The word vectors are arrayed together to form a
+matrix. The matrix shape was (length-of-wor d-vector x number-of-words-in-sample), as
+you can see in figure 8.1.
+ But that sequence of word vectors could just as easily have been passed into a stan-
+dard feedforward network from ch apter 5 (see figure 8.2), right?
+Figure 8.1 1D convolution with embeddingsSlide
+(convolve)FilterInput
+(word embeddings)
+Aggregate and activation function
+f(sum)( wi * xi))
+Layer output
+(for a given filter)The cat and dog went to the bodega together
+z0 z6 z5 z4 z3 z1z2w9
+w15w16w17w12 w14 w13w11 w10w8 w7 w6w5 w4 w3w2 w1 w0
+w9
+w15w16w17w12 w14 w13w11 w10w8 w7 w6w5 w4 w3w2 w1 w0.03
+.14.00
+.24
+.12
+.32.92
+.32
+.62
+.99
+.02
+.23.62.61
+.43
+.44
+.55.66
+.34
+.33
+.42.32
+.32.72
+.63
+.34
+.22.27
+.42.11
+.00
+.00
+.11
+.42.33.15
+.00
+.00.12
+.02
+.66.23
+.01.34
+.66
+.23.52.00
+.33.23
+.56
+.25.99.23
+ 
+
+249
+Sure, this is a viable model. A feedforward network will be able to react to the co-
+occurrences of tokens when they are passed in this way, which is what you want. But it
+will react to all the co-occurrences equall y, regardless of whether they’re separated
+from each other by a long document or ri ght next to each other. And feedforward
+networks, like CNNs, don’t work with variab le length documents very well. They can’t
+handle the text at the end of a document if it exceeds the width of your network.
+ A feedforward network’s main strength is to model the relationships between a
+data sample, as a whole, to its associated label. The words at the beginning and end of
+a document have just as much  effect on the output as the words in the middle, regard-
+less of their unlikely semantic relationship to each other. You can see how this homo-
+geneity or “uniformity of influence” ca n cause problems when you consider strong
+negation and modifier (adjectives and adverb ) tokens like “not” or “good.” In a feed-
+forward network, negation words will infl uence the meaning of all the words in the
+sentence, even ones that are far from their intended influence.w0
+w9
+w18
+w27
+w36
+w45w46w47w48
+Activation function
+f(sum( wi * xi))
+Activation function
+f(sum( wi * xi))PredictionNeuron outputsw49w50w51w52
+z0w53
+w0w1w2z1WN W2……
+…w44w35 w34 w33 w32 w31 w30 w29 w28w19w20w21w22w23w24w25w26w17 w16 w15 w14 w13 w12 w11 w10w8 w7 w6 w5 w4 w3 w2 w1
+w43 w42 w41 w40 w39 w38 w37The cat and dog went to the bodega together
+Neuron
+weights
+(W1).32.12.24.14.00.03
+.25.99.56.33.23.23
+.01.23.66.34.00
+.52
+.00.00.66.02.23.12
+.42.11.00.00.15
+.33
+.42.22.27.34.63.11
+.42.33.32.72
+.34
+.32.44.62.43.66
+.61
+.55.92
+.32
+.62.99
+.02
+.23
+z
+nInput
+(word embeddings)
+Figure 8.2 Text into a feedforward network 
+ 
+
+250 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+ One-dimensional convolutions gave us a way to deal with these inter-token rela-
+tionships by looking at windows  of words together. And the pooling layers discussed in
+chapter 7 were specifically designed to handle slight word order variations. In this
+chapter, we look at a differ ent approach. And through this approach, you’ll take a first
+step toward the concept of memory  in a neural network. Inst ead of thinking about lan-
+guage as a large chunk of data, you can begin to look at it as it’ s created, token by
+token, over time, in sequence.
+8.1 Remembering with recurrent networks
+Of course, the words in a do cument are rarely completely  independent of each other;
+their occurrence influences or is influenced by occurrences of other words in the
+document:
+ The stolen car sped into the arena.
+ The clown car sped into the arena.
+Two different emotions may arise in the reader of these two sentences as the reader
+reaches the end of the sentence. The two se ntences are identical in adjective, noun,
+verb, and prepositional phrase construction. But that adjective swap early in the sen-
+tence has a profound effect on what  the reader infers is going on.
+    Can you find a way to model that relationship? A way
+to understand that “arena” and even “sped” could takeon slightly different connotations when an adjective that
+does not directly modify eith er occurred earlier in the
+sentence?     If you can find a way to remember  what just happened
+the moment before (specifica lly what happened at time
+step t when you’re looking at time step t+1), you’d be on
+the way to capturing the patterns that emerge when cer-
+tain tokens appear in patterns relative to other tokens in
+a sequence. Recurrent neural nets  (RNNs) enable neural
+networks to remember the pa st words within a sentence.
+    You can see in figure 8.3 that a single recurrent neu-
+ron in the hidden layer adds a recurrent loop to “recy-
+cle” the output of the hidden layer at time t. The output
+at time t is added to the next input at time t+1. This new
+input is processed by th e network at time step t+1 to cre-
+ate the output for that hidden layer at time t+1. That out-
+put at t+1 is then recycled back into the input again at
+time step t+2, and so on.
+1
+1In finance, dynamics, and feedback control, this is often called an auto-regressive moving average  (ARMA)
+model: https:/ /en.wikipedia.org/w iki/Autoregressive_model .x(t+1)
+y(t)RNN
+Input
+layer
+Recurrent loopHidden
+layer
+Output
+layer
+Figure 8.3
+Recurrent neural net
+ 
+
+251 Remembering with recurrent networks
+Although the idea of affecting state across time can be a little mind boggling at first,
+the basic concept is simple. For each inpu t you feed into a regular feedforward net,
+you’d like to take the output of the network at time step t and provide it as an addi-
+tional input, along with the next piece of data being fed into the network at time step
+t+1. You tell the feedforward network what happened before along with what is hap-
+pening “now.”
+IMPORTANT In this chapter and the next, we discuss most things in terms of
+time steps. This isn’t the same thing as  individual data samples. We’re refer-
+ring to a single data sample split into  smaller chunks that represent changes
+over time. The single data sample will st ill be a piece of text, say a short movie
+review or a tweet. As before, you’ll to kenize the sentence. But rather than put-
+ting those tokens into the network all at once, you’ll pass them in one at atime. This is different than having multiple new document samples.  The tokens are
+still part of one data sample with one associated label.
+You can think of t as referring to the token sequence index. So t=0 is the first
+token in the document and t+1 is the next token in the document. The
+tokens, in the order they appear in the document, will be the inputs at each
+time step  or token step . And the tokens don’t have to be words. Individual char-
+acters work well too. Inputing the tokens one at a time will be substeps  of feed-
+ing the data sample into the network.
+Throughout, we reference th e current time step as t and the following time
+step as t+1.
+You can visualize a recurrent net as shown in  figure 8.3: the circ les are entire feed-
+forward network layers  composed of one or more neurons. The output of the hidden
+layer emerges from the network as normal, but it ’s also set aside to be passed back in as
+an input to itself along with the normal input from the next time step. This feedback is
+represented with an arc from the output  of a layer back into its own input.
+ An easier way to see this process—and it’s more commonly shown this way—is by
+unrolling  the net. Figure 8.4 shows the network stood on its head with two unfoldings
+of the time variable ( t), showing layers for t+1 and t+2.
+ Each time step is represented by a column of neurons in the unrolled version of
+the very same neural network.  It’s like looking at a scre enplay or video frame of the
+neural net for each sample in time. The network to the right is the future  version of
+the network on the left. The output of  a hidden layer at one time step ( t) is fed back
+into the hidden layer along with input data for the next time step ( t+1) to the right.
+Repeat. This diagram shows two iterations of  this unfolding, so three columns of neu-
+rons for t=0, t=1, and t=2.
+ All the vertical paths in this visualizatio n are clones, or views of the same neurons.
+They are the single network represented on a timeline. This visu alization is helpful
+when talking about how information fl ows through the network forward and backward
+ 
+
+252 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+during backpropagation. But when looking at the three unfolded networks, remember
+that they’re all different snapshots of the same network with a si ngle set of weights.
+ Let’s zoom in on the original representa tion of a recurrent neural network before
+it was unrolled. Let’s expose the input-weig ht relationships. The individual layers of
+this recurrent network look like what you see in figures 8.5 and 8.6.
+Figure 8.5 Detailed recurrent neural net at time step t = 0x(t+1)
+y(t)RNN Same RNN “unrolled”
+Input
+layer
+Hidden
+layer
+Output
+layert=0
+Input
+layer
+Hidden
+layer
+Output
+layert=1
+Input
+layer
+Hidden
+layer
+Output
+layert=2
+Input
+layer
+Hidden
+layer
+Output
+layer
+Figure 8.4 Unrolled recurrent neural net 
+Neuron X0
+X1Y
+X2h0
+h1
+h2Neuron
+NeuronHidden Output layer Input vector
+ 
+
+253 Remembering with recurrent networks
+Figure 8.6 Detailed recurrent neural net at time step t = 1
+Each neuron in the hidden state has a set of  weights that it applies to each element of
+each input vector, as a normal feedforwar d network. But now you have an additional
+set of trainable weights that are applied to the output of the hidd en neurons from the
+previous time step. The network can learn ho w much weight or importance to give the
+events of the “past” as you input a sequence token by token.
+TIP The first input in a sequence has no “past,” so the hidden state at t=0
+receives an input of 0 from its t-1 self. An alternative way of “filling” the initial
+state value is to first pass related but separate samples into the net one after
+the other. Each sample’s final output is used for the t=0 input of the next
+sample. You’ll learn how to preserve more of the information in your dataset
+using alternative “filling” approaches in the section on statefulness  at the end
+of this chapter.
+Let’s turn back to the data: imagine you have a set of documents, each a labeled
+example. For each sample, instead of passing  the collection of word vectors into a
+convolutional neural net all at once as in  the last chapter (see figure 8.7), you take
+the sample one token at a time and pass the tokens individually into your RNN (see
+figure 8.8).Neuron X0
+X1Y
+X2
+h1
+h2Neuron
+Input at t = 1 includes
+output  from t = 0Raw output
+from time t = 0Raw input
+@ time t = 1 
+NeuronHidden Output layerInput vector
+h0
+ 
+
+254 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+ 
+Figure 8.7 Data into convolutional network
+In your recurrent neural net, you pass in the word vector for the first token and get
+the network’s output. You then pass in the se cond token, but you also pass in the out-
+put from the first token! And then pass in  the third token along with the output from
+the second token. And so on. The network has a concept of before and after, cause
+and effect, some vague notion of time (see figure 8.8).
+Figure 8.8 Data fed into a recurrent networkHidden
+layer
+Output
+Associated
+labelthe arena into sped car clown The
+Hidden
+layer
+OutputThe
+clown
+car
+sped
+into
+the
+arenaHidden
+layerHidden
+layer
+Hidden
+layerHidden
+layerHidden
+layerHidden
+layer
+Output
+Associated
+labelRecurrent neural net
+ 
+
+255 Remembering with recurrent networks
+Now your network is remember ing something! Well, sort of. A few things remain for
+you to figure out. For one, how does backprop agation even work in a structure like this?
+8.1.1 Backpropagation through time
+All the networks we’ve talked about so far ha ve a label (the target variable) to aim for,
+and recurrent networks are no  exception. But you don’t have a concept of a label for
+each token. You have a single label for a ll the tokens in each sample text. You only
+have a label for the sample document.
+ … and that is enough.
+                                    Isadora Duncan
+TIP We are speaking about tokens as the input to each time step of the net-
+work, but recurrent neural nets work id entically with any sort of time series
+data. Your tokens can be anything, disc rete or continuous: readings from a
+weather station, musical notes, char acters in a sentence, you name it.
+Here, you’ll initially look at the output of  the network at the last time step and com-
+pare that output to the label. That’l l be (for now) the definition of the error. And the
+error is what your network will ultimately try to minimize. But you now have some-thing that’s a shift from what you had in the earlier chapters. For a given data sample,
+you break it into smaller pieces that are fe d into the network sequentially. But instead
+of dealing with the output generated by any of these “subsamples” directly, you feed it
+back into the network.
+ You’re only concerned with the final outp ut, at least for now. You input each token
+from the sequence into your network and calculate the loss based on the output from
+the last time step (token) in the sequence. See figure 8.9.
+Hidden
+layerToday
+Ignored
+outputHidden
+layerwas
+Ignored
+outputHidden
+layera
+Ignored
+outputHidden
+layergood
+Ignored
+outputHidden
+layerday .
+Ignored
+outputHidden
+layer
+error = y_true_label - y_outputOutput
+Figure 8.9 Only last output matters here
+ 
+
+256 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+With an error for a given sample, you need to figure out which weights to update, and
+by how much. In chapter 5,  you learned how to backpropagate the error through a
+standard network. And you know that the co rrection to each weight is dependent on
+how much that weight contributed to the error. You can input each token from your
+sample sequence and calculate the error ba sed on the output of the network for the
+previous time step. This is where the id ea of applying backpropagation over time
+seems to mess things up.
+ Here’s one way to think about it: think of the process as time-based. You take a
+token for each time step, starting with the first token at t=0 and you enter it into the
+hidden neuron in front of you—the next column of figure 8.9. When you do that the
+network will unroll to reveal the next colu mn in the network, ready for the next token
+in your sequence. The hidden neurons will unroll themselves, one at a time, like a
+music box or player piano. But after you get to the end, after all the pieces of the sam-
+ple are fed in, there will be nothing left to unroll and you’ll have the final output label
+for the target variable in hand. You can us e that output to calculate the error and
+adjust your weights. You’ve just walked all the way through the computational graph
+of this unrolled net .
+ At this point, you can consider the whol e of the input as static. You can see which
+neuron fed which input all the way throug h the graph. And once you know how each
+neuron fired, you can go back through the chain along the same path and backpropa-
+gate as you did with the standard feedforward network.
+ You’ll use the chain-rule to backpropagate to the previous layer. But instead of
+going to the previous layer, you go to the layer in the past, as if each unrolled version
+of the network were different (see fi gure 8.10). The math is the same.
+ The error from the last step is backprop agated. For each “older” step, the gradient
+with respect to the more recent time step  is taken. The changes are aggregated and
+applied to the single set of weights after all the individual tokenwise gradients have
+been calculated, all the way back to t=0 for that sample.
+Hidden
+layerToday
+Ignored
+outputHidden
+layerwas
+Ignored
+outputHidden
+layera
+Ignored
+outputHidden
+layergood
+Ignored
+outputHidden
+layerday .
+Ignored
+outputHidden
+layer
+error = y_true_label - y_outputBackpropagated
+error
+Output
+Figure 8.10 Backpropagation through time
+ 
+
+257 Remembering with recurrent networks
+TL;DR RECAP
+Break each data sample into tokens.
+Pass each token into a feedforward net.
+Pass the output of each time  step to the input of th e same layer alongside the
+input from the next time step.
+Collect the output of the last time  step and compare it to the label.
+Backpropagate the error through the whole graph, all the way back to the first
+input at time step 0. 
+8.1.2 When do we update what?
+You have converted your strange recurrent neural network into something that looks
+like a standard feedforward network, so upda ting the weights should be fairly straight-
+forward. There’s one catch though. The tric ky part of the update process is the
+weights you’re updating aren’t a different branch of a neural network. Each leg is thesame network at different time steps. The weights are the same for each time step (see
+figure 8.10).
+ The simple solution is that the weight co rrections are calculated  at each time step
+but not immediately updated. In a feedforw ard network, all the weight updates would
+be calculated once all the gr adients have been calculated for that input. Here the
+same holds, but you have to hold the update s until you go all the way back in time, to
+time step 0 for that pa rticular input sample.
+ T h e  g r a d i e n t  c a l c u l a t i o n s  n e e d  t o  b e  based on the values that the weights had
+when they contributed that much to the error. Now here’s the mind-bending part: aweight at time step t contributed something to the error when it was initially calcu-
+lated. That same weight received a differ ent input at time step t+t and therefore con-
+tributed a different amount to the error then.
+ You can figure out the various changes to the weights (as if they were in a bubble)
+at each time step and then sum up the changes and apply the aggregated changes to
+each of the weights of the hidden layer as the last step of the learning phase.
+TIP In all of these examples, you’ve been  passing in a single training exam-
+ple for the forward pass , and then backpropagating the error. As with any neu-
+ral network, this forward pass throug h your network can happen after each
+training sample, or you can do it in batches. And it turns out that batching
+has benefits other than speed. But for now, think of these processes in termsof just single data samples, single sentences, or documents.
+That seems like quite a bit of magic. As  you backpropagate through time, a single
+weight may be adjusted in one direction at one time step t (determined by how it
+reacted to the input at time step t) and then be adjusted in another direction at the
+time step for t-1 (because of how it reacted to the input at time step t-1), for a single
+data sample! But remember, neural networks  in general work by minimizing a loss
+function, regardless of how complex the interm ediate steps are. In aggregate, it will
+optimize across this complex function. As th e weight update is applied once per data
+ 
+
+258 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+sample, the network will  settle (assuming it converges) on the weight for that input to
+that neuron that best  handles this task.
+BUT YOU DO CARE WHAT CAME OUT OF THE EARLIER  STEPS
+Sometimes you may care about the entire sequence generated by each of the interme-
+diate time steps as well. In chapter 9, you’ ll see examples where the output at a given
+time step t is as important as the output at the final time step. Figure 8.11 shows a path
+for capturing the error at any given time step  and carrying that ba ckward to adjust all
+the weights of the networ k during backpropagation.
+Figure 8.11 All outputs matter here
+This process is like the normal backpropagation through time for n time steps. In this
+case, you’re now backpropagating the error from multiple sources at the same time.
+But as in the first example, the weight corrections are additi ve. You backpropagate
+from the last time step all the way to the first, summing up what you’ll change for each
+weight. Then you do the same with the error calculated at the seco nd-to-last time step
+and sum up all the changes all the way back to t=0. You repeat this process until you
+get all the way back down to time step 0 and then backpropagate it as if it were the
+only one in the world. You then apply th e grand total of the updates to the corre-
+sponding hidden layer weights all at once.
+ In figure 8.12, you can see that the erro r is backpropagated fr om each output all
+the way back to t=0, and aggregated, before finally applying changes to the weights.
+This is the most important ta keaway of this section. As with a standard feedforward
+network, you update the weights only after  you have calculated the proposed change
+in the weights for the entire backpropagation step for that input (or set of inputs). In
+the case of a recurrent neural net, this backpropagation includes the updates all the
+way back to time t=0.Hidden
+layerToday
+y0 y1 y2 y3 y4 y5Hidden
+layerwas
+Hidden
+layera
+Hidden
+layergood
+Hidden
+layerday .
+Hidden
+layer
+error = sum([y_true_label[i] - y[i] for i in range(6)])
+ 
+
+259 Remembering with recurrent networks
+Figure 8.12 Multiple outputs and backpropagation through time
+Updating the weights earlier would “pollute” the gradient calculations in the back-
+propagations earlier in time. Remember the gradient is calculated with respect to a
+particular weight. If you were to u pdate it early, say at time step t, when you go to cal-
+culate the gradient at time step t-1, the weight’s value (remember it is the same weight
+position in the network) would’ve change d. Computing the gradient based on the
+input from time step t-1, the calculation would be off. You would be punishing (or
+rewarding) a weight for something it didn’t do!
+8.1.3 Recap
+Where do you stand now? You’ve segmented each data sample into tokens. Then one
+by one you fed them into a feed forward network. With each token, you input not only
+the token itself, but also the output from th e previous time step. At time step 0, you
+input the initial token alongside 0, which ends up being a 0 vector, because there’s noprevious output. You get your error from the difference between the output of the
+network from the final token and the expe cted label. You then backpropagate that
+error to the network weights, backward through time. You aggregate the proposed
+updates and apply them all at once to the network.
+ You now have a feedforward network that  has some concept of time and a rudi-
+mentary tool for maintaining a memory  of occurrences in that timeline.
+8.1.4 There’s always a catch
+Although a recurrent neural net may have relatively fewer weights (parameters) to
+learn, you can see from figure 8.12 how a recurrent net can quickly get expensive to
+train, especially for sequences of any si gnificant length, say 10 tokens. The more
+tokens you have, the further back in time  each error must be backpropagated. For
+each step back in time, there are ever more  derivatives to calculate. Recurrent neural
+nets aren’t any less effective than others, but get ready to heat your house with yourcomputer’s exhaust fan.Hidden
+layerToday
+Hidden
+layerwas
+Hidden
+layera
+Hidden
+layergood
+Hidden
+layerday .
+Hidden
+layer
+Backpropagated
+error
+error = sum([y_true_label[i] - y[i] for i in range(6)])y0 y1 y2 y3 y4 y5
+ 
+
+260 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+ New heat sources aside, you have give n your neural networ k a rudimentary mem-
+ory. But another, more troublesome problem arises, one you also see in regular feed-
+forward networks as they get deeper. The vanishing gradient problem  has a corollary: the
+exploding gradient problem . The idea is that as a network gets deeper (more layers), the
+error signal can grow or dissipate with each computation of the gradient.
+ This same problem applies to recurrent neural nets, because each time step back
+in time is the mathematical equivalent of backpropagating an erro r back to a previous
+layer in a feedforward network. But it’s worse here! Although most feedforward net-
+works tend to be a few layers deep for this very reason, you’re dealing with sequences
+of tokens five, ten, or even hundreds lo ng. Getting to the bottom of a network one
+hundred layers deep is going to be difficu lt. One mitigating factor keeps you in the
+game, though. Although the gradient may va nish or explode on the way to the last
+weight set, you’re updating only one weight set. And that weight set is the same at
+every time step. Some information is going to get through, but it might not be the
+ideal memory state you thought you had create d. But fear not, researchers are on the
+case, and you will have some answers to  that challenge in the next chapter.
+ Enough doom and gloom;  let’s see some magic. 
+8.1.5 Recurrent neural net with Keras
+You’ll start with the same da taset and preprocessing that you used in the previous chap-
+ter. First, you load the dataset, grab th e labels, and shuffle the examples. Then you
+tokenize it and vectorize it again using the Google Word2vec model. Next, you grab the
+labels. And finally you split it 80/20 into the training and test sets.
+ First you need to import all the module s you need for data processing and recur-
+rent network training, as sh own in the following listing.
+>>> import glob
+>>> import os
+>>> from random import shuffle>>> from nltk.tokenize import TreebankWordTokenizer
+>>> from nlpia.loaders import get_data
+>>> word_vectors = get_data('wv')
+Then you can build your data preprocessor, which will whip your data into shape, as
+shown in the following listing.
+>>> def pre_process_data(filepath):
+... """
+... Load pos and neg examples from separate dirs then shuffle them
+... together.... """
+... positive_path = os.path.join(filepath, 'pos')
+... negative_path = os.path.join(filepath, 'neg')... pos_label = 1Listing 8.1 Import all the things
+Listing 8.2 Data preprocessor
+ 
+
+261 Remembering with recurrent networks
+... neg_label = 0
+... dataset = []... for filename in glob.glob(os.path.join(positive_path, '*.txt')):
+... with open(filename, 'r') as f:
+... dataset.append((pos_label, f.read()))... for filename in glob.glob(os.path.join(negative_path, '*.txt')):
+... with open(filename, 'r') as f:
+... dataset.append((neg_label, f.read()))... shuffle(dataset)
+... return dataset
+As before, you can combine your tokenizer and vectorizer into a single function, as
+shown in the following listing.
+>>> def tokenize_and_vectorize(dataset):
+... tokenizer = TreebankWordTokenizer()
+... vectorized_data = []... for sample in dataset:
+... tokens = tokenizer.tokenize(sample[1])
+... sample_vecs = []
+... for token in tokens:
+... try:... sample_vecs.append(word_vectors[token])
+... except KeyError:
+... pass... vectorized_data.append(sample_vecs)
+... return vectorized_data
+And you need to extric ate (unzip) the target variable into separate (but correspond-
+ing) samples, as shown in the following listing.
+>>> def collect_expected(dataset):
+... """ Peel off the target values from the dataset """... expected = []... for sample in dataset:... expected.append(sample[0])... return expected
+Now that you have all the pr eprocessing functions assemb led, you need to run them
+on your data, as shown in the following listing.
+>>> dataset = pre_process_data('./aclimdb/train')
+>>> vectorized_data = tokenize_and_vectorize(dataset)>>> expected = collect_expected(dataset)
+>>> split_point = int(len(vectorized_data) * .8)
+>>> x_train = vectorized_data[:split_point]>>> y_train = expected[:split_point]Listing 8.3 Data tokenizer + vectorizer
+Listing 8.4 Target unzipper 
+Listing 8.5 Load and prepare your dataNo matching token in 
+the Google w2v vocab
+Divide the train and test 
+sets with an 80/20 split
+(without any shuffling).
+ 
+
+262 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+>>> x_test = vectorized_data[split_point:]
+>>> y_test = expected[split_point:]
+You’ll use the same hyperparameters for this  model: 400 tokens per example, batches
+of 32. Your word vectors are 300 elements long, and you’ll let it run for 2 epochs. See
+the following listing.
+>>> maxlen = 400
+>>> batch_size = 32
+>>> embedding_dims = 300>>> epochs = 2
+Next you’ll need to pad and truncate the samples again. You won’t usually need to pad
+or truncate with recurrent neural nets, because they can handle input sequences of
+variable length. But you’ll see in the next few steps that this pa rticular model requires
+your sequences to be of matching  length. See the following listing.
+>>> import numpy as np
+>>> x_train = pad_trunc(x_train, maxlen)
+>>> x_test = pad_trunc(x_test, maxlen)
+>>> x_train = np.reshape(x_train, (len(x_train), maxlen, embedding_dims))
+>>> y_train = np.array(y_train)
+>>> x_test = np.reshape(x_test, (len(x_test), maxlen, embedding_dims))>>> y_test = np.array(y_test)
+Now that you have your data back, it’s time  to build a model. You’ll start again with a
+standard Sequential()  (layered) Keras model, as shown in the following listing.
+>>> from keras.models import Sequential
+>>> from keras.layers import Dense, Dropout, Flatten, SimpleRNN
+>>> num_neurons = 50>>> model = Sequential()
+And then, as before, the Keras magic handle s the complexity of assembling a neural
+net: you just need to add the recurrent la yer you want to your network, as shown in
+the following listing.
+>>> model.add(SimpleRNN(
+... num_neurons, return_sequences=True,... input_shape=(maxlen, embedding_dims)))Listing 8.6 Initialize your network parameters
+Listing 8.7 Load your test and training data
+Listing 8.8 Initialize an empty Keras network
+Listing 8.9 Add a recurrent layer
+ 
+
+263 Remembering with recurrent networks
+Now the infrastructure is set up to take each input and pass it into a simple recurrent
+neural net (the not-simple version is in th e next chapter), and for each token, gather
+the output into a vector. Because your sequences are 400 tokens long and you’re using50 hidden neurons, your output from this layer will be a vector 400 elements long. Eachof those elements is a vector 50 elements lo ng, with one output for each of the neurons.
+ Notice here the keyword argument 
+return_sequences . It’s going to tell the net-
+work to return the network value at each time step, hence the 400 vectors, each 50long. If 
+return_sequences  was set to False  (the Keras default behavior), only a sin-
+gle 50-dimensional vector would be returned.
+ The choice of 50 neurons was arbitrary fo r this example, most ly to reduce compu-
+tation time. Do experiment with this number to see ho w it affects co mputation time
+and accuracy of the model.
+TIP A good rule of thumb is to try to make your model no more complex
+than the data you’re training on. Easier  said than done, but that idea gives
+you a rationale for adjusting your para meters as you experiment with your
+dataset. A more complex model will overfit  training data and not generalize
+well; a model that is too simple will underfit the data and also not have much
+interesting to say about novel data. You’ll see this discussion referred to as thebias versus variance  trade-off. A model that’s overfit to the data is said to have
+high variance and low bias. And an unde rfit model is the opposite: low vari-
+ance and high bias; it gets everything wrong in a consistent way.
+Note that you truncated and padded the data again. You did so to provide a compari-
+son with the CNN example from the last ch apter. But when usin g a recurrent neural
+net, truncating and padding isn’t usually necessary. You can provide training data ofvarying lengths and unroll the net until you hit the end of the input. Keras will handlethis automatically. The catch is that your ou tput of the recurrent layer will vary from
+time step to time step with  the input. A four-token input will output a sequence four
+elements long. A 100-token sequence will produce a sequence of 100 elements. If youneed to pass this into another layer , one th at expects a uniform in put, it won’t work.
+But there are cases where that’s acceptable, an d even preferred. But back to your clas-
+sifier; see the following listing.
+>>> model.add(Dropout(.2))
+>>> model.add(Flatten())
+>>> model.add(Dense(1, activation='sigmoid'))
+You requested that the simple RNN return fu ll sequences, but to prevent overfitting
+you add a Dropout layer to ze ro out 20% of those inputs, randomly chosen on each
+input example. And then finally you add a classifier. In this case, you have one class:“Yes - Positive Sentiment - 1” or “No - Nega tive Sentiment - 0,” so you chose a layer withListing 8.10 Add a dropout layer 
+ 
+
+264 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+one neuron (Dense(1))  and a sigmoid activation func tion. But a Dense layer expects
+a “flat” vector of n elements (each element a float) as input. And the data coming out
+of the SimpleRNN  is a tensor 400 elements long, and each of those are 50 elements
+long. But a feedforward network doesn’t ca re about order of elements as long as
+you’re consistent with the order. You use the convenience layer, Flatten() , that
+Keras provides to flatten the input from a 40 0 x 50 tensor to a vector 20,000 elements
+long. And that’s what you pass into the fina l layer that’ll make the classification. In
+reality, the Flatten  layer is a mapping. That means the error is backpropagated from
+the last layer back to the appropriate output  in the RNN layer and each of those back-
+propagated errors ar e then backpropagated through ti me from the appropriate point
+in the output, as discussed earlier.
+ Passing the “thought vecto r” produced by the recurrent neural network layer into
+a feedforward network no long er keeps the order of the input you tried so hard to
+incorporate. But the important takeaway is to notice that the “learning” related to
+sequence of tokens happens in the RNN layer itself; the aggregation of errors via back-
+propagation through time is encoding that  relationship in th e network and express-
+ing it in the “thought vector” itself. Your decision based on the thought vector, via the
+classifier, is providing feedback to the “qua lity” of that thought vector with respect to
+your specific classification  problem. You can “judge” your thought vector and work
+with the RNN itself in other ways, but more on that in the next chapter . (Can you
+sense our excitement for the next chapter?) Ha ng in there; all of this is critical to
+understanding the next part. 
+8.2 Putting things together
+You compile your model as you did with the convolutional neural net in the last
+chapter.
+ Keras also comes with several tools, such as model.summary() , for inspection of
+the internals of your model. As your mode ls grow more and more complicated, keep-
+ing track of how things inside your mode l change when you adjust the hyperparame-
+ters can be taxing unless you use model.summary()  regularly. If you record that
+summary, along with the validation test re sults, in a hyperparam eter tuning log, it
+really gets fun. You might even be able to automate much of it and turn over some of
+the tedium of record keeping to the machine.2 See the following listing.
+>>> model.compile('rmsprop', 'binary_crossentropy', metrics=['accuracy'])
+Using TensorFlow backend.>>> model.summary()Listing 8.11 Compile your recurrent network
+2If you do decide to automate your hyperparameter selection, don’t stick to grid search for too long; random
+search is much more efficient ( http:/ /hyperopt.github.io/hyperopt/ ). And if you really want to be profes-
+sional about it, you’ll want to try Bayesean optimizati on. Your hyperparameter optimizer only gets one shot
+at it every few hours, so you can’t afford to use just  any old hyperparameter tuning model (heaven forbid a
+recurrent network!).
+ 
+
+265 Putting things together
+_________________________________________________________________
+Layer (type) Output Shape Param #=================================================================
+simple_rnn_1 (SimpleRNN) (None, 400, 50) 17550
+_________________________________________________________________dropout_1 (Dropout) (None, 400, 50) 0
+_________________________________________________________________
+flatten_1 (Flatten) (None, 20000) 0_________________________________________________________________
+dense_1 (Dense) (None, 1) 20001
+=================================================================Total params: 37,551.0
+Trainable params: 37,551.0
+Non-trainable params: 0.0_________________________________________________________________
+None
+Pause and look at the number of parameters  you’re working with. This recurrent neu-
+ral network is relatively small, but note th at you’re learning 37,551 parameters! That’s
+a lot of weights to update based on 20,000 tr aining samples (not to be confused with
+the 20,000 elements in the last layer—that is just coincidence). Let’s look at those
+numbers and see sp ecifically where they come from.
+ In the SimpleRNN  layer, you requested 50 neurons. Each of those neurons will
+receive input (and apply a weig ht to) each input sample. In an RNN, the input at each
+time step is one token. Your tokens are represented by word vectors in this case, each
+300 elements long (300-dimensional). Each neuron will need 300 weights:
+50 * 300 = 15,000
+Each neuron also has the bias term, which always has an input value of 1 (that’s what
+makes it a bias) but has a trainable weight:
+15,000 + 50 (bias weights) = 15,050
+15,050 weights in the first time step of th e first layer. Now each of those 50 neurons
+will feed its output into the network’s ne xt time step. Each neuron accepts the full
+input vector as well as the full output vect or. In the first time step, the feedback from
+the output doesn’t exist yet. It’s initiated as a vector of zeros, its length the same as the
+length of the output.
+ Each neuron in the hidden layer now ha s weights for each token embedding dimen-
+sion: that’s 300 weights. It also has 1 bias for each neur on. And you have the 50 weights
+for the output results in the previous time step (or zeros for the first t=0 time step).
+These 50 weights are the key feedback step in a recurrent neural network . That gives us
+300 + 1 + 50 = 351
+351 times 50 neurons gives:
+351 * 50 = 17,550
+17,550 parameters to train. You’re unrolling  this net 400 time steps (probably too much
+given the problems associated wi th vanishing gradients, but even so, this network turns
+ 
+
+266 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+out to still be effective). But those 17,550  parameters are the same in each of the
+unrollings, and they remain the same until all the backpropagatio ns have been calcu-
+lated. The updates to the weights occur at once at the end of the sequence forward
+propagation and subseq uent backpropagation. Although  you’re adding complexity to
+the backpropagation algorithm, you’re saved by the fact you’re not training a net with
+a little over 7 million parameters (17,550 * 400),  which is what it would look like if the
+unrollings each had their own weight sets.
+ The final layer in the summary is reporting 20,001 parameters to train, which is rel-
+atively straightforward. After the Flatten()  layer, the input is a 20,000-dimensional
+vector plus the one bias input. Because you only have one neuron in the output layer,
+the total number of parameters is
+(20,000 input elements + 1 bias unit) * 1 neuron = 20,001 parameters
+Those numbers can be a little misleading in computational time because there are so
+many extra steps to backpropagation thro ugh time (compared to convolutional neu-
+ral networks or standard feedforward netw orks). Computation ti me shouldn’t be a
+deal killer. Recurrent ne ts’ special talent at memory  is the start of a bigger world in NLP
+or any other sequence data, as you’ll see in the next chapter. But back to your classi-
+fier for now. 
+8.3 Let’s get to learning our past selves
+OK, now it’s time to actually train that re current network that we so carefully assem-
+bled in the previous section. As with your other Keras models, you need to give the
+.fit()  method your data and tell it how long  you want to run training (epochs), as
+shown in the following listing.
+>>> model.fit(x_train, y_train,
+... batch_size=batch_size,
+... epochs=epochs,
+... validation_data=(x_test, y_test))Train on 20000 samples, validate on 5000 samples
+Epoch 1/2
+20000/20000 [==============================] - 215s - loss: 0.5723 -acc: 0.7138 - val_loss: 0.5011 - val_acc: 0.7676
+Epoch 2/2
+20000/20000 [==============================] - 183s - loss: 0.4196 -acc: 0.8144 - val_loss: 0.4763 - val_acc: 0.7820
+>>> model_structure = model.to_json()
+>>> with open("simplernn_model1.json", "w") as json_file:
+... json_file.write(model_structure)>>> model.save_weights("simplernn_weights1.h5")
+Model saved.
+Not horrible, but also not something you’ll write home about. Where can you look to
+improve…Listing 8.12 Train and save your model
+ 
+
+267 Hyperparameters
+8.4 Hyperparameters
+All the models listed in the book can be tune d toward your data and samples in vari-
+ous ways; they all have their benefits and a ssociated trade offs. Finding the perfect set
+of hyperparameters is usually an intracta ble problem. But human intuition and expe-
+rience can at least provide approaches to the problem. Let’s look at the last example.
+What are some of the choices yo u made? See the following listing.
+>>> maxlen = 400
+>>> embedding_dims = 300
+>>> batch_size = 32>>> epochs = 2
+>>> num_neurons = 50
+maxlen  is most likely the biggest question ma rk in the bunch. The training set varies
+widely in sample length. When you force sa mples less than 100 toke ns long up to 400
+and conversely chop down 1,000 token sa mples to 400, you introduce an enormous
+amount of noise. Changing this number im pacts training time more than any other
+parameter in this model; the length of th e individual samples dictates how many and
+how far back in time the error must backpr opagate. It isn’t strictly necessary with
+recurrent neural networ ks. You can simply unroll the network as far or as little as you
+need to for the sample. It’s necessary in your example because you’re passing the out-
+put, itself a sequence, into  a feedforward layer; and fe edforward layers require uni-
+formly sized input.
+ The embedding_dims  value was dictated by the Word2vec model you chose, but
+this could easily be anything that adequate ly represents the dataset. Even something
+as simple as a one-hot encodi ng of the 50 most commons tokens in the corpus may be
+enough to get accu rate predictions.
+ As with any net, increasing batch_size  speeds training because it reduces the
+number of times backpropagation (the computationally expensive part) needs to
+happen. The tradeoff is that larger batches in crease the chance of settling in a local
+minimum.
+ The epochs  parameter is easy to test and tune , by simply running the training pro-
+cess again. But that requires a lot of patien ce if you have to start from scratch with
+each new epochs  parameter you want to try. Kera s models can restart training and
+pick up where you left off, as long as you saved the model as you “left off.” To restart
+your training on a previously trained mode l, reload it and your dataset, and call
+model.fit()  on your data. Keras won’t reinitialize the weights, but instead continue
+the training as if you’d never stopped it.
+ The other alternative for tuning the epochs  parameter is to add a Keras callback
+called EarlyStopping . By providing this method to the model, the model continuesListing 8.13 Model parameters 
+Arbitrary sequence length 
+based on perusing the dataFrom the pretrained 
+Word2vec model
+Number of sample sequences to 
+pass through (and aggregate the 
+error) before backpropagating Hidden layer 
+complexity
+ 
+
+268 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+to train up until the number of epochs you requested, unless  a metric passed to Early-
+Stopping  crosses some threshold that you trigger within your callback. A common
+early stopping metric is the improvement in validation accuracy for several consecutive
+epochs. If you model isn’t getti ng any better, that usually means it’s time to “cut bait.”
+ This metric allows you to set it and forg et it; the model stops training when it hits
+your metric. And you don’t have to worry abou t investing lots of time only to find out
+later that your model started overfitting your training data 42 epochs ago.
+ The num_neurons  parameter is an important one. We suggested you use 50 arbi-
+trarily. Now let’s do a train and test run with 100 neuron s instead of 50, as shown in
+listings 8.14 and 8.15.
+>>> num_neurons = 100
+>>> model = Sequential()
+>>> model.add(SimpleRNN(
+... num_neurons, return_sequences=True, input_shape=(maxlen,\... embedding_dims)))
+>>> model.add(Dropout(.2))
+>>> model.add(Flatten())
+>>> model.add(Dense(1, activation='sigmoid'))
+>>> model.compile('rmsprop', 'binary_crossentropy', metrics=['accuracy'])Using TensorFlow backend.
+>>> model.summary()
+_________________________________________________________________Layer (type) Output Shape Param #
+=================================================================
+simple_rnn_1 (SimpleRNN) (None, 400, 100) 40100_________________________________________________________________
+dropout_1 (Dropout) (None, 400, 100) 0
+_________________________________________________________________flatten_1 (Flatten) (None, 40000) 0
+_________________________________________________________________
+dense_1 (Dense) (None, 1) 40001=================================================================
+Total params: 80,101.0
+Trainable params: 80,101.0Non-trainable params: 0.0
+_________________________________________________________________
+>>> model.fit(x_train, y_train,
+... batch_size=batch_size,
+... epochs=epochs,... validation_data=(x_test, y_test))
+Train on 20000 samples, validate on 5000 samples
+Epoch 1/220000/20000 [==============================] - 287s - loss: 0.9063 -
+acc: 0.6529 - val_loss: 0.5445 - val_acc: 0.7486
+Epoch 2/220000/20000 [==============================] - 240s - loss: 0.4760 -Listing 8.14 Build a larger network
+Listing 8.15 Train your larger network
+ 
+
+269 Predicting
+acc: 0.7951 - val_loss: 0.5165 - val_acc: 0.7824
+>>> model_structure = model.to_json()
+>>> with open("simplernn_model2.json", "w") as json_file:... json_file.write(model_structure)
+>>> model.save_weights("simplernn_weights2.h5")
+Model saved.
+The validation accuracy of 78.24% is only  0.04% better after we doubled the complex-
+ity of our model in one of the layers. This negligible improvement should lead you tothink the model (for this network layer) is too complex for the data. This layer of thenetwork may be too wide.
+ Here’s what happens with 
+num_neurons  set to 25:
+20000/20000 [==============================] - 240s - loss: 0.5394 -
+acc: 0.8084 - val_loss: 0.4490 - val_acc: 0.7970
+That’s interesting. Our model got a little better when we slimmed it down a bit in the
+middle. A little better (1.5%), but not signific antly. These kinds of tests can take quite
+a while to develop an intuition for. You may find it especially di fficult as the training
+time increases and prevents you from enjoyi ng the instant feedback and gratification
+that you get from other coding tasks. An d sometimes changing one parameter at a
+time can mask benefits you would get from  adjusting two at a time. But if you went
+down that rabbit hole of combinatorics, yo ur task complexity goes through the roof.
+TIP Experiment often, and always do cument how the model responds to
+your manipulations. This kind of hand s-on work provides the quickest path
+toward an intuitio n for model building.
+If you feel the model is overfitting the training data but you can’t find a way to make
+your model simpler, you can always try increasing the Dropout(percentage) . This is
+a sledgehammer (actually a shotgun) that can mitigate the risk of overfitting while
+allowing your model to have as much complexity as it needs to match the data. If you
+set the dropout percentage much above 50%, the model starts to have a difficult time
+learning. Your learning will slow and valida tion error will bounce around a lot. But
+20% to 50% is a pretty safe range for a lot of NLP problems for recurrent networks. 
+8.5 Predicting
+Now that you have a trained model, such as it is, you can predict just as you did with
+the CNN in the last chapter, as shown in the following listing.
+>>> sample_1 = "I hate that the dismal weather had me down for so long, when
+➥ will it break! Ugh, when does happiness return? The sun is blinding and
+➥ the puffy clouds are too thin. I can't wait for the weekend."
+>>> from keras.models import model_from_json
+>>> with open("simplernn_model1.json", "r") as json_file:Listing 8.16 Crummy weather sentiment
+ 
+
+270 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+... json_string = json_file.read()
+>>> model = model_from_json(json_string)
+>>> model.load_weights('simplernn_weights1.h5')
+>>> vec_list = tokenize_and_vectorize([(1, sample_1)])
+>>> test_vec_list = pad_trunc(vec_list, maxlen)>>> test_vec = np.reshape(test_vec_list, (len(test_vec_list), maxlen,\
+... embedding_dims))
+>>> model.predict_classes(test_vec)
+array([[0]], dtype=int32)
+Negative again.
+ You have another tool to add to the pipeli ne in classifying your possible responses,
+and the incoming questions or searches that  a user may enter. But why choose a recur-
+rent neural network? The short answer is: don’t. Well, not a SimpleRNN  as you’ve imple-
+mented here. They’re relatively expensiv e to train and pass new samples through
+compared to a feedforw ard net or a convolutional neural net. At least in this example,
+the results aren’t appreciably be tter, or even better at all. 
+ Why bother with an RNN at all? Well, th e concept of remembering bits of input
+that have already occurred is absolutely crucial in NLP. The problems of vanishing
+gradients are usually too much for a recurr ent neural net to overcome, especially in
+an example with so many time steps such as  ours. The next chapter begins to examine
+alternative ways of remembering , ways that turn out to be, as Andrej Karpathy puts it,
+“unreasonably effective.”3
+ The following sections cover a few thin gs about recurrent neural networks that
+weren’t mentioned in the exampl e but are important nonetheless.
+8.5.1 Statefulness
+Sometimes you want to remember  information from one input sample  to the next, not
+just one-time step (token) to the next wi thin a single sample. What happens to that
+information at the end of th e training step? Other than what is encoded in the
+weights via backpropagation, the final outp ut has no effect, and the next input will
+start fresh. Keras provides a keyword argu ment in the base RNN layer (therefore in
+the SimpleRNN  as well) called stateful . It defaults to False . If you flip this to True
+when adding the SimpleRNN  layer to your model, the last  sample’s last output passes
+into itself at the next  time step along with the first token input, just as it would in the
+middle of the sample.
+ Setting stateful  to True  can be a good idea when you want to model a large doc-
+ument that has been split into paragraphs or sentences for processing. And you might
+3Karpathy, Andrej, The Unreasonable Effect iveness of Recurrent Neural Networks. http:/ /karpathy.github.io/
+2015/05/21/rnn-effectiveness/ .You pass a dummy value in the first element of the
+tuple because your helper expects it from the way
+it processed the initial da ta. That value won’t ever
+see the network, so it can be anything.Tokenize returns a list of
+the data (length 1 here).
+ 
+
+271 Predicting
+even use it to model the meaning of an en tire corpus of related documents. But you
+wouldn’t want to train a stateful  RNN on unrelated documents or passages without
+resetting the state of the model between samp les. Likewise, if you usually shuffle your
+samples of text, the last few tokens of one sample have nothing to do with the first
+tokens of the next sample. So for shuffled text you’ll want to make sure your state-
+ful flag is set to False , because the order of the samples doesn’t help the model find
+a good fit.
+ If the fit method is passed a batch_size  parameter, the statefulness of the model
+holds each sample’s output in the batch. And then for the first sample in the nextbatch it passes the output of the first samp le in the previous batch. 2nd to 2nd. i-th to
+i-th. If you’re trying to model a larger single corpus on smaller bits of the whole, pay-
+ing attention to the dataset order becomes important. 
+8.5.2 Two-way street
+So far we’ve discussed relationships betw een words and what has come before. But
+can’t a case be made for flip ping those word dependencies?
+ They wanted to pet the dog whose fur was brown. As you get to the token “fur,” you have  encountered “dog” already and know some-
+thing about it. But the sentence also cont ains the information that the dog has fur,
+and that the dog’s fur is brown. And that information is relevant to the previous actionof petting and the fact that “they” wanted to do the petting. Perhaps “they” only like to
+pet soft, furry brown things and don’t like  petting prickly green things like cacti.
+ Humans read the sentence in one directio n but are capable of flitting back to ear-
+lier parts of the text in their brain as new information is revealed. Humans can deal
+with information that isn’t presented in the be st possible order. It would be nice if you
+could allow your model to flit back ac ross the input as well. That is where bidirectional
+recurrent neural nets come in. Keras added a layer wrapper that will automatically flip
+around the necessary inputs and outputs to  automatically assemb le a bi-directional
+RNN for us. See the following listing.
+>>> from keras.models import Sequential
+>>> from keras.layers import SimpleRNN>>> from keras.layers.wrappers import Bidirectional
+>>> num_neurons = 10
+>>> maxlen = 100>>> embedding_dims = 300
+>>> model = Sequential()
+>>> model.add(Bidirectional(SimpleRNN(... num_neurons, return_sequences=True),\... input_shape=(maxlen, embedding_dims)))Listing 8.17 Build a Bidirectional  recurrent network 
+ 
+
+272 CHAPTER  8Loopy (recurrent) neural networks (RNNs)
+Figure 8.13 Bidirectional recurrent neural net
+The basic idea is you arrange two RNNs right next to each other, passing the input
+into one as normal and the same input backward  into the other net (see figure 8.13).
+The output of those two are then concatenated  at each time step to the related (same
+input token) time step in the other network. You take the output of the final time stepin the input and concatenate it with the ou tput generated by the same input token at
+the first time step of the backward net.
+TIP Keras also has a go_backwards  keyword argument. If  this is set to True ,
+Keras automatically flips the input se quences and inputs them into the net-
+work in reverse order. This is the second half of a bidirectional layer.
+If you’re not using a bidirectional wr apper, this keyword can be useful,
+because a recurrent neural network (due  to the vanishing gradients problem)
+is more receptive to data at the end of the sample than at the beginning. If
+you have padded your samples with <PAD>  tokens at the end, all the good,
+juicy stuff is buried deep in the input loop. go_backwards  can be a quick
+way around this problem.
+With these tools you’re well on your way to not just predicting and classifying text, but
+actually modeling language itself and how it ’s used. And with that deeper algorithmic
+understanding, instead of just parroting text your model has seen before, you can
+generate completely new statements!
+8.5.3 What is this thing?
+Ahead of the Dense layer you have a vector that is of shape (number of neurons x 1)
+coming out of the last time  step of the Recurrent layer for a given input sequence.
+This vector is the parallel to the thought vector  you got out of the convolutional neuralForward
+hidden
+layerBackward
+hidden
+layer
+y0 y1 y2See Spot run
+Forward
+hidden
+layerBackward
+hidden
+layerForward
+hidden
+layerBackward
+hidden
+layerError
+backpropogated
+through time
+Error
+backpropogated
+through time
+(forward?)
++ + +
+ 
+
+273 Summary
+network in the previous chapter. It’s an en coding of the sequence of tokens. Granted
+it’ s only going to be able to encode the thought of the sequences in relation to the
+labels the network is trained on. But in ter ms of NLP, it’s an amazing next step toward
+encoding higher order concepts into a vector computationally. 
+Summary
+In natural language sequences (words or characters), what came before is
+important to your model’s understanding of the sequence.
+Splitting a natural language statement along the dimension of time (tokens)
+can help your machine deepen its understanding of natural language.
+You can backpropagate errors in time (tokens), as well as in the layers of a deep
+learning network.
+Because RNNs are particularly deep neur al nets, RNN gradie nts are particularly
+temperamental, and they may disappear or explode.
+Efficiently modeling natural language ch aracter sequences wasn’t possible until
+recurrent neural nets were applied to the task.
+Weights in an RNN are adjusted in ag gregate across time for a given sample.
+You can use different methods to examine the output of recurrent neural nets.
+You can model the natural language sequ ence in a document by passing the
+sequence of tokens through an RNN backward and forward simultaneously.
+ 
+

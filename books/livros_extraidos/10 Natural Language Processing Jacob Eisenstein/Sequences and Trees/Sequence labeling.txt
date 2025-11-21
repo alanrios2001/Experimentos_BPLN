@@ -1,0 +1,1095 @@
+Chapter 7 3377
+Sequence labeling 3378
+The goal of sequence labeling is to assign tags to words, or more generally, to assign dis- 3379
+crete labels to discrete elements in a sequence. There are many applications of sequence 3380
+labeling in natural language processing, and chapter 8 presents an overview. A classic ap- 3381
+plication is part-of-speech tagging , which involves tagging each word by its grammatical 3382
+category. Coarse-grained grammatical categories include NOUN s, which describe things, 3383
+properties, or ideas, and VERBs, which describe actions and events. Consider a simple 3384
+input: 3385
+(7.1) They can ﬁsh. 3386
+A dictionary of coarse-grained part-of-speech tags might include NOUN as the only valid 3387
+tag for they, but both NOUN and VERB as potential tags for canand ﬁsh. A accurate se- 3388
+quence labeling algorithm should select the verb tag for both canand ﬁshin (7.1), but it 3389
+should select the noun tags for the same two words in the phrase can of ﬁsh . 3390
+7.1 Sequence labeling as classiﬁcation 3391
+One way to solve a tagging problem is to turn it into a classiﬁcation problem. Let f((w,m),y)
+indicate the feature function for tag yat position min the sequence w= (w1,w2,...,wM).
+A simple tagging model would have a single base feature, the word itself:
+f((w=they can ﬁsh ,m= 1),N) =(they,N) [7.1]
+f((w=they can ﬁsh ,m= 2),V) =(can,V) [7.2]
+f((w=they can ﬁsh ,m= 3),V) =(ﬁsh,V). [7.3]
+Here the feature function takes three arguments as input: the sentence to be tagged (e.g., 3392
+they can ﬁsh ), the proposed tag (e.g., N or V), and the index of the token to which this tag 3393
+155
+
+156 CHAPTER 7. SEQUENCE LABELING
+is applied. This simple feature function then returns a single feature: a tuple including 3394
+the word to be tagged and the tag that has been proposed. If the vocabulary size is V 3395
+and the number of tags is K, then there are V×Kfeatures. Each of these features must 3396
+be assigned a weight. These weights can be learned from a labeled dataset using a clas- 3397
+siﬁcation algorithm such as perceptron, but this isn’t necessary in this case: it would be 3398
+equivalent to deﬁne the classiﬁcation weights directly, with θw,y= 1 for the tag ymost 3399
+frequently associated with word w, andθw,y= 0for all other tags. 3400
+However, it is easy to see that this simple classiﬁcation approach cannot correctly tag
+both they can ﬁsh and can of ﬁsh , because canand ﬁshare grammatically ambiguous. To han-
+dle both of these cases, the tagger must rely on context, such as the surrounding words.
+We can build context into the feature set by incorporating the surrounding words as ad-
+ditional features:
+f((w=they can ﬁsh ,1),N) ={(wm=they,ym=N),
+(wm−1=□,ym=N),
+(wm+1=can,ym=N)} [7.4]
+f((w=they can ﬁsh ,2),V) ={(wm=can,ym=V),
+(wm−1=they,ym=V),
+(wm+1=ﬁsh,ym=V)} [7.5]
+f((w=they can ﬁsh ,3),V) ={(wm=ﬁsh,ym=V),
+(wm−1=can,ym=V),
+(wm+1=■,ym=V)}. [7.6]
+These features contain enough information that a tagger should be able to choose the 3401
+right tag for the word ﬁsh: words that come after canare likely to be verbs, so the feature 3402
+(wm−1=can,ym=V)should have a large positive weight. 3403
+However, even with this enhanced feature set, it may be difﬁcult to tag some se- 3404
+quences correctly. One reason is that there are often relationships between the tags them- 3405
+selves. For example, in English it is relatively rare for a verb to follow another verb — 3406
+particularly if we differentiate MODAL verbs like canand should from more typical verbs, 3407
+like give,transcend , and befuddle . We would like to incorporate preferences against tag se- 3408
+quences like V ERB-VERB, and in favor of tag sequences like N OUN -VERB. The need for 3409
+such preferences is best illustrated by a garden path sentence : 3410
+(7.2) The old man the boat. 3411
+Grammatically, the word theis a DETERMINER . When you read the sentence, what 3412
+part of speech did you ﬁrst assign to old? Typically, this word is an ADJECTIVE — abbrevi- 3413
+ated as J — which is a class of words that modify nouns. Similarly, man is usually a noun. 3414
+The resulting sequence of tags is D J N D N. But this is a mistaken “garden path” inter- 3415
+pretation, which ends up leading nowhere. It is unlikely that a determiner would directly 3416
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.2. SEQUENCE LABELING AS STRUCTURE PREDICTION 157
+follow a noun,1and it is particularly unlikely that the entire sentence would lack a verb. 3417
+The only possible verb in (7.2) is the word man, which can refer to the act of maintaining 3418
+and piloting something — often boats. But if man is tagged as a verb, then oldis seated 3419
+between a determiner and a verb, and must be a noun. And indeed, adjectives often have 3420
+a second interpretation as nouns when used in this way (e.g., the young ,the restless ). This 3421
+reasoning, in which the labeling decisions are intertwined, cannot be applied in a setting 3422
+where each tag is produced by an independent classiﬁcation decision. 3423
+7.2 Sequence labeling as structure prediction 3424
+As an alternative, think of the entire sequence of tags as a label itself. For a given sequence 3425
+of wordsw= (w1,w2,...,wM), there is a set of possible taggings Y(w) =YM, where 3426
+Y={N,V,D,...}refers to the set of individual tags, and YMrefers to the set of tag 3427
+sequences of length M. We can then treat the sequence labeling problem as a classiﬁcation 3428
+problem in the label space Y(w), 3429
+ˆy= argmax
+y∈Y(w)Ψ(w,y), [7.7]
+wherey= (y1,y2,...,yM)is a sequence of Mtags, and Ψis a scoring function on pairs 3430
+of sequences, VM×YM↦→R. Such a function can include features that capture the rela- 3431
+tionships between tagging decisions, such as the preference that determiners not follow 3432
+nouns, or that all sentences have verbs. 3433
+Given that the label space is exponentially large in the length of the sequence M, can 3434
+it ever be practical to perform tagging in this way? The problem of making a series of in- 3435
+terconnected labeling decisions is known as inference . Because natural language is full of 3436
+interrelated grammatical structures, inference is a crucial aspect of natural language pro- 3437
+cessing. In English, it is not unusual to have sentences of length M= 20 ; part-of-speech 3438
+tag sets vary in size from 10to several hundred. Taking the low end of this range, we have 3439
+|Y(w1:M)|≈1020, one hundred billion billion possible tag sequences. Enumerating and 3440
+scoring each of these sequences would require an amount of work that is exponential in 3441
+the sequence length, so inference is intractable. 3442
+However, the situation changes when we restrict the scoring function. Suppose we
+choose a function that decomposes into a sum of local parts,
+Ψ(w,y) =M+1∑
+m=1ψ(w,ym,ym−1,m), [7.8]
+where each ψ(·)scores a local part of the tag sequence. Note that the sum goes up to M+1, 3443
+so that we can include a score for a special end-of-sequence tag, ψ(w1:M,♦,yM,M+ 1) . 3444
+We also deﬁne a special the tag to begin the sequence, y0≜♦. 3445
+1The main exception occurs with ditransitive verbs, such as They gave the winner a trophy.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+158 CHAPTER 7. SEQUENCE LABELING
+In a linear model, local scoring function can be deﬁned as a dot product of weights 3446
+and features, 3447
+ψ(w1:M,ym,ym−1,m) =θ·f(w,ym,ym−1,m). [7.9]
+The feature vector fcan consider the entire input w, and can look at pairs of adjacent 3448
+tags. This is a step up from per-token classiﬁcation: the weights can assign low scores 3449
+to infelicitous tag pairs, such as noun-determiner, and high scores for frequent tag pairs, 3450
+such as determiner-noun and noun-verb. 3451
+In the example they can ﬁsh , a minimal feature function would include features for
+word-tag pairs (sometimes called emission features ) and tag-tag pairs (sometimes called
+transition features ):
+f(w=they can ﬁsh ,y=N V V ) =M+1∑
+m=1f(w,ym,ym−1,m) [7.10]
+=f(w,N,♦,1)
++f(w,V,N,2)
++f(w,V,V,3)
++f(w,♦,V,4) [7.11]
+=(wm=they,ym=N) + (ym=N,ym−1=♦)
++ (wm=can,ym=V) + (ym=V,ym−1=N)
++ (wm=ﬁsh,ym=V) + (ym=V,ym−1=V)
++ (ym=♦,ym−1=V). [7.12]
+There are seven active features for this example: one for each word-tag pair, and one 3452
+for each tag-tag pair, including a ﬁnal tag yM+1=♦. These features capture the two main 3453
+sources of information for part-of-speech tagging in English: which tags are appropriate 3454
+for each word, and which tags tend to follow each other in sequence. Given appropriate 3455
+weights for these features, taggers can achieve high accuracy, even for difﬁcult cases like 3456
+the old man the boat. We will now discuss how this restricted scoring function enables 3457
+efﬁcient inference, through the Viterbi algorithm (Viterbi, 1967). 3458
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.3. THE VITERBI ALGORITHM 159
+7.3 The Viterbi algorithm 3459
+By decomposing the scoring function into a sum of local parts, it is possible to rewrite the
+tagging problem as follows:
+ˆy= argmax
+y∈Y(w)Ψ(w,y) [7.13]
+= argmax
+y1:MM+1∑
+m=1ψ(w,ym,ym−1,m) [7.14]
+= argmax
+y1:MM+1∑
+m=1sm(ym,ym−1), [7.15]
+where the ﬁnal line simpliﬁes the notation with the shorthand, 3460
+sm(ym,ym−1)≜ψ(w1:M,ym,ym−1,m). [7.16]
+This inference problem can be solved efﬁciently using dynamic programming , a al-
+gorithmic technique for reusing work in recurrent computations. As is often the case in
+dynamic programming, we begin by solving an auxiliary problem: rather than ﬁnding
+the best tag sequence, we simply compute the score of the best tag sequence,
+max
+y1:MΨ(w,y1:M) = max
+y1:MM+1∑
+m=1sm(ym,ym−1). [7.17]
+This score involves a maximization over all tag sequences of length M, written maxy1:M.
+This maximization can be broken into two pieces,
+max
+y1:MΨ(w,y1:M) = max
+yMmax
+y1:M−1M+1∑
+m=1sm(ym,ym−1), [7.18]
+which simply says that we maximize over the ﬁnal tag yM, and we maximize over all
+“preﬁxes”,y1:M−1. But within the sum of scores, only the ﬁnal term sM+1(♦,yM)depends
+onyM. We can pull this term out of the second maximization,
+max
+y1:MΨ(w,y1:M) = max
+yMsM+1(♦,yM) + max
+y1:M−1M∑
+m=1sm(ym,ym−1). [7.19]
+This same reasoning can be applied recursively to the second term of Equation 7.19,
+pulling out sM(yM,yM−1), and so on. We can formalize this idea by deﬁning an auxiliary
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+160 CHAPTER 7. SEQUENCE LABELING
+Algorithm 11 The Viterbi algorithm. Each sm(k,k′)is a local score for tag ym=kand
+ym−1=k′.
+fork∈{0,...K}do
+v1(k) =s1(k,♦)
+form∈{2,...,M}do
+fork∈{0,...,K}do
+vm(k) = maxk′sm(k,k′) +vm−1(k′)
+bm(k) = argmaxk′sm(k,k′) +vm−1(k′)
+yM= argmaxksM+1(♦,k) +vM(k)
+form∈{M−1,...1}do
+ym=bm(ym+1)
+returny1:M
+Viterbi variable ,
+vm(ym)≜max
+y1:m−1m∑
+n=1sn(yn,yn−1) [7.20]
+= max
+ym−1sm(ym,ym−1) + max
+y1:m−2m−1∑
+n=1sn(yn,yn−1) [7.21]
+= max
+ym−1sm(ym,ym−1) +vm−1(ym−1). [7.22]
+The variable vm(k)represents the score of the best sequence of length mending in tag k. 3461
+Each set of Viterbi variables is computed from the local score sm(ym,ym−1), and from
+the previous set of Viterbi variables. The initial condition of the recurrence is simply the
+ﬁrst score,
+v1(y1)≜s1(y1,♦). [7.23]
+The maximum overall score for the sequence is then the ﬁnal Viterbi variable,
+max
+y1:MΨ(w1:M,y1:M) =vM+1(♦). [7.24]
+Thus, the score of the best labeling for the sequence can be computed in a single forward 3462
+sweep: ﬁrst compute all variables v1(·)from Equation 7.23, and then compute all variables 3463
+v2(·)from the recurrence Equation 7.22, and continue until reaching the ﬁnal variable 3464
+vM+1(♦). 3465
+Graphically, it is customary to arrange these variables in a structure known as a trellis , 3466
+shown in Figure 7.1. Each column indexes a token min the sequence, and each row 3467
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.3. THE VITERBI ALGORITHM 161
+0 they can ﬁsh -10
+N -3 -9 -9
+V -12 -5 -11
+Figure 7.1: The trellis representation of the Viterbi variables, for the example they can ﬁsh ,
+using the weights shown in Table 7.1.
+indexes a tag inY; everyvm−1(k)is connected to every vm(k′), thatvm(k′)is computed 3468
+fromvm−1(k). Special nodes are set aside for the start and end states. 3469
+Our real goal is to ﬁnd the best scoring sequence, not simply to compute its score. 3470
+But solving the auxiliary problem gets us almost all the way there. Recall that each vm(k) 3471
+represents the score of the best tag sequence ending in that tag kin positionm. To compute 3472
+this, we maximize over possible values of ym−1. If we keep track of the “argmax” tag that 3473
+maximizes this choice at each step, then we can walk backwards from the ﬁnal tag, and 3474
+recover the optimal tag sequence. This is indicated in Figure 7.1 by the solid blue lines, 3475
+which we trace back from the ﬁnal position. These “back-pointers” are written bm(k), 3476
+indicating the optimal tag ym−1on the path to Ym=k. 3477
+The complete Viterbi algorithm is shown in Algorithm 11. When computing the initial 3478
+Viterbi variables v1(·), we use a special tag, ♦, to indicate the start of the sequence. When 3479
+computing the ﬁnal tag YM, we use another special tag, ♦, to indicate the end of the 3480
+sequence. Linguistically, these special tags enable the use of transition features for the tags 3481
+that begin and end the sequence: for example, conjunctions are unlikely to end sentences 3482
+in English, so we would like a low score for sM+1(♦,CC); nouns are relatively likely to 3483
+appear at the beginning of sentences, so we would like a high score for s1(N,♦), assuming 3484
+the noun tag is compatible with the ﬁrst word token w1. 3485
+Complexity If there are Ktags andMpositions in the sequence, then there are M×K 3486
+Viterbi variables to compute. Computing each variable requires ﬁnding a maximum over 3487
+Kpossible predecessor tags. The total time complexity of populating the trellis is there- 3488
+foreO(MK2), with an additional factor for the number of active features at each position. 3489
+After completing the trellis, we simply trace the backwards pointers to the beginning of 3490
+the sequence, which takes O(M)operations. 3491
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+162 CHAPTER 7. SEQUENCE LABELING
+they can ﬁsh
+N−2−3−3
+V−10−1−3
+(a) Weights for emission features.N V♦
+♦−1−2−∞
+N−3−1−1
+V−1−3−1
+(b) Weights for transition features. The
+“from” tags are on the columns, and the “to”
+tags are on the rows.
+Table 7.1: Feature weights for the example trellis shown in Figure 7.1. Emission weights
+from♦and♦are implicitly set to −∞.
+7.3.1 Example 3492
+Consider the minimal tagset {N,V}, corresponding to nouns and verbs. Even in this 3493
+tagset, there is considerable ambiguity: for example, the words canand ﬁshcan each take 3494
+both tags. Of the 2×2×2 = 8 possible taggings for the sentence they can ﬁsh , four are 3495
+possible given these possible tags, and two are grammatical.23496
+The values in the trellis in Figure 7.1 are computed from the feature weights deﬁned in 3497
+Table 7.1. We begin with v1(N), which has only one possible predecessor, the start tag ♦. 3498
+This score is therefore equal to s1(N,♦) =−2−1 =−3, which is the sum of the scores for 3499
+the emission and transition features respectively; the backpointer is b1(N) =♦. The score 3500
+forv1(V)is computed in the same way: s1(V,♦) =−10−2 =−12, and again b1(V) =♦. 3501
+The backpointers are represented in the ﬁgure by thick lines. 3502
+Things get more interesting at m= 2. The score v2(N)is computed by maximizing
+over the two possible predecessors,
+v2(N) = max(v1(N) +s2(N,N),v1(V) +s2(N,V)) [7.25]
+= max(−3−3−3,−12−3−1) =−9 [7.26]
+b2(N) =N. [7.27]
+This continues until reaching v4(♦), which is computed as,
+v4(♦) = max(v3(N) +s4(♦,N),v3(V) +s4(♦,V)) [7.28]
+= max(−9 + 0−1,−11 + 0−1) [7.29]
+=−10, [7.30]
+sob4(♦) =N. As there is no emission w4, the emission features have scores of zero. 3503
+2The tagging they/Ncan/Vﬁsh/N corresponds to the scenario of putting ﬁsh into cans, or perhaps of
+ﬁring them.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.4. HIDDEN MARKOV MODELS 163
+To compute the optimal tag sequence, we walk backwards from here, next checking 3504
+b3(N) =V, and then b2(V) =N, and ﬁnally b1(N) =♦. This yieldsy= (N,V,N), which 3505
+corresponds to the linguistic interpretation of the ﬁshes being put into cans. 3506
+7.3.2 Higher-order features 3507
+The Viterbi algorithm was made possible by a restriction of the scoring function to local 3508
+parts that consider only pairs of adjacent tags. We can think of this as a bigram language 3509
+model over tags. A natural question is how to generalize Viterbi to tag trigrams, which 3510
+would involve the following decomposition: 3511
+Ψ(w,y) =M+2∑
+m=1f(w,ym,ym−1,ym−2,m), [7.31]
+wherey−1=♦andyM+2=♦. 3512
+One solution is to create a new tagset Y(2)from the Cartesian product of the original 3513
+tagset with itself, Y(2)=Y×Y . The tags in this product space are ordered pairs, rep- 3514
+resenting adjacent tags at the token level: for example, the tag (N,V)would represent a 3515
+noun followed by a verb. Transitions between such tags must be consistent: we can have a 3516
+transition from (N,V)to(V,N)(corresponding to the tag sequence N V N), but not from 3517
+(N,V)to(N,N), which would not correspond to any coherent tag sequence. This con- 3518
+straint can be enforced in feature weights, with θ((a,b),(c,d))=−∞ ifb̸=c. The remaining 3519
+feature weights can encode preferences for and against various tag trigrams. 3520
+In the Cartesian product tag space, there are K2tags, suggesting that the time com- 3521
+plexity will increase to O(MK4). However, it is unnecessary to max over predecessor tag 3522
+bigrams that are incompatible with the current tag bigram. By exploiting this constraint, 3523
+it is possible to limit the time complexity to O(MK3). The space complexity grows to 3524
+O(MK2), since the trellis must store all possible predecessors of each tag. In general, the 3525
+time and space complexity of higher-order Viterbi grows exponentially with the order of 3526
+the tagn-grams that are considered in the feature decomposition. 3527
+7.4 Hidden Markov Models 3528
+Let us now consider how to learn the scores sm(y,y′)that parametrize the Viterbi sequence 3529
+labeling algorithm, beginning with a probabilistic approach. Recall from §2.1 that the 3530
+probabilistic Na ¨ıve Bayes classiﬁer selects the label yto maximize p (y|x)∝p(y,x). In 3531
+probabilistic sequence labeling, our goal is similar: select the tag sequence that maximizes 3532
+p(y|w)∝p(y,w). The locality restriction in Equation 7.8 can be viewed as a conditional 3533
+independence assumption on the random variables y. 3534
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+164 CHAPTER 7. SEQUENCE LABELING
+Algorithm 12 Generative process for the hidden Markov model
+y0←♦, m←1
+repeat
+ym∼Categorical (λym−1) ⊿sample the current tag
+wm∼Categorical (φym) ⊿sample the current word
+untilym=♦ ⊿terminate when the stop symbol is generated
+Na¨ıve Bayes was introduced as a generative model — a probabilistic story that ex- 3535
+plains the observed data as well as the hidden label. A similar story can be constructed 3536
+for probabilistic sequence labeling: ﬁrst, the tags are drawn from a prior distribution; next, 3537
+the tokens are drawn from a conditional likelihood. However, for inference to be tractable, 3538
+additional independence assumptions are required. First, the probability of each token 3539
+depends only on its tag, and not on any other element in the sequence: 3540
+p(w|y) =M∏
+m=1p(wm|ym). [7.32]
+Second, each tag ymdepends only on its predecessor, 3541
+p(y) =M∏
+m=1p(ym|ym−1), [7.33]
+wherey0=♦in all cases. Due to this Markov assumption , probabilistic sequence labeling 3542
+models are known as hidden Markov models (HMMs). 3543
+The generative process for the hidden Markov model is shown in Algorithm 12. Given 3544
+the parameters λandφ, we can compute p (w,y)for any token sequence wand tag se- 3545
+quencey. The HMM is often represented as a graphical model (Wainwright and Jordan, 3546
+2008), as shown in Figure 7.2. This representation makes the independence assumptions 3547
+explicit: if a variable v1is probabilistically conditioned on another variable v2, then there 3548
+is an arrow v2→v1in the diagram. If there are no arrows between v1andv2, they 3549
+areconditionally independent , given each variable’s Markov blanket . In the hidden 3550
+Markov model, the Markov blanket for each tag ymincludes the “parent” ym−1, and the 3551
+“children” ym+1andwm.33552
+It is important to reﬂect on the implications of the HMM independence assumptions. 3553
+A non-adjacent pair of tags ymandynare conditionally independent; if m < n and we 3554
+are givenyn−1, thenymoffers no additional information about yn. However, if we are 3555
+not given any information about the tags in a sequence, then all tags are probabilistically 3556
+coupled. 3557
+3In general graphical models, a variable’s Markov blanket includes its parents, children, and its children’s
+other parents (Murphy, 2012).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.4. HIDDEN MARKOV MODELS 165
+y1 y2 · · · yM
+w1 w2 · · · wM
+Figure 7.2: Graphical representation of the hidden Markov model. Arrows indicate prob-
+abilistic dependencies.
+7.4.1 Estimation 3558
+The hidden Markov model has two groups of parameters: 3559
+Emission probabilities. The probability pe(wm|ym;φ)is the emission probability, since 3560
+the words are treated as probabilistically “emitted”, conditioned on the tags. 3561
+Transition probabilities. The probability pt(ym|ym−1;λ)is the transition probability, 3562
+since it assigns probability to each possible tag-to-tag transition. 3563
+Both of these groups of parameters are typically computed from smoothed relative
+frequency estimation on a labeled corpus (see §6.2 for a review of smoothing). The un-
+smoothed probabilities are,
+φk,i≜Pr(Wm=i|Ym=k) =count (Wm=i,Ym=k)
+count (Ym=k)
+λk,k′≜Pr(Ym=k′|Ym−1=k) =count (Ym=k′,Ym−1=k)
+count (Ym−1=k).
+Smoothing is more important for the emission probability than the transition probability, 3564
+because the vocabulary is much larger than the number of tags. 3565
+7.4.2 Inference 3566
+The goal of inference in the hidden Markov model is to ﬁnd the highest probability tag 3567
+sequence, 3568
+ˆy= argmax
+yp(y|w). [7.34]
+As in Na ¨ıve Bayes, it is equivalent to ﬁnd the tag sequence with the highest log-probability, 3569
+since the logarithm is a monotonically increasing function. It is furthermore equivalent 3570
+to maximize the joint probability p (y,w) = p(y|w)×p(w)∝p(y|w), which is pro- 3571
+portional to the conditional probability. Putting these observations together, the inference 3572
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+166 CHAPTER 7. SEQUENCE LABELING
+problem can be reformulated as, 3573
+ˆy= argmax
+ylogp(y,w). [7.35]
+We can now apply the HMM independence assumptions:
+logp(y,w) = log p(y) + log p(w|y) [7.36]
+=M+1∑
+m=1logpY(ym|ym−1) + log pW|Y(wm|ym) [7.37]
+=M+1∑
+m=1logλym,ym−1+ logφym,wm [7.38]
+=M+1∑
+m=1sm(ym,ym−1), [7.39]
+where,
+sm(ym,ym−1)≜logλym,ym−1+ logφym,wm, [7.40]
+and, 3574
+φ♦,w={
+1, w =■
+0,otherwise,[7.41]
+which ensures that the stop tag ♦can only be applied to the ﬁnal token ■. 3575
+This derivation shows that HMM inference can be viewed as an application of the
+Viterbi decoding algorithm, given an appropriately deﬁned scoring function. The local
+scoresm(ym,ym−1)can be interpreted probabilistically,
+sm(ym,ym−1) = log py(ym|ym−1) + log pw|y(wm|ym) [7.42]
+= log p(ym,wm|ym−1). [7.43]
+Now recall the deﬁnition of the Viterbi variables,
+vm(ym) = max
+ym−1sm(ym,ym−1) +vm−1(ym−1) [7.44]
+= max
+ym−1logp(ym,wm|ym−1) +vm−1(ym−1). [7.45]
+By settingvm−1(ym−1) = maxy1:m−2logp(y1:m−1,w1:m−1), we obtain the recurrence,
+vm(ym) = max
+ym−1logp(ym,wm|ym−1) + max
+y1:m−2logp(y1:m−1,w1:m−1) [7.46]
+= max
+y1:m−1logp(ym,wm|ym−1) + log p(y1:m−1,w1:m−1) [7.47]
+= max
+y1:m−1logp(y1:m,w1:m). [7.48]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.5. DISCRIMINATIVE SEQUENCE LABELING WITH FEATURES 167
+In words, the Viterbi variable vm(ym)is the log probability of the best tag sequence ending
+inym, joint with the word sequence w1:m. The log probability of the best complete tag
+sequence is therefore,
+max
+y1:Mlogp(y1:M+1,w1:M+1) =vM+1(♦) [7.49]
+*Viterbi as an example of the max-product algorithm The Viterbi algorithm can also be
+implemented using probabilities, rather than log-probabilities. In this case, each vm(ym)
+is equal to,
+vm(ym) = max
+y1:m−1p(y1:m−1,ym,w1:m) [7.50]
+= max
+ym−1p(ym,wm|ym−1)×max
+y1:m−2p(y1:m−2,ym−1,w1:m−1) [7.51]
+= max
+ym−1p(ym,wm|ym−1)×vm−1(ym−1) [7.52]
+=pw|y(wm|ym)×max
+ym−1py(ym|ym−1)×vm−1(ym−1). [7.53]
+Each Viterbi variable is computed by maximizing over a set of products . Thus, the Viterbi 3576
+algorithm is a special case of the max-product algorithm for inference in graphical mod- 3577
+els (Wainwright and Jordan, 2008). However, the product of probabilities tends towards 3578
+zero over long sequences, so the log-probability version of Viterbi is recommended in 3579
+practical implementations. 3580
+7.5 Discriminative sequence labeling with features 3581
+Today, hidden Markov models are rarely used for supervised sequence labeling. This is 3582
+because HMMs are limited to only two phenomena: 3583
+•word-tag compatibility, via the emission probability pW|Y(wm|ym); 3584
+•local context, via the transition probability pY(ym|ym−1). 3585
+The Viterbi algorithm permits the inclusion of richer information in the local scoring func- 3586
+tionψ(w1:M,ym,ym−1,m), which can be deﬁned as a weighted sum of arbitrary local fea- 3587
+tures , 3588
+ψ(w,ym,ym−1,m) =θ·f(w,ym,ym−1,m), [7.54]
+wherefis a locally-deﬁned feature function, and θis a vector of weights. 3589
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+168 CHAPTER 7. SEQUENCE LABELING
+The local decomposition of the scoring function Ψis reﬂected in a corresponding de-
+composition of the feature function:
+Ψ(w,y) =M+1∑
+m=1ψ(w,ym,ym−1,m) [7.55]
+=M+1∑
+m=1θ·f(w,ym,ym−1,m) [7.56]
+=θ·M+1∑
+m=1f(w,ym,ym−1,m) [7.57]
+=θ·f(global )(w,y1:M), [7.58]
+wheref(global )(w,y)is a global feature vector, which is a sum of local feature vectors, 3590
+f(global )(w,y) =M+1∑
+m=1f(w1:M,ym,ym−1,m), [7.59]
+withyM+1=♦andy0=♦by construction. 3591
+Let’s now consider what additional information these features might encode. 3592
+Word afﬁx features. Consider the problem of part-of-speech tagging on the ﬁrst four 3593
+lines of the poem Jabberwocky (Carroll, 1917): 3594
+(7.3) ’Twas brillig, and the slithy toves 3595
+Did gyre and gimble in the wabe: 3596
+All mimsy were the borogoves, 3597
+And the mome raths outgrabe. 3598
+Many of these words were made up by the author of the poem, so a corpus would offer 3599
+no information about their probabilities of being associated with any particular part of 3600
+speech. Yet it is not so hard to see what their grammatical roles might be in this passage. 3601
+Context helps: for example, the word slithy follows the determiner the, so it is probably a 3602
+noun or adjective. Which do you think is more likely? The sufﬁx -thy is found in a number 3603
+of adjectives, like frothy, healthy, pithy, worthy . It is also found in a handful of nouns — e.g., 3604
+apathy, sympathy — but nearly all of these have the longer coda -pathy , unlike slithy . So the 3605
+sufﬁx gives some evidence that slithy is an adjective, and indeed it is: later in the text we 3606
+ﬁnd that it is a combination of the adjectives lithe and slimy .43607
+4Morphology is the study of how words are formed from smaller linguistic units. Computational ap-
+proaches to morphological analysis are touched on in chapter 9; Bender (2013) provides a good overview of
+the underlying linguistic principles.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.5. DISCRIMINATIVE SEQUENCE LABELING WITH FEATURES 169
+Fine-grained context. The hidden Markov model captures contextual information in the 3608
+form of part-of-speech tag bigrams. But sometimes, the necessary contextual information 3609
+is more speciﬁc. Consider the noun phrases this ﬁsh and these ﬁsh . Many part-of-speech 3610
+tagsets distinguish between singular and plural nouns, but do not distinguish between 3611
+singular and plural determiners.5A hidden Markov model would be unable to correctly 3612
+label ﬁshas singular or plural in both of these cases, because it only has access to two 3613
+features: the preceding tag (determiner in both cases) and the word ( ﬁshin both cases). 3614
+The classiﬁcation-based tagger discussed in §7.1 had the ability to use preceding and suc- 3615
+ceeding words as features, and it can also be incorporated into a Viterbi-based sequence 3616
+labeler as a local feature. 3617
+Example Consider the tagging D J N (determiner, adjective, noun) for the sequence the
+slithy toves , so that
+w=the slithy toves
+y=D J N.
+Let’s create the feature vector for this example, assuming that we have word-tag features
+(indicated by W), tag-tag features (indicated by T), and sufﬁx features (indicated by M).
+You can assume that you have access to a method for extracting the sufﬁx -thy from slithy ,
+-esfrom toves , and ∅from the, indicating that this word has no sufﬁx.6The resulting
+feature vector is,
+f(the slithy toves ,D J N ) =f(the slithy toves ,D,♦,1)
++f(the slithy toves ,J,D,2)
++f(the slithy toves ,N,J,3)
++f(the slithy toves ,♦,N,4)
+={(T:♦,D),(W:the,D),(M:∅,D),
+(T:D,J),(W:slithy,J),(M:-thy,J),
+(T:J,N),(W:toves,N),(M:-es,N)
+(T:N,♦)}.
+These examples show that local features can incorporate information that lies beyond 3618
+the scope of a hidden Markov model. Because the features are local, it is possible to apply 3619
+the Viterbi algorithm to identify the optimal sequence of tags. The remaining question 3620
+5For example, the Penn Treebank tagset follows these conventions.
+6Such a system is called a morphological segmenter . The task of morphological segmentation is brieﬂy
+described in§9.1.4.4; a well known segmenter is Morfessor (Creutz and Lagus, 2007). In real applica-
+tions, a typical approach is to include features for all orthographic sufﬁxes up to some maximum number of
+characters: for slithy , we would have sufﬁx features for -y,-hy, and -thy.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+170 CHAPTER 7. SEQUENCE LABELING
+is how to estimate the weights on these features. §2.2 presented three main types of 3621
+discriminative classiﬁers: perceptron, support vector machine, and logistic regression. 3622
+Each of these classiﬁers has a structured equivalent, enabling it to be trained from labeled 3623
+sequences rather than individual tokens. 3624
+7.5.1 Structured perceptron 3625
+The perceptron classiﬁer is trained by increasing the weights for features that are asso-
+ciated with the correct label, and decreasing the weights for features that are associated
+with incorrectly predicted labels:
+ˆy= argmax
+y∈Yθ·f(x,y) [7.60]
+θ(t+1)←θ(t)+f(x,y)−f(x,ˆy). [7.61]
+We can apply exactly the same update in the case of structure prediction,
+ˆy= argmax
+y∈Y(w)θ·f(w,y) [7.62]
+θ(t+1)←θ(t)+f(w,y)−f(w,ˆy). [7.63]
+This learning algorithm is called structured perceptron , because it learns to predict the 3626
+structured output y. The only difference is that instead of computing ˆyby enumerating 3627
+the entire setY, the Viterbi algorithm is used to efﬁciently search the set of possible tag- 3628
+gings,YM. Structured perceptron can be applied to other structured outputs as long as 3629
+efﬁcient inference is possible. As in perceptron classiﬁcation, weight averaging is crucial 3630
+to get good performance (see §2.2.2). 3631
+Example For the example they can ﬁsh , suppose that the reference tag sequence is y(i)=
+N V V, but the tagger incorrectly returns the tag sequence ˆy=N V N. Assuming a model
+with features for emissions (wm,ym)and transitions (ym−1,ym), the corresponding struc-
+tured perceptron update is:
+θ(ﬁsh,V)←θ(ﬁsh,V)+ 1, θ (ﬁsh,N)←θ(ﬁsh,N)−1 [7.64]
+θ(V,V)←θ(V,V)+ 1, θ (V,N)←θ(V,N)−1 [7.65]
+θ(V,♦)←θ(V,♦)+ 1, θ (N,♦)←θ(N,♦)−1. [7.66]
+7.5.2 Structured support vector machines 3632
+Large-margin classiﬁers such as the support vector machine improve on the perceptron by 3633
+pushing the classiﬁcation boundary away from the training instances. The same idea can 3634
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.5. DISCRIMINATIVE SEQUENCE LABELING WITH FEATURES 171
+be applied to sequence labeling. A support vector machine in which the output is a struc- 3635
+tured object, such as a sequence, is called a structured support vector machine (Tsochan- 3636
+taridis et al., 2004).73637
+In classiﬁcation, we formalized the large-margin constraint as, 3638
+∀y̸=y(i),θ·f(x,y(i))−θ·f(x,y)≥1, [7.67]
+requiring a margin of at least 1between the scores for all labels ythat are not equal to the 3639
+correct label y(i). The weights θare then learned by constrained optimization (see §2.3.2). 3640
+This idea can be applied to sequence labeling by formulating an equivalent set of con- 3641
+straints for all possible labelings Y(w)for an inputw. However, there are two problems. 3642
+First, in sequence labeling, some predictions are more wrong than others: we may miss 3643
+only one tag out of ﬁfty, or we may get all ﬁfty wrong. We would like our learning algo- 3644
+rithm to be sensitive to this difference. Second, the number of constraints is equal to the 3645
+number of possible labelings, which is exponentially large in the length of the sequence. 3646
+The ﬁrst problem can be addressed by adjusting the constraint to require larger mar- 3647
+gins for more serious errors. Let c(y(i),ˆy)≥0represent the costof predicting label ˆywhen 3648
+the true label is y(i). We can then generalize the margin constraint, 3649
+∀y,θ·f(w(i),y(i))−θ·f(w(i),y)≥c(y(i),y). [7.68]
+This cost-augmented margin constraint specializes to the constraint in Equation 7.67 if we 3650
+choose the delta function c(y(i),y) =δ(()y(i)̸=y). A more expressive cost function is 3651
+theHamming cost , 3652
+c(y(i),y) =M∑
+m=1δ(y(i)
+m̸=ym), [7.69]
+which computes the number of errors in y. By incorporating the cost function as the 3653
+margin constraint, we require that the true labeling be seperated from the alternatives by 3654
+a margin that is proportional to the number of incorrect tags in each alternative labeling. 3655
+The second problem is that the number of constraints is exponential in the length
+of the sequence. This can be addressed by focusing on the prediction ˆythat maximally
+violates the margin constraint. This prediction can be identiﬁed by solving the following
+cost-augmented decoding problem:
+ˆy= argmax
+y̸=y(i)θ·f(w(i),y)−θ·f(w(i),y(i)) +c(y(i),y) [7.70]
+= argmax
+y̸=y(i)θ·f(w(i),y) +c(y(i),y), [7.71]
+7This model is also known as a max-margin Markov network (Taskar et al., 2003), emphasizing that the
+scoring function is constructed from a sum of components, which are Markov independent.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+172 CHAPTER 7. SEQUENCE LABELING
+where in the second line we drop the term θ·f(w(i),y(i)), which is constant in y. 3656
+We can now reformulate the margin constraint for sequence labeling,
+θ·f(w(i),y(i))−max
+y∈Y(w)(
+θ·f(w(i),y) +c(y(i),y))
+≥0. [7.72]
+If the score for θ·f(w(i),y(i))is greater than the cost-augmented score for all alternatives, 3657
+then the constraint will be met. The name “cost-augmented decoding” is due to the fact 3658
+that the objective includes the standard decoding problem, max ˆy∈Y(w)θ·f(w,ˆy), plus 3659
+an additional term for the cost. Essentially, we want to train against predictions that are 3660
+strong and wrong: they should score highly according to the model, yet incur a large loss 3661
+with respect to the ground truth. Training adjusts the weights to reduce the score of these 3662
+predictions. 3663
+For cost-augmented decoding to be tractable, the cost function must decompose into 3664
+local parts, just as the feature function f(·)does. The Hamming cost, deﬁned above, 3665
+obeys this property. To perform cost-augmented decoding using the Hamming cost, we 3666
+need only to add features fm(ym) =δ(ym̸=y(i)
+m), and assign a constant weight of 1to 3667
+these features. Decoding can then be performed using the Viterbi algorithm.83668
+As with large-margin classiﬁers, it is possible to formulate the learning problem in an
+unconstrained form, by combining a regularization term on the weights and a Lagrangian
+for the constraints:
+min
+θ1
+2||θ||2
+2−C(∑
+iθ·f(w(i),y(i))−max
+y∈Y(w(i))[
+θ·f(w(i),y) +c(y(i),y)])
+,[7.73]
+In this formulation, Cis a parameter that controls the tradeoff between the regulariza- 3669
+tion term and the margin constraints. A number of optimization algorithms have been 3670
+proposed for structured support vector machines, some of which are discussed in §2.3.2. 3671
+An empirical comparison by Kummerfeld et al. (2015) shows that stochastic subgradient 3672
+descent — which is essentially a cost-augmented version of the structured perceptron — 3673
+is highly competitive. 3674
+7.5.3 Conditional random ﬁelds 3675
+The conditional random ﬁeld (CRF; Lafferty et al., 2001) is a conditional probabilistic 3676
+model for sequence labeling; just as structured perceptron is built on the perceptron clas- 3677
+siﬁer, conditional random ﬁelds are built on the logistic regression classiﬁer.9The basic 3678
+8Are there cost functions that do not decompose into local parts? Suppose we want to assign a constant
+losscto any prediction ˆyin whichkor more predicted tags are incorrect, and zero loss otherwise. This loss
+function is combinatorial over the predictions, and thus we cannot decompose it into parts.
+9The name “Conditional Random Field” is derived from Markov random ﬁelds , a general class of models
+in which the probability of a conﬁguration of variables is proportional to a product of scores across pairs (or
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.5. DISCRIMINATIVE SEQUENCE LABELING WITH FEATURES 173
+probability model is, 3679
+p(y|w) =exp(Ψ(w,y))∑
+y′∈Y(w)exp(Ψ(w,y′)). [7.74]
+This is almost identical to logistic regression, but because the label space is now tag 3680
+sequences, we require efﬁcient algorithms for both decoding (searching for the best tag 3681
+sequence given a sequence of words wand a model θ) and for normalizing (summing 3682
+over all tag sequences). These algorithms will be based on the usual locality assumption 3683
+on the scoring function, Ψ(w,y) =∑M+1
+m=1ψ(w,ym,ym−1,m). 3684
+7.5.3.1 Decoding in CRFs 3685
+Decoding — ﬁnding the tag sequence ˆythat maximizes p (y|w)— is a direct applica-
+tion of the Viterbi algorithm. The key observation is that the decoding problem does not
+depend on the denominator of p (y|w),
+ˆy= argmax
+ylogp(y|w)
+= argmax
+yΨ(y,w)−log∑
+y′∈Y(w)exp Ψ(y′,w)
+= argmax
+yΨ(y,w) = argmax
+yM+1∑
+m=1s(ym,ym−1).
+This is identical to the decoding problem for structured perceptron, so the same Viterbi 3686
+recurrence as deﬁned in Equation 7.22 can be used. 3687
+7.5.3.2 Learning in CRFs 3688
+As with logistic regression, the weights θare learned by minimizing the regularized neg-
+ative log-probability,
+ℓ=λ
+2||θ||2−N∑
+i=1logp(y(i)|w(i);θ) [7.75]
+=λ
+2||θ||2−N∑
+i=1θ·f(w(i),y(i)) + log∑
+y′∈Y(w(i))exp(
+θ·f(w(i),y′))
+, [7.76]
+more generally, cliques) of variables in a factor graph . In sequence labeling, the pairs of variables include
+all adjacent tags (ym,ym−1). The probability is conditioned on the words w, which are always observed,
+motivating the term “conditional” in the name.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+174 CHAPTER 7. SEQUENCE LABELING
+whereλcontrols the amount of regularization. The ﬁnal term in Equation 7.76 is a sum 3689
+over all possible labelings. This term is the log of the denominator in Equation 7.74, some- 3690
+times known as the partition function .10There are|Y|Mpossible labelings of an input of 3691
+sizeM, so we must again exploit the decomposition of the scoring function to compute 3692
+this sum efﬁciently. 3693
+The sum∑
+y∈Yw(i)exp Ψ(y,w)can be computed efﬁciently using the forward recur-
+rence , which is closely related to the Viterbi recurrence. We ﬁrst deﬁne a set of forward
+variables ,αm(ym), which is equal to the sum of the scores of all paths leading to tag ymat
+positionm:
+αm(ym)≜∑
+y1:m−1expm∑
+n=1sn(yn,yn−1) [7.77]
+=∑
+y1:m−1m∏
+n=1expsn(yn,yn−1). [7.78]
+Note the similarity to the deﬁnition of the Viterbi variable, vm(ym) = maxy1:m−1∑m
+n=1sn(yn,yn−1).
+In the hidden Markov model, the Viterbi recurrence had an alternative interpretation as
+the max-product algorithm (see Equation 7.53); analogously, the forward recurrence is
+known as the sum-product algorithm , because of the form of [7.78]. The forward variable
+can also be computed through a recurrence:
+αm(ym) =∑
+y1:m−1m∏
+n=1expsn(yn,yn−1) [7.79]
+=∑
+ym−1(expsm(ym,ym−1))∑
+y1:m−2m−1∏
+n=1expsn(yn,yn−1) [7.80]
+=∑
+ym−1(expsm(ym,ym−1))×αm−1(ym−1). [7.81]
+Using the forward recurrence, it is possible to compute the denominator of the condi-
+tional probability,
+∑
+y∈Y(w)Ψ(w,y) =∑
+y1:MsM+1(♦,yM)M∏
+m=1sm(ym,ym−1) [7.82]
+=αM+1(♦). [7.83]
+10The terminology of “potentials” and “partition functions” comes from statistical mechanics (Bishop,
+2006).
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.5. DISCRIMINATIVE SEQUENCE LABELING WITH FEATURES 175
+The conditional log-likelihood can be rewritten,
+ℓ=λ
+2||θ||2−N∑
+i=1θ·f(w(i),y(i)) + logαM+1(♦). [7.84]
+Probabilistic programming environments, such as Torch (Collobert et al., 2011) and dynet (Neu- 3694
+big et al., 2017), can compute the gradient of this objective using automatic differentiation. 3695
+The programmer need only implement the forward algorithm as a computation graph. 3696
+As in logistic regression, the gradient of the likelihood with respect to the parameters
+is a difference between observed and expected feature counts:
+dℓ
+dθj=λθj+N∑
+i=1E[fj(w(i),y)]−fj(w(i),y(i)), [7.85]
+wherefj(w(i),y(i))refers to the count of feature jfor token sequence w(i)and tag se- 3697
+quencey(i). The expected feature counts are computed “under the hood” when automatic 3698
+differentiation is applied to Equation 7.84 (Eisner, 2016). 3699
+Before the widespread use of automatic differentiation, it was common to compute 3700
+the feature expectations from marginal tag probabilities p (ym|w). These marginal prob- 3701
+abilities are sometimes useful on their own, and can be computed using the forward- 3702
+backward algorithm . This algorithm combines the forward recurrence with an equivalent 3703
+backward recurrence , which traverses the input from wMback tow1. 3704
+7.5.3.3 *Forward-backward algorithm 3705
+Marginal probabilities over tag bigrams can be written as,11
+Pr(Ym−1=k′,Ym=k|w) =∑
+y:Ym=k,Ym−1=k′∏M
+n=1expsn(yn,yn−1)
+∑
+y′∏M
+n=1expsn(y′n,y′
+n−1). [7.86]
+The numerator sums over all tag sequences that include the transition (Ym−1=k′)→
+(Ym=k). Because we are only interested in sequences that include the tag bigram, this
+sum can be decomposed into three parts: the preﬁxesy1:m−1, terminating in Ym−1=k′; the
+11Recall the notational convention of upper-case letters for random variables, e.g. Ym, and lower case
+letters for speciﬁc values, e.g., ym, so thatYm=kis interpreted as the event of random variable Ymtaking
+the valuek.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+176 CHAPTER 7. SEQUENCE LABELING
+Ym−1=k′
+Ym=k
+αm−1(k′)expsm(k,k′)βm(k)
+Figure 7.3: A schematic illustration of the computation of the marginal probability
+Pr(Ym−1=k′,Ym=k), using the forward score αm−1(k′)and the backward score βm(k).
+transition (Ym−1=k′)→(Ym=k); and the sufﬁxesym:M, beginning with the tag Ym=k:
+∑
+y:Ym=k,Ym−1=k′M∏
+n=1expsn(yn,yn−1) =∑
+y1:m−1:Ym−1=k′m−1∏
+n=1expsn(yn,yn−1)
+×expsm(k,k′)
+×∑
+ym:M:Ym=kM+1∏
+n=m+1expsn(yn,yn−1). [7.87]
+The result is product of three terms: a score that sums over all the ways to get to the
+position (Ym−1=k′), a score for the transition from k′tok, and a score that sums over
+all the ways of ﬁnishing the sequence from (Ym=k). The ﬁrst term of Equation 7.87 is
+equal to the forward variable ,αm−1(k′). The third term — the sum over ways to ﬁnish the
+sequence — can also be deﬁned recursively, this time moving over the trellis from right to
+left, which is known as the backward recurrence :
+βm(k)≜∑
+ym:M:Ym=kM+1∏
+n=mexpsn(yn,yn−1) [7.88]
+=∑
+k′∈Yexpsm+1(k′,k)∑
+ym+1:M:Ym=k′M+1∏
+n=m+1expsn(yn,yn−1) [7.89]
+=∑
+k′∈Yexpsm+1(k′,k)×βm+1(k′). [7.90]
+To understand this computation, compare with the forward recurrence in Equation 7.81. 3706
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.6. NEURAL SEQUENCE LABELING 177
+In practice, numerical stability demands that we work in the log domain,
+logαm(k) = log∑
+k′∈Yexp(
+logsm(k,k′) + logαm−1(k′))
+[7.91]
+logβm−1(k) = log∑
+k′∈Yexp(
+logsm(k′,k) + logβm(k′))
+. [7.92]
+The application of the forward and backward probabilities is shown in Figure 7.3. 3707
+Both the forward and backward recurrences operate on the trellis, which implies a space 3708
+complexityO(MK). Because both recurrences require computing a sum over Kterms at 3709
+each node in the trellis, their time complexity is O(MK2). 3710
+7.6 Neural sequence labeling 3711
+In neural network approaches to sequence labeling, we construct a vector representa- 3712
+tion for each tagging decision, based on the word and its context. Neural networks can 3713
+perform tagging as a per-token classiﬁcation decision, or they can be combined with the 3714
+Viterbi algorithm to tag the entire sequence globally. 3715
+7.6.1 Recurrent neural networks 3716
+Recurrent neural networks (RNNs) were introduced in chapter 6 as a language model-
+ing technique, in which the context at token mis summarized by a recurrently-updated
+vector,
+hm=g(xm,hm−1), m = 1,2,...M,
+wherexmis the vector embedding of the token wmand the function gdeﬁnes the recur- 3717
+rence. The starting condition h0is an additional parameter of the model. The long short- 3718
+term memory (LSTM) is a more complex recurrence, in which a memory cell is through a 3719
+series of gates, avoiding repeated application of the non-linearity. Despite these bells and 3720
+whistles, both models share the basic architecture of recurrent updates across a sequence, 3721
+and both will be referred to as RNNs here. 3722
+A straightforward application of RNNs to sequence labeling is to score each tag ymas
+a linear function of hm:
+ψm(y) =βy·hm [7.93]
+ˆym= argmax
+yψm(y). [7.94]
+The scoreψm(y)can also be converted into a probability distribution using the usual soft- 3723
+max operation, 3724
+p(y|w1:m) =expψm(y)∑
+y′∈Yexpψm(y′). [7.95]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+178 CHAPTER 7. SEQUENCE LABELING
+Using this transformation, it is possible to train the tagger from the negative log-likelihood 3725
+of the tags, as in a conditional random ﬁeld. Alternatively, a hinge loss or margin loss 3726
+objective can be constructed from the raw scores ψm(y). 3727
+The hidden state hmaccounts for information in the input leading up to position m,
+but it ignores the subsequent tokens, which may also be relevant to the tag ym. This can
+be addressed by adding a second RNN, in which the input is reversed, running the recur-
+rence from wMtow1. This is known as a bidirectional recurrent neural network (Graves
+and Schmidhuber, 2005), and is speciﬁed as:
+← −hm=g(xm,← −hm+1), m = 1,2,...,M. [7.96]
+The hidden states of the left-to-right RNN are denoted− →hm. The left-to-right and right-to- 3728
+left vectors are concatenated, hm= [← −hm;− →hm]. The scoring function in Equation 7.93 is 3729
+applied to this concatenated vector. 3730
+Bidirectional RNN tagging has several attractive properties. Ideally, the representa- 3731
+tionhmsummarizes the useful information from the surrounding context, so that it is not 3732
+necessary to design explicit features to capture this information. If the vector hmis an ad- 3733
+equate summary of this context, then it may not even be necessary to perform the tagging 3734
+jointly: in general, the gains offered by joint tagging of the entire sequence are diminished 3735
+as the individual tagging model becomes more powerful. Using backpropagation, the 3736
+word vectors xcan be trained “end-to-end”, so that they capture word properties that are 3737
+useful for the tagging task. Alternatively, if limited labeled data is available, we can use 3738
+word embeddings that are “pre-trained” from unlabeled data, using a language modeling 3739
+objective (as in§6.3) or a related word embedding technique (see chapter 14). It is even 3740
+possible to combine both ﬁne-tuned and pre-trained embeddings in a single model. 3741
+Neural structure prediction The bidirectional recurrent neural network incorporates in- 3742
+formation from throughout the input, but each tagging decision is made independently. 3743
+In some sequence labeling applications, there are very strong dependencies between tags: 3744
+it may even be impossible for one tag to follow another. In such scenarios, the tagging 3745
+decision must be made jointly across the entire sequence. 3746
+Neural sequence labeling can be combined with the Viterbi algorithm by deﬁning the 3747
+local scores as: 3748
+sm(ym,ym−1) =βym·hm+ηym−1,ym, [7.97]
+wherehmis the RNN hidden state, βymis a vector associated with tag ym, andηym−1,ym3749
+is a scalar parameter for the tag transition (ym−1,ym). These local scores can then be 3750
+incorporated into the Viterbi algorithm for inference, and into the forward algorithm for 3751
+training. This model is shown in Figure 7.4. It can be trained from the conditional log- 3752
+likelihood objective deﬁned in Equation 7.76, backpropagating to the tagging parameters 3753
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.6. NEURAL SEQUENCE LABELING 179
+ym−1 ym ym+1
+← −hm−1← −hm← −hm+1
+− →hm−1− →hm− →hm+1
+xm−1 xm xm+1
+Figure 7.4: Bidirectional LSTM for sequence labeling. The solid lines indicate computa-
+tion, the dashed lines indicate probabilistic dependency, and the dotted lines indicate the
+optional additional probabilistic dependencies between labels in the biLSTM-CRF.
+βandη, as well as the parameters of the RNN. This model is called the LSTM-CRF , due 3754
+to its combination of aspects of the long short-term memory and conditional random ﬁeld 3755
+models (Huang et al., 2015). 3756
+The LSTM-CRF is especially effective on the task of named entity recognition (Lample 3757
+et al., 2016), a sequence labeling task that is described in detail in §8.3. This task has strong 3758
+dependencies between adjacent tags, so structure prediction is especially important. 3759
+7.6.2 Character-level models 3760
+As in language modeling, rare and unseen words are a challenge: if we encounter a word 3761
+that was not in the training data, then there is no obvious choice for the word embed- 3762
+dingxm. One solution is to use a generic unseen word embedding for all such words. 3763
+However, in many cases, properties of unseen words can be guessed from their spellings. 3764
+For example, whimsical does not appear in the Universal Dependencies (UD) English Tree- 3765
+bank, yet the sufﬁx -almakes it likely to be adjective; by the same logic, unﬂinchingly is 3766
+likely to be an adverb, and barnacle is likely to be a noun. 3767
+In feature-based models, these morphological properties were handled by sufﬁx fea- 3768
+tures; in a neural network, they can be incorporated by constructing the embeddings of 3769
+unseen words from their spellings or morphology. One way to do this is to incorporate 3770
+an additional layer of bidirectional RNNs, one for each word in the vocabulary (Ling 3771
+et al., 2015). For each such character-RNN, the inputs are the characters, and the output 3772
+is the concatenation of the ﬁnal states of the left-facing and right-facing passes, φw= 3773
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+180 CHAPTER 7. SEQUENCE LABELING
+[− →h(w)
+Nw;← −h(w)
+0], where− →h(w)
+Nwis the ﬁnal state of the right-facing pass for word w, andNw 3774
+is the number of characters in the word. The character RNN model is trained by back- 3775
+propagation from the tagging objective. On the test data, the trained RNN is applied to 3776
+out-of-vocabulary words (or all words), yielding inputs to the word-level tagging RNN. 3777
+Other approaches to compositional word embeddings are described in §14.7.1. 3778
+7.6.3 Convolutional Neural Networks for Sequence Labeling 3779
+One disadvantage of recurrent neural networks is that the architecture requires iterating 3780
+through the sequence of inputs and predictions: each hidden vector hmmust be com- 3781
+puted from the previous hidden vector hm−1, before predicting the tag ym. These iterative 3782
+computations are difﬁcult to parallelize, and fail to exploit the speedups offered by graph- 3783
+ics processing units (GPUs) on operations such as matrix multiplication. Convolutional 3784
+neural networks achieve better computational performance by predicting each label ym 3785
+from a set of matrix operations on the neighboring word embeddings, xm−k:m+k(Col- 3786
+lobert et al., 2011). Because there is no hidden state to update, the predictions for each 3787
+ymcan be computed in parallel. For more on convolutional neural networks, see §3.4. 3788
+Character-based word embeddings can also be computed using convolutional neural net- 3789
+works (Santos and Zadrozny, 2014). 3790
+7.7 *Unsupervised sequence labeling 3791
+In unsupervised sequence labeling, the goal is to induce a hidden Markov model from a 3792
+corpus of unannotated text(w(1),w(2),...,w(N)), where each w(i)is a sequence of length 3793
+M(i). This is an example of the general problem of structure induction , which is the 3794
+unsupervised version of structure prediction. The tags that result from unsupervised se- 3795
+quence labeling might be useful for some downstream task, or they might help us to better 3796
+understand the language’s inherent structure. For part-of-speech tagging, it is common 3797
+to use a tag dictionary that lists the allowed tags for each word, simplifying the prob- 3798
+lem (Christodoulopoulos et al., 2010). 3799
+Unsupervised learning in hidden Markov models can be performed using the Baum-
+Welch algorithm , which combines the forward-backward algorithm ( §7.5.3.3) with expectation-
+maximization (EM; §5.1.2). In the M-step, the HMM parameters from expected counts:
+Pr(W=i|Y=k) =φk,i=E[count (W=i,Y=k)]
+E[count (Y=k)]
+Pr(Ym=k|Ym−1=k′) =λk′,k=E[count (Ym=k,Ym−1=k′)]
+E[count (Ym−1=k′)]
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.7. *UNSUPERVISED SEQUENCE LABELING 181
+The expected counts are computed in the E-step, using the forward and backward 3800
+recurrences. The local scores follow the usual deﬁnition for hidden Markov models, 3801
+sm(k,k′) = log pE(wm|Ym=k;φ) + log pT(Ym=k|Ym−1=k′;λ). [7.98]
+The expected transition counts for a single instance are,
+E[count (Ym=k,Ym−1=k′)|w] =M∑
+m=1Pr(Ym−1=k′,Ym=k|w) [7.99]
+=∑
+y:Ym=k,Ym−1=k′∏M
+n=1expsn(yn,yn−1)
+∑
+y′∏M
+n=1expsn(y′n,y′
+n−1). [7.100]
+As described in§7.5.3.3, these marginal probabilities can be computed from the forward-
+backward recurrence,
+Pr(Ym−1=k′,Ym=k|w) =αm−1(k′)×sm(k,k′)×βm(k)
+αM+1(♦). [7.101]
+In a hidden Markov model, each element of the forward-backward computation has a
+special interpretation:
+αm−1(k′) =p(Ym−1=k′,w1:m−1) [7.102]
+sm(k,k′) =p(Ym=k,wm|Ym−1=k′) [7.103]
+βm(k) =p(wm+1:M|Ym=k). [7.104]
+Applying the conditional independence assumptions of the hidden Markov model (de-
+ﬁned in Algorithm 12), the product is equal to the joint probability of the tag bigram and
+the entire input,
+αm−1(k′)×sm(k,k′)×βm(k) =p(Ym−1=k′,w1:m−1)
+×p(Ym=k,wm|Ym−1=k′)
+×p(wm+1:M|Ym=k)
+=p(Ym−1=k′,Ym=k,w1:M). [7.105]
+Dividing by αM+1(♦) =p(w1:M)gives the desired probability,
+αm−1(k′)×sm(k,k′)×βm(k)
+αM+1(♦)=p(Ym−1=k′,Ym=k,w1:M)
+p(w1:M)[7.106]
+= Pr(Ym−1=k′,Ym=k|w1:M). [7.107]
+The expected emission counts can be computed in a similar manner, using the product 3802
+αm(k)×βm(k). 3803
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+182 CHAPTER 7. SEQUENCE LABELING
+7.7.1 Linear dynamical systems 3804
+The forward-backward algorithm can be viewed as Bayesian state estimation in a discrete 3805
+state space. In a continuous state space, ym∈RK, the equivalent algorithm is the Kalman 3806
+smoother . It also computes marginals p (ym|x1:M), using a similar two-step algorithm 3807
+of forward and backward passes. Instead of computing a trellis of values at each step, the 3808
+Kalman smoother computes a probability density function qym(ym;µm,Σm), character- 3809
+ized by a mean µmand a covariance Σmaround the latent state. Connections between the 3810
+Kalman Smoother and the forward-backward algorithm are elucidated by Minka (1999) 3811
+and Murphy (2012). 3812
+7.7.2 Alternative unsupervised learning methods 3813
+As noted in§5.5, expectation-maximization is just one of many techniques for structure
+induction. One alternative is to use Markov Chain Monte Carlo (MCMC) sampling al-
+gorithms, which are brieﬂy described in §5.5.1. For the speciﬁc case of sequence labeling,
+Gibbs sampling can be applied by iteratively sampling each tag ymconditioned on all the
+others (Finkel et al., 2005):
+p(ym|y−m,w1:M)∝p(wm|ym)p(ym|y−m). [7.108]
+Gibbs Sampling has been applied to unsupervised part-of-speech tagging by Goldwater 3814
+and Grifﬁths (2007). Beam sampling is a more sophisticated sampling algorithm, which 3815
+randomly draws entire sequences y1:M, rather than individual tags ym; this algorithm 3816
+was applied to unsupervised part-of-speech tagging by Van Gael et al. (2009). Spectral 3817
+learning (see§5.5.2) can also be applied to sequence labeling. By factoring matrices of 3818
+co-occurrence counts of word bigrams and trigrams (Song et al., 2010; Hsu et al., 2012), it 3819
+is possible to obtain globally optimal estimates of the transition and emission parameters, 3820
+under mild assumptions. 3821
+7.7.3 Semiring Notation and the Generalized Viterbi Algorithm 3822
+The Viterbi and Forward recurrences can each be performed over probabilities or log
+probabilities, yielding a total of four closely related recurrences. These four recurrence
+scan in fact be expressed as a single recurrence in a more general notation, known as
+semiring algebra . Let the symbol ⊕represent generalized addition, and the symbol ⊗
+represent generalized multiplication.12Given these operators, we can denote a general-
+12In a semiring, the addition and multiplication operators must both obey associativity, and multiplication
+must distribute across addition; the addition operator must be commutative; there must be additive and
+multiplicative identities 0and1, such that a⊕0 =aanda⊗1 =a; and there must be a multiplicative
+annihilator 0, such thata⊗0 =0.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+7.7. *UNSUPERVISED SEQUENCE LABELING 183
+ized Viterbi recurrence as,
+vm(k) =⨁
+k′∈Ysm(k,k′)⊗vm−1(k′). [7.109]
+Each recurrence that we have seen so far is a special case of this generalized Viterbi 3823
+recurrence: 3824
+•In the max-product Viterbi recurrence over probabilities, the ⊕operation corre- 3825
+sponds to maximization, and the ⊗operation corresponds to multiplication. 3826
+•In the forward recurrence over probabilities, the ⊕operation corresponds to addi- 3827
+tion, and the⊗operation corresponds to multiplication. 3828
+•In the max-product Viterbi recurrence over log-probabilities, the ⊕operation corre- 3829
+sponds to maximization, and the ⊗operation corresponds to addition.133830
+•In the forward recurrence over log-probabilities, the ⊕operation corresponds to log- 3831
+addition,a⊕b= log(ea+eb). The⊗operation corresponds to addition. 3832
+The mathematical abstraction offered by semiring notation can be applied to the soft- 3833
+ware implementations of these algorithms, yielding concise and modular implementa- 3834
+tions. The O PENFST library (Allauzen et al., 2007) is an example of a software package in 3835
+which the algorithms are parametrized by the choice of semiring. 3836
+Exercises 3837
+1. Consider the garden path sentence, The old man the boat. Given word-tag and tag-tag 3838
+features, what inequality in the weights must hold for the correct tag sequence to 3839
+outscore the garden path tag sequence for this example? 3840
+2. Sketch out an algorithm for a variant of Viterbi that returns the top- nlabel se- 3841
+quences. What is the time and space complexity of this algorithm? 3842
+3. Show how to compute the marginal probability Pr(ym−2=k,ym=k′|w1:M), in 3843
+terms of the forwards and backward variables, and the potentials sn(yn,yn−1). 3844
+4. Suppose you receive a stream of text, where some of tokens have been replaced at 3845
+random with NOISE . For example: 3846
+•Source: I try all things, I achieve what I can 3847
+•Message received: I try NOISE NOISE, I NOISE what I NOISE 3848
+13This is sometimes called the tropical semiring , in honor of the Brazilian mathematician Imre Simon.
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
+184 CHAPTER 7. SEQUENCE LABELING
+Assume you have access to a pre-trained bigram language model, which gives prob- 3849
+abilities p (wm|wm−1). These probabilities can be assumed to be non-zero for all 3850
+bigrams. 3851
+a) Show how to use the Viterbi algorithm to try to recover the source by maxi- 3852
+mizing the bigram language model log-probability. Speciﬁcally, set the scores 3853
+sm(ym,ym−1)so that the Viterbi algorithm selects a sequence of words that 3854
+maximizes the bigram language model log-probability, while leaving the non- 3855
+noise tokens intact . Your solution should not modify the logic of the Viterbi 3856
+algorithm, it should only set the scores sm(ym,ym−1). 3857
+b) An alternative solution is to iterate through the text from m∈{1,2,...,M}, 3858
+replacing each noise token with the word that maximizes P(wm|wm−1)ac- 3859
+cording to the bigram language model. Given an upper bound on the expected 3860
+fraction of tokens for which the two approaches will disagree. 3861
+5. Consider an RNN tagging model with a tanh activation function on the hidden 3862
+layer, and a hinge loss on the output. (The problem also works for the margin loss 3863
+and negative log-likelihood.) Suppose you initialize all parameters to zero: this 3864
+includes the word embeddings that make up x, the transition matrix Θ, the out- 3865
+put weightsβ, and the initial hidden state h0. Prove that for any data and for any 3866
+gradient-based learning algorithm, all parameters will be stuck at zero. 3867
+Extra credit: would a sigmoid activation function avoid this problem? 3868
+(c) Jacob Eisenstein 2018. Draft of June 1, 2018.
+
