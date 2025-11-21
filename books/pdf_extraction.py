@@ -7,6 +7,7 @@ from pathlib import Path
 dir = Path("./")
 saida = Path("../assets")
 saida.mkdir(exist_ok=True)
+
 class book_extractor_pdf:
         
         def __init__(self,first_pg,last_pg,dados):
@@ -21,7 +22,7 @@ class book_extractor_pdf:
                     pagina = pdf.pages[p - 1]
                     texto_total += (pagina.extract_text() or "") + "\n"
             dados[nome]["texto"] = texto_total.strip()
-            
+        
 if __name__ == "__main__":
      
     for index, pdf_file in enumerate(dir.glob("*.pdf")):
